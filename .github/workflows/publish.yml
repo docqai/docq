@@ -1,0 +1,44 @@
+name: Publish to GHCR
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'source/**'
+      - 'features/**'
+      - 'tests/**'
+      - 'web/**'
+      - 'pyproject.toml'
+      - 'poetry.lock'
+      - '.github/workflows/*.yml'
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+      - uses: benjlevesque/short-sha@v2.2
+        id: short-sha
+        with:
+          length: 6
+      - name: Login into GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: | 
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}-${{ steps.short-sha.outputs.sha }}

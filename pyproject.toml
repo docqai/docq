@@ -1,0 +1,152 @@
+[tool.poetry]
+name = "docq"
+version = "0.0.1"
+description = "Docq"
+authors = ["Docq.AI <support@docq.ai>"]
+maintainers = ["Docq.AI <support@docq.ai>"]
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/docqai/docq"
+documentation = "https://github.com/docqai/docq/tree/main/docs/api/"
+readme = "README.md"
+packages = [
+    { include = "docq", from = "source" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+streamlit = "^1.22.0"
+st-pages = "^0.4.1"
+streamlit-chat = "^0.0.2.2"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^2.18.1"
+black = {version = "^22.3.0", allow-prereleases = true}
+xdoctest = "^1.0.0"
+poethepoet = "^0.16.4"
+ruff = "^0.0.253"
+pytest = "7.1.1"
+pytest-html = "^3.1.1"
+pytest-sugar = "^0.9.6"
+pytest-reverse = "^1.5.0"
+pytest-cov = "^3.0.0"
+pytest-bdd = "^6.1.1"
+mkdocs = "^1.4.2"
+mkdocs-material = "^8.5.10"
+mkdocs-gen-files = "^0.4.0"
+mkdocs-awesome-pages-plugin = "^2.8.0"
+mkapi = "^1.0.14"
+
+[tool.poetry.scripts]
+-c = "poethepoet:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 79
+target-version = ['py310']
+include = '\.pyi?$'
+
+[tool.ruff]
+ignore = ["E501"]
+line-length = 120
+select = [
+    "C9",
+    "E",
+    "F",
+    "W",
+    "D",
+    "G",
+    "A",
+    "PT",
+    "S",
+    "B",
+    "ANN",
+    "SIM",
+    "I",
+    "N",
+]
+
+
+[tool.ruff.mccabe]
+max-complexity = 10
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["S101"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = """
+--verbose \
+--maxfail=1 \
+--reverse \
+--color=yes \
+--cov=docq \
+--html=docs/pytest_report.html \
+--self-contained-html \
+--cov-fail-under=100 \
+--cov-report term-missing \
+--cov-report html:docs/cov-report \
+--doctest-modules \
+--cov-config=pyproject.toml"""
+testpaths = [
+    "tests",
+    "docq"
+]
+python_files = ["*_test.py"]
+python_functions = ["test_*"]
+render_collapsed = true
+bdd_features_base_dir = "features"
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:"
+    ]
+
+[tool.poe.tasks]
+install = "poetry install --only main"
+install-dev = "poetry install"
+test = "pytest"
+pre-commit = "pre-commit run --all-files"
+lint-ruff = "ruff check **/*.py --fix"
+lint-black = "black **/*.py"
+lint = ["lint-black", "lint-ruff"]
+doc = "mkdocs serve --use-directory-urls -f docs/mkdocs.yaml"
+doc-html = "mkdocs build --no-directory-urls -f docs/mkdocs.yaml"
+doc-publish = """mkdocs gh-deploy \
+--config-file docs/mkdocs.yaml \
+--no-directory-urls \
+--remote-branch docs"""
+
+[tool.poe.tasks.streamlit]
+cmd = "streamlit run web/index.py --server.port $port"
+args = [
+    { name = "port", default = 8501, type = "integer" },
+]
+
+[tool.poe.tasks.docker-build]
+cmd = """
+docker build 
+--build-arg TESTBUILD=$no_test \
+--build-arg BUILDTAG=$build_tag \
+--build-arg BUILDPLATFORM=$build_platform \
+--target $target \
+-t docq:$target-$build_tag ."""
+help = "Build a docker image to test the project in an isolated environment"
+args = [
+    { name = "no-test", default = true, type = "boolean" }, 
+    { name = "build-tag", default = "3.11" },
+    { name = "build-platform", default = "linux/amd64" },
+    { name = "target", default = "prod" },
+]

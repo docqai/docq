@@ -1,0 +1,51 @@
+site_name: Docq - Private & Secure AI Knowledge Insight
+site_url: https://docqai.github.io/docq
+site_description: Docq offers self-hosted, private and secure AI for knowledge insight with minimal onboarding and operational effort. 
+site_author: Docq.AI
+site_dir: html
+repo_name: docqai/docq
+repo_url: https://github.com/docqai/docq
+
+plugins:
+  - search
+  - mkapi
+  - awesome-pages
+  - gen-files:
+      scripts:
+        - gen_pages.py
+
+theme:
+  name: material
+  palette:
+  - media: '(prefers-color-scheme: light)'
+    scheme: default
+    primary: blue
+    accent: amber
+    toggle:
+      icon: material/lightbulb-outline
+      name: Switch to light mode
+  - media: '(prefers-color-scheme: dark)'
+    scheme: slate
+    primary: black
+    accent: amber
+    toggle:
+      icon: material/lightbulb
+      name: Switch to dark mode
+  features:
+  - search.suggest
+  - search.highlight
+  - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github-alt
+  logo: img/logo.svg
+  favicon: img/favicon.png
+  language: en
+
+
+nav:
+  - index.md
+  - ... | glob=readme.md
+  - ... | regex=scenarios/.+.md
+  - API: mkapi/api/docq
+  - Tests: mkapi/tests/tests
+
