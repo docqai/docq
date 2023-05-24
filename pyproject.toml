@@ -10,6 +10,7 @@ documentation = "https://github.com/docqai/docq/tree/main/docs/api/"
 readme = "README.md"
 packages = [
     { include = "docq", from = "source" },
+    { include = "web", from = "source" },
 ]
 
 [tool.poetry.dependencies]
@@ -17,6 +18,8 @@ python = "^3.10"
 streamlit = "^1.22.0"
 st-pages = "^0.4.1"
 streamlit-chat = "^0.0.2.2"
+llama-index = "^0.6.10"
+pypdf = "^3.9.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.18.1"
@@ -130,7 +133,7 @@ doc-publish = """mkdocs gh-deploy \
 --remote-branch docs"""
 
 [tool.poe.tasks.streamlit]
-cmd = "streamlit run web/index.py --server.port $port"
+cmd = "streamlit run web/index.py --server.port $port --browser.gatherUsageStats false"
 args = [
     { name = "port", default = 8501, type = "integer" },
 ]

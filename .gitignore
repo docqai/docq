@@ -171,4 +171,10 @@ cython_debug/
 #.idea/
 
 # Docq specific files
-requirements.txt
+
+# Exported from Poetry, used in docker build only
+requirements.txt    
+# Used for file storage in local development only
+.persisted/
+# Used for running Streamlit by storing configs and secrets locally
+.streamlit/

@@ -1,5 +1,8 @@
 import streamlit as st
 from st_pages import Page, Section, add_page_title, show_pages
+from docq import setup
+
+setup.init()
 
 add_page_title()
 
