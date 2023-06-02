@@ -1,58 +1,34 @@
-import os
-import logging as log
+"""Configurations for Docq."""
+
+from enum import Enum
+
+ENV_VAR_DOCQ_DATA = "DOCQ_DATA"
+ENV_VAR_OPENAI_API_KEY = "OPENAI_API_KEY"
 
 
-from llama_index import LLMPredictor, StorageContext, ServiceContext, load_index_from_storage
-from langchain import OpenAI
+LLM_MODELS = {
+    "OPENAI_CHAT": (["gpt-3.5-turbo", "gpt-4"], range(0, 2)),
+    "OPENAI": (["text-davinci-003", "text-davinci-002", "code-davinci-002"], range(0, 2)),
+}
 
 
-PERSISTED_SQLITE_SUBDIR = 'sqlite'
-PERSISTED_INDEX_SUBDIR = 'index'
-PERSISTED_UPLOAD_SUBDIR = 'upload'
+class SpaceType(Enum):
+    """Space types."""
 
-ASK_LOAD_NUMBER_OF_MESSAGES = 20
-MANAGE_MAX_NUMBER_OF_DOCUMENTS = 5
-
-
-def _get_path(subdir, space, filename=None):
-    dir = os.path.join(os.environ['DOCQ_DATA'], subdir, space)
-    os.makedirs(dir, exist_ok=True)
-    if filename:
-        file = os.path.join(dir, filename)
-        log.debug("File: %s", file)
-        return file
-    else:
-        log.debug("Dir: %s", dir)
-        return dir
+    PERSONAL = "personal"
+    SHARED = "shared"
 
 
-def get_upload_file(space, filename):
-    return _get_path(PERSISTED_UPLOAD_SUBDIR, space, filename)
+class FeatureType(Enum):
+    """Feature types."""
+
+    ASK_PERSONAL = "ask_personal"
+    ASK_SHARED = "ask_shared"
+    CHAT_PRIVATE = "chat_private"
 
 
-def get_sqlite_file(space):
-    return _get_path(PERSISTED_SQLITE_SUBDIR, space, 'documents.db')
+class LogType(Enum):
+    """Log types."""
 
-
-def get_index_dir(space):
-    return _get_path(PERSISTED_INDEX_SUBDIR, space)
-
-
-def get_upload_dir(space):
-    return _get_path(PERSISTED_UPLOAD_SUBDIR, space)
-
-
-def get_llm():
-    return LLMPredictor(llm=OpenAI(temperature=9, model_name="text-davinci-002"))
-
-
-def get_storage_context(space=None):
-    return StorageContext.from_defaults(persist_dir=get_index_dir(space)) if space else StorageContext.from_defaults()
-
-
-def get_service_context():
-    return ServiceContext.from_defaults(llm_predictor=get_llm())
-
-
-def load_index(space):
-    return load_index_from_storage(get_storage_context(space))
+    SYSTEM = "system"
+    ACTIVITY = "activity"

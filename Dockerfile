@@ -16,7 +16,7 @@ RUN poetry install --no-root
 COPY .pre-commit-config.yaml .
 COPY README.md .
 COPY features features
-COPY docq docq
+COPY source source
 COPY tests tests
 
 RUN poetry install

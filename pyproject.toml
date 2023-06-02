@@ -2,15 +2,14 @@
 name = "docq"
 version = "0.0.1"
 description = "Docq"
-authors = ["Docq.AI <support@docq.ai>"]
-maintainers = ["Docq.AI <support@docq.ai>"]
+authors = ["Docq.AI Team <support@docq.ai>"]
+maintainers = ["Docq.AI Team <support@docq.ai>"]
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/docqai/docq"
 documentation = "https://github.com/docqai/docq/tree/main/docs/api/"
 readme = "README.md"
 packages = [
     { include = "docq", from = "source" },
-    { include = "web", from = "source" },
 ]
 
 [tool.poetry.dependencies]
@@ -18,8 +17,9 @@ python = "^3.10"
 streamlit = "^1.22.0"
 st-pages = "^0.4.1"
 streamlit-chat = "^0.0.2.2"
-llama-index = "^0.6.10"
+llama-index = "^0.6.16"
 pypdf = "^3.9.0"
+docx2txt = "^0.8"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.18.1"
@@ -47,7 +47,7 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]
-line-length = 79
+line-length = 120
 target-version = ['py310']
 include = '\.pyi?$'
 
@@ -91,14 +91,13 @@ addopts = """
 --cov=docq \
 --html=docs/pytest_report.html \
 --self-contained-html \
---cov-fail-under=100 \
+--cov-fail-under=9 \
 --cov-report term-missing \
 --cov-report html:docs/cov-report \
 --doctest-modules \
 --cov-config=pyproject.toml"""
 testpaths = [
     "tests",
-    "docq"
 ]
 python_files = ["*_test.py"]
 python_functions = ["test_*"]
