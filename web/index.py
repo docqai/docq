@@ -1,27 +1,40 @@
+"""Page: Home (no auth required)."""
+
 import streamlit as st
-from st_pages import Page, Section, add_page_title, show_pages
 from docq import setup
+from st_pages import Page, Section, add_page_title, show_pages
+from utils.layout import production_layout, public_access
 
 setup.init()
+
+production_layout()
 
 add_page_title()
 
 show_pages(
     [
         Page("web/index.py", "Home", "🏠"),
-        Page("web/admin/index.py", "Admin", "💂"),
-        Section("Personal", icon="📁"),
-        Page("web/personal/index.py", "Your Space"),
-        Section("Org-wide", icon="💼"),
-        Page("web/shared/index.py", "Shared Spaces"),
+        Section("Your_Space", icon="📁"),
+        Page("web/general.py", "General_Chat"),
+        Page("web/personal.py", "Ask_Your_Documents"),
+        Section("Shared_Spaces", icon="💼"),
+        Page("web/shared.py", "Ask_Shared_Documents"),
+        Section("Admin", icon="💂"),
+        Page("web/admin.py", "Admin_Overview"),
+        Page("web/admin_users.py", "Admin_Users"),
+        Page("web/admin_docs.py", "Admin_Docs"),
+        Page("web/admin_logs.py", "Admin_Logs"),
     ]
 )
+
+public_access()
 
 st.subheader("Welcome to Docq - Private & Secure AI Knowledge Insight")
 
 st.markdown("""
-- Click on the **Your Space** link to ask questions and get answers from your own documents.
-- Click on the **Shared Spaces** link to ask questions and get answers from documents in your organisation.
+- Click on the [General Chat](./General_Chat) link to use Docq like ChatGPT.
+- Click on the [Ask Your Documents](./Ask_Your_Documents) link to ask questions and get answers from your own documents.
+- Click on the [Ask Shared Documents](./Ask_Shared_Documents) link to ask questions and get answers from documents shared within your organisation.
 """)
 
 st.subheader("Tips & Tricks")

@@ -1,10 +1,13 @@
-import os
 import logging
+import os
+
 import streamlit as st
+
+from .manage_users import _init_admin_if_necessary
 
 
 def _load_env_vars():
-    for k in ['DOCQ_DATA', 'OPENAI_API_KEY']:
+    for k in ["DOCQ_DATA", "OPENAI_API_KEY"]:
         if k in st.secrets:
             os.environ[k] = st.secrets[k]
 
@@ -16,4 +19,5 @@ def _config_logging():
 def init():
     _load_env_vars()
     _config_logging()
-    logging.info("Docq initialized with env vars: %s", os.environ)
+    _init_admin_if_necessary()
+    logging.info("Docq initialized")

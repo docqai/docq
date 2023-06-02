@@ -1,3 +1,11 @@
-"""Docq offers self-hosted, private and secure AI for knowledge insight with minimal onboarding and operational effort."""
+"""Docq module."""
 
-from . import ask, manage, setup, config
+__all__ = [
+    "config",
+    "manage_users",
+    "manage_documents",
+    "manage_spaces",
+    "manage_sharing",
+    "setup",
+    "run_queries",
+]

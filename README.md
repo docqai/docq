@@ -23,7 +23,7 @@
   <h3 align="center"> Docq - Private & Secure AI Knowledge Insight</h3>
 
   <p align="center">
-    Docq offers self-hosted, private and secure AI for knowledge insight with minimal onboarding and operational effort. 
+    A turnkey product to utilise your organisation's documents for AI-induced productivity boost. 
     <br />
     <a href="https://docqai.github.io/docq/readme.html"><strong>Explore the docs »</strong></a>
     <br />
@@ -64,7 +64,17 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-Docq offers self-hosted, private and secure AI for knowledge insight with minimal onboarding and operational effort. 
+Docq offers private and secure AI to utilise your organisation's documents for knowledge insight with minimal onboarding and operational effort. 
+
+- Self-hosting with your organisation's choice of cloud vendor.
+- Plug-n-Play with minimal onboarding and operational effort.
+- Multi-modal document format support including text and image. 
+
+We offer Docq as a **turnkey** solution to maximise ROI for your organisation to adopt the latest AI innovations. 
+
+- Open-source (AGPLv3) to address your organisation's security and compliance needs.
+- Commercial support available via a UK-based entity. 
+- Re-licensing option also available. 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -198,9 +208,14 @@ Project Link: [https://github.com/docqai/docq/](https://github.com/docqai/docq/)
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
 
+The project would not have been possible without the following libraries:
+
+* Jerry Liu's [Llama Index](https://github.com/jerryjliu/llama_index)
+* [Streamlit](https://streamlit.io/) and many open-source Streamlit components as well as its [Community Cloud](https://streamlit.io/cloud)
+
 This project was created using cookiecutter and NullHack's python-project-template:
 
-* [NullHack's python-project-template](https://github.com/nullhack/python-project-template/)
+* NullHack's [python-project-template](https://github.com/nullhack/python-project-template/)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
