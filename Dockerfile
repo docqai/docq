@@ -15,13 +15,9 @@ RUN poetry install --no-root
 
 COPY .pre-commit-config.yaml .
 COPY README.md .
-<<<<<<< HEAD
-=======
-
->>>>>>> 4eb8996aaac75ac1479afed2f7155f57f6befffa
+COPY features features
 COPY source source
 COPY tests tests
-
 
 RUN poetry install
 
@@ -50,8 +46,7 @@ COPY --chown=user:user web web
 
 RUN pip install --no-cache -r requirements.txt dist/*.whl --user
 
-EXPOSE 8501
 ENTRYPOINT ["python", "-m", "streamlit", "run"]
-CMD ["web/index.py", "--server.port", "8501", "--browser.gatherUsageStats", "false"]
+CMD ["web/index.py", "--browser.gatherUsageStats", "false"]
 
 

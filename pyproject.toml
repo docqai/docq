@@ -10,7 +10,6 @@ documentation = "https://github.com/docqai/docq/tree/main/docs/api/"
 readme = "README.md"
 packages = [
     { include = "docq", from = "source" },
-    { include = "web", from = "source" },
 ]
 
 [tool.poetry.dependencies]
@@ -160,9 +159,7 @@ docker run \
 -it
 --rm \
 --name docq \
--e STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
--e OPENAI_API_KEY \
--e DOCQ_DATA \
+--env-file .env \
 -p $port:$port \
 docq:$target-$build_tag """
 help = "Run the docker image"
