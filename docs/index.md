@@ -6,7 +6,7 @@ In other words, Docq is your employees' private and secure ChatGPT that knows yo
 
 ## Design Principles
 
-![4 design key ingredients for Docq](img/Docq_design_key_ingredients.png)
+![4 design key ingredients for Docq](assets/Docq_design_key_ingredients.png)
 
 ### Business Use
 
