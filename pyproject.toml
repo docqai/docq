@@ -159,6 +159,8 @@ docker run \
 --rm \
 --name docq \
 -e STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
+-e OPENAI_API_KEY \
+-e DOCQ_DATA \
 -p $port:$port \
 docq:$target-$build_tag """
 help = "Run the docker image"
