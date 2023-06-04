@@ -147,15 +147,35 @@ Some useful examples of how this project can be used:
 
 *  Build a docker image for tests
    ```sh
-   poe docker-build --target test --build-tag 3.10-alpine
-   docker run -ti --rm docq:test-3.10-alpine
+   poe docker-build --target test --build-tag 3.10-alpine --test true
+   poe docker-run --target test
    ```
 
 *  Build a docker image to run the root files only without running any test
+
+   * Build image
+
    ```sh
-   poe docker-build --target prod --build-tag 3.10-alpine --no-test
-   docker run -ti --rm docq:prod-3.10-alpine
+   poe docker-build
    ```
+
+   * Add a `.env` file with the following
+
+
+   ```yaml
+   OPENAI_API_KEY # don't add secret values here, only var name. set value in your env with set/export.
+   DOCQ_DATA=./.persisted/
+   STREAMLIT_SERVER_ADDRESS=0.0.0.0
+   STREAMLIT_SERVER_PORT=8501 # option 8501 is the default
+
+   ```
+
+   * set secrets `export OPEN_API_KEY=<your secret token>`. Note that the .env file only has the env name not the value for secrets. It's best practice not to add secret to files even if gitignored.
+   * Run container
+   ```sh
+   poe docker-run
+   ```
+   
    
 
 _For more examples, please refer to the [Documentation](https://docqai.github.io/docq/readme.html)_
