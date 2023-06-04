@@ -5,6 +5,8 @@ on:
       - main
     paths:
       - "docs/**"
+      - "README.md"
+      - "mkdocs.yaml"
       - ".github/workflows/docsite.yml"
 
 permissions:
