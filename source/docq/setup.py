@@ -3,11 +3,8 @@ import os
 
 import streamlit as st
 
-<<<<<<< HEAD
 from .manage_users import _init_admin_if_necessary
 
-=======
->>>>>>> 4eb8996aaac75ac1479afed2f7155f57f6befffa
 def _load_env_vars():
 
     for k in ['DOCQ_DATA', 'OPENAI_API_KEY']:
@@ -32,11 +29,6 @@ def _setup_persistance_folder():
 def init():
     _config_logging()
     _load_env_vars()
-<<<<<<< HEAD
     _init_admin_if_necessary()
     _setup_persistance_folder()
     logging.info("Docq initialized")
-=======
-    _setup_persistance_folder()
-    logging.info("Docq initialized with env vars: %s", os.environ)
->>>>>>> 4eb8996aaac75ac1479afed2f7155f57f6befffa
