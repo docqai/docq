@@ -10,6 +10,7 @@ documentation = "https://github.com/docqai/docq/tree/main/docs/api/"
 readme = "README.md"
 packages = [
     { include = "docq", from = "source" },
+    { include = "web", from = "source" },
 ]
 
 [tool.poetry.dependencies]

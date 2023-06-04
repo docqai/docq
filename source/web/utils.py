@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional, Any
 import streamlit as st
+import logging
 
 from docq import ask, config, manage
 
@@ -63,7 +64,15 @@ def list_spaces(type_: SpaceType):
 
 
 def format_datetime(dt):
-    return dt.strftime("%Y-%m-%d")
+
+    if isinstance(dt, datetime):
+        res = dt.strftime("%Y-%m-%d")
+    elif isinstance(dt, str):
+        res = datetime.strptime(dt, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d")
+    else:
+        logging.warning(f"Failed to format datetime so returning as is.")
+        res = dt
+    return res
 
 
 def format_filesize(size):
