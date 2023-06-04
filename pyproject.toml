@@ -17,7 +17,7 @@ python = "^3.10"
 streamlit = "^1.22.0"
 st-pages = "^0.4.1"
 streamlit-chat = "^0.0.2.2"
-llama-index = "^0.6.10"
+llama-index = "^0.6.19"
 pypdf = "^3.9.0"
 
 [tool.poetry.group.dev.dependencies]

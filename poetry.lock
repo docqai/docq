@@ -926,14 +926,14 @@ text-helpers = ["chardet (>=5.1.0,<6.0.0)"]
 
 [[package]]
 name = "llama-index"
-version = "0.6.10"
+version = "0.6.19"
 description = "Interface between LLMs and your data"
 category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "llama_index-0.6.10-py3-none-any.whl", hash = "sha256:f27bd294d1abdf93c4ef33c3994189199df503a8415fed930e157228c3ec9ef8"},
-    {file = "llama_index-0.6.10.tar.gz", hash = "sha256:bfbab314c2cf385d6fb883983211c2f402db8db06ffacd1684f133c0d87e371f"},
+    {file = "llama_index-0.6.19-py3-none-any.whl", hash = "sha256:920dd57ed9822bf7776a19f68c14c0902141c3d0430edfac1561624bc441ad86"},
+    {file = "llama_index-0.6.19.tar.gz", hash = "sha256:aa7b6bc5f269fac74a9fa9f9e65bfff71a04a2e333bd2744f8a0f32095390cb8"},
 ]
 
 [package.dependencies]
@@ -943,11 +943,12 @@ langchain = ">=0.0.154"
 numpy = "*"
 openai = ">=0.26.4"
 pandas = "*"
-requests = "<2.30.0"
+sqlalchemy = ">=2.0.15"
 tenacity = ">=8.2.0,<9.0.0"
 tiktoken = "*"
 typing-extensions = "4.5.0"
 typing-inspect = "0.8.0"
+urllib3 = "<2"
 
 [[package]]
 name = "mako"
