@@ -10,7 +10,6 @@ documentation = "https://github.com/docqai/docq/tree/main/docs/api/"
 readme = "README.md"
 packages = [
     { include = "docq", from = "source" },
-    { include = "web", from = "source" },
 ]
 
 [tool.poetry.dependencies]
@@ -141,15 +140,30 @@ args = [
 [tool.poe.tasks.docker-build]
 cmd = """
 docker build 
---build-arg TESTBUILD=$no_test \
+--build-arg TESTBUILD=$test \
 --build-arg BUILDTAG=$build_tag \
 --build-arg BUILDPLATFORM=$build_platform \
 --target $target \
 -t docq:$target-$build_tag ."""
 help = "Build a docker image to test the project in an isolated environment"
 args = [
-    { name = "no-test", default = true, type = "boolean" }, 
-    { name = "build-tag", default = "3.11" },
+    { name = "test", default = false, type = "boolean"}, 
+    { name = "build-tag", default = "3.11-slim-buster" },
     { name = "build-platform", default = "linux/amd64" },
     { name = "target", default = "prod" },
+]
+
+[tool.poe.tasks.docker-run]
+cmd = """
+docker run \
+--rm \
+--name docq \
+-e STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
+-p $port:$port \
+docq:$target-$build_tag """
+help = "Run the docker image"
+args = [
+    { name = "build-tag", default = "3.11-slim-buster" },
+    { name = "target", default = "prod" },
+    { name = "port", default = 8501, type = "integer" },
 ]
