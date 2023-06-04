@@ -179,3 +179,5 @@ requirements.txt
 .persisted/
 # Used for running Streamlit by storing configs and secrets locally
 .streamlit/
+# Used by GitHub Pages local build before uploading to GitHub
+_site/

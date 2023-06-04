@@ -45,4 +45,8 @@ jobs:
       - name: Install project
         run: poetry install --no-interaction
       - name: Publish docs
-        run: poetry run poe doc-publish
+        run: poetry run poe doc-html
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v1

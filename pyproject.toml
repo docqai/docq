@@ -124,12 +124,8 @@ pre-commit = "pre-commit run --all-files"
 lint-ruff = "ruff check **/*.py --fix"
 lint-black = "black **/*.py"
 lint = ["lint-black", "lint-ruff"]
-doc = "mkdocs serve --use-directory-urls -f docs/mkdocs.yaml"
-doc-html = "mkdocs build --no-directory-urls -f docs/mkdocs.yaml"
-doc-publish = """mkdocs gh-deploy \
---config-file docs/mkdocs.yaml \
---no-directory-urls \
---remote-branch docs"""
+doc = "mkdocs serve --use-directory-urls"
+doc-html = "mkdocs build --site-dir ./_site"
 
 [tool.poe.tasks.streamlit]
 cmd = "streamlit run web/index.py --server.port $port --browser.gatherUsageStats false"
