@@ -933,14 +933,14 @@ text-helpers = ["chardet (>=5.1.0,<6.0.0)"]
 
 [[package]]
 name = "llama-index"
-version = "0.6.16.post1"
+version = "0.6.19"
 description = "Interface between LLMs and your data"
 category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "llama_index-0.6.16.post1-py3-none-any.whl", hash = "sha256:2a0e5b0e9691283479300d7f720ab625efef8e8d6c6eeae7f4595b50250f27be"},
-    {file = "llama_index-0.6.16.post1.tar.gz", hash = "sha256:a81f9a4d2a9f938753a8d12c17cb0192f2cbb1b47c40c37ec0c5c62d487fab69"},
+    {file = "llama_index-0.6.19-py3-none-any.whl", hash = "sha256:920dd57ed9822bf7776a19f68c14c0902141c3d0430edfac1561624bc441ad86"},
+    {file = "llama_index-0.6.19.tar.gz", hash = "sha256:aa7b6bc5f269fac74a9fa9f9e65bfff71a04a2e333bd2744f8a0f32095390cb8"},
 ]
 
 [package.dependencies]
