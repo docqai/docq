@@ -15,6 +15,10 @@ RUN poetry install --no-root
 
 COPY .pre-commit-config.yaml .
 COPY README.md .
+<<<<<<< HEAD
+=======
+
+>>>>>>> 4eb8996aaac75ac1479afed2f7155f57f6befffa
 COPY source source
 COPY tests tests
 
