@@ -22,10 +22,12 @@
     A turnkey product to utilise your organisation's documents for AI-induced productivity boost.
   </h3>
 
-![Docq Logo](docs/img/Docq_design_key_ingredients.png)
+![Docq Logo](docs/assets/Docq_design_key_ingredients.png)
 
   <p align="center">
-    <a href="https://docqai.github.io/docq/readme.html"><strong>Explore the docs »</strong></a>
+    <a href="https://docq-ai.streamlit.app/"><strong>Demo app in action »</strong></a>
+    <br />
+    <a href="https://docqai.github.io/docq/"><strong>Explore the docs »</strong></a>
     <br />
     <a href="https://github.com/docqai/docq/issues">Report Bug</a>
     ·
