@@ -156,6 +156,7 @@ args = [
 [tool.poe.tasks.docker-run]
 cmd = """
 docker run \
+-it
 --rm \
 --name docq \
 -e STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
