@@ -28,13 +28,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Get app version
-        id: get-version
+        id: app-version
         run: echo "::set-output name=version::$(cat pyproject.toml | grep version | head -1 | awk -F= '{ print $2 }' | sed 's/["]//g')"
-      - name: test vars
-        run: 
-          echo ${{ steps.get-version.outputs.version }}
-          echo ${{ steps.short-sha.outputs.sha }}
-
       - name: Build and push image
         uses: docker/build-push-action@v4
         with:
@@ -47,4 +42,6 @@ jobs:
             TARGET=prod
           tags: |
             ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ steps.app-version.outputs.version }}
+            ghcr.io/${{ github.repository }}:${{ github.run_number }}-${{ steps.short-sha.outputs.sha }}
           context: .
