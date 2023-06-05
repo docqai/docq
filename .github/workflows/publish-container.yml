@@ -25,11 +25,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Get app version
+        id: get-version
         run: 
           VERSION=$(cat pyproject.toml | grep version | head -1 | awk -F= '{ print $2 }' | sed 's/["]//g')
-          VERSION_TAG=$(echo $VERSION | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9.-]//g')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
+
       - name: Build and push image
         uses: docker/build-push-action@v4
         with:
@@ -42,7 +41,4 @@ jobs:
             TARGET=prod
           tags: |
             ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:$VERSION_TAG
-            ghcr.io/${{ github.repository }}:${{ github.run_number }}-${{ steps.short-sha.outputs.sha }} 
-        
           context: .
