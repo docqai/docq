@@ -8,33 +8,33 @@
 *** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
 *** https://www.markdownguide.org/basic-syntax/#reference-style-links
 -->
+
 [![Contributors][contributors-shield]][contributors-url]
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
 [![AGPLv3 License][license-shield]][license-url]
 
-
-
-<!-- PROJECT LOGO -->
-<br />
 <div align="center">
 
-  <h3 align="center"> Docq - Private & Secure AI Knowledge Insight</h3>
+  <h1 align="center"> Docq - Private & Secure AI Knowledge Insight</h1>
+  <h3 align="center">
+    A turnkey product to utilise your organisation's documents for AI-induced productivity boost.
+  </h3>
+
+![Docq Logo](docs/assets/Docq_design_key_ingredients.png)
 
   <p align="center">
-    A turnkey product to utilise your organisation's documents for AI-induced productivity boost. 
+    <a href="https://docq-ai.streamlit.app/"><strong>Demo app in action »</strong></a>
     <br />
-    <a href="https://docqai.github.io/docq/readme.html"><strong>Explore the docs »</strong></a>
-    <br />
+    <a href="https://docqai.github.io/docq/"><strong>Explore the docs »</strong></a>
     <br />
     <a href="https://github.com/docqai/docq/issues">Report Bug</a>
     ·
     <a href="https://github.com/docqai/docq/issues">Request Feature</a>
+
   </p>
 </div>
-
-
 
 <!-- TABLE OF CONTENTS -->
 <details>
@@ -59,26 +59,26 @@
   </ol>
 </details>
 
-
-
 <!-- ABOUT THE PROJECT -->
+
 ## About The Project
 
-Docq offers private and secure AI to utilise your organisation's documents for knowledge insight with minimal onboarding and operational effort. 
+Docq offers private and secure AI to utilise your organisation's documents for knowledge insight with minimal onboarding and operational effort.
 
 - Self-hosting with your organisation's choice of cloud vendor.
 - Plug-n-Play with minimal onboarding and operational effort.
-- Multi-modal document format support including text and image. 
+- Multi-modal document format support including text and image.
 
-We offer Docq as a **turnkey** solution to maximise ROI for your organisation to adopt the latest AI innovations. 
+We offer Docq as a **turnkey** solution to maximise ROI for your organisation to adopt the latest AI innovations.
 
 - Open-source (AGPLv3) to address your organisation's security and compliance needs.
-- Commercial support available via a UK-based entity. 
-- Re-licensing option also available. 
+- Commercial support available via a UK-based entity.
+- Re-licensing option also available.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 <!-- GETTING STARTED -->
+
 ## Getting Started
 
 To run this project locally, you will need to install the prerequisites and follow the installation section.
@@ -86,12 +86,14 @@ To run this project locally, you will need to install the prerequisites and foll
 ### Prerequisites
 
 This Project depends on the following projects.
-* Poetry
+
+- Poetry
+
   ```sh
   pip install --user --upgrade poetry
   ```
 
-* Poe the Poet
+- Poe the Poet
   ```sh
   pip install --user --upgrade poethepoet
   ```
@@ -118,32 +120,34 @@ This Project depends on the following projects.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-
-
 <!-- USAGE EXAMPLES -->
+
 ## Usage
 
 Some useful examples of how this project can be used:
 
-*  Install requirements
-   ```sh
-   poe install-dev
-   ```
+- Install requirements
 
-*  Run tests
-   ```sh
-   poe test
-   ```
+  ```sh
+  poe install-dev
+  ```
 
-*  Run the project
-   ```sh
-   poe run
-   ```
+- Run tests
 
-*  Generate API documentation
-   ```sh
-   poe doc
-   ```
+  ```sh
+  poe test
+  ```
+- Run the project
+
+  ```sh
+  poe run
+  ```
+
+- Generate API documentation
+
+  ```sh
+  poe do
+  ```
 
 *  Build a docker image for tests
    ```sh
@@ -175,16 +179,13 @@ Some useful examples of how this project can be used:
    ```sh
    poe docker-run
    ```
-   
-   
 
 _For more examples, please refer to the [Documentation](https://docqai.github.io/docq/readme.html)_
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-
-
 <!-- ROADMAP -->
+
 ## Roadmap
 
 - [x] Add tests
@@ -196,9 +197,8 @@ See the [open issues](https://github.com/docqai/docq/issues) for a full list of 
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-
-
 <!-- CONTRIBUTING -->
+
 ## Contributing
 
 Any contributions you make are **greatly appreciated**.
@@ -214,8 +214,8 @@ Don't forget to give the project a star! Thanks again!
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-
 <!-- CONTACT -->
+
 ## Contact
 
 Docq.AI - [@docqai](https://github.com/docqai) - support@docq.ai
@@ -224,32 +224,32 @@ Project Link: [https://github.com/docqai/docq/](https://github.com/docqai/docq/)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-
 <!-- ACKNOWLEDGMENTS -->
+
 ## Acknowledgments
 
 The project would not have been possible without the following libraries:
 
-* Jerry Liu's [Llama Index](https://github.com/jerryjliu/llama_index)
-* [Streamlit](https://streamlit.io/) and many open-source Streamlit components as well as its [Community Cloud](https://streamlit.io/cloud)
+- @jerryjliu [Llama Index](https://github.com/jerryjliu/llama_index)
+- [Streamlit](https://streamlit.io/) and many open-source Streamlit components as well as its [Community Cloud](https://streamlit.io/cloud)
 
 This project was created using cookiecutter and NullHack's python-project-template:
 
-* NullHack's [python-project-template](https://github.com/nullhack/python-project-template/)
+- @NullHack [python-project-template](https://github.com/nullhack/python-project-template/)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-
 <!-- LICENSE -->
+
 ## License
 
 Distributed under the AGPLv3 License. See [`LICENSE`](https://github.com/docqai/docq/blob/main/LICENSE) for more information.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
+
 [contributors-shield]: https://img.shields.io/github/contributors/docqai/docq.svg?style=for-the-badge
 [contributors-url]: https://github.com/docqai/docq/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/docqai/docq.svg?style=for-the-badge
@@ -260,4 +260,3 @@ Distributed under the AGPLv3 License. See [`LICENSE`](https://github.com/docqai/
 [issues-url]: https://github.com/docqai/docq/issues
 [license-shield]: https://img.shields.io/badge/license-AGPL_3.0-green?style=for-the-badge
 [license-url]: https://github.com/docqai/docq/blob/main/LICENSE
-
