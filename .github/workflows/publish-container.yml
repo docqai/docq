@@ -8,7 +8,7 @@ on:
       - 'source/**'
       - 'web/**'
       - 'pyproject.toml'
-      - 'publish-container.yml'
+      - '.github/workflows/publish-container.yml'
 jobs:
   build:
     runs-on: ubuntu-latest
