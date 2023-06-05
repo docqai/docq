@@ -40,4 +40,4 @@ jobs:
             ghcr.io/${github.repository}:latest
             ghcr.io/${github.repository}:$VERSION
             ghcr.io/${github.repository}:${{ github.run_number }}-${{ steps.short-sha.outputs.sha }}
-          file: ./Dockerfile
+          context: .
