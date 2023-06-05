@@ -37,7 +37,8 @@ jobs:
             BUILDPLATFORM=linux/amd64
             TARGET=prod
           tags: |
-            ghcr.io/${github.repository}:latest
-            ghcr.io/${github.repository}:$VERSION
-            ghcr.io/${github.repository}:${{ github.run_number }}-${{ steps.short-sha.outputs.sha }}
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:$VERSION
+            ghcr.io/${{ github.repository }}:${{ github.run_number }}-${{ steps.short-sha.outputs.sha }} 
+        
           context: .
