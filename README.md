@@ -101,19 +101,26 @@ This Project depends on the following projects.
 ### Installation
 
 1. Clone the repo
+
    ```sh
    git clone https://github.com/docqai/docq
    cd docq
    ```
+
 2. Install Poe the Poet and Poetry
+
    ```sh
    pip install --user --upgrade poethepoet poetry
    ```
+
 3. Install requirements for development
+
    ```sh
    poe install-dev
    ```
+
 4. Run tests
+
    ```sh
    poe test
    ```
@@ -137,6 +144,7 @@ Some useful examples of how this project can be used:
   ```sh
   poe test
   ```
+
 - Run the project
 
   ```sh
@@ -149,22 +157,21 @@ Some useful examples of how this project can be used:
   poe do
   ```
 
-*  Build a docker image for tests
+- Build a docker image for tests
+
    ```sh
    poe docker-build --target test --build-tag 3.10-alpine --test true
    poe docker-run --target test
    ```
 
-*  Build a docker image to run the root files only without running any test
-
-   * Build image
+- Build a docker image to run the root files only without running any test
+  - Build image
 
    ```sh
    poe docker-build
    ```
-
-   * Add a `.env` file with the following
-
+  
+  - Add a `.env` file with the following
 
    ```yaml
    OPENAI_API_KEY # don't add secret values here, only var name. set value in your env with set/export.
@@ -174,8 +181,9 @@ Some useful examples of how this project can be used:
 
    ```
 
-   * set secrets `export OPEN_API_KEY=<your secret token>`. Note that the .env file only has the env name not the value for secrets. It's best practice not to add secret to files even if gitignored.
-   * Run container
+  - set secrets `export OPEN_API_KEY=<your secret token>`. Note that the .env file only has the env name not the value for secrets. It's best practice not to add secret to files even if gitignored.
+  - Run container
+
    ```sh
    poe docker-run
    ```
