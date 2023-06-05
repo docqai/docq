@@ -29,11 +29,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Get app version
         id: get-version
-        run: 
-          VERSION=$(cat pyproject.toml | grep version | head -1 | awk -F= '{ print $2 }' | sed 's/["]//g')
+        run: echo "::set-output name=version::$(cat pyproject.toml | grep version | head -1 | awk -F= '{ print $2 }' | sed 's/["]//g')"
       - name: test vars
         run: 
-          echo ${{ steps.get-version.outputs.VERSION }}
+          echo ${{ steps.get-version.outputs.version }}
           echo ${{ steps.short-sha.outputs.sha }}
 
       - name: Build and push image
