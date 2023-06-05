@@ -1,7 +1,7 @@
 ARG BUILDPLATFORM=linux/amd64
 ARG BUILDTAG=3.11-slim-buster
 
-FROM --platform=$BUILDPLATFORM python:$BUILDTAG as build
+FROM --platform=$BUILDPLATFORM python:$BUILDTAG as test
 
 WORKDIR /home/user/app
 
@@ -40,8 +40,8 @@ USER user
 
 WORKDIR /home/user/app
 
-COPY --chown=user:user --from=build /home/user/app/requirements.txt requirements.txt
-COPY --chown=user:user --from=build /home/user/app/dist dist
+COPY --chown=user:user --from=test /home/user/app/requirements.txt requirements.txt
+COPY --chown=user:user --from=test /home/user/app/dist dist
 COPY --chown=user:user web web
 
 RUN pip install --no-cache -r requirements.txt dist/*.whl --user
