@@ -31,6 +31,10 @@ jobs:
         id: get-version
         run: 
           VERSION=$(cat pyproject.toml | grep version | head -1 | awk -F= '{ print $2 }' | sed 's/["]//g')
+      - name: test vars
+        run: 
+          echo ${{ steps.get-version.outputs.VERSION }}
+          echo ${{ steps.short-sha.outputs.sha }}
 
       - name: Build and push image
         uses: docker/build-push-action@v4
