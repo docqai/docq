@@ -44,7 +44,22 @@ theme:
 
 
 nav:
-  - index.md
+  - 'Overview':
+    - 'Introduction': overview/introduction.md
+    - 'Design Principles': overview/design-principles.md
+    - 'Key Features': overview/key-features.md
+    - 'Deployment Scenarios': overview/deployment-scenarios.md
+  - 'User Guide': 
+    - 'Getting Started': user-guide/getting-started.md
+    - 'Installation': user-guide/installation.md
+    - 'Configuration': user-guide/configuration.md
+    - 'Usage': user-guide/usage.md
+    - 'FAQ': user-guide/faq.md
+  - 'Developer Guide': 
+    - 'Getting Started': developer-guide/getting-started.md
+    - 'Architecture': developer-guide/architecture.md
+    - 'Build & Deploy': developer-guide/build-deploy.md
+    - 'FAQ': developer-guide/faq.md
   - ... | glob=readme.md
   - ... | regex=scenarios/.+.md
   - API: mkapi/api/docq

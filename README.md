@@ -19,19 +19,18 @@
 
   <h1 align="center"> Docq - Private & Secure AI Knowledge Insight</h1>
   <h3 align="center">
-    A turnkey product to utilise your organisation's documents for AI-induced productivity boost.
+    A self-hosted turnkey product to utilise your organisation's documents for AI-induced productivity boost.
   </h3>
 
-![Docq Logo](docs/assets/Docq_design_key_ingredients.png)
+![Docq Logo](./docs/assets/Docq_design_key_ingredients.png)
 
   <p align="center">
-    <a href="https://docq-ai.streamlit.app/"><strong>Demo app in action »</strong></a>
+    <a href="https://docq-ai.streamlit.app/"><strong>Demo app in action »</strong></a> 
+    <br />
+    credentials: (username) `docq` (password) `Docq.AI`
     <br />
     <a href="https://docqai.github.io/docq/"><strong>Explore the docs »</strong></a>
     <br />
-    <a href="https://github.com/docqai/docq/issues">Report Bug</a>
-    ·
-    <a href="https://github.com/docqai/docq/issues">Request Feature</a>
 
   </p>
 </div>
