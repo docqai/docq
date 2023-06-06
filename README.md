@@ -154,7 +154,7 @@ Some useful examples of how this project can be used:
 - Generate API documentation
 
   ```sh
-  poe do
+  poe doc
   ```
 
 - Build a docker image for tests
