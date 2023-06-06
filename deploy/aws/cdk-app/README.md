@@ -15,7 +15,7 @@ TypeScript rather than Python so we can easily create a FABR CDF package in the 
 
 - publish updated container image. See Makefile in root of repo
 - `aws elasticbeanstalk update-environment --application-name <app-name> --environment-name <env-name> --version-label <version label from console> --profile fabrexp`
-  - Example: `aws elasticbeanstalk update-environment --application-name docqai --environment-name docqai-dev --version-label docqappstack-appversion-240nebwgnt2z --profile fabrexp`
+  - Example: `aws elasticbeanstalk update-environment --application-name docqai --environment-name docqai --version-label docqappstack-appversion-240nebwgnt2z --profile fabrexp`
   - note: that we can use the same AppVersion if the Dockerrun.aws.json is pointing at the tag `latest` and the updated image is also tagged `latest`
 
 
