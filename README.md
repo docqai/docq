@@ -1,5 +1,3 @@
-<div id="top"></div>
-
 <!-- PROJECT SHIELDS -->
 <!--
 *** I'm using markdown "reference style" links for readability.
@@ -15,204 +13,55 @@
 [![Issues][issues-shield]][issues-url]
 [![AGPLv3 License][license-shield]][license-url]
 
-<div align="center">
+# Docq - Private & Secure AI Knowledge Insight
 
-  <h1 align="center"> Docq - Private & Secure AI Knowledge Insight</h1>
-  <h3 align="center">
-    A self-hosted turnkey product to utilise your organisation's documents for AI-induced productivity boost.
-  </h3>
+**Your employees' private second brain that knows your business**
 
 ![Docq Logo](./docs/assets/Docq_design_key_ingredients.png)
-
-  <p align="center">
-    <a href="https://docq-ai.streamlit.app/"><strong>Demo app in action »</strong></a> 
-    <br />
-    credentials: (username) `docq` (password) `Docq.AI`
-    <br />
-    <a href="https://docqai.github.io/docq/"><strong>Explore the docs »</strong></a>
-    <br />
-
-  </p>
-</div>
-
-<!-- TABLE OF CONTENTS -->
-<details>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#contributing">Contributing</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
-  </ol>
-</details>
 
 <!-- ABOUT THE PROJECT -->
 
 ## About The Project
 
-Docq offers private and secure AI to utilise your organisation's documents for knowledge insight with minimal onboarding and operational effort.
+Docq offers **private** and **secure** AI to utilise your organisation's documents for knowledge insight with minimal onboarding and operational effort.
 
-- Self-hosting with your organisation's choice of cloud vendor.
-- Plug-n-Play with minimal onboarding and operational effort.
-- Multi-modal document format support including text and image.
+- **Self-hosting** with your organisation's choice of cloud vendor.
+- **Plug-n-Play** with minimal onboarding and operational effort.
+- **Multi-modal** document format support including text, image and video.
+- Support for **cloud-vendor-hosted & self-hosted LLMs** within same cloud account to address data security and privacy concerns.
 
-We offer Docq as a **turnkey** solution to maximise ROI for your organisation to adopt the latest AI innovations.
+We offer Docq as a **turnkey** solution to lower the barrier for your organisation to adopt the latest AI innovation safely.
 
 - Open-source (AGPLv3) to address your organisation's security and compliance needs.
 - Commercial support available via a UK-based entity.
 - Re-licensing option also available.
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+## Demo
 
-<!-- GETTING STARTED -->
+[Demo](https://docq-ai.streamlit.app/) is hosted by [Streamlit Community Cloud](https://streamlit.io/cloud), subject to frequent data refresh and feature update.
 
-## Getting Started
+Credentials for _admin_ user:
 
-To run this project locally, you will need to install the prerequisites and follow the installation section.
+- username: `docq`
+- password: `Docq.AI`
 
-### Prerequisites
+## Documentation
 
-This Project depends on the following projects.
-
-- Poetry
-
-  ```sh
-  pip install --user --upgrade poetry
-  ```
-
-- Poe the Poet
-  ```sh
-  pip install --user --upgrade poethepoet
-  ```
-
-### Installation
-
-1. Clone the repo
-
-   ```sh
-   git clone https://github.com/docqai/docq
-   cd docq
-   ```
-
-2. Install Poe the Poet and Poetry
-
-   ```sh
-   pip install --user --upgrade poethepoet poetry
-   ```
-
-3. Install requirements for development
-
-   ```sh
-   poe install-dev
-   ```
-
-4. Run tests
-
-   ```sh
-   poe test
-   ```
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-<!-- USAGE EXAMPLES -->
-
-## Usage
-
-Some useful examples of how this project can be used:
-
-- Install requirements
-
-  ```sh
-  poe install-dev
-  ```
-
-- Run tests
-
-  ```sh
-  poe test
-  ```
-
-- Run the project
-
-  ```sh
-  poe run
-  ```
-
-- Generate API documentation
-
-  ```sh
-  poe doc
-  ```
-
-- Build a docker image for tests
-
-   ```sh
-   poe docker-build --target test --build-tag 3.10-alpine --test true
-   poe docker-run --target test
-   ```
-
-- Build a docker image to run the root files only without running any test
-  - Build image
-
-   ```sh
-   poe docker-build
-   ```
-  
-  - `cp docker-env-file.template docker-env-file`.
-  - Set values as needed. 
-    - TIP: Make sure `docker-env-file` is in the `.gitignore` file so it isn't checked in with secrets. It's also safer if you only have the environment variable name for secrets and set the value in your shell with `export`.
-
-  - Run container
-
-   ```sh
-   poe docker-run
-   ```
-
-_For more examples, please refer to the [Documentation](https://docqai.github.io/docq/readme.html)_
-
-<p align="right">(<a href="#top">back to top</a>)</p>
+[Documentation](https://docqai.github.io/docq/) site is hosted by [GitHub Pages](https://pages.github.com/).
 
 <!-- ROADMAP -->
 
 ## Roadmap
 
-- [x] Add tests
-- [x] Add code coverage
-- [x] Improve documentation
-- [ ] Include more tests
+We aim to support the following features in the near future:
 
-See the [open issues](https://github.com/docqai/docq/issues) for a full list of proposed features (and known issues).
+- More data ingestion options such as SaaS data connectors and network storage options
+- A plugin platform and ecosystem
+- Model fine-tuning as an option for self-hosted, open-source LLMs
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+We also have plan to offer enterprise add-ons such as SSO support and enhanced audit.
 
-<!-- CONTRIBUTING -->
-
-## Contributing
-
-Any contributions you make are **greatly appreciated**.
-
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-<p align="right">(<a href="#top">back to top</a>)</p>
+Stay tuned!
 
 <!-- CONTACT -->
 
@@ -222,30 +71,24 @@ Docq.AI - [@docqai](https://github.com/docqai) - support@docq.ai
 
 Project Link: [https://github.com/docqai/docq/](https://github.com/docqai/docq/)
 
-<p align="right">(<a href="#top">back to top</a>)</p>
-
 <!-- ACKNOWLEDGMENTS -->
 
 ## Acknowledgments
 
 The project would not have been possible without the following libraries:
 
-- @jerryjliu [Llama Index](https://github.com/jerryjliu/llama_index)
+- [@jerryjliu](https://github.com/jerryjliu) [Llama Index](https://github.com/jerryjliu/llama_index)
 - [Streamlit](https://streamlit.io/) and many open-source Streamlit components as well as its [Community Cloud](https://streamlit.io/cloud)
 
 This project was created using cookiecutter and NullHack's python-project-template:
 
-- @NullHack [python-project-template](https://github.com/nullhack/python-project-template/)
-
-<p align="right">(<a href="#top">back to top</a>)</p>
+- [@NullHack](https://github.com/nullhack) [python-project-template](https://github.com/nullhack/python-project-template/)
 
 <!-- LICENSE -->
 
 ## License
 
 Distributed under the AGPLv3 License. See [`LICENSE`](https://github.com/docqai/docq/blob/main/LICENSE) for more information.
-
-<p align="right">(<a href="#top">back to top</a>)</p>
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
