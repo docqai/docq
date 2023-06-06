@@ -1,3 +1,1 @@
-# Docq Developer Guide
-
-TBA
+<!-- ## Getting Started -->
