@@ -181,3 +181,5 @@ requirements.txt
 .streamlit/
 # Used by GitHub Pages local build before uploading to GitHub
 _site/
+
+docker-env-file
