@@ -171,17 +171,10 @@ Some useful examples of how this project can be used:
    poe docker-build
    ```
   
-  - Add a `.env` file with the following
+  - `cp docker-env-file.template docker-env-file`.
+  - Set values as needed. 
+    - TIP: Make sure `docker-env-file` is in the `.gitignore` file so it isn't checked in with secrets. It's also safer if you only have the environment variable name for secrets and set the value in your shell with `export`.
 
-   ```yaml
-   OPENAI_API_KEY # don't add secret values here, only var name. set value in your env with set/export.
-   DOCQ_DATA=./.persisted/
-   STREAMLIT_SERVER_ADDRESS=0.0.0.0
-   STREAMLIT_SERVER_PORT=8501 # option 8501 is the default
-
-   ```
-
-  - set secrets `export OPEN_API_KEY=<your secret token>`. Note that the .env file only has the env name not the value for secrets. It's best practice not to add secret to files even if gitignored.
   - Run container
 
    ```sh
