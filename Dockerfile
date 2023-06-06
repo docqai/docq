@@ -1,5 +1,5 @@
 ARG BUILDPLATFORM=linux/amd64
-ARG BUILDTAG=3-alpine
+ARG BUILDTAG=3.11-slim-buster
 
 FROM --platform=$BUILDPLATFORM python:$BUILDTAG as test
 
@@ -21,7 +21,7 @@ COPY tests tests
 
 RUN poetry install
 
-ARG TESTBUILD=True
+ARG TESTBUILD=False
 ENV TESTBUILD=$TESTBUILD
 RUN if [ "$TESTBUILD" = 'True' ]; then poe lint; fi
 RUN if [ "$TESTBUILD" = 'True' ]; then poe test; fi
@@ -42,10 +42,11 @@ WORKDIR /home/user/app
 
 COPY --chown=user:user --from=test /home/user/app/requirements.txt requirements.txt
 COPY --chown=user:user --from=test /home/user/app/dist dist
+COPY --chown=user:user web web
 
 RUN pip install --no-cache -r requirements.txt dist/*.whl --user
 
+ENTRYPOINT ["python", "-m", "streamlit", "run"]
+CMD ["web/index.py", "--browser.gatherUsageStats", "false"]
 
-ENTRYPOINT ["python", "-m"]
-CMD ["docq.docq"]
 

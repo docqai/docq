@@ -1,0 +1,47 @@
+name: Build and Publish Container Image
+on: workflow_dispatch
+  # push:
+  #   branches:
+  #     #- main
+  #     - infra/aws-deploy
+  #   paths:
+  #     - 'source/**'
+  #     - 'web/**'
+  #     - 'pyproject.toml'
+  #     - '.github/workflows/publish-container.yml'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Get short SHA
+        id: short-sha
+        run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get app version
+        id: app-version
+        run: echo "version=$(cat pyproject.toml | grep version | head -1 | awk -F= '{ print $2 }' | sed 's/["]//g' | sed 's/^[[:space:]]//;s/[[:space:]]$//')" >> "$GITHUB_OUTPUT"
+      - name: Build and push image
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          target: prod
+          build-args: |
+            TESTBUILD=false
+            BUILDTAG=3.11-slim-buster
+            BUILDPLATFORM=linux/amd64
+            TARGET=prod
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ steps.app-version.outputs.version }}
+            ghcr.io/${{ github.repository }}:${{ github.run_number }}-${{ steps.short-sha.outputs.sha }}
+          context: .

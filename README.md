@@ -100,19 +100,26 @@ This Project depends on the following projects.
 ### Installation
 
 1. Clone the repo
+
    ```sh
    git clone https://github.com/docqai/docq
    cd docq
    ```
+
 2. Install Poe the Poet and Poetry
+
    ```sh
    pip install --user --upgrade poethepoet poetry
    ```
+
 3. Install requirements for development
+
    ```sh
    poe install-dev
    ```
+
 4. Run tests
+
    ```sh
    poe test
    ```
@@ -151,16 +158,27 @@ Some useful examples of how this project can be used:
 
 - Build a docker image for tests
 
-  ```sh
-  poe docker-build --target test --build-tag 3.10-alpine
-  docker run -ti --rm docq:test-3.10-alpine
-  ```
+   ```sh
+   poe docker-build --target test --build-tag 3.10-alpine --test true
+   poe docker-run --target test
+   ```
 
 - Build a docker image to run the root files only without running any test
-  ```sh
-  poe docker-build --target prod --build-tag 3.10-alpine --no-test
-  docker run -ti --rm docq:prod-3.10-alpine
-  ```
+  - Build image
+
+   ```sh
+   poe docker-build
+   ```
+  
+  - `cp docker-env-file.template docker-env-file`.
+  - Set values as needed. 
+    - TIP: Make sure `docker-env-file` is in the `.gitignore` file so it isn't checked in with secrets. It's also safer if you only have the environment variable name for secrets and set the value in your shell with `export`.
+
+  - Run container
+
+   ```sh
+   poe docker-run
+   ```
 
 _For more examples, please refer to the [Documentation](https://docqai.github.io/docq/readme.html)_
 
