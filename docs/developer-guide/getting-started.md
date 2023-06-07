@@ -130,4 +130,14 @@ Some useful examples of how this project can be used:
     poe docker-run
     ```
 
+- Release
+
+  Switch to `main` branch locally and run
+
+  ```sh
+  ./trigger-release.sh
+  ```
+
+  which creates a new release tag which further creates a GitHub release and a container image published to GitHub registry, via GitHub Actions.
+
 _For more examples, please refer to the [Documentation](https://docqai.github.io/docq/)_
