@@ -15,9 +15,9 @@
 
 # Docq - Private & Secure AI Knowledge Insight
 
-**Your employees' private second brain that knows your business**
+**Your employees' private and secure ChatGPT / second-brain that knows your business**
 
-![Docq Logo](./docs/assets/Docq_design_key_ingredients.png)
+![Docq Logo](https://docqai.github.io/docq/assets/Docq_design_key_ingredients.png)
 
 <!-- ABOUT THE PROJECT -->
 
@@ -48,6 +48,10 @@ Credentials for _admin_ user:
 ## Documentation
 
 [Documentation](https://docqai.github.io/docq/) site is hosted by [GitHub Pages](https://pages.github.com/).
+
+- [Overview](https://docqai.github.io/docq/overview/introduction/)
+- [User Guide](https://docqai.github.io/docq/user-guide/getting-started/)
+- [Developer Guide](https://docqai.github.io/docq/developer-guide/getting-started/)
 
 <!-- ROADMAP -->
 

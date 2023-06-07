@@ -1,14 +1,9 @@
 name: Build and Publish Container Image
-on: workflow_dispatch
-  # push:
-  #   branches:
-  #     #- main
-  #     - infra/aws-deploy
-  #   paths:
-  #     - 'source/**'
-  #     - 'web/**'
-  #     - 'pyproject.toml'
-  #     - '.github/workflows/publish-container.yml'
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,6 +13,15 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v3
+      - name: Create release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          draft: false
+          prerelease: false
       - name: Get short SHA
         id: short-sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
@@ -27,9 +31,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Get app version
-        id: app-version
-        run: echo "version=$(cat pyproject.toml | grep version | head -1 | awk -F= '{ print $2 }' | sed 's/["]//g' | sed 's/^[[:space:]]//;s/[[:space:]]$//')" >> "$GITHUB_OUTPUT"
       - name: Build and push image
         uses: docker/build-push-action@v4
         with:
@@ -42,6 +43,6 @@ jobs:
             TARGET=prod
           tags: |
             ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ steps.app-version.outputs.version }}
+            ghcr.io/${{ github.repository }}:${{ github.ref }}
             ghcr.io/${{ github.repository }}:${{ github.run_number }}-${{ steps.short-sha.outputs.sha }}
           context: .
