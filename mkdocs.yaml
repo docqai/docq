@@ -13,7 +13,7 @@ plugins:
   - awesome-pages
   - gen-files:
       scripts:
-        - scripts/gen_pages.py
+        - misc/gen_pages.py
 
 theme:
   name: material
@@ -58,7 +58,7 @@ nav:
   - 'Developer Guide': 
     - 'Getting Started': developer-guide/getting-started.md
     - 'Architecture': developer-guide/architecture.md
-    - 'Build & Deploy': developer-guide/build-deploy.md
+    - 'Contributing': developer-guide/contributing.md
     - 'FAQ': developer-guide/faq.md
   - ... | glob=readme.md
   - ... | regex=scenarios/.+.md

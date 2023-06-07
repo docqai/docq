@@ -15,9 +15,14 @@ Plus
 
 - **On-Premise Deployment**: It is another option and we are happy to support you with a bespoke setup.
 
-![Docq architecture overview](../assets/Docq_architecture_overview.png)
-
 Docq has been designed from ground up for the secure cloud and on-prem deployment scenarios with strict data security and privacy requirement in mind. However it should not stop all other businesses from adopting Docq with the flexible deployment setup if it suits their requirements.
+
+![Docq network overview](../assets/Docq_network_overview.png)
+
+The diagram above demonstrates the possibilities of have different deployment setup for:
+
+- **Data ingestion**: across-boundary _SaaS data connectors_ versus within-boundary _data storage locations_
+- **LLMs utilisation**: across-boundary models via _3rd-party APIs_ versus within-boundary _vendor-hosted & self-hosted_ models
 
 ### Secure Cloud Deployment
 
