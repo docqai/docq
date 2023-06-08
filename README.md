@@ -38,12 +38,17 @@ We offer Docq as a **turnkey** solution to lower the barrier for your organisati
 
 ## Demo
 
-[Demo](https://docq-ai.streamlit.app/) is hosted by [Streamlit Community Cloud](https://streamlit.io/cloud), subject to frequent data refresh and feature update.
+A [demo app](https://docq-ai.streamlit.app/) is hosted by [Streamlit Community Cloud](https://streamlit.io/cloud), subject to frequent data refresh and feature update.
 
 Credentials for _admin_ user:
 
 - username: `docq`
 - password: `Docq.AI`
+
+There are also recordings (Loom) to demonstrate Docq's major features:
+
+- [Ask your documents vs shared spaces](https://www.loom.com/share/21bb34d1bcb54f8ebf47c68f347d484c)
+- [Multi-user access](https://www.loom.com/share/599aa123ddce4a3d916ee8bdcd61095f)
 
 ## Documentation
 
@@ -74,19 +79,6 @@ Stay tuned!
 Docq.AI - [@docqai](https://github.com/docqai) - support@docq.ai
 
 Project Link: [https://github.com/docqai/docq/](https://github.com/docqai/docq/)
-
-<!-- ACKNOWLEDGMENTS -->
-
-## Acknowledgments
-
-The project would not have been possible without the following libraries:
-
-- [@jerryjliu](https://github.com/jerryjliu) [Llama Index](https://github.com/jerryjliu/llama_index)
-- [Streamlit](https://streamlit.io/) and many open-source Streamlit components as well as its [Community Cloud](https://streamlit.io/cloud)
-
-This project was created using cookiecutter and NullHack's python-project-template:
-
-- [@NullHack](https://github.com/nullhack) [python-project-template](https://github.com/nullhack/python-project-template/)
 
 <!-- LICENSE -->
 

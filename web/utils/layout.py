@@ -46,7 +46,16 @@ def production_layout() -> None:
 
 
 def __no_staff_menu() -> None:
-    hide_pages(["Your_Space", "General_Chat", "Ask_Your_Documents", "Shared_Spaces", "Ask_Shared_Documents"])
+    hide_pages(
+        [
+            "Your_Space",
+            "General_Chat",
+            "Ask_Your_Documents",
+            "Manage_Your_Document",
+            "Shared_Spaces",
+            "Ask_Shared_Documents",
+        ]
+    )
 
 
 def __no_admin_menu() -> None:
@@ -75,7 +84,6 @@ def __logout_button() -> None:
 
 
 def __not_authorised() -> None:
-    __no_admin_menu()
     st.error("You are not authorized to access this page.")
     st.info(
         f"You're logged in as `{get_auth_session()[SessionKeyNameForAuth.NAME.value]}`. Please login as a different user with correct permissions to try again."
@@ -84,7 +92,7 @@ def __not_authorised() -> None:
 
 
 def public_access() -> None:
-    __no_staff_menu()
+    # __no_staff_menu()
     __no_admin_menu()
 
 
@@ -94,9 +102,12 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
         if show_logout_button:
             __logout_button()
 
-        if requiring_admin and not auth.get(SessionKeyNameForAuth.ADMIN.value, False):
-            __not_authorised()
-            return False
+        if not auth.get(SessionKeyNameForAuth.ADMIN.value, False):
+            __no_admin_menu()
+            if requiring_admin:
+                __not_authorised()
+                return False
+
         return True
     else:
         if show_login_form:
@@ -137,7 +148,7 @@ def list_users_ui(username_match: str = None) -> None:
 
 def chat_ui(feature: FeatureKey) -> None:
     prepare_for_chat(feature)
-    with st.empty().container():
+    with st.container():
         if feature.type_ == FeatureType.ASK_SHARED:
             spaces = list_shared_spaces()
             st.multiselect(

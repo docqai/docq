@@ -5,9 +5,9 @@ from docq.config import LogType
 from st_pages import add_page_title
 from utils.layout import auth_required, list_logs_ui
 
-add_page_title()
-
 auth_required(requiring_admin=True)
+
+add_page_title()
 
 tab_activity, tab_system = st.tabs(["Activity Logs", "System Logs"])
 

@@ -66,3 +66,4 @@ nav:
   - Tests: mkapi/tests/tests
   - 'Issues GitHub': https://github.com/docqai/docq/issues
   - 'Discussions GitHub': https://github.com/docqai/docq/discussions
+  - 'Acknowledgement': acknowledgement.md

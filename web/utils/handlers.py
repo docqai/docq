@@ -53,8 +53,6 @@ def set_session_state(val: Any, type_: config.FeatureType = None, key_: Optional
     else:
         st.session_state[SESSION_KEY_NAME_DOCQ][type_.value][key_.value] = val
 
-    log.debug(st.session_state[SESSION_KEY_NAME_DOCQ])
-
 
 def get_auth_session() -> dict:
     __init_session_state()

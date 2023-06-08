@@ -7,9 +7,9 @@ from st_pages import add_page_title
 from utils.handlers import list_shared_spaces
 from utils.layout import auth_required, documents_ui, show_space_details_ui
 
-add_page_title()
-
 auth_required(requiring_admin=True)
+
+add_page_title()
 
 PARAM_NAME = "sid"
 

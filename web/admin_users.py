@@ -4,9 +4,9 @@ import streamlit as st
 from st_pages import add_page_title
 from utils.layout import auth_required, create_user_ui, list_users_ui
 
-add_page_title()
-
 auth_required(requiring_admin=True)
+
+add_page_title()
 
 tab_list, tab_create = st.tabs(["List All Users", "Create New User"])
 
