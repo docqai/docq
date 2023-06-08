@@ -46,7 +46,16 @@ def production_layout() -> None:
 
 
 def __no_staff_menu() -> None:
-    hide_pages(["Your_Space", "General_Chat", "Ask_Your_Documents", "Shared_Spaces", "Ask_Shared_Documents"])
+    hide_pages(
+        [
+            "Your_Space",
+            "General_Chat",
+            "Ask_Your_Documents",
+            "Manage_Your_Document",
+            "Shared_Spaces",
+            "Ask_Shared_Documents",
+        ]
+    )
 
 
 def __no_admin_menu() -> None:
@@ -137,7 +146,7 @@ def list_users_ui(username_match: str = None) -> None:
 
 def chat_ui(feature: FeatureKey) -> None:
     prepare_for_chat(feature)
-    with st.empty().container():
+    with st.container():
         if feature.type_ == FeatureType.ASK_SHARED:
             spaces = list_shared_spaces()
             st.multiselect(

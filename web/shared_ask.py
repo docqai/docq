@@ -7,9 +7,9 @@ from st_pages import add_page_title
 from utils.handlers import get_authenticated_user_id
 from utils.layout import auth_required, chat_ui, list_spaces_ui
 
-add_page_title()
-
 auth_required()
+
+add_page_title()
 
 feature = FeatureKey(FeatureType.ASK_SHARED, get_authenticated_user_id())
 
