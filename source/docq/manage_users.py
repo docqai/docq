@@ -1,12 +1,12 @@
 """Functions to manage users."""
 
 import logging as log
-import secrets
 import sqlite3
 from contextlib import closing
 from datetime import datetime
-from hashlib import blake2b
 from typing import Optional
+
+from argon2 import PasswordHasher
 
 from .config import SpaceType
 from .domain import SpaceKey
@@ -18,7 +18,6 @@ CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY,
     username TEXT UNIQUE,
     password TEXT,
-    salt TEXT,
     fullname TEXT,
     admin BOOL default 0,
     archived BOOL DEFAULT 0,
@@ -28,35 +27,12 @@ CREATE TABLE IF NOT EXISTS users (
 """
 
 DIGEST_SIZE = 32
-SALT_SIZE = 8
-SALTING_SEPARATOR = "$"
 DEFAULT_ADMIN_ID = 1000
 DEFAULT_ADMIN_USERNAME = "docq"
 DEFAULT_ADMIN_PASSWORD = "Docq.AI"
 DEFAULT_ADMIN_FULLNAME = "Docq Admin"
 
-
-def _hash(plaintext: str, salt: str) -> str:
-    """Hash a plaintext using a salt.
-
-    Args:
-        plaintext (str): The plaintext.
-        salt (str): The salt.
-
-    Returns:
-        str: The hashed value.
-    """
-    salted = SALTING_SEPARATOR.join([plaintext, salt]).encode("utf-8")
-    return blake2b(salted, digest_size=DIGEST_SIZE).hexdigest()
-
-
-def _generate_salt() -> str:
-    """Generate a salt.
-
-    Returns:
-        str: The salt.
-    """
-    return secrets.token_hex(SALT_SIZE)
+PH = PasswordHasher()
 
 
 def _init_admin_if_necessary() -> bool:
@@ -71,11 +47,10 @@ def _init_admin_if_necessary() -> bool:
             return False
         else:
             log.info("No admin user found, creating one with default values...")
-            salt = _generate_salt()
-            password = _hash(DEFAULT_ADMIN_PASSWORD, salt)
+            password = PH.hash(DEFAULT_ADMIN_PASSWORD)
             cursor.execute(
-                "INSERT INTO users (id, username, password, salt, fullname, admin) VALUES (?, ?, ?, ?, ?, ?)",
-                (DEFAULT_ADMIN_ID, DEFAULT_ADMIN_USERNAME, password, salt, DEFAULT_ADMIN_FULLNAME, True),
+                "INSERT INTO users (id, username, password, fullname, admin) VALUES (?, ?, ?, ?, ?)",
+                (DEFAULT_ADMIN_ID, DEFAULT_ADMIN_USERNAME, password, DEFAULT_ADMIN_FULLNAME, True),
             )
             connection.commit()
             created = True
@@ -95,7 +70,7 @@ def authenticate(username: str, password: str) -> tuple[id, str, bool]:
         password (str): The password.
 
     Returns:
-        bool: True if the user is authenticated, False otherwise.
+        tuple[id, str, bool]: The user's id, fullname and admin status if authenticated, None otherwise.
     """
     log.debug("Authenticating user: %s", username)
     with closing(
@@ -103,13 +78,21 @@ def authenticate(username: str, password: str) -> tuple[id, str, bool]:
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_USERS_TABLE)
         selected = cursor.execute(
-            "SELECT id, password, salt, fullname, admin FROM users WHERE username = ? AND archived = 0",
+            "SELECT id, password, fullname, admin FROM users WHERE username = ? AND archived = 0",
             (username,),
         ).fetchone()
         if selected:
             log.debug("User found: %s", selected)
-            (id_, saved_password, saved_salt, fullname, is_admin) = selected
-            return (id_, fullname, is_admin) if _hash(password, saved_salt) == saved_password else None
+            (id_, saved_password, fullname, is_admin) = selected
+            result = (id_, fullname, is_admin) if PH.verify(saved_password, password) else None
+            if PH.check_needs_rehash(saved_password):
+                log.info("Rehashing password...")
+                cursor.execute(
+                    "UPDATE users SET password = ?, updated_at = ? WHERE id = ?",
+                    (PH.hash(password), datetime.now(), id_),
+                )
+                connection.commit()
+            return result
         else:
             return None
 
@@ -166,10 +149,9 @@ def update_user(
         query += ", username = ?"
         params.append(username)
     if password:
-        salt = _generate_salt()
-        hashed_password = _hash(password, salt)
-        query += ", password = ?, salt = ?"
-        params.extend([hashed_password, salt])
+        hashed_password = PH.hash(password)
+        query += ", password = ?"
+        params.append(hashed_password)
     if fullname:
         query += ", fullname = ?"
         params.append(fullname)
@@ -207,8 +189,7 @@ def create_user(username: str, password: str, fullname: Optional[str] = None, is
         bool: True if the user is created, False otherwise.
     """
     log.debug("Creating user: %s", username)
-    salt = _generate_salt()
-    hashed_password = _hash(password, salt)
+    hashed_password = PH.hash(password)
 
     rowid = None
     with closing(
@@ -216,11 +197,10 @@ def create_user(username: str, password: str, fullname: Optional[str] = None, is
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_USERS_TABLE)
         cursor.execute(
-            "INSERT INTO users (username, password, salt, fullname, admin) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO users (username, password, fullname, admin) VALUES (?, ?, ?, ?)",
             (
                 username,
                 hashed_password,
-                salt,
                 fullname,
                 is_admin,
             ),
@@ -246,16 +226,14 @@ def reset_password(id_: int, password: str) -> bool:
         bool: True if the user's password is reset, False otherwise.
     """
     log.debug("Resetting password for user: %d", id)
-    salt = _generate_salt()
-    hashed_password = _hash(password, salt)
+    hashed_password = PH.hash(password)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
-            "UPDATE users SET password = ?, salt = ?, updated_at = ? WHERE id = ?",
+            "UPDATE users SET password = ?, updated_at = ? WHERE id = ?",
             (
                 hashed_password,
-                salt,
                 datetime.now(),
                 id_,
             ),
