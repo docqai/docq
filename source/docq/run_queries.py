@@ -85,8 +85,31 @@ def query(input_: str, feature: FeatureKey, space: SpaceKey, spaces: list[SpaceK
 
     history = _retrieve_last_n_history(feature)
 
-    response = run_chat(input_, history) if is_chat else run_ask(input_, history, space, spaces)
-    log.debug("Response: %s", response)
+    try:
+        response = run_chat(input_, history) if is_chat else run_ask(input_, history, space, spaces)
+        log.debug("Response: %s", response)
+
+    except Exception as e:
+        try:
+            response = run_chat(
+            f"""
+            Examine the following error and provide a simple response for the user
+            Example: if the error is token limit based, simply say "Sorry, your question is too long, please try again with a shorter question"
+            if you can't understand the error, simply say "Sorry, I don't understand your question, please try again with a different question"
+            Make sure your response is in the first person context
+            ERROR: {e}
+            """,
+                history,
+            )
+            is_chat = True
+            log.error("Error: %s", e)
+        except Exception as e:
+            log.error("Error: %s", e)
+            user_response = "Sorry, I dont understand"
+            if is_chat:
+                response.content = user_response
+            else:
+                response.response = user_response
 
     data.append(
         (
