@@ -44,6 +44,7 @@ theme:
 
 
 nav:
+  - 'Home': index.md
   - 'Overview':
     - 'Introduction': overview/introduction.md
     - 'Design Principles': overview/design-principles.md

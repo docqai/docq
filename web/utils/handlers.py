@@ -3,7 +3,7 @@
 import logging as log
 import math
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 import streamlit as st
 from docq import config, domain, run_queries
@@ -16,56 +16,10 @@ from docq import manage_users as musers
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
     NUMBER_OF_MSGS_TO_LOAD,
-    SESSION_KEY_NAME_DOCQ,
     SessionKeyNameForAuth,
     SessionKeyNameForChat,
-    SessionKeySubName,
 )
-
-
-def __init_session_state() -> None:
-    if SESSION_KEY_NAME_DOCQ not in st.session_state:
-        st.session_state[SESSION_KEY_NAME_DOCQ] = {}
-    for n in SessionKeySubName:
-        if n.value not in st.session_state[SESSION_KEY_NAME_DOCQ]:
-            st.session_state[SESSION_KEY_NAME_DOCQ][n.value] = {}
-    for n in config.FeatureType:
-        if n.value not in st.session_state[SESSION_KEY_NAME_DOCQ]:
-            st.session_state[SESSION_KEY_NAME_DOCQ][n.value] = {}
-
-
-def get_session_state(type_: config.FeatureType = None, key_: Optional[SessionKeyNameForChat] = None) -> Any:
-    __init_session_state()
-    if type_ is None and key_ is None:
-        return st.session_state[SESSION_KEY_NAME_DOCQ]
-    elif key_ is None:
-        return st.session_state[SESSION_KEY_NAME_DOCQ][type_.value]
-    else:
-        return st.session_state[SESSION_KEY_NAME_DOCQ][type_.value][key_.value]
-
-
-def set_session_state(val: Any, type_: config.FeatureType = None, key_: Optional[SessionKeyNameForChat] = None) -> None:
-    __init_session_state()
-    if type_ is None and key_ is None:
-        st.session_state[SESSION_KEY_NAME_DOCQ] = val
-    elif key_ is None:
-        st.session_state[SESSION_KEY_NAME_DOCQ][type_.value] = val
-    else:
-        st.session_state[SESSION_KEY_NAME_DOCQ][type_.value][key_.value] = val
-
-
-def get_auth_session() -> dict:
-    __init_session_state()
-    return st.session_state[SESSION_KEY_NAME_DOCQ][SessionKeySubName.AUTH.value]
-
-
-def set_auth_session(val: Optional[dict] = None) -> None:
-    __init_session_state()
-    st.session_state[SESSION_KEY_NAME_DOCQ][SessionKeySubName.AUTH.value] = val
-
-
-def get_authenticated_user_id() -> Optional[int]:
-    return get_auth_session().get(SessionKeyNameForAuth.ID.value)
+from .sessions import get_auth_session, get_chat_session, set_auth_session, set_chat_session
 
 
 def handle_login(username: str, password: str) -> bool:
@@ -117,14 +71,14 @@ def list_users(username_match: Optional[str] = None) -> list[tuple]:
 
 
 def query_chat_history(feature: domain.FeatureKey) -> None:
-    curr_cutoff = get_session_state(feature.type_, SessionKeyNameForChat.CUTOFF)
+    curr_cutoff = get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF)
     history = run_queries.history(curr_cutoff, NUMBER_OF_MSGS_TO_LOAD, feature)
-    set_session_state(
-        history + get_session_state(feature.type_, SessionKeyNameForChat.HISTORY),
+    set_chat_session(
+        history + get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY),
         feature.type_,
         SessionKeyNameForChat.HISTORY,
     )
-    set_session_state(history[0][3] if history else curr_cutoff, feature.type_, SessionKeyNameForChat.CUTOFF)
+    set_chat_session(history[0][3] if history else curr_cutoff, feature.type_, SessionKeyNameForChat.CUTOFF)
 
 
 def handle_chat_input(feature: domain.FeatureKey) -> None:
@@ -139,7 +93,7 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
     )
     result = run_queries.query(req, feature, space, spaces)
 
-    get_session_state(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
+    get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 
     st.session_state[f"chat_input_{feature.value()}"] = ""
 
@@ -213,19 +167,17 @@ def get_max_number_of_documents(type_: config.SpaceType):
 
 
 def prepare_for_chat(feature: domain.FeatureKey) -> None:
-    """Initialises the session state for the given feature."""
-    __init_session_state()
+    """Prepare the session for chat."""
+    if SessionKeyNameForChat.CUTOFF.value not in get_chat_session(feature.type_):
+        set_chat_session(datetime.now(), feature.type_, SessionKeyNameForChat.CUTOFF)
 
-    if SessionKeyNameForChat.CUTOFF.value not in get_session_state(feature.type_):
-        set_session_state(datetime.now(), feature.type_, SessionKeyNameForChat.CUTOFF)
+    if SessionKeyNameForChat.HISTORY.value not in get_chat_session(feature.type_):
+        set_chat_session([], feature.type_, SessionKeyNameForChat.HISTORY)
 
-    if SessionKeyNameForChat.HISTORY.value not in get_session_state(feature.type_):
-        set_session_state([], feature.type_, SessionKeyNameForChat.HISTORY)
-
-    if not get_session_state(feature.type_, SessionKeyNameForChat.HISTORY):
+    if not get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY):
         query_chat_history(feature)
-        if not get_session_state(feature.type_, SessionKeyNameForChat.HISTORY):
-            set_session_state(
+        if not get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY):
+            set_chat_session(
                 [("0", "Hi there! This is Docq, ask me anything.", False, datetime.now())],
                 feature.type_,
                 SessionKeyNameForChat.HISTORY,

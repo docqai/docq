@@ -3,12 +3,13 @@
 import logging as log
 
 from langchain.chat_models import ChatOpenAI
-from langchain.llms import OpenAI
-from langchain.prompts.chat import (
-    ChatPromptTemplate,
-    HumanMessagePromptTemplate,
-    SystemMessagePromptTemplate,
-)
+
+# from langchain.llms import OpenAI
+# from langchain.prompts.chat import (
+#     ChatPromptTemplate,
+#     HumanMessagePromptTemplate,
+#     SystemMessagePromptTemplate,
+# )
 from langchain.schema import BaseMessage
 from llama_index import (
     GPTListIndex,
@@ -20,20 +21,21 @@ from llama_index import (
     StorageContext,
     load_index_from_storage,
 )
+from llama_index.chat_engine import CondenseQuestionChatEngine, SimpleChatEngine
 from llama_index.indices.composability import ComposableGraph
 
 from ..domain import SpaceKey
 from .store import get_index_dir, get_upload_dir
 
-PROMPT_CHAT_SYSTEM = """
-You are an AI assistant helping a human to find information.
-Your conversation with the human is recorded in the chat history below.
+# PROMPT_CHAT_SYSTEM = """
+# You are an AI assistant helping a human to find information.
+# Your conversation with the human is recorded in the chat history below.
 
-History:
-"{history}"
-"""
+# History:
+# "{history}"
+# """
 
-PROMPT_CHAT_HUMAN = "{input}"
+# PROMPT_CHAT_HUMAN = "{input}"
 
 PROMPT_QUESTION = """
 You are an AI assistant helping a human to find information in a collection of documents.
@@ -49,8 +51,8 @@ Human: {input}
 Assistant:"""
 
 
-def _get_model() -> OpenAI:
-    return OpenAI(temperature=0, model_name="text-davinci-003")
+# def _get_model() -> OpenAI:
+#     return OpenAI(temperature=0, model_name="text-davinci-003")
 
 
 def _get_chat_model() -> ChatOpenAI:
@@ -58,7 +60,7 @@ def _get_chat_model() -> ChatOpenAI:
 
 
 def _get_llm_predictor() -> LLMPredictor:
-    return LLMPredictor(llm=_get_model())
+    return LLMPredictor(llm=_get_chat_model())
 
 
 def _get_default_storage_context() -> StorageContext:
@@ -97,13 +99,15 @@ def reindex(space: SpaceKey) -> None:
 
 def run_chat(input_: str, history: str) -> BaseMessage:
     """Chat directly with a LLM with history."""
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            SystemMessagePromptTemplate.from_template(PROMPT_CHAT_SYSTEM),
-            HumanMessagePromptTemplate.from_template(PROMPT_CHAT_HUMAN),
-        ]
-    )
-    output = _get_chat_model()(prompt.format_prompt(history=history, input=input_).to_messages())
+    # prompt = ChatPromptTemplate.from_messages(
+    #     [
+    #         SystemMessagePromptTemplate.from_template(PROMPT_CHAT_SYSTEM),
+    #         HumanMessagePromptTemplate.from_template(PROMPT_CHAT_HUMAN),
+    #     ]
+    # )
+    # output = _get_chat_model()(prompt.format_prompt(history=history, input=input_).to_messages())
+    engine = SimpleChatEngine.from_defaults(service_context=_get_service_context())
+    output = engine.chat(input_)
 
     log.debug("(Chat) Q: %s, A: %s", input_, output)
     return output
@@ -125,12 +129,10 @@ def run_ask(input_: str, history: str, space: SpaceKey, spaces: list[SpaceKey] =
         )
         output = graph.as_query_engine().query(PROMPT_QUESTION.format(history=history, input=input_))
     else:
-        # No additional spaces likely to be against a user's documents in their personal space.
+        # No additional spaces i.e. likely to be against a user's documents in their personal space.
         index = _load_index_from_storage(space)
-        output = index.as_query_engine(
-            similarity_top_k=3,
-            vector_store_query_mode="default",
-        ).query(PROMPT_QUESTION.format(history=history, input=input_))
+        engine = index.as_chat_engine(verbose=True, similarity_top_k=3, vector_store_query_mode="default")
+        output = engine.chat(input_)
 
     log.debug("(Ask w/ spaces ) Q: %s, A: %s", spaces, input_, output)
     return output
