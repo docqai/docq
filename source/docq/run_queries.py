@@ -7,7 +7,7 @@ from datetime import datetime
 
 from .config import FeatureType
 from .domain import FeatureKey, SpaceKey
-from .support.llm import run_ask, run_chat
+from .support.llm import run_ask, run_chat, default_response
 from .support.store import get_history_table_name, get_sqlite_usage_file
 
 SQL_CREATE_TABLE = """
@@ -91,25 +91,22 @@ def query(input_: str, feature: FeatureKey, space: SpaceKey, spaces: list[SpaceK
 
     except Exception as e:
         try:
+            log.error("Error: %s", e)
             response = run_chat(
             f"""
             Examine the following error and provide a simple response for the user
             Example: if the error is token limit based, simply say "Sorry, your question is too long, please try again with a shorter question"
-            if you can't understand the error, simply say "Sorry, I don't understand your question, please try again with a different question"
+            if you can't understand the error, simply say "I don't Know"
             Make sure your response is in the first person context
             ERROR: {e}
             """,
                 history,
             )
             is_chat = True
-            log.error("Error: %s", e)
         except Exception as e:
             log.error("Error: %s", e)
-            user_response = "Sorry, I dont understand"
-            if is_chat:
-                response.content = user_response
-            else:
-                response.response = user_response
+            is_chat = True
+            response = default_response()
 
     data.append(
         (

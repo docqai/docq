@@ -136,3 +136,16 @@ def run_ask(input_: str, history: str, space: SpaceKey, spaces: list[SpaceKey] =
 
     log.debug("(Ask w/ spaces ) Q: %s, A: %s", spaces, input_, output)
     return output
+
+
+class ApplyDot(dict):
+    """Apply dot notation to access to dictionary attributes"""
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+
+def default_response():
+    """A default response to show in the UI when an error occurs."""
+    message = {"content": "I don't know"}
+    return ApplyDot(message)
