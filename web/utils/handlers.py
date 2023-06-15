@@ -3,13 +3,11 @@
 import logging as log
 import math
 from datetime import datetime
-from typing import Optional
 
 import streamlit as st
 from docq import config, domain, run_queries
 from docq import manage_documents as mdocuments
 from docq import manage_settings as msettings
-from docq import manage_sharing as msharing
 from docq import manage_spaces as mspaces
 from docq import manage_users as musers
 
@@ -18,8 +16,9 @@ from .constants import (
     NUMBER_OF_MSGS_TO_LOAD,
     SessionKeyNameForAuth,
     SessionKeyNameForChat,
+    SessionKeyNameForSettings,
 )
-from .sessions import get_auth_session, get_chat_session, set_auth_session, set_chat_session
+from .sessions import get_chat_session, set_auth_session, set_chat_session, set_settings_session
 
 
 def handle_login(username: str, password: str) -> bool:
@@ -33,6 +32,13 @@ def handle_login(username: str, password: str) -> bool:
                 SessionKeyNameForAuth.ADMIN.value: result[2],
             }
         )
+        set_settings_session(
+            {
+                SessionKeyNameForSettings.SYSTEM.value: msettings.get_system_settings(),
+                SessionKeyNameForSettings.USER.value: msettings.get_user_settings(result[0]),
+            }
+        )
+        log.info(st.session_state["_docq"])
         return True
     else:
         return False
@@ -66,7 +72,7 @@ def handle_update_user(id_: int) -> bool:
     return result
 
 
-def list_users(username_match: Optional[str] = None) -> list[tuple]:
+def list_users(username_match: str = None) -> list[tuple]:
     return musers.list_users(username_match)
 
 

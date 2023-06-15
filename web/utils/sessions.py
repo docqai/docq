@@ -36,7 +36,7 @@ def _get_session_value(name: SessionKeySubName, key_: str = None, subkey_: str =
         return val[key_][subkey_]
 
 
-def _set_session_value(val: Any, name: SessionKeySubName, key: str = None, subkey: str = None) -> None:
+def _set_session_value(val: Any | None, name: SessionKeySubName, key: str = None, subkey: str = None) -> None:
     _init_session_state()
     if key is None and subkey is None:
         st.session_state[SESSION_KEY_NAME_DOCQ][name.value] = val
@@ -56,7 +56,7 @@ def get_chat_session(type_: config.FeatureType = None, key_: SessionKeyNameForCh
     )
 
 
-def set_chat_session(val: Any = None, type_: config.FeatureType = None, key_: SessionKeyNameForChat = None) -> None:
+def set_chat_session(val: Any | None, type_: config.FeatureType = None, key_: SessionKeyNameForChat = None) -> None:
     """Set the chat session value."""
     _init_session_state()
     _set_session_value(
