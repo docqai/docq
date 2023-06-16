@@ -11,6 +11,7 @@ from llama_index import GPTVectorStoreIndex, ServiceContext, StorageContext
 from langchain.schema import BaseMessage
 from llama_index.query_engine.graph_query_engine import ComposableGraphQueryEngine
 from llama_index.indices.composability import ComposableGraph
+from llama_index.chat_engine import SimpleChatEngine
 
 
 # def test_run_ask_with_personal_space_only():
@@ -60,12 +61,18 @@ from llama_index.indices.composability import ComposableGraph
 
 
 def test_run_chat():
-    with patch("docq.support.llm._get_chat_model") as mock_get_chat_model:
-        mock_chat_openai = Mock(ChatOpenAI)
-        mock_get_chat_model.return_value = mock_chat_openai
-        mock_chat_openai.return_value = "LLM response"
+    with patch.object(SimpleChatEngine, "from_defaults") as mock_simple_chat_engine, patch(
+        "docq.support.llm._get_service_context"
+    ) as mock_get_service_context:
+        mock_get_service_context.return_value = Mock(ServiceContext)
+        mocked_engine = Mock(SimpleChatEngine)
+        mock_simple_chat_engine.return_value = mocked_engine
+        mocked_chat = Mock()
+        mocked_engine.chat = mocked_chat
+        mocked_chat.return_value = "LLM response"
 
         response = run_chat("My ask", "My chat history")
+        mocked_chat.assert_called_once_with("My ask")
         assert response == "LLM response"
 
 
