@@ -5,6 +5,7 @@ import logging as log
 import sqlite3
 from contextlib import closing
 from enum import Enum
+from typing import Any
 
 from .support.store import get_sqlite_system_file, get_sqlite_usage_file
 
@@ -26,6 +27,10 @@ class SystemSettingsKey(Enum):
 
     ENABLED_FEATURES = "enabled_features"
     MODEL_VENDOR = "model_vendor"
+
+
+class UserSettingsKey(Enum):
+    """User settings keys."""
 
 
 def _get_sqlite_file(user_id: int = None) -> str:
@@ -63,14 +68,14 @@ def _update_settings(settings: dict, user_id: int = None) -> bool:
         return True
 
 
-def get_system_settings() -> dict:
+def get_system_settings(key: SystemSettingsKey = None) -> Any | None:
     """Get the system settings."""
-    return _get_settings()
+    return _get_settings() if key is None else _get_settings().get(key.value)
 
 
-def get_user_settings(user_id: int) -> dict:
+def get_user_settings(user_id: int, key: UserSettingsKey = None) -> Any | None:
     """Get the user settings."""
-    return _get_settings(user_id)
+    return _get_settings(user_id) if key is None else _get_settings(user_id).get(key.value)
 
 
 def update_system_settings(settings: dict) -> bool:

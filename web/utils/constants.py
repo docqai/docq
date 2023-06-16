@@ -8,7 +8,9 @@ SESSION_KEY_NAME_DOCQ = "_docq"
 class SessionKeySubName(Enum):
     """Second-level names for session keys."""
 
+    CHAT = "chat"
     AUTH = "auth"
+    SETTINGS = "settings"
 
 
 class SessionKeyNameForAuth(Enum):
@@ -17,6 +19,13 @@ class SessionKeyNameForAuth(Enum):
     ID = "id"
     NAME = "name"
     ADMIN = "admin"
+
+
+class SessionKeyNameForSettings(Enum):
+    """Third-level names for session keys in settings."""
+
+    SYSTEM = "system"
+    USER = "user"
 
 
 class SessionKeyNameForChat(Enum):

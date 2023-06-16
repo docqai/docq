@@ -9,7 +9,7 @@ This is the type of data Docq is designed to work with.
 
 ### Secure Access
 
-With private, organisation data, access it securely becomes paramount.
+With private, organisation data, accessing it securely becomes paramount.
 
 In the age of AI/LLMs, there are many emerging 3rd-party vendors to choose from; However, it is also very easy to unknowingly leak data to these vendors without careful planning on how to adopt these technologies.
 
@@ -21,7 +21,7 @@ It is important for any business to justify costs and benefits for the use of an
 
 - How a business could get started with Docq within minutes;
 - How a business could continue operating Docq with minimal maintenance;
-- And how any Docq user at a business could benefit from it instantly without length training.
+- And how any Docq user at a business could benefit from it instantly without lengthy training.
 
 All of these are reflected in Docq's user interface and user experience design.
 

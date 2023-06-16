@@ -90,11 +90,11 @@ def query(input_: str, feature: FeatureKey, space: SpaceKey, spaces: list[SpaceK
 
     data.append(
         (
-            # MESSAGE_TEMPLATE.format(message=response.content)
-            # if is_chat
-            # else
-            # MESSAGE_WITH_SOURCES_TEMPLATE.format(message=response.response, source=response.get_formatted_sources()),
-            response.content if is_chat else response.response,
+            MESSAGE_TEMPLATE.format(message=response.response)
+            if is_chat
+            else MESSAGE_WITH_SOURCES_TEMPLATE.format(
+                message=response.response, source=response.get_formatted_sources()
+            ),
             False,
             datetime.now(),
         )

@@ -13,9 +13,8 @@ from .formatters import format_datetime, format_filesize
 from .handlers import (
     delete_all_documents,
     delete_document,
-    get_auth_session,
+    get_enabled_features,
     get_max_number_of_documents,
-    get_session_state,
     get_shared_space,
     get_system_settings,
     handle_chat_input,
@@ -33,6 +32,7 @@ from .handlers import (
     prepare_for_chat,
     query_chat_history,
 )
+from .sessions import get_auth_session, get_chat_session
 
 
 def production_layout() -> None:
@@ -115,6 +115,16 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
         return False
 
 
+def feature_enabled(feature: FeatureKey) -> bool:
+    feats = get_enabled_features()
+    if feature.value not in feats:
+        st.error("This feature is not enabled.")
+        st.info("Please contact your administrator to enable this feature.")
+        st.stop()
+        return False
+    return True
+
+
 def create_user_ui() -> None:
     with st.empty().form(key="create_user"):
         st.text_input("Username", value="", key="create_user_username")
@@ -160,9 +170,9 @@ def chat_ui(feature: FeatureKey) -> None:
             )
         if st.button("Load chat history earlier"):
             query_chat_history(feature)
-        day = format_datetime(get_session_state(feature.type_, SessionKeyNameForChat.CUTOFF))
+        day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
         st.markdown(f"#### {day}")
-        for key, text, is_user, time in get_session_state(feature.type_, SessionKeyNameForChat.HISTORY):
+        for key, text, is_user, time in get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY):
             if format_datetime(time) != day:
                 day = format_datetime(time)
                 st.markdown(f"#### {day}")
