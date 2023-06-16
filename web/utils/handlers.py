@@ -156,6 +156,10 @@ def get_system_settings() -> dict:
     return msettings.get_system_settings()
 
 
+def get_enabled_features() -> list[domain.FeatureKey]:
+    return msettings.get_system_settings(msettings.SystemSettingsKey.ENABLED_FEATURES)
+
+
 def handle_update_system_settings() -> None:
     msettings.update_system_settings(
         {

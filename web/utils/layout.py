@@ -13,6 +13,7 @@ from .formatters import format_datetime, format_filesize
 from .handlers import (
     delete_all_documents,
     delete_document,
+    get_enabled_features,
     get_max_number_of_documents,
     get_shared_space,
     get_system_settings,
@@ -112,6 +113,16 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
         if show_login_form:
             __login_form()
         return False
+
+
+def feature_enabled(feature: FeatureKey) -> bool:
+    feats = get_enabled_features()
+    if feature.value not in feats:
+        st.error("This feature is not enabled.")
+        st.info("Please contact your administrator to enable this feature.")
+        st.stop()
+        return False
+    return True
 
 
 def create_user_ui() -> None:
