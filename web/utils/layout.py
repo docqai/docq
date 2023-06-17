@@ -128,7 +128,6 @@ def feature_enabled(feature: FeatureKey) -> bool:
         else:
             st.info("Please contact your administrator to enable this feature.")
         st.stop()
-        # return False
     return True
 
 
