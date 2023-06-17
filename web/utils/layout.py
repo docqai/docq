@@ -7,6 +7,7 @@ from docq.config import FeatureType, LogType
 from docq.domain import FeatureKey, SpaceKey
 from st_pages import hide_pages
 from streamlit_chat import message
+from streamlit_extras.switch_page_button import switch_page
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .formatters import format_datetime, format_filesize
@@ -119,9 +120,15 @@ def feature_enabled(feature: FeatureKey) -> bool:
     feats = get_enabled_features()
     if not feats or feature.value not in feats:
         st.error("This feature is not enabled.")
-        st.info("Please contact your administrator to enable this feature.")
+        # If the current user is admin provide a link to the feature settings page
+        if get_auth_session().get(SessionKeyNameForAuth.ADMIN.value, False):
+            st.info("You can enable this feature from the *Admin Overview* page.")
+            if st.button("Go to Admin Overview"):
+                switch_page("Admin_Overview")
+        else:
+            st.info("Please contact your administrator to enable this feature.")
         st.stop()
-        return False
+        # return False
     return True
 
 
