@@ -147,5 +147,5 @@ class ApplyDot(dict):
 
 def default_response():
     """A default response to show in the UI when an error occurs."""
-    message = {"content": "I don't know"}
+    message = {"response": "I don't know", "content": "I don't know"}
     return ApplyDot(message)
