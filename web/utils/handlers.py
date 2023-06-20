@@ -125,8 +125,21 @@ def handle_upload_file(space: domain.SpaceKey) -> None:
         return None
 
     disp.empty()
+    file_no = 0
     for file in files:
-        mdocuments.upload(file.name, file.getvalue(), space)
+        try:
+            file_no += 1
+            disp.info(f"Uploading file {file_no} of {len(files)}")
+            mdocuments.upload(file.name, file.getvalue(), space)
+        except Exception as e:
+            log.exception("Error uploading file %s", e)
+            break    
+    # if all files are uploaded successfully
+    else:
+        disp.success(f"{len(files)} file(s) uploaded successfully")
+        return None
+    # if any error occurs
+    disp.error("Error uploading file(s)")
 
 
 def handle_change_temperature(type_: config.SpaceType):
