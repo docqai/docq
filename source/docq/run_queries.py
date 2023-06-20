@@ -7,8 +7,9 @@ from datetime import datetime
 
 from .config import FeatureType
 from .domain import FeatureKey, SpaceKey
-from .support.llm import run_ask, run_chat, default_response
+from .support.llm import run_ask, run_chat
 from .support.store import get_history_table_name, get_sqlite_usage_file
+from llama_index import (Response)
 
 SQL_CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS {table} (
@@ -92,21 +93,17 @@ def query(input_: str, feature: FeatureKey, space: SpaceKey, spaces: list[SpaceK
     except Exception as e:
         try:
             log.error("Error: %s", e)
-            response = run_chat(
-            f"""
+            prompt = f"""
             Examine the following error and provide a simple response for the user
             Example: if the error is token limit based, simply say "Sorry, your question is too long, please try again with a shorter question"
             if you can't understand the error, simply say "I don't Know"
             Make sure your response is in the first person context
             ERROR: {e}
-            """,
-                history,
-            )
-            is_chat = True
+            """
+            response = run_chat( prompt, history ) if is_chat else run_ask( prompt, history, space, spaces )
         except Exception as e:
             log.error("Error: %s", e)
-            is_chat = True
-            response = default_response()
+            response = Response(response="Idon't know")
 
     data.append(
         (
