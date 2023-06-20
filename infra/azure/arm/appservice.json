@@ -4,23 +4,23 @@
     "parameters": {
         "storageAccountName": {
             "type": "string",
-            "defaultValue": "[format('sa1{0}', uniqueString(resourceGroup().id))]"
+            "defaultValue": "[format('sa{0}', uniqueString(resourceGroup().id))]"
         },
         "appServicePlanName": {
             "type": "string",
-            "defaultValue": "[format('appserviceplan1{0}', uniqueString(resourceGroup().id))]"
+            "defaultValue": "[format('appserviceplan{0}', uniqueString(resourceGroup().id))]"
         },
         "appServiceName": {
             "type": "string",
-            "defaultValue": "[format('docq-app-1{0}', uniqueString(resourceGroup().id))]"
+            "defaultValue": "[format('docq-app-{0}', uniqueString(resourceGroup().id))]"
         },
         "fileShareName": {
             "type": "string",
-            "defaultValue": "docqfileshare2",
+            "defaultValue": "docqfileshare1",
             "maxLength": 63,
             "minLength": 3,
             "metadata": {
-                "description": "Specifies the name of the File Share and the mount name in the container formatted '/mnt/<fileShareName>'. File share names must be between 3 and 63 characters in length and use numbers, lower-case letters and dash (-) only."
+                "description": "Specifies the name of the File Share and the mount name in the container formatted '/mnt/fileShareName'. File share names must be between 3 and 63 characters in length and use numbers, lower-case letters and dash (-) only."
             }
         },
         "blobContainerName": {
@@ -29,7 +29,7 @@
             "maxLength": 63,
             "minLength": 3,
             "metadata": {
-                "description": "Specifies the name of the Blob Container and the mount name in the container formatted '/mnt/<blobContainerName>'. Blob container names must be between 3 and 63 characters in length and use numbers, lower-case letters and dash (-) only."
+                "description": "Specifies the name of the Blob Container and the mount name in the container formatted '/mnt/blobContainerName'. Blob container names must be between 3 and 63 characters in length and use numbers, lower-case letters and dash (-) only."
             }
         },
         "linuxFxVersion": {
@@ -53,20 +53,12 @@
                 "description": "The container registry user. For example, 'docqai'. <host>/<user>/<repo>:<tag>"
             }
         },
-        "dnsNameLabel": {
-            "type": "string",
-            "defaultValue": "[format('docq-{0}', uniqueString(resourceGroup().id))]"
-        },
         "ENV_OPENAI_API_KEY": {
             "type": "securestring",
             "defaultValue": "",
             "metadata": {
-                "description": "OpenAI API Key"
+                "description": "OpenAI API Key (openai.com). If provided Azure OpenAI resource will not be created. NOT recommended. Only use to demo the app if Azure OpenAI isn't enabled in an Azure subscription."
             }
-        },
-        "ENV_SERPER_API_KEY": {
-            "type": "securestring",
-            "defaultValue": ""
         }
     },
     "variables": {
@@ -78,14 +70,14 @@
         "blobMount": "[format('/mnt/{0}', parameters('blobContainerName'))]",
         "textModel": {
             "format": "OpenAI",
-            "name":"text-davinci-003",
+            "name": "text-davinci-003",
             "version": "1"
-            },
+        },
         "conversationModel": {
             "format": "OpenAI",
             "name": "gpt-35-turbo",
             "version": "0301"
-            }
+        }
     },
     "resources": [
         {
@@ -140,9 +132,9 @@
         {
             "type": "Microsoft.CognitiveServices/accounts/deployments",
             "apiVersion": "2022-12-01",
-            "name": "[concat(variables('cognitiveServiceResourceName'),'/', variables('textModel').name)]",
+            "name": "[concat(variables('cognitiveServiceResourceName'),'/', variables('conversationModel').name)]",
             "properties": {
-                "model": "[variables('textModel')]",
+                "model": "[variables('conversationModel')]",
                 "scaleSettings": {
                     "scaleType": "Standard"
                 }
@@ -154,15 +146,15 @@
         {
             "type": "Microsoft.CognitiveServices/accounts/deployments",
             "apiVersion": "2022-12-01",
-            "name": "[concat(variables('cognitiveServiceResourceName'),'/', variables('conversationModel').name)]",
+            "name": "[concat(variables('cognitiveServiceResourceName'),'/', variables('textModel').name)]",
             "properties": {
-                "model": "[variables('conversationModel')]",
+                "model": "[variables('textModel')]",
                 "scaleSettings": {
                     "scaleType": "Standard"
                 }
             },
             "dependsOn": [
-                "[resourceId('Microsoft.CognitiveServices/accounts', variables('cognitiveServiceResourceName'))]"
+                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('cognitiveServiceResourceName'), variables('conversationModel').name)]"
             ]
         },
         {
@@ -182,8 +174,8 @@
                 "zoneRedundant": false
             },
             "sku": {
-                "tier": "PremiumV2",
-                "name": "P1v2"
+                "tier": "Basic",
+                "name": "B1"
             }
         },
         {
@@ -221,10 +213,6 @@
                             "value": "8501"
                         },
                         {
-                            "name": "SERPER_API_KEY",
-                            "value": "[parameters('ENV_SERPER_API_KEY')]"
-                        },
-                        {
                             "name": "DOCQ_DATA",
                             "value": "[format('{0}/{1}', variables('fileMount'), variables('docq_data'))]"
                         },
@@ -234,26 +222,28 @@
                         },
                         {
                             "name": "OPENAI_API_KEY",
-                            "value": "[if(equals(parameters('ENV_OPENAI_API_KEY'),''),
-                                listKeys(resourceId('Microsoft.CognitiveServices/accounts', variables('cognitiveServiceResourceName')), '2022-12-01').key1, 
-                                parameters('ENV_OPENAI_API_KEY'))]"
+                            "value": "[parameters('ENV_OPENAI_API_KEY')]"
                         },
                         {
-                            "name": "OPENAI_API_BASE",
+                            "name": "DOCQ_AZURE_OPENAI_API_KEY1",
+                            "value": "[if(equals(parameters('ENV_OPENAI_API_KEY'),''),listKeys(resourceId('Microsoft.CognitiveServices/accounts', variables('cognitiveServiceResourceName')), '2022-12-01').key1, '')]"
+                        },
+                        {
+                            "name": "DOCQ_AZURE_OPENAI_API_KEY2",
+                            "value": "[if(equals(parameters('ENV_OPENAI_API_KEY'),''),listKeys(resourceId('Microsoft.CognitiveServices/accounts', variables('cognitiveServiceResourceName')), '2022-12-01').key2, '')]"
+                        },
+                        {
+                            "name": "DOCQ_AZURE_OPENAI_API_BASE",
                             "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('cognitiveServiceResourceName'))).endpoint]"
                         },
                         {
-                            "name": "OPENAI_API_TYPE",
-                            "value": "azure"
+                            "name": "DOCQ_AZURE_OPENAI_CHAT_DEPLOYMENT_NAME",
+                            "value": "[variables('conversationModel').name]"
                         },
-
                         {
-                            "name": "OPENAI_API_VERSION",
-                            "value": "2023-03-15-preview
-"
+                            "name": "DOCQ_AZURE_OPENAI_TEXT_DEPLOYMENT_NAME",
+                            "value": "[variables('textModel').name]"
                         }
-
-
                     ],
                     "linuxFxVersion": "[parameters('linuxFxVersion')]",
                     "alwaysOn": true,
