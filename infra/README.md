@@ -43,7 +43,7 @@ Explanation about models <https://learn.microsoft.com/en-gb/azure/cognitive-serv
   - Copy the 'raw' URL for the template file: Navigate to the file on Github.com. Click on the 'raw' button on the top right area.
   - URL encode the github raw URL.
   - Trigger Azure template deployment by navigaiting to `https://portal.azure.com/#create/Microsoft.Template/uri/<encoded Github raw URL to the template file on your branch>`
-  Example: The URL on main <https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fdocqai%2Fdocq-qs%2Fmain%2Fdeploy%2Fazure%2Farm%2Fappservice.json>
+  Example: The URL on main <https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fdocqai%2Fdocq%2Fmain%2Finfra%2Fazure%2Farm%2Fappservice.json>
 
 
 ## AWS
