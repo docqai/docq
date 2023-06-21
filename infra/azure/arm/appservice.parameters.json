@@ -13,9 +13,6 @@
         },
         "registryUser": {
             "value": "docqai"
-        },
-        "ENV_OPENAI_API_KEY": {
-            "value": ""
         }
     }
 }

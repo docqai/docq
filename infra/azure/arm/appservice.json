@@ -52,13 +52,6 @@
             "metadata": {
                 "description": "The container registry user. For example, 'docqai'. <host>/<user>/<repo>:<tag>"
             }
-        },
-        "ENV_OPENAI_API_KEY": {
-            "type": "securestring",
-            "defaultValue": "",
-            "metadata": {
-                "description": "OpenAI API Key (openai.com). If provided Azure OpenAI resource will not be created. NOT recommended. Only use to demo the app if Azure OpenAI isn't enabled in an Azure subscription."
-            }
         }
     },
     "variables": {
@@ -116,7 +109,6 @@
             ]
         },
         {
-            "condition": "[equals(parameters('ENV_OPENAI_API_KEY'), '')]",
             "type": "Microsoft.CognitiveServices/accounts",
             "apiVersion": "2022-12-01",
             "name": "[variables('cognitiveServiceResourceName')]",
@@ -221,16 +213,12 @@
                             "value": "[variables('blobMount')]"
                         },
                         {
-                            "name": "OPENAI_API_KEY",
-                            "value": "[parameters('ENV_OPENAI_API_KEY')]"
-                        },
-                        {
                             "name": "DOCQ_AZURE_OPENAI_API_KEY1",
-                            "value": "[if(equals(parameters('ENV_OPENAI_API_KEY'),''),listKeys(resourceId('Microsoft.CognitiveServices/accounts', variables('cognitiveServiceResourceName')), '2022-12-01').key1, '')]"
+                            "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', variables('cognitiveServiceResourceName')), '2022-12-01').key1]"
                         },
                         {
                             "name": "DOCQ_AZURE_OPENAI_API_KEY2",
-                            "value": "[if(equals(parameters('ENV_OPENAI_API_KEY'),''),listKeys(resourceId('Microsoft.CognitiveServices/accounts', variables('cognitiveServiceResourceName')), '2022-12-01').key2, '')]"
+                            "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', variables('cognitiveServiceResourceName')), '2022-12-01').key2]"
                         },
                         {
                             "name": "DOCQ_AZURE_OPENAI_API_BASE",
