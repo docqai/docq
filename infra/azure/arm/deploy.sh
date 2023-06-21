@@ -11,7 +11,7 @@ echo $res1 | jq '.'
 
 echo "Resource group '${RESOURCE_GROUP}' created."
 
-res2=$(az deployment group create --resource-group $RESOURCE_GROUP --name $NAME --template-file appservice.json)
+res2=$(az deployment group create --resource-group $RESOURCE_GROUP --name $NAME --template-file appservice.json --parameters @appservice.parameters.json)
 
 status=$(echo $res2 | (grep -E -o 'Failed' || echo 'Success') | head -1)
 
