@@ -50,6 +50,22 @@ There are also recordings (Loom) to demonstrate Docq's major features:
 - [Ask your documents vs shared spaces](https://www.loom.com/share/21bb34d1bcb54f8ebf47c68f347d484c)
 - [Multi-user access](https://www.loom.com/share/599aa123ddce4a3d916ee8bdcd61095f)
 
+## Deploy Your Own Instance
+
+### Deploy to Azure in 15mins
+
+Click and follow the Azure wizard [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fdocqai%2Fdocq%2Fmain%2Finfra%2Fazure%2Farm%2Fappservice.json)
+
+For more details see section [Deploy to Azure: 15 Minutes and Secure](./docs/user-guide/getting-started.md)
+
+### Deploy to AWS in 15mins
+
+<img src="./docs/assets/vendor-logos/aws-logo.svg" width="50">&nbsp;&nbsp;On the roadmap.
+
+### Deploy to GCP in 15mins
+
+<img src="./docs/assets/vendor-logos/gcp-logo.svg" width="40">&nbsp;&nbsp;On the roadmap.
+
 ## Documentation
 
 [Documentation](https://docqai.github.io/docq/) site is hosted by [GitHub Pages](https://pages.github.com/).
