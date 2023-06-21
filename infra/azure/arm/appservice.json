@@ -235,14 +235,6 @@
                         {
                             "name": "DOCQ_AZURE_OPENAI_API_BASE",
                             "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('cognitiveServiceResourceName'))).endpoint]"
-                        },
-                        {
-                            "name": "DOCQ_AZURE_OPENAI_CHAT_DEPLOYMENT_NAME",
-                            "value": "[variables('conversationModel').name]"
-                        },
-                        {
-                            "name": "DOCQ_AZURE_OPENAI_TEXT_DEPLOYMENT_NAME",
-                            "value": "[variables('textModel').name]"
                         }
                     ],
                     "linuxFxVersion": "[parameters('linuxFxVersion')]",
