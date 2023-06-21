@@ -26,6 +26,6 @@ then
   exit 0
 elif [ $confirm = "n" ] || [ $confirm = "N" ] 
 then
-    echo "Aborted! nothing was desctoyed."
+    echo "Aborted! nothing was destroyed."
     exit -1
 fi
