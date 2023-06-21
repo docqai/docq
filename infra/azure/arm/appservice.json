@@ -1,0 +1,253 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "storageAccountName": {
+            "type": "string",
+            "defaultValue": "[format('sa{0}', uniqueString(resourceGroup().id))]"
+        },
+        "appServicePlanName": {
+            "type": "string",
+            "defaultValue": "[format('appserviceplan{0}', uniqueString(resourceGroup().id))]"
+        },
+        "appServiceName": {
+            "type": "string",
+            "defaultValue": "[format('docq-app-{0}', uniqueString(resourceGroup().id))]"
+        },
+        "fileShareName": {
+            "type": "string",
+            "defaultValue": "docqfileshare1",
+            "maxLength": 63,
+            "minLength": 3,
+            "metadata": {
+                "description": "Specifies the name of the File Share and the mount name in the container formatted '/mnt/fileShareName'. File share names must be between 3 and 63 characters in length and use numbers, lower-case letters and dash (-) only."
+            }
+        },
+        "blobContainerName": {
+            "type": "string",
+            "defaultValue": "docqblobcontainer1",
+            "maxLength": 63,
+            "minLength": 3,
+            "metadata": {
+                "description": "Specifies the name of the Blob Container and the mount name in the container formatted '/mnt/blobContainerName'. Blob container names must be between 3 and 63 characters in length and use numbers, lower-case letters and dash (-) only."
+            }
+        },
+        "linuxFxVersion": {
+            "type": "string",
+            "defaultValue": "DOCKER|ghcr.io/docqai/docq:latest",
+            "metadata": {
+                "description": "The application container to deploy. For example, 'DOCKER|ghcr.io/docqai/docq:latest'. <host>/<user>/<repo>:<tag>"
+            }
+        },
+        "registryHost": {
+            "type": "string",
+            "defaultValue": "https://ghcr.io",
+            "metadata": {
+                "description": "The container registry host. For example, 'https://ghcr.io'. <host>/<user>/<repo>:<tag>"
+            }
+        },
+        "registryUser": {
+            "type": "string",
+            "defaultValue": "docqai",
+            "metadata": {
+                "description": "The container registry user. For example, 'docqai'. <host>/<user>/<repo>:<tag>"
+            }
+        }
+    },
+    "variables": {
+        "cognitiveServiceResourceName": "[concat('docq-openai-', uniqueString(resourceGroup().id))]",
+        "fileShareResourceName": "[concat(parameters('storageAccountName'),'/default/', parameters('fileShareName'))]",
+        "blobContainerResourceName": "[concat(parameters('storageAccountName'),'/default/', parameters('blobContainerName'))]",
+        "docq_data": "docqdata",
+        "fileMount": "[format('/mnt/{0}', parameters('fileShareName'))]",
+        "blobMount": "[format('/mnt/{0}', parameters('blobContainerName'))]",
+        "textModel": {
+            "format": "OpenAI",
+            "name": "text-davinci-003",
+            "version": "1"
+        },
+        "conversationModel": {
+            "format": "OpenAI",
+            "name": "gpt-35-turbo",
+            "version": "0301"
+        }
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2022-09-01",
+            "name": "[parameters('storageAccountName')]",
+            "location": "[resourceGroup().location]",
+            "kind": "StorageV2",
+            "sku": {
+                "name": "Standard_LRS"
+            },
+            "properties": {
+                "supportsHttpsTrafficOnly": true,
+                "accessTier": "Hot"
+            },
+            "resources": [
+                {
+                    "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
+                    "apiVersion": "2022-09-01",
+                    "name": "[variables('fileShareResourceName')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+                    ]
+                },
+                {
+                    "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+                    "apiVersion": "2022-09-01",
+                    "name": "[variables('blobContainerResourceName')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+                    ],
+                    "properties": {
+                        "publicAccess": "None"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.CognitiveServices/accounts",
+            "apiVersion": "2022-12-01",
+            "name": "[variables('cognitiveServiceResourceName')]",
+            "location": "[resourceGroup().location]",
+            "kind": "OpenAI",
+            "sku": {
+                "name": "S0"
+            },
+            "properties": {
+                "publicNetworkAccess": "Enabled"
+            }
+        },
+        {
+            "type": "Microsoft.CognitiveServices/accounts/deployments",
+            "apiVersion": "2022-12-01",
+            "name": "[concat(variables('cognitiveServiceResourceName'),'/', variables('conversationModel').name)]",
+            "properties": {
+                "model": "[variables('conversationModel')]",
+                "scaleSettings": {
+                    "scaleType": "Standard"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', variables('cognitiveServiceResourceName'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.CognitiveServices/accounts/deployments",
+            "apiVersion": "2022-12-01",
+            "name": "[concat(variables('cognitiveServiceResourceName'),'/', variables('textModel').name)]",
+            "properties": {
+                "model": "[variables('textModel')]",
+                "scaleSettings": {
+                    "scaleType": "Standard"
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('cognitiveServiceResourceName'), variables('conversationModel').name)]"
+            ]
+        },
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2022-09-01",
+            "name": "[parameters('appServicePlanName')]",
+            "location": "[resourceGroup().location]",
+            "kind": "linux",
+            "tags": {},
+            "dependsOn": [],
+            "properties": {
+                "name": "[parameters('appServicePlanName')]",
+                "workerSize": "0",
+                "workerSizeId": "0",
+                "numberOfWorkers": "1",
+                "reserved": true,
+                "zoneRedundant": false
+            },
+            "sku": {
+                "tier": "Basic",
+                "name": "B1"
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2022-09-01",
+            "name": "[parameters('appServiceName')]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ],
+            "properties": {
+                "name": "[parameters('appServiceName')]",
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "WEBSITES_ENABLE_APP_SERVICE_STORAGE",
+                            "value": "false"
+                        },
+                        {
+                            "name": "DOCKER_REGISTRY_SERVER_URL",
+                            "value": "[parameters('registryHost')]"
+                        },
+                        {
+                            "name": "DOCKER_REGISTRY_SERVER_USERNAME",
+                            "value": "[parameters('registryUser')]"
+                        },
+                        {
+                            "name": "DOCKER_REGISTRY_SERVER_PASSWORD",
+                            "value": ""
+                        },
+                        {
+                            "name": "WEBSITES_PORT",
+                            "value": "8501"
+                        },
+                        {
+                            "name": "DOCQ_DATA",
+                            "value": "[format('{0}/{1}', variables('fileMount'), variables('docq_data'))]"
+                        },
+                        {
+                            "name": "DOCQ_BLOB",
+                            "value": "[variables('blobMount')]"
+                        },
+                        {
+                            "name": "DOCQ_AZURE_OPENAI_API_KEY1",
+                            "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', variables('cognitiveServiceResourceName')), '2022-12-01').key1]"
+                        },
+                        {
+                            "name": "DOCQ_AZURE_OPENAI_API_KEY2",
+                            "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', variables('cognitiveServiceResourceName')), '2022-12-01').key2]"
+                        },
+                        {
+                            "name": "DOCQ_AZURE_OPENAI_API_BASE",
+                            "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('cognitiveServiceResourceName'))).endpoint]"
+                        }
+                    ],
+                    "linuxFxVersion": "[parameters('linuxFxVersion')]",
+                    "alwaysOn": true,
+                    "appCommandLine": "",
+                    "azureStorageAccounts": {
+                        "[parameters('fileShareName')]": {
+                            "type": "AzureFiles",
+                            "accountName": "[parameters('storageAccountName')]",
+                            "shareName": "[parameters('fileShareName')]",
+                            "mountPath": "[variables('fileMount')]",
+                            "accessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2022-09-01').keys[0].value]"
+                        }
+                    }
+                },
+                "clientAffinityEnabled": false,
+                "httpsOnly": true,
+                "publicNetworkAccess": "Enabled"
+            }
+        }
+    ],
+    "outputs": {
+        "applicationPublicDomainName": {
+            "type": "string",
+            "value": "[reference(format('Microsoft.Web/sites/{0}', parameters('appServiceName'))).defaultHostName]"
+        }
+    }
+}
