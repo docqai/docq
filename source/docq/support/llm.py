@@ -153,7 +153,7 @@ def default_reponse():
 
 
 def run_prompt(input: str, history: str, is_chat: bool, space: SpaceKey, spaces: list[SpaceKey]):
-    """Run chat or ask documents and re-prompt with the AI if an error occures"""
+    """Run chat or ask documents and re-prompt with the AI if an error occurs"""
     
     try: # Run the prompt as intended
         return run_chat(input, history) if is_chat else run_ask(input, history, space, spaces)

@@ -7,7 +7,7 @@ from datetime import datetime
 
 from .config import FeatureType
 from .domain import FeatureKey, SpaceKey
-from .support.llm import run_prompt, run_ask, run_chat, default_reponse, ERROR_PROMPT
+from .support.llm import run_prompt
 from .support.store import get_history_table_name, get_sqlite_usage_file
 from llama_index import (Response)
 
