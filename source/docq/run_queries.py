@@ -7,7 +7,7 @@ from datetime import datetime
 
 from .config import FeatureType
 from .domain import FeatureKey, SpaceKey
-from .support.llm import run_ask, run_chat
+from .support.llm import run_prompt, run_ask, run_chat, default_reponse, ERROR_PROMPT
 from .support.store import get_history_table_name, get_sqlite_usage_file
 from llama_index import (Response)
 
@@ -85,25 +85,8 @@ def query(input_: str, feature: FeatureKey, space: SpaceKey, spaces: list[SpaceK
     is_chat = feature.type_ == FeatureType.CHAT_PRIVATE
 
     history = _retrieve_last_n_history(feature)
-
-    try:
-        response = run_chat(input_, history) if is_chat else run_ask(input_, history, space, spaces)
-        log.debug("Response: %s", response)
-
-    except Exception as e:
-        try:
-            log.error("Error: %s", e)
-            prompt = f"""
-            Examine the following error and provide a simple response for the user
-            Example: if the error is token limit based, simply say "Sorry, your question is too long, please try again with a shorter question"
-            if you can't understand the error, simply say "I don't Know"
-            Make sure your response is in the first person context
-            ERROR: {e}
-            """
-            response = run_chat( prompt, history ) if is_chat else run_ask( prompt, history, space, spaces )
-        except Exception as e:
-            log.error("Error: %s", e)
-            response = Response(response="Idon't know")
+    
+    response = run_prompt(input_, history, is_chat, space, spaces)
 
     data.append(
         (

@@ -51,6 +51,15 @@ Human: {input}
 Assistant:"""
 
 
+ERROR_PROMPT = """
+Examine the following error and provide a simple response for the user
+Example: if the error is token limit based, simply say "Sorry, your question is too long, please try again with a shorter question"
+if you can't understand the error, simply say "I don't Know"
+Make sure your response is in the first person context
+ERROR: {error}
+"""
+
+
 # def _get_model() -> OpenAI:
 #     return OpenAI(temperature=0, model_name="text-davinci-003")
 
@@ -136,3 +145,24 @@ def run_ask(input_: str, history: str, space: SpaceKey, spaces: list[SpaceKey] =
 
     log.debug("(Ask w/ spaces ) Q: %s, A: %s", spaces, input_, output)
     return output
+
+
+def default_reponse():
+    """A default reponse incase of any failure"""
+    return Response("I don't know.")
+
+
+def run_prompt(input: str, history: str, is_chat: bool, space: SpaceKey, spaces: list[SpaceKey]):
+    """Run chat or ask documents and re-prompt with the AI if an error occures"""
+    
+    try: # Run the prompt as intended
+        return run_chat(input, history) if is_chat else run_ask(input, history, space, spaces)
+    
+    except Exception as error:
+        try: # Try re-prompting with the AI
+            log.exception("Error: %s", error)
+            input = ERROR_PROMPT.format(error=error)
+            return run_chat(input, history) if is_chat else run_ask(input, history, space, spaces)
+        except Exception as error:
+            log.exception("Error: %s", error)
+            return default_reponse()
