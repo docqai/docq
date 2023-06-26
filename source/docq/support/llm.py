@@ -54,7 +54,7 @@ Assistant:"""
 ERROR_PROMPT = """
 Examine the following error and provide a simple response for the user
 Example: if the error is token limit based, simply say "Sorry, your question is too long, please try again with a shorter question"
-if you can't understand the error, simply say "I don't Know"
+if you can't understand the error, simply say "Sorry I cannot offer any assistance on the error message"
 Make sure your response is in the first person context
 ERROR: {error}
 """
