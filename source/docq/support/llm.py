@@ -152,12 +152,12 @@ def _default_response():
     return Response("I don't know.")
 
 
-def llm_re_prompt(error: Exception, history: str, is_chat: bool, space: SpaceKey, spaces: list[SpaceKey]):
-    """Re-prompt the model with the error message"""
+def query_error(error: Exception):
+    """Query the AI for a response to an error message"""
     try: # Try re-prompting with the AI
         log.exception("Error: %s", error)
         input = ERROR_PROMPT.format(error=error)
-        return run_chat(input, history) if is_chat else run_ask(input, history, space, spaces)
+        return SimpleChatEngine.from_defaults(service_context=_get_service_context()).chat(input)
     except Exception as error:
         log.exception("Error: %s", error)
         return _default_response()
