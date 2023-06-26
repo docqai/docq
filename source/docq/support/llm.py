@@ -147,22 +147,17 @@ def run_ask(input_: str, history: str, space: SpaceKey, spaces: list[SpaceKey] =
     return output
 
 
-def default_reponse():
+def _default_response():
     """A default reponse incase of any failure"""
     return Response("I don't know.")
 
 
-def run_prompt(input: str, history: str, is_chat: bool, space: SpaceKey, spaces: list[SpaceKey]):
-    """Run chat or ask documents and re-prompt with the AI if an error occurs"""
-    
-    try: # Run the prompt as intended
+def llm_re_prompt(error: Exception, history: str, is_chat: bool, space: SpaceKey, spaces: list[SpaceKey]):
+    """Re-prompt the model with the error message"""
+    try: # Try re-prompting with the AI
+        log.exception("Error: %s", error)
+        input = ERROR_PROMPT.format(error=error)
         return run_chat(input, history) if is_chat else run_ask(input, history, space, spaces)
-    
     except Exception as error:
-        try: # Try re-prompting with the AI
-            log.exception("Error: %s", error)
-            input = ERROR_PROMPT.format(error=error)
-            return run_chat(input, history) if is_chat else run_ask(input, history, space, spaces)
-        except Exception as error:
-            log.exception("Error: %s", error)
-            return default_reponse()
+        log.exception("Error: %s", error)
+        return _default_response()

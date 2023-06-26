@@ -7,9 +7,8 @@ from datetime import datetime
 
 from .config import FeatureType
 from .domain import FeatureKey, SpaceKey
-from .support.llm import run_prompt
+from .support.llm import run_ask, run_chat, llm_re_prompt
 from .support.store import get_history_table_name, get_sqlite_usage_file
-from llama_index import (Response)
 
 SQL_CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS {table} (
@@ -85,8 +84,12 @@ def query(input_: str, feature: FeatureKey, space: SpaceKey, spaces: list[SpaceK
     is_chat = feature.type_ == FeatureType.CHAT_PRIVATE
 
     history = _retrieve_last_n_history(feature)
-    
-    response = run_prompt(input_, history, is_chat, space, spaces)
+
+    try:
+        response = run_chat(input_, history) if is_chat else run_ask(input_, history, space, spaces)
+        log.debug("Response: %s", response)
+
+    except Exception as e: response = llm_re_prompt(e, history, is_chat, space, spaces)
 
     data.append(
         (
