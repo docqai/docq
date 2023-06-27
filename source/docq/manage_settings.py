@@ -39,7 +39,7 @@ def _get_sqlite_file(user_id: int = None) -> str:
 
 
 def _get_settings(user_id: int = None) -> dict:
-    log.debug("Getting settings for user %d", user_id)
+    log.debug("Getting settings for user %s", str(user_id))
     with closing(
         sqlite3.connect(_get_sqlite_file(user_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
@@ -51,6 +51,7 @@ def _get_settings(user_id: int = None) -> dict:
         ).fetchall()
         if rows:
             return {key: json.loads(val) for key, val in rows}
+        return {}
 
 
 def _update_settings(settings: dict, user_id: int = None) -> bool:

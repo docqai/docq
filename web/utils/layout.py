@@ -8,6 +8,7 @@ from docq.domain import FeatureKey, SpaceKey
 from st_pages import hide_pages
 from streamlit_chat import message
 
+
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .formatters import format_datetime, format_filesize
 from .handlers import (
@@ -117,7 +118,7 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
 
 def feature_enabled(feature: FeatureKey) -> bool:
     feats = get_enabled_features()
-    if feature.value not in feats:
+    if not feats or feature.value not in feats:
         st.error("This feature is not enabled.")
         st.info("Please contact your administrator to enable this feature.")
         st.stop()
@@ -191,7 +192,17 @@ def chat_ui(feature: FeatureKey) -> None:
 def documents_ui(space: SpaceKey) -> None:
     documents = list_documents(space)
     max_size = get_max_number_of_documents(space.type_)
+    
+    if len(documents) < max_size:
+        with st.form("Upload", clear_on_submit=True):
+            st.file_uploader("Upload your documents here", type=ALLOWED_DOC_EXTS, key=f"uploaded_file_{space.value()}",
+                             accept_multiple_files=True)
+            st.form_submit_button(label="Upload", on_click=handle_upload_file, args=(space,))
+    else:
+        st.warning(f"You cannot upload more than {max_size} documents.")
+        
     if documents:
+        st.divider()
         for i, (filename, time, size) in enumerate(documents):
             with st.expander(filename):
                 st.markdown(f"Size: {format_filesize(size)} | Time: {format_datetime(datetime.fromtimestamp(time))}")
@@ -210,15 +221,6 @@ def documents_ui(space: SpaceKey) -> None:
             on_click=delete_all_documents,
             args=(space,),
         )
-
-    st.divider()
-
-    if len(documents) < max_size:
-        with st.form("Upload", clear_on_submit=True):
-            st.file_uploader("Upload your documents here", type=ALLOWED_DOC_EXTS, key=f"uploaded_file_{space.value()}")
-            st.form_submit_button(label="Upload", on_click=handle_upload_file, args=(space,))
-    else:
-        st.warning(f"You cannot upload more than {max_size} documents.")
 
 
 def chat_settings_ui(feature: FeatureKey) -> None:

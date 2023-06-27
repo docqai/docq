@@ -51,6 +51,15 @@ Human: {input}
 Assistant:"""
 
 
+ERROR_PROMPT = """
+Examine the following error and provide a simple response for the user
+Example: if the error is token limit based, simply say "Sorry, your question is too long, please try again with a shorter question"
+if you can't understand the error, simply say "Sorry I cannot offer any assistance on the error message"
+Make sure your response is in the first person context
+ERROR: {error}
+"""
+
+
 # def _get_model() -> OpenAI:
 #     return OpenAI(temperature=0, model_name="text-davinci-003")
 
@@ -136,3 +145,19 @@ def run_ask(input_: str, history: str, space: SpaceKey, spaces: list[SpaceKey] =
 
     log.debug("(Ask w/ spaces ) Q: %s, A: %s", spaces, input_, output)
     return output
+
+
+def _default_response():
+    """A default reponse incase of any failure"""
+    return Response("I don't know.")
+
+
+def query_error(error: Exception):
+    """Query the AI for a response to an error message"""
+    try: # Try re-prompting with the AI
+        log.exception("Error: %s", error)
+        input = ERROR_PROMPT.format(error=error)
+        return SimpleChatEngine.from_defaults(service_context=_get_service_context()).chat(input)
+    except Exception as error:
+        log.exception("Error: %s", error)
+        return _default_response()

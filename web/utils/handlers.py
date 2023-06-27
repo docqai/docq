@@ -117,8 +117,29 @@ def delete_all_documents(space: domain.SpaceKey) -> None:
 
 
 def handle_upload_file(space: domain.SpaceKey) -> None:
-    file = st.session_state[f"uploaded_file_{space.value()}"]
-    mdocuments.upload(file.name, file.getvalue(), space)
+    files = st.session_state[f"uploaded_file_{space.value()}"]
+    
+    disp = st.empty()
+    if not files:
+        disp.warning("No file(s) selected, please select a file to upload")
+        return None
+
+    disp.empty()
+    file_no = 0
+    for file in files:
+        try:
+            file_no += 1
+            disp.info(f"Uploading file {file_no} of {len(files)}")
+            mdocuments.upload(file.name, file.getvalue(), space)
+        except Exception as e:
+            log.exception("Error uploading file %s", e)
+            break    
+    # if all files are uploaded successfully
+    else:
+        disp.success(f"{len(files)} file(s) uploaded successfully")
+        return None
+    # if any error occurs
+    disp.error("Error uploading file(s)")
 
 
 def handle_change_temperature(type_: config.SpaceType):
