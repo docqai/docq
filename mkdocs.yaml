@@ -27,7 +27,6 @@ markdown_extensions:
   - pymdownx.superfences
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
   - toc:
       permalink: true
 
@@ -35,24 +34,28 @@ extra:
   analytics:
     provider: google
     property: G-SML7XH761K
+    
+extra_css:
+  - stylesheets/extra.css
 
 theme:
   name: material
+  logo: assets/logo.jpg
+  favicon: assets/favicon.png
+  language: en
   palette:
-  - media: '(prefers-color-scheme: light)'
-    scheme: default
-    primary: green
-    accent: light-green
-    toggle:
-      icon: material/lightbulb-outline
-      name: Switch to light mode
-  - media: '(prefers-color-scheme: dark)'
-    scheme: slate
-    primary: green
-    accent: light-green
-    toggle:
-      icon: material/lightbulb
-      name: Switch to dark mode
+    - media: '(prefers-color-scheme: light)'
+      scheme: docq
+      accent: light-green
+      toggle:
+        icon: material/lightbulb-outline
+        name: Switch to light mode
+    - media: '(prefers-color-scheme: dark)'
+      scheme: slate
+      accent: light-green
+      toggle:
+        icon: material/lightbulb
+        name: Switch to dark mode
   features:
   - search.suggest
   - search.highlight
@@ -62,7 +65,9 @@ theme:
   - navigation.instant
   - navigation.indexes
   - navigation.sections
+
   icon:
+    repo: fontawesome/brands/github-alt
     admonition:
       note: fontawesome/solid/note-sticky
       abstract: fontawesome/solid/book
@@ -77,16 +82,6 @@ theme:
       example: fontawesome/solid/flask
       quote: fontawesome/solid/quote-left
 
-
-
-
-  icon:
-    repo: fontawesome/brands/github-alt
-  logo: assets/logo.jpg
-  favicon: assets/favicon.png
-  language: en
-
-
 nav:
   - 'Home': index.md
   - 'Overview':
@@ -96,10 +91,10 @@ nav:
     - 'Deployment Scenarios': overview/deployment-scenarios.md
   - 'User Guides': 
     - 'Getting Started': user-guide/getting-started.md
-    - 'Deploy to Streamlit': user-guide/depoly-to-streamlit.md
-    - 'Deploy to Azure': user-guide/depoly-to-streamlit.md
-    - 'Deploy to AWS': user-guide/depoly-to-aws.md
-    - 'Deploy to GCP': user-guide/depoly-to-gcp.md
+    - 'Deploy to Streamlit': user-guide/deploy-to-streamlit.md
+    - 'Deploy to Azure': user-guide/deploy-to-streamlit.md
+    - 'Deploy to AWS': user-guide/deploy-to-aws.md
+    - 'Deploy to GCP': user-guide/deploy-to-gcp.md
     - 'Configuration': user-guide/configuration.md
     - 'Usage': user-guide/usage.md
     - 'FAQ': user-guide/faq.md

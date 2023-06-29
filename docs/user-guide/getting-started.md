@@ -17,15 +17,15 @@ To get you started, we show you one example for each scenario below.
 
 ## Deployment Options
 
-- [Deploy to Streamlit: 5 Minutes and flexible](./deploy-to-streamlit.md)
+- [Streamlit: 5 Minutes and flexible](./deploy-to-streamlit.md)
 
-- [Deploy to Azure: 15 Minutes and decure](./deploy-to-azure.md)
+- [Azure: 15 Minutes and decure](./deploy-to-azure.md)
 
-- Deploy to AWS: 15 Mintutes and Secure - on the roadmap
+- AWS: 15 Mintutes and Secure - on the roadmap
 
-- Deploy to GCP: 15 Mintutes and Secure - on the roadmap
+- GCP: 15 Mintutes and Secure - on the roadmap
 
-### After Deployment
+## After Deployment
 
 !!! warning
       Firstly, please change the default password for the _admin_ user as your first task after login.
