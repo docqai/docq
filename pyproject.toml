@@ -39,6 +39,8 @@ mkdocs-material = "^8.5.10"
 mkdocs-gen-files = "^0.4.0"
 mkdocs-awesome-pages-plugin = "^2.8.0"
 mkapi = "^1.0.14"
+pillow = "^9.5.0"
+cairosvg = "^2.7.0"
 
 [tool.poetry.scripts]
 -c = "poethepoet:main"
@@ -125,7 +127,7 @@ pre-commit = "pre-commit run --all-files"
 lint-ruff = "ruff check **/*.py --fix"
 lint-black = "black **/*.py"
 lint = ["lint-black", "lint-ruff"]
-doc = "mkdocs serve --use-directory-urls"
+doc = "mkdocs serve --use-directory-urls --livereload --watch-theme --watch mkdocs.yaml"
 doc-html = "mkdocs build --site-dir ./_site"
 
 [tool.poe.tasks.run]

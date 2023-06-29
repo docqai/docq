@@ -1,0 +1,41 @@
+[data-md-color-scheme="docq"] {
+  --md-primary-fg-color:        #202020;
+  --md-primary-fg-color--light: #373737;
+  --md-primary-fg-color--dark:  #373737;
+  --md-typeset-a-color: #4cae4f
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color:        #202020;
+  --md-primary-fg-color--light: #373737;
+  --md-primary-fg-color--dark:  #373737;
+  --md-typeset-a-color: #71c174
+}
+
+.mkapi-node code.mkapi-item-name, code.mkapi-object-parenthesis, code.mkapi-object-signature, span.mkapi-item-type, span.mkapi-item-dash, mkapi-item-description {
+  
+  background-color: transparent;
+}
+
+.mkapi-node code.mkapi-item-name {
+  color: var(--md-typeset-a-color);
+}
+
+.mkapi-node ul.mkapi-items {
+  margin-left: 4px;
+  
+}
+
+.mkapi-node ul.mkapi-items li{
+  list-style: none;
+  margin-bottom: 8px;
+
+}
+
+.mkapi-node ul.mkapi-items li::before{
+  content: "";
+}
+
+.mkapi-section-name {
+  color: var(--md-default-fg-color);
+}
