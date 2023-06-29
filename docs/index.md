@@ -1,11 +1,17 @@
-Docq is an open-source software (OSS) helping _businesses_ gain **AI-based** _knowledge insight_ **privately** & **securely** using their _private, organisation data_.
+# Introduction
 
-In other words, Docq is **your employees' private and secure ChatGPT / second-brain that knows your business**.
+Docq helps your _**businesses**_ gain _**AI-based knowledge insight**_ from your _**private data, securely!**_
 
-For the developers and other tech-savvy audience, Docq is **WordPress for generative AI** as it offers opportunities for custom development with a plugin system (coming soon).
+Think of Docq as **your employees' private and secure ChatGPT, a second-brain that understands your business**.
 
-In [Overview](./overview/introduction.md), we breakdown Docq from design principles to key features and then different deployment scenarios, to give an overview of what Docq is and how it can help your organisation with knowledge and research insight.
+Docq is Open Source Software (OSS AGPLv3) that is self-hosted "on-premises" within your cloud provider account (Azure/AWS/GCP). That means all systems, including machine learning models and data, lives within your boundary of control.
 
-In [User Guide](./user-guide/getting-started.md), we give step-by-step instructions on how to deploy and use Docq in your organisation.
+For the developers and other tech-savvy audience, Docq is like **WordPress for generative AI**. Out-of-the-box you get a private ChatGPT and a platform that can be customised and built upon using a plugin system and APIs (coming soon).
 
-In [Developer Guide](./developer-guide/getting-started.md), we explain how to get started customising Docq to your own needs.
+## Learn More
+
+[Overview](./overview/introduction.md) - A high-level view of How Docq can help your business, design principles, key features, and different deployment scenarios.
+
+[User Guide](./user-guide/getting-started.md) - This is section is for _end-users_ (employees) and admins of the Docq app. It covers how to deploy and config Docq and how to use the AI chat funcitonality to help with your daily work.
+
+[Developer Guide](./developer-guide/getting-started.md) - This section id for those wanting to understand the Docq code base, make code changes to customise Docq, extend Docq, and use Docq as a platform to build AI powered applications on top.

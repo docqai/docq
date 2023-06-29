@@ -11,3 +11,5 @@ Which includes a set of beautiful Python build toolings such as:
 
 - [Poetry](https://python-poetry.org/) and [Poe](https://poethepoet.natn.io/)
 - [Ruff](https://github.com/astral-sh/ruff)
+
+This docs site is created using [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/).

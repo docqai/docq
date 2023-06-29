@@ -62,6 +62,21 @@ theme:
   - navigation.instant
   - navigation.indexes
   - navigation.sections
+  icon:
+    admonition:
+      note: fontawesome/solid/note-sticky
+      abstract: fontawesome/solid/book
+      info: fontawesome/solid/circle-info
+      tip: fontawesome/solid/bullhorn
+      success: fontawesome/solid/check
+      question: fontawesome/solid/circle-question
+      warning: fontawesome/solid/triangle-exclamation
+      failure: fontawesome/solid/bomb
+      danger: fontawesome/solid/skull
+      bug: fontawesome/solid/robot
+      example: fontawesome/solid/flask
+      quote: fontawesome/solid/quote-left
+
 
 
 
@@ -79,13 +94,16 @@ nav:
     - 'Design Principles': overview/design-principles.md
     - 'Key Features': overview/key-features.md
     - 'Deployment Scenarios': overview/deployment-scenarios.md
-  - 'User Guide': 
+  - 'User Guides': 
     - 'Getting Started': user-guide/getting-started.md
-    - 'Installation': user-guide/installation.md
+    - 'Deploy to Streamlit': user-guide/depoly-to-streamlit.md
+    - 'Deploy to Azure': user-guide/depoly-to-streamlit.md
+    - 'Deploy to AWS': user-guide/depoly-to-aws.md
+    - 'Deploy to GCP': user-guide/depoly-to-gcp.md
     - 'Configuration': user-guide/configuration.md
     - 'Usage': user-guide/usage.md
     - 'FAQ': user-guide/faq.md
-  - 'Developer Guide': 
+  - 'Developer Guides': 
     - 'Getting Started': developer-guide/getting-started.md
     - 'Architecture': developer-guide/architecture.md
     - 'Contributing': developer-guide/contributing.md
