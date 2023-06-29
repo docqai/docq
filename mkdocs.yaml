@@ -28,6 +28,13 @@ markdown_extensions:
   - admonition
   - pymdownx.details
   - pymdownx.superfences
+  - toc:
+      permalink: true
+
+extra:
+  analytics:
+    provider: google
+    property: G-SML7XH761K
 
 theme:
   name: material
@@ -52,6 +59,11 @@ theme:
   - content.tabs.link
   - content.code.annotate
   - content.tooltips
+  - navigation.instant
+  - navigation.indexes
+  - navigation.sections
+
+
 
   icon:
     repo: fontawesome/brands/github-alt
@@ -78,8 +90,8 @@ nav:
     - 'Architecture': developer-guide/architecture.md
     - 'Contributing': developer-guide/contributing.md
     - 'FAQ': developer-guide/faq.md
-  - ... | glob=readme.md
-  - ... | regex=scenarios/.+.md
+  #- ... | glob=readme.md
+  #- ... | regex=scenarios/.+.md
   - API: mkapi/api/docq
   - Tests: mkapi/tests/tests
   - 'Issues GitHub': https://github.com/docqai/docq/issues
