@@ -183,3 +183,7 @@ requirements.txt
 _site/
 # Used for docker env vars file when running it locally
 docker.env
+
+# ignore docs dynamically generated at build time.
+/docs/api
+/docs/tests
