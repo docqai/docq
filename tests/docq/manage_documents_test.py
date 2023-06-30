@@ -54,7 +54,7 @@ def test_get_download_link(filename, space, expected):
     ("source_nodes", "space", "expected"),
     [
         ([], "personal_1234", ""),
-        ([mock_node_with_score], "personal_1234", '> Source(Doc id: None)<br> *File name:* [test.txt]()<br> *Page label:* 0'),
+        ([mock_node_with_score], "personal_1234", '> *File:* [test.txt]()<br> *Page:* 0'),
         (["failing-node"], "personal_1234", "")
     ]
 )

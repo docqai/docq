@@ -78,8 +78,7 @@ def format_document_sources(source_nodes: NodeWithScore, space: SpaceKey) -> str
                 page_label = page_label.group(1).strip()
                 file_name = file_name.group(1).strip()
                 download_url = _get_download_link(file_name, space)
-                id = source_node.doc_id or None
-                _sources.append(f"> Source(Doc id: {id})<br> *File name:* [{file_name}]({download_url})<br> *Page label:* {page_label}")
+                _sources.append(f"> *File:* [{file_name}]({download_url})<br> *Page:* {page_label}")
         except Exception as e:
             log.exception("Error formatting source %s", e)
             continue
