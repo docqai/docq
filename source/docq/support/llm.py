@@ -24,6 +24,7 @@ from llama_index import (
 from llama_index.chat_engine import CondenseQuestionChatEngine, SimpleChatEngine
 from llama_index.indices.composability import ComposableGraph
 
+from ..config import DocumentMetadata
 from ..domain import SpaceKey
 from .store import get_index_dir, get_upload_dir
 
@@ -85,7 +86,15 @@ def _get_service_context() -> ServiceContext:
 
 
 def _create_index(space: SpaceKey) -> GPTVectorStoreIndex:
-    docs = SimpleDirectoryReader(get_upload_dir(space)).load_data()
+    # Keep filename as `doc_id` plus space info
+    def lambda_metadata(x: str) -> dict:
+        return {
+            DocumentMetadata.FILE_PATH.value: x,
+            DocumentMetadata.SPACE_ID.value: space.id_,
+            DocumentMetadata.SPACE_TYPE.value: space.type_.name,
+        }
+
+    docs = SimpleDirectoryReader(get_upload_dir(space), file_metadata=lambda_metadata).load_data()
     # Use default storage and service context to initialise index purely for persisting
     return GPTVectorStoreIndex.from_documents(
         docs, storage_context=_get_default_storage_context(), service_context=_get_service_context()
@@ -147,17 +156,17 @@ def run_ask(input_: str, history: str, space: SpaceKey, spaces: list[SpaceKey] =
     return output
 
 
-def _default_response():
-    """A default reponse incase of any failure"""
+def _default_response() -> Response:
+    """A default response incase of any failure."""
     return Response("I don't know.")
 
 
-def query_error(error: Exception):
-    """Query the AI for a response to an error message"""
-    try: # Try re-prompting with the AI
+def query_error(error: Exception) -> Response:
+    """Query for a response to an error message."""
+    try:  # Try re-prompting with the AI
         log.exception("Error: %s", error)
-        input = ERROR_PROMPT.format(error=error)
-        return SimpleChatEngine.from_defaults(service_context=_get_service_context()).chat(input)
+        input_ = ERROR_PROMPT.format(error=error)
+        return SimpleChatEngine.from_defaults(service_context=_get_service_context()).chat(input_)
     except Exception as error:
         log.exception("Error: %s", error)
         return _default_response()
