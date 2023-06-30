@@ -1,18 +1,19 @@
 """Functions to manage documents."""
 
+import logging as log
 import os
+import re
 import shutil
+from datetime import datetime
+from mimetypes import guess_type
+
+from llama_index.data_structs.node import NodeWithScore
+from llama_index.utils import truncate_text
+from streamlit import runtime
 
 from .domain import SpaceKey
 from .support.llm import reindex
 from .support.store import get_upload_dir, get_upload_file
-from streamlit import runtime
-from mimetypes import guess_type
-from datetime import datetime
-import re
-from llama_index.utils import truncate_text
-import logging as log
-from llama_index.data_structs.node import NodeWithScore
 
 
 def upload(filename: str, content: bytes, space: SpaceKey) -> None:
@@ -45,17 +46,19 @@ def delete_all(space: SpaceKey) -> None:
 
 def list_all(space: SpaceKey) -> list[tuple[str, int, int]]:
     """Return a list of tuples containing the filename, creation time, and size of each file in the space."""
-    return list(map(lambda f: (f.name, f.stat().st_ctime, f.stat().st_size), os.scandir(get_upload_dir(space))))
+    return list(map(lambda f: (f.name, f.stat().st_ctime, f.stat().st_size), os.scandir(get_upload_dir(space)))) # type: ignore
 
 
 def _get_download_link(filename: str, space: SpaceKey) -> str:
     """Return the download link for the file if runtime exists, otherwise return an empty string."""
     if runtime.exists():
         file = get_upload_file(space, filename)
+        mime_type = guess_type(file)[0] or "application/octet-stream"
+        cordinates = str(datetime.now())
         return runtime.get_instance().media_file_mgr.add(
             path_or_data=file,
-            mimetype=guess_type(file)[0],
-            coordinates=datetime.now(),
+            mimetype=mime_type,
+            coordinates=cordinates,
             file_name=filename,
             is_for_static_download=True,
         )
@@ -64,7 +67,7 @@ def _get_download_link(filename: str, space: SpaceKey) -> str:
         return ""
 
 
-def format_document_sources(source_nodes: NodeWithScore, space: SpaceKey) -> str:
+def format_document_sources(source_nodes: list[NodeWithScore], space: SpaceKey) -> str:
     """Return the formatted sources with a clickable download link."""
     delimitter = "\n\n"
     _sources = []
@@ -82,5 +85,5 @@ def format_document_sources(source_nodes: NodeWithScore, space: SpaceKey) -> str
         except Exception as e:
             log.exception("Error formatting source %s", e)
             continue
-    
+
     return delimitter.join(_sources)
