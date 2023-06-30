@@ -1,5 +1,6 @@
 """Functions to manage spaces."""
 
+import json
 import logging as log
 import sqlite3
 from contextlib import closing
@@ -16,6 +17,8 @@ CREATE TABLE IF NOT EXISTS space (
     name TEXT UNIQUE,
     summary TEXT,
     archived BOOL DEFAULT 0,
+    datasource_type TEXT,
+    datasource_configs TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
@@ -28,11 +31,21 @@ def get_shared_space(id_: int) -> tuple[int, str, str, bool, datetime, datetime]
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_SPACES_TABLE)
-        cursor.execute("SELECT id, name, summary, archived, created_at, updated_at FROM space WHERE id = ?", (id_,))
+        cursor.execute(
+            "SELECT id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM space WHERE id = ?",
+            (id_,),
+        )
         return cursor.fetchone()
 
 
-def update_shared_space(id_: int, name: str = None, summary: str = None, archived: bool = False) -> bool:
+def update_shared_space(
+    id_: int,
+    name: str = None,
+    summary: str = None,
+    archived: bool = False,
+    datasource_type: str = None,
+    datasource_configs: dict = None,
+) -> bool:
     """Update a shared space."""
     query = "UPDATE space SET updated_at = ?"
     params = (datetime.now(),)
@@ -43,6 +56,12 @@ def update_shared_space(id_: int, name: str = None, summary: str = None, archive
     if summary:
         query += ", summary = ?"
         params += (summary,)
+    if datasource_type:
+        query += ", datasource_type = ?"
+        params += (datasource_type,)
+    if datasource_configs:
+        query += ", datasource_configs = ?"
+        params += (json.dumps(datasource_configs),)
 
     query += ", archived = ?"
     params += (archived,)
@@ -61,11 +80,13 @@ def update_shared_space(id_: int, name: str = None, summary: str = None, archive
         return True
 
 
-def create_shared_space(name: str, summary: str) -> int:
+def create_shared_space(name: str, summary: str, datasource_type: str, datasource_configs: dict) -> int:
     """Create a shared space."""
     params = (
         name,
         summary,
+        datasource_type,
+        json.dumps(datasource_configs),
     )
     log.debug("Creating space with params: %s", params)
     rowid = None
@@ -73,7 +94,9 @@ def create_shared_space(name: str, summary: str) -> int:
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_SPACES_TABLE)
-        cursor.execute("INSERT INTO space (name, summary) VALUES (?, ?)", params)
+        cursor.execute(
+            "INSERT INTO space (name, summary, datasource_type, datasource_configs) VALUES (?, ?, ?, ?)", params
+        )
         rowid = cursor.lastrowid
         connection.commit()
         log.debug("Created space with rowid: %d", rowid)
@@ -91,6 +114,6 @@ def list_shared_spaces() -> list[tuple[int, str, str, bool, datetime, datetime]]
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_SPACES_TABLE)
         rows = cursor.execute(
-            "SELECT id, name, summary, archived, created_at, updated_at FROM space ORDER BY name"
+            "SELECT id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM space ORDER BY name"
         ).fetchall()
     return rows

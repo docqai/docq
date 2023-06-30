@@ -40,12 +40,3 @@ class SpaceKey:
 
     def value(self) -> str:
         return _join_properties(_SEPARATOR_FOR_VALUE, self.type_.value, self.id_)
-
-
-@dataclass
-class ModelUsageSettings:
-    """Model usage settings."""
-
-    model_vendor: str
-    model_name: str
-    temperature: float = 0.0
