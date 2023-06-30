@@ -71,6 +71,7 @@ def format_document_sources(source_nodes: list[NodeWithScore], space: SpaceKey) 
     """Return the formatted sources with a clickable download link."""
     delimitter = "\n\n"
     _sources = []
+    source_groups:dict[str, list[str]] = {}
 
     for source_node in source_nodes:
         try:
@@ -80,10 +81,15 @@ def format_document_sources(source_nodes: list[NodeWithScore], space: SpaceKey) 
             if page_label and file_name:
                 page_label = page_label.group(1).strip()
                 file_name = file_name.group(1).strip()
-                download_url = _get_download_link(file_name, space)
-                _sources.append(f"> *File:* [{file_name}]({download_url})<br> *Page:* {page_label}")
+                if source_groups.get(file_name):
+                    source_groups[file_name].append(page_label)
+                else:
+                    source_groups[file_name] = [page_label]
         except Exception as e:
             log.exception("Error formatting source %s", e)
             continue
 
+    for file_name, page_labels in source_groups.items():
+        download_url = _get_download_link(file_name, space)
+        _sources.append(f"> *File:* [{file_name}]({download_url})<br> *Pages:* {', '.join(page_labels)}")
     return delimitter.join(_sources)
