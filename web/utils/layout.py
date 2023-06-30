@@ -177,7 +177,7 @@ def chat_ui(feature: FeatureKey) -> None:
             if format_datetime(time) != day:
                 day = format_datetime(time)
                 st.markdown(f"#### {day}")
-            message(text, is_user, key=f"{key}_{feature.value()}")
+            message(text, is_user, key=f"{key}_{feature.value()}", allow_html=True)
 
     st.divider()
     st.text_input(

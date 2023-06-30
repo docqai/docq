@@ -9,6 +9,7 @@ from .config import FeatureType
 from .domain import FeatureKey, SpaceKey
 from .support.llm import run_ask, run_chat, query_error
 from .support.store import get_history_table_name, get_sqlite_usage_file
+from .manage_documents import format_document_sources
 
 SQL_CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS {table} (
@@ -96,7 +97,7 @@ def query(input_: str, feature: FeatureKey, space: SpaceKey, spaces: list[SpaceK
             MESSAGE_TEMPLATE.format(message=response.response)
             if is_chat
             else MESSAGE_WITH_SOURCES_TEMPLATE.format(
-                message=response.response, source=response.get_formatted_sources()
+                message=response.response, source=format_document_sources(response.source_nodes, space)
             ),
             False,
             datetime.now(),
