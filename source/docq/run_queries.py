@@ -7,9 +7,9 @@ from datetime import datetime
 
 from .config import FeatureType
 from .domain import FeatureKey, SpaceKey
-from .support.llm import run_ask, run_chat, query_error
-from .support.store import get_history_table_name, get_sqlite_usage_file
 from .manage_documents import format_document_sources
+from .support.llm import query_error, run_ask, run_chat
+from .support.store import get_history_table_name, get_sqlite_usage_file
 
 SQL_CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS {table} (
@@ -90,7 +90,8 @@ def query(input_: str, feature: FeatureKey, space: SpaceKey, spaces: list[SpaceK
         response = run_chat(input_, history) if is_chat else run_ask(input_, history, space, spaces)
         log.debug("Response: %s", response)
 
-    except Exception as e: response = query_error(e)
+    except Exception as e:
+        response = query_error(e)
 
     data.append(
         (
