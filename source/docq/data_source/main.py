@@ -5,9 +5,7 @@ from typing import List
 
 from llama_index import Document
 
-from ..domain import SpaceKey
-from .azure_blob_storage import AzureBlobStorage
-from .manual_upload import ManualUpload
+from ..domain import ConfigKey, SpaceKey
 
 
 class SpaceDataSource(ABC):
@@ -22,12 +20,11 @@ class SpaceDataSource(ABC):
         return self.name
 
     @abstractmethod
+    def get_config_keys(self) -> List[ConfigKey]:
+        """Get the list of config keys."""
+        pass
+
+    @abstractmethod
     def load(self, space: SpaceKey, configs: dict) -> List[Document]:
         """Load the documents from the data source."""
         pass
-
-
-SPACE_DATA_SOURCES = {
-    "MANUAL_UPLOAD": ManualUpload(),
-    "AZURE_BLOB_STORAGE": AzureBlobStorage(),
-}

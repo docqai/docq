@@ -40,3 +40,14 @@ class SpaceKey:
 
     def value(self) -> str:
         return _join_properties(_SEPARATOR_FOR_VALUE, self.type_.value, self.id_)
+
+
+@dataclass
+class ConfigKey:
+    """Config key."""
+
+    key: str
+    name: str
+    is_optional: bool = False
+    is_secret: bool = False
+    ref_link: str = None

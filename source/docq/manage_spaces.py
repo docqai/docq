@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS space (
 """
 
 
-def get_shared_space(id_: int) -> tuple[int, str, str, bool, datetime, datetime]:
+def get_shared_space(id_: int) -> tuple[int, str, str, bool, str, dict, datetime, datetime]:
     """Get a shared space."""
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
@@ -35,7 +35,8 @@ def get_shared_space(id_: int) -> tuple[int, str, str, bool, datetime, datetime]
             "SELECT id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM space WHERE id = ?",
             (id_,),
         )
-        return cursor.fetchone()
+        row = cursor.fetchone()
+        return (row[0], row[1], row[2], bool(row[3]), row[4], json.loads(row[5]), row[6], row[7])
 
 
 def update_shared_space(
@@ -106,7 +107,7 @@ def create_shared_space(name: str, summary: str, datasource_type: str, datasourc
     return rowid
 
 
-def list_shared_spaces() -> list[tuple[int, str, str, bool, datetime, datetime]]:
+def list_shared_spaces() -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
     """List all shared spaces."""
     rows = []
     with closing(
@@ -116,4 +117,4 @@ def list_shared_spaces() -> list[tuple[int, str, str, bool, datetime, datetime]]
         rows = cursor.execute(
             "SELECT id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM space ORDER BY name"
         ).fetchall()
-    return rows
+    return [(row[0], row[1], row[2], bool(row[3]), row[4], json.loads(row[5]), row[6], row[7]) for row in rows]

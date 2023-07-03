@@ -3,6 +3,7 @@
 import logging as log
 import math
 from datetime import datetime
+from typing import List
 
 import streamlit as st
 from docq import config, domain, run_queries
@@ -10,6 +11,7 @@ from docq import manage_documents as mdocuments
 from docq import manage_settings as msettings
 from docq import manage_spaces as mspaces
 from docq import manage_users as musers
+from docq.data_source.list import SPACE_DATA_SOURCES
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -118,7 +120,7 @@ def delete_all_documents(space: domain.SpaceKey) -> None:
 
 def handle_upload_file(space: domain.SpaceKey) -> None:
     files = st.session_state[f"uploaded_file_{space.value()}"]
-    
+
     disp = st.empty()
     if not files:
         disp.warning("No file(s) selected, please select a file to upload")
@@ -133,7 +135,7 @@ def handle_upload_file(space: domain.SpaceKey) -> None:
             mdocuments.upload(file.name, file.getvalue(), space)
         except Exception as e:
             log.exception("Error uploading file %s", e)
-            break    
+            break
     # if all files are uploaded successfully
     else:
         disp.success(f"{len(files)} file(s) uploaded successfully")
@@ -158,19 +160,37 @@ def handle_archive_space(id_: int):
     mspaces.archive_space(id_)
 
 
+def _prepare_space_data_source(prefix: str) -> (str, dict):
+    ds_type = st.session_state[f"{prefix}ds_type"]
+    ds_config_keys = list_space_data_source_choices()[ds_type]
+    ds_configs = {key.key: st.session_state[f"{prefix}ds_config_{key.key}"] for key in ds_config_keys}
+    return ds_type, ds_configs
+
+
 def handle_update_space(id_: int) -> bool:
+    ds_type, ds_configs = _prepare_space_data_source(f"update_space_{id_}_")
     result = mspaces.update_shared_space(
         id_,
         st.session_state[f"update_space_{id_}_name"],
         st.session_state[f"update_space_{id_}_summary"],
         st.session_state[f"update_space_{id_}_archived"],
+        ds_type,
+        ds_configs,
     )
     log.info("Update space result: %s", result)
     return result
 
 
 def handle_create_space() -> int:
-    return mspaces.create_shared_space(st.session_state["create_space_name"], st.session_state["create_space_summary"])
+    ds_type, ds_configs = _prepare_space_data_source("create_space_")
+
+    return mspaces.create_shared_space(
+        st.session_state["create_space_name"], st.session_state["create_space_summary"], ds_type, ds_configs
+    )
+
+
+def list_space_data_source_choices() -> dict[str, List[domain.ConfigKey]]:
+    return {key: value.get_config_keys() for key, value in SPACE_DATA_SOURCES.items()}
 
 
 def get_system_settings() -> dict:
