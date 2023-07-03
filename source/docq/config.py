@@ -7,12 +7,6 @@ ENV_VAR_DOCQ_DEMO = "DOCQ_DEMO"
 ENV_VAR_OPENAI_API_KEY = "OPENAI_API_KEY"
 
 
-LLM_MODELS = {
-    "OPENAI_CHAT": (["gpt-3.5-turbo", "gpt-4"], range(0, 2)),
-    "OPENAI": (["text-davinci-003", "text-davinci-002", "code-davinci-002"], range(0, 2)),
-}
-
-
 class DocumentMetadata(Enum):
     """Document metadata."""
 

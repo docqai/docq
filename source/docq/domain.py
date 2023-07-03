@@ -43,9 +43,11 @@ class SpaceKey:
 
 
 @dataclass
-class ModelUsageSettings:
-    """Model usage settings."""
+class ConfigKey:
+    """Config key."""
 
-    model_vendor: str
-    model_name: str
-    temperature: float = 0.0
+    key: str
+    name: str
+    is_optional: bool = False
+    is_secret: bool = False
+    ref_link: str = None

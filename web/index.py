@@ -18,6 +18,7 @@ show_pages(
         Page("web/personal_docs.py", "Manage_Your_Documents"),
         Section("Shared_Spaces", icon="💼"),
         Page("web/shared_ask.py", "Ask_Shared_Documents"),
+        Page("web/shared_spaces.py", "List_Shared_Spaces"),
         Section("Admin", icon="💂"),
         Page("web/admin_overview.py", "Admin_Overview"),
         Page("web/admin_users.py", "Admin_Users"),
