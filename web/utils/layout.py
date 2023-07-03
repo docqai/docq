@@ -6,8 +6,6 @@ import streamlit as st
 from docq.config import FeatureType, LogType
 from docq.domain import FeatureKey, SpaceKey
 from st_pages import hide_pages
-from streamlit_chat import message
-
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .formatters import format_datetime, format_filesize
@@ -157,7 +155,16 @@ def list_users_ui(username_match: str = None) -> None:
                         st.form_submit_button("Save", on_click=handle_update_user, args=(id_,))
 
 
+def _chat_message(message_: str, is_user: bool) -> None:
+    if is_user:
+        with st.chat_message("user"):
+            st.write(message_)
+    else:
+        with st.chat_message("assistant"):
+            st.markdown(message_, unsafe_allow_html=True)
+
 def chat_ui(feature: FeatureKey) -> None:
+    """Chat UI layout."""
     prepare_for_chat(feature)
     with st.container():
         if feature.type_ == FeatureType.ASK_SHARED:
@@ -173,18 +180,17 @@ def chat_ui(feature: FeatureKey) -> None:
             query_chat_history(feature)
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
         st.markdown(f"#### {day}")
-        for key, text, is_user, time in get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY):
+        for _, text, is_user, time in get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY):
             if format_datetime(time) != day:
                 day = format_datetime(time)
                 st.markdown(f"#### {day}")
-            message(text, is_user, key=f"{key}_{feature.value()}")
+            _chat_message(text, is_user)
 
-    st.divider()
-    st.text_input(
+    # st.divider()
+    st.chat_input(
         "Type your question here",
-        value="",
         key=f"chat_input_{feature.value()}",
-        on_change=handle_chat_input,
+        on_submit=handle_chat_input,
         args=(feature,),
     )
 

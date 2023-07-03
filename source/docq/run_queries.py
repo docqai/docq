@@ -7,7 +7,8 @@ from datetime import datetime
 
 from .config import FeatureType
 from .domain import FeatureKey, SpaceKey
-from .support.llm import run_ask, run_chat, query_error
+from .manage_documents import format_document_sources
+from .support.llm import query_error, run_ask, run_chat
 from .support.store import get_history_table_name, get_sqlite_usage_file
 
 SQL_CREATE_TABLE = """
@@ -89,14 +90,15 @@ def query(input_: str, feature: FeatureKey, space: SpaceKey, spaces: list[SpaceK
         response = run_chat(input_, history) if is_chat else run_ask(input_, history, space, spaces)
         log.debug("Response: %s", response)
 
-    except Exception as e: response = query_error(e)
+    except Exception as e:
+        response = query_error(e)
 
     data.append(
         (
             MESSAGE_TEMPLATE.format(message=response.response)
             if is_chat
             else MESSAGE_WITH_SOURCES_TEMPLATE.format(
-                message=response.response, source=response.get_formatted_sources()
+                message=response.response, source=format_document_sources(response.source_nodes, space)
             ),
             False,
             datetime.now(),
