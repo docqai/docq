@@ -55,6 +55,7 @@ def __no_staff_menu() -> None:
             "Manage_Your_Document",
             "Shared_Spaces",
             "Ask_Shared_Documents",
+            "List_Shared_Spaces",
         ]
     )
 
