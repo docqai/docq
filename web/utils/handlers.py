@@ -101,7 +101,7 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
 
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 
-    st.session_state[f"chat_input_{feature.value()}"] = ""
+    # st.session_state[f"chat_input_{feature.value()}"] = ""
 
 
 def list_documents(space: domain.SpaceKey) -> list[tuple[str, int, int]]:

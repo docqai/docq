@@ -8,7 +8,6 @@ from docq.domain import FeatureKey, SpaceKey
 from st_pages import hide_pages
 from streamlit_chat import message
 
-
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .formatters import format_datetime, format_filesize
 from .handlers import (
@@ -157,7 +156,15 @@ def list_users_ui(username_match: str = None) -> None:
                         st.form_submit_button("Save", on_click=handle_update_user, args=(id_,))
 
 
+def _chat_message(message_: str, is_user: bool, key: str) -> None:
+    if is_user:
+        message(message_, key=key, is_user=True)
+    else:
+        with st.chat_message("assistant"):
+            st.markdown(message_, unsafe_allow_html=True)
+
 def chat_ui(feature: FeatureKey) -> None:
+    """Chat UI layout."""
     prepare_for_chat(feature)
     with st.container():
         if feature.type_ == FeatureType.ASK_SHARED:
@@ -177,14 +184,13 @@ def chat_ui(feature: FeatureKey) -> None:
             if format_datetime(time) != day:
                 day = format_datetime(time)
                 st.markdown(f"#### {day}")
-            message(text, is_user, key=f"{key}_{feature.value()}", allow_html=True)
+            _chat_message(text, is_user, key=f"{key}_{feature.value()}")
 
-    st.divider()
-    st.text_input(
+    # st.divider()
+    st.chat_input(
         "Type your question here",
-        value="",
         key=f"chat_input_{feature.value()}",
-        on_change=handle_chat_input,
+        on_submit=handle_chat_input,
         args=(feature,),
     )
 
