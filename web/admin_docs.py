@@ -5,7 +5,7 @@ from docq.config import SpaceType
 from docq.domain import SpaceKey
 from st_pages import add_page_title
 from utils.handlers import list_shared_spaces
-from utils.layout import auth_required, documents_ui, show_space_details_ui
+from utils.layout import auth_required, documents_ui_shared, show_space_details_ui
 
 auth_required(requiring_admin=True)
 
@@ -19,11 +19,9 @@ if PARAM_NAME in st.experimental_get_query_params():
     tab_spaces, tab_docs = st.tabs(["Space Details", "Manage Documents"])
 
     with tab_docs:
-        st.subheader("Documents")
-        documents_ui(space)
+        documents_ui_shared(space)
 
     with tab_spaces:
-        st.subheader("Space")
         show_space_details_ui(space)
 
 

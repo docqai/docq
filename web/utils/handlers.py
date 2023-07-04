@@ -148,7 +148,7 @@ def handle_change_temperature(type_: config.SpaceType):
     msettings.change_settings(type_.value, temperature=st.session_state[f"temperature_{type_}"])
 
 
-def get_shared_space(id_: int) -> tuple[int, str, str, bool, datetime, datetime]:
+def get_shared_space(id_: int) -> tuple[int, str, str, bool, str, dict, datetime, datetime]:
     return mspaces.get_shared_space(id_)
 
 
@@ -184,9 +184,12 @@ def handle_update_space(id_: int) -> bool:
 def handle_create_space() -> int:
     ds_type, ds_configs = _prepare_space_data_source("create_space_")
 
-    return mspaces.create_shared_space(
+    space_id = mspaces.create_shared_space(
         st.session_state["create_space_name"], st.session_state["create_space_summary"], ds_type, ds_configs
     )
+
+    mdocuments.reindex(domain.SpaceKey(config.SpaceType.SHARED, space_id))
+    return space_id
 
 
 def list_space_data_source_choices() -> dict[str, List[domain.ConfigKey]]:

@@ -1,6 +1,7 @@
 """Functions for utilising LLMs."""
 
 import logging as log
+from typing import List
 
 from langchain.chat_models import ChatOpenAI
 
@@ -12,21 +13,20 @@ from langchain.chat_models import ChatOpenAI
 # )
 from langchain.schema import BaseMessage
 from llama_index import (
+    Document,
     GPTListIndex,
     GPTVectorStoreIndex,
     LLMPredictor,
     Response,
     ServiceContext,
-    SimpleDirectoryReader,
     StorageContext,
     load_index_from_storage,
 )
-from llama_index.chat_engine import CondenseQuestionChatEngine, SimpleChatEngine
+from llama_index.chat_engine import SimpleChatEngine
 from llama_index.indices.composability import ComposableGraph
 
-from ..config import DocumentMetadata
 from ..domain import SpaceKey
-from .store import get_index_dir, get_upload_dir
+from .store import get_index_dir
 
 # PROMPT_CHAT_SYSTEM = """
 # You are an AI assistant helping a human to find information.
@@ -85,34 +85,21 @@ def _get_service_context() -> ServiceContext:
     return ServiceContext.from_defaults(llm_predictor=_get_llm_predictor())
 
 
-def _create_index(space: SpaceKey) -> GPTVectorStoreIndex:
-    # Keep filename as `doc_id` plus space info
-    def lambda_metadata(x: str) -> dict:
-        return {
-            DocumentMetadata.FILE_PATH.value: x,
-            DocumentMetadata.SPACE_ID.value: space.id_,
-            DocumentMetadata.SPACE_TYPE.value: space.type_.name,
-        }
-
-    docs = SimpleDirectoryReader(get_upload_dir(space), file_metadata=lambda_metadata).load_data()
+def create_index(documents: List[Document]) -> GPTVectorStoreIndex:
     # Use default storage and service context to initialise index purely for persisting
     return GPTVectorStoreIndex.from_documents(
-        docs, storage_context=_get_default_storage_context(), service_context=_get_service_context()
+        documents, storage_context=_get_default_storage_context(), service_context=_get_service_context()
     )
-
 
 def _load_index_from_storage(space: SpaceKey) -> GPTVectorStoreIndex:
     return load_index_from_storage(storage_context=_get_storage_context(space))
 
 
-def _persist_index(index: GPTVectorStoreIndex, space: SpaceKey) -> None:
+def persist_index(index: GPTVectorStoreIndex, space: SpaceKey) -> None:
     index.storage_context.persist(persist_dir=get_index_dir(space))
 
 
-def reindex(space: SpaceKey) -> None:
-    """Reindex documents in a space."""
-    index = _create_index(space)
-    _persist_index(index, space)
+
 
 
 def run_chat(input_: str, history: str) -> BaseMessage:

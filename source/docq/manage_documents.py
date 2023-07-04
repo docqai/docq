@@ -6,15 +6,26 @@ import re
 import shutil
 from datetime import datetime
 from mimetypes import guess_type
+from docq.config import SpaceType
 
 from llama_index.data_structs.node import NodeWithScore
 from llama_index.utils import truncate_text
 from streamlit import runtime
 
+from docq.support.llm import create_index, persist_index
+
+from .data_source.list import SPACE_DATA_SOURCES
 from .domain import SpaceKey
-from .support.llm import reindex
+from .manage_spaces import get_shared_space
 from .support.store import get_upload_dir, get_upload_file
 
+
+def reindex(space: SpaceKey) -> None:
+    """Reindex documents in a space."""
+    (id_, name, summary, archived, ds_type, ds_configs, created_at, updated_at) = get_shared_space(space.id_)
+    documents = SPACE_DATA_SOURCES[ds_type].load(space, ds_configs)
+    index = create_index(documents)
+    persist_index(index, space)
 
 def upload(filename: str, content: bytes, space: SpaceKey) -> None:
     """Upload the file to the space."""
@@ -46,8 +57,15 @@ def delete_all(space: SpaceKey) -> None:
 
 def list_all(space: SpaceKey) -> list[tuple[str, int, int]]:
     """Return a list of tuples containing the filename, creation time, and size of each file in the space."""
-    return list(map(lambda f: (f.name, f.stat().st_ctime, f.stat().st_size), os.scandir(get_upload_dir(space)))) # type: ignore
+    if space.type_ == SpaceType.PERSONAL:
+        ds_type = "MANUAL_UPLOAD"
+        ds_configs = {}
+    else:
+        (id_, name, summary, archived, ds_type, ds_configs, created_at, updated_at) = get_shared_space(space.id_)
 
+    documents_list = SPACE_DATA_SOURCES[ds_type].get_document_list(space, ds_configs)
+
+    return documents_list
 
 def _get_download_link(filename: str, space: SpaceKey) -> str:
     """Return the download link for the file if runtime exists, otherwise return an empty string."""

@@ -1,11 +1,13 @@
 """Layout components for the web app."""
 
-from datetime import datetime
+
+import logging as log
 from typing import List
 
 import streamlit as st
 from docq.config import FeatureType, LogType
 from docq.domain import ConfigKey, FeatureKey, SpaceKey
+from docq.manage_documents import reindex
 from st_pages import hide_pages
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
@@ -200,9 +202,15 @@ def chat_ui(feature: FeatureKey) -> None:
     )
 
 
-def documents_ui(space: SpaceKey) -> None:
+def documents_ui_personal(space: SpaceKey) -> None:
+    """Displays the UI for managing documents in a personal space."""
     documents = list_documents(space)
+
     max_size = get_max_number_of_documents(space.type_)
+
+    st.button("Reindex", key=f"reindex_{space.value()}", on_click=lambda: reindex(space))
+
+    st.markdown(f"**Document Count**: {len(documents)}")
 
     if len(documents) < max_size:
         with st.form("Upload", clear_on_submit=True):
@@ -220,7 +228,8 @@ def documents_ui(space: SpaceKey) -> None:
         st.divider()
         for i, (filename, time, size) in enumerate(documents):
             with st.expander(filename):
-                st.markdown(f"Size: {format_filesize(size)} | Time: {format_datetime(datetime.fromtimestamp(time))}")
+                st.markdown(f"Size: {format_filesize(size)} | Last Modified: {format_datetime(time)}")
+
                 st.button(
                     "Delete",
                     key=f"delete_file_{i}_{space.value()}",
@@ -230,12 +239,59 @@ def documents_ui(space: SpaceKey) -> None:
                         space,
                     ),
                 )
+
         st.button(
             "Delete all documents",
             key=f"delete_all_files_{space.value()}",
             on_click=delete_all_documents,
             args=(space,),
         )
+
+def documents_ui_shared(space: SpaceKey) -> None:
+    """Displays the UI for managing documents in a shared space."""
+    documents = list_documents(space)
+    (id_, name, summary, archived, ds_type, ds_configs, created_at, updated_at) = get_shared_space(space.id_)
+    max_size = get_max_number_of_documents(space.type_)
+    show_manualupload_ui_elements = ds_type == "MANUAL_UPLOAD"
+
+    st.button("Reindex", key=f"reindex_{space.value()}", on_click=lambda: reindex(space))
+
+    st.markdown(f"**Document Count**: {len(documents)}")
+    if show_manualupload_ui_elements:
+        if len(documents) < max_size:
+            with st.form("Upload", clear_on_submit=True):
+                st.file_uploader(
+                    "Upload your documents here",
+                    type=ALLOWED_DOC_EXTS,
+                    key=f"uploaded_file_{space.value()}",
+                    accept_multiple_files=True,
+                )
+                st.form_submit_button(label="Upload", on_click=handle_upload_file, args=(space,))
+        else:
+            st.warning(f"You cannot upload more than {max_size} documents.")
+
+    if documents:
+        st.divider()
+        for i, (filename, time, size) in enumerate(documents):
+            with st.expander(filename):
+                st.markdown(f"Size: {format_filesize(size)} | Last Modified: {format_datetime(time)}")
+                if show_manualupload_ui_elements:
+                    st.button(
+                        "Delete",
+                        key=f"delete_file_{i}_{space.value()}",
+                        on_click=delete_document,
+                        args=(
+                            filename,
+                            space,
+                        ),
+                    )
+        if show_manualupload_ui_elements:
+            st.button(
+                "Delete all documents",
+                key=f"delete_all_files_{space.value()}",
+                on_click=delete_all_documents,
+                args=(space,),
+            )
 
 
 def chat_settings_ui(feature: FeatureKey) -> None:
@@ -256,9 +312,10 @@ def system_settings_ui() -> None:
 
 def _show_space_data_source_config(data_sources: dict[str, List[ConfigKey]], prefix: str, configs: dict = None) -> None:
     config_keys = data_sources[st.session_state[prefix + "ds_type"]]
-    for key in config_keys:
-        st.text_input(key.name, value=configs.get(key.key) if configs else "", key=prefix + "ds_config_" + key.key)
 
+    for key in config_keys:
+        input_type = "password" if key.is_secret else "default"
+        st.text_input(key.name, value=configs.get(key.key) if configs else "", key=prefix + "ds_config_" + key.key, type=input_type)
 
 def create_space_ui() -> None:
     data_sources = list_space_data_source_choices()
@@ -284,7 +341,7 @@ def list_spaces_ui(admin_access: bool = False) -> None:
                 continue
             with st.expander(f"{'~~' if archived else ''}{name}{'~~' if archived else ''}"):
                 st.write(f"_{summary}_")
-                st.write(f"Type: **{ds_type}** | Configs: {ds_configs}")
+                st.write(f"Type: **{ds_type}**")
                 st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
                 if admin_access:
                     st.markdown(f"ID: **{id_}** | [Manage Documents](./Admin_Docs?sid={id_})")
@@ -303,7 +360,7 @@ def show_space_details_ui(space: SpaceKey) -> None:
     st.write(f"{'~~' if archived else ''}{name}{'~~' if archived else ''}")
     st.write(f"ID: **{id_}**")
     st.write(f"Summary: _{summary}_")
-    st.write(f"Type: **{ds_type}** | Config: {ds_configs}")
+    st.write(f"Type: **{ds_type}**")
     st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
 
 

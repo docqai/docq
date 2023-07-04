@@ -8,10 +8,10 @@ from typing import Optional
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
+from docq.manage_documents import reindex
 
 from .config import SpaceType
 from .domain import SpaceKey
-from .support.llm import reindex
 from .support.store import get_sqlite_system_file
 
 SQL_CREATE_USERS_TABLE = """

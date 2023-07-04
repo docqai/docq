@@ -5,7 +5,7 @@ from datetime import datetime
 
 def format_datetime(dt: datetime) -> str:
     """Format datetime to human-friendly value."""
-    return dt.strftime("%Y-%m-%d")
+    return dt.strftime("%d %b %Y %H:%M")
 
 
 def format_filesize(size: int) -> str:

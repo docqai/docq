@@ -6,9 +6,6 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime
 
-from .config import SpaceType
-from .domain import SpaceKey
-from .support.llm import reindex
 from .support.store import get_sqlite_system_file
 
 SQL_CREATE_SPACES_TABLE = """
@@ -27,6 +24,7 @@ CREATE TABLE IF NOT EXISTS space (
 
 def get_shared_space(id_: int) -> tuple[int, str, str, bool, str, dict, datetime, datetime]:
     """Get a shared space."""
+    log.debug("get_shared_space(): Getting space with id=%d", id_)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
@@ -102,10 +100,7 @@ def create_shared_space(name: str, summary: str, datasource_type: str, datasourc
         connection.commit()
         log.debug("Created space with rowid: %d", rowid)
 
-    reindex(SpaceKey(SpaceType.SHARED, rowid))
-
     return rowid
-
 
 def list_shared_spaces() -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
     """List all shared spaces."""
@@ -118,3 +113,4 @@ def list_shared_spaces() -> list[tuple[int, str, str, bool, str, dict, datetime,
             "SELECT id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM space ORDER BY name"
         ).fetchall()
     return [(row[0], row[1], row[2], bool(row[3]), row[4], json.loads(row[5]), row[6], row[7]) for row in rows]
+
