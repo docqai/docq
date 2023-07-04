@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Optional
 
 from argon2 import PasswordHasher
+from argon2.exceptions import VerificationError
 
 from .config import SpaceType
 from .domain import SpaceKey
@@ -84,9 +85,14 @@ def authenticate(username: str, password: str) -> tuple[id, str, bool]:
         if selected:
             log.debug("User found: %s", selected)
             (id_, saved_password, fullname, is_admin) = selected
-            result = (id_, fullname, is_admin) if PH.verify(saved_password, password) else None
+            try:
+                result = (id_, fullname, is_admin) if PH.verify(saved_password, password) else None
+            except VerificationError as e:
+                log.warning("Failing to authenticate user: %s for [%s]", username, e)
+                return None
+
             if PH.check_needs_rehash(saved_password):
-                log.info("Rehashing password...")
+                log.info("Rehashing password for user: %s", username)
                 cursor.execute(
                     "UPDATE users SET password = ?, updated_at = ? WHERE id = ?",
                     (PH.hash(password), datetime.now(), id_),

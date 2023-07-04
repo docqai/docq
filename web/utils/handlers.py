@@ -3,7 +3,7 @@
 import logging as log
 import math
 from datetime import datetime
-from typing import List
+from typing import List, Tuple
 
 import streamlit as st
 from docq import config, domain, run_queries
@@ -160,7 +160,7 @@ def handle_archive_space(id_: int):
     mspaces.archive_space(id_)
 
 
-def _prepare_space_data_source(prefix: str) -> (str, dict):
+def _prepare_space_data_source(prefix: str) -> Tuple[str, dict]:
     ds_type = st.session_state[f"{prefix}ds_type"]
     ds_config_keys = list_space_data_source_choices()[ds_type]
     ds_configs = {key.key: st.session_state[f"{prefix}ds_config_{key.key}"] for key in ds_config_keys}

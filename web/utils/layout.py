@@ -119,7 +119,8 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
 
 def feature_enabled(feature: FeatureKey) -> bool:
     feats = get_enabled_features()
-    if not feats or feature.value not in feats:
+    # Note that we are checking `feats` first and then using `not in` here because we want to allow the features to be enabled by default.
+    if feats and feature.value not in feats:
         st.error("This feature is not enabled.")
         st.info("Please contact your administrator to enable this feature.")
         st.stop()
