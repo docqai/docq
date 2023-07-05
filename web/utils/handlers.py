@@ -7,6 +7,7 @@ from typing import List, Tuple
 
 import streamlit as st
 from docq import config, domain, run_queries
+from docq.domain import SpaceKey
 from docq import manage_documents as mdocuments
 from docq import manage_settings as msettings
 from docq import manage_spaces as mspaces
@@ -106,15 +107,15 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
     # st.session_state[f"chat_input_{feature.value()}"] = ""
 
 
-def list_documents(space: domain.SpaceKey) -> list[tuple[str, int, int]]:
+def handle_list_documents(space: domain.SpaceKey) -> list[tuple[str, int, int]]:
     return mdocuments.list_all(space)
 
 
-def delete_document(filename: str, space: domain.SpaceKey) -> None:
+def handle_delete_document(filename: str, space: domain.SpaceKey) -> None:
     mdocuments.delete(filename, space)
 
 
-def delete_all_documents(space: domain.SpaceKey) -> None:
+def handle_delete_all_documents(space: domain.SpaceKey) -> None:
     mdocuments.delete_all(space)
 
 
@@ -181,16 +182,18 @@ def handle_update_space(id_: int) -> bool:
     return result
 
 
-def handle_create_space() -> int:
+def handle_create_space() -> SpaceKey:
     ds_type, ds_configs = _prepare_space_data_source("create_space_")
 
-    space_id = mspaces.create_shared_space(
+    space = mspaces.create_shared_space(
         st.session_state["create_space_name"], st.session_state["create_space_summary"], ds_type, ds_configs
     )
+    mdocuments.reindex(space)
+    return space
 
-    mdocuments.reindex(domain.SpaceKey(config.SpaceType.SHARED, space_id))
-    return space_id
 
+def handle_reindex_space(space: SpaceKey) -> None:
+    mdocuments.reindex(space)
 
 def list_space_data_source_choices() -> dict[str, List[domain.ConfigKey]]:
     return {key: value.get_config_keys() for key, value in SPACE_DATA_SOURCES.items()}

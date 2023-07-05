@@ -13,10 +13,10 @@ from llama_index.data_structs.node import NodeWithScore
 from llama_index.utils import truncate_text
 from streamlit import runtime
 
-from .config import SpaceType
 from .data_source.list import SPACE_DATA_SOURCES
+from .data_source.main import SpaceDataSourceFileBased
 from .domain import SpaceKey
-from .manage_spaces import get_shared_space, get_space_data_source
+from .manage_spaces import get_space_data_source
 from .support.llm import _get_default_storage_context, _get_service_context
 from .support.store import get_index_dir, get_upload_dir, get_upload_file
 
@@ -61,7 +61,12 @@ def list_all(space: SpaceKey) -> list[tuple[str, int, int]]:
     """Return a list of tuples containing the filename, creation time, and size of each file in the space."""
     (ds_type, ds_configs) = get_space_data_source(space)
 
-    documents_list = SPACE_DATA_SOURCES[ds_type].get_document_list(space, ds_configs)
+    space_data_source = SPACE_DATA_SOURCES[ds_type]
+    if isinstance(space_data_source, SpaceDataSourceFileBased):
+        documents_list = SPACE_DATA_SOURCES[ds_type].get_document_list(space, ds_configs)
+    else:
+        log.warning("This categorty of SpaceDataSource class isn't handled in list_all(). data source type= {ds_type}")
+        documents_list = []
 
     return documents_list
 

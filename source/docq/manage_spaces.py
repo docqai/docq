@@ -98,7 +98,7 @@ def update_shared_space(
         return True
 
 
-def create_shared_space(name: str, summary: str, datasource_type: str, datasource_configs: dict) -> int:
+def create_shared_space(name: str, summary: str, datasource_type: str, datasource_configs: dict) -> SpaceKey:
     """Create a shared space."""
     params = (
         name,
@@ -118,8 +118,8 @@ def create_shared_space(name: str, summary: str, datasource_type: str, datasourc
         rowid = cursor.lastrowid
         connection.commit()
         log.debug("Created space with rowid: %d", rowid)
-
-    return rowid
+        space = SpaceKey(SpaceType.SHARED, rowid)
+    return space
 
 def list_shared_spaces() -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
     """List all shared spaces."""
