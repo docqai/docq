@@ -3,6 +3,7 @@
 import logging as log
 from typing import List
 
+from azure.core.exceptions import ClientAuthenticationError
 from llama_index import Document, download_loader
 
 from ..domain import ConfigKey, SpaceKey
@@ -44,7 +45,13 @@ class AzureBlob(SpaceDataSource):
             )
             blobs_list = container_client.list_blobs()
             return list(map(lambda b: (b.name, b.last_modified, b.size), blobs_list))
+        except ClientAuthenticationError as e:
+            log.error("Error - get_document_list(): authenticating to Azure Blob: %s", e)
+            raise Exception("Ooops! something went wrong authenticating to Azure storage. Please check your datasource credentials are correct and try again. If using a SAS Token make sure it hasn't expired.",) from e
+        except PermissionError as e:
+            log.error("Error - get_document_list(): checking permissions on Azure Blob: %s", e)
+            raise Exception("Ooops! something went wrong checking permissions on Azure storage. Please check your datasource credentials are correct and try again. Make sure you have 'Read' and 'List' permission for the Blob container.") from e
         except Exception as e:
-            log.error("Error listing blobs: %s", e)
-            raise Exception("Ooops! something went wrong. Please check your datasource credentials and try again.") from e
+            log.error("Error - get_document_list(): %s", e)
+            raise Exception("Ooops! something that we didn't anticipate went wrong, sorry.") from e
 

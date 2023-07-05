@@ -251,47 +251,16 @@ def documents_ui_shared(space: SpaceKey) -> None:
     """Displays the UI for managing documents in a shared space."""
     documents = list_documents(space)
     (id_, name, summary, archived, ds_type, ds_configs, created_at, updated_at) = get_shared_space(space.id_)
-    max_size = get_max_number_of_documents(space.type_)
-    show_manualupload_ui_elements = ds_type == "MANUAL_UPLOAD"
 
     st.button("Reindex", key=f"reindex_{space.value()}", on_click=lambda: reindex(space))
 
     st.markdown(f"**Document Count**: {len(documents)}")
-    if show_manualupload_ui_elements:
-        if len(documents) < max_size:
-            with st.form("Upload", clear_on_submit=True):
-                st.file_uploader(
-                    "Upload your documents here",
-                    type=ALLOWED_DOC_EXTS,
-                    key=f"uploaded_file_{space.value()}",
-                    accept_multiple_files=True,
-                )
-                st.form_submit_button(label="Upload", on_click=handle_upload_file, args=(space,))
-        else:
-            st.warning(f"You cannot upload more than {max_size} documents.")
 
     if documents:
         st.divider()
-        for i, (filename, time, size) in enumerate(documents):
+        for _i, (filename, time, size) in enumerate(documents):
             with st.expander(filename):
                 st.markdown(f"Size: {format_filesize(size)} | Last Modified: {format_datetime(time)}")
-                if show_manualupload_ui_elements:
-                    st.button(
-                        "Delete",
-                        key=f"delete_file_{i}_{space.value()}",
-                        on_click=delete_document,
-                        args=(
-                            filename,
-                            space,
-                        ),
-                    )
-        if show_manualupload_ui_elements:
-            st.button(
-                "Delete all documents",
-                key=f"delete_all_files_{space.value()}",
-                on_click=delete_all_documents,
-                args=(space,),
-            )
 
 
 def chat_settings_ui(feature: FeatureKey) -> None:

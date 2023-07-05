@@ -13,6 +13,12 @@ add_page_title()
 
 PARAM_NAME = "sid"
 
+spaces = list_shared_spaces()
+selected = st.selectbox("Selected Space:", spaces, format_func=lambda x: x[1])
+if selected:
+    st.experimental_set_query_params(**{PARAM_NAME: selected[0]})
+
+
 if PARAM_NAME in st.experimental_get_query_params():
     space = SpaceKey(SpaceType.SHARED, int(st.experimental_get_query_params()[PARAM_NAME][0]))
 
@@ -24,10 +30,3 @@ if PARAM_NAME in st.experimental_get_query_params():
     with tab_spaces:
         show_space_details_ui(space)
 
-
-else:
-    st.subheader("Select a space from below:")
-    spaces = list_shared_spaces()
-    selected = st.selectbox("Spaces", spaces, format_func=lambda x: x[1])
-    if selected:
-        st.experimental_set_query_params(**{PARAM_NAME: selected[0]})
