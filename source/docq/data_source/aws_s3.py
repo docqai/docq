@@ -5,10 +5,10 @@ from typing import List
 from llama_index import Document
 
 from ..domain import ConfigKey, SpaceKey
-from .main import SpaceDataSource
+from .main import SpaceDataSourceFileBased
 
 
-class AwsS3(SpaceDataSource):
+class AwsS3(SpaceDataSourceFileBased):
     """Space with data from AWS S3."""
 
     def __init__(self) -> None:

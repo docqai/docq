@@ -7,10 +7,10 @@ from azure.core.exceptions import ClientAuthenticationError
 from llama_index import Document, download_loader
 
 from ..domain import ConfigKey, SpaceKey
-from .main import SpaceDataSource
+from .main import SpaceDataSourceFileBased
 
 
-class AzureBlob(SpaceDataSource):
+class AzureBlob(SpaceDataSourceFileBased):
     """Space with data from Azure Blob."""
 
     def __init__(self) -> None:

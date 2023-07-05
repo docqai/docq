@@ -9,10 +9,10 @@ from llama_index import Document, SimpleDirectoryReader
 from ..config import DocumentMetadata
 from ..domain import ConfigKey, SpaceKey
 from ..support.store import get_upload_dir
-from .main import SpaceDataSource
+from .main import SpaceDataSourceFileBased
 
 
-class ManualUpload(SpaceDataSource):
+class ManualUpload(SpaceDataSourceFileBased):
     """Space with data from manually uploading documents."""
 
     def __init__(self) -> None:

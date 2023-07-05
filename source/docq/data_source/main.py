@@ -29,6 +29,12 @@ class SpaceDataSource(ABC):
         """Load the documents from the data source."""
         pass
 
+
+
+
+class SpaceDataSourceFileBased(SpaceDataSource):
+    """Abstract definition of a file-based data source for a space. To be extended by concrete data sources."""
+
     @abstractmethod
     def get_document_list(self, space: SpaceKey, configs: dict) -> list[tuple[str, int, int]]:
         """Returns a list of tuples containing the name, creation time, and size (Mb) of each document in the specified space's cnfigured data source.
@@ -42,3 +48,28 @@ class SpaceDataSource(ABC):
             list[tuple[str, int, int]]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
         """
         pass
+    # def __init__(self, name: str) -> None:
+    #     """Initialize the data source."""
+    #     super().__init__(name)
+
+    # def get_config_keys(self) -> List[ConfigKey]:
+    #     """Get the list of config keys."""
+    #     return []
+
+    # @abstractmethod
+    # def load(self, space: SpaceKey, configs: dict) -> List[Document]:
+    #     """Load the documents from the data source."""
+    #     pass
+
+    # def get_document_list(self, space: SpaceKey, configs: dict) -> list[tuple[str, int, int]]:
+    #     """Returns a list of tuples containing the name, creation time, and size (Mb) of each document in the specified space's cnfigured data source.
+
+    #     Args:
+    #         self (ManualUpload): The ManualUpload object.
+    #         space (SpaceKey): The space to retrieve the document list for.
+    #         configs (dict): A dictionary of configuration options.
+
+    #     Returns:
+    #         list[tuple[str, int, int]]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
+    #     """
+    #     pass
