@@ -250,7 +250,6 @@ def documents_ui_personal(space: SpaceKey) -> None:
 def documents_ui_shared(space: SpaceKey) -> None:
     """Displays the UI for managing documents in a shared space."""
     documents = list_documents(space)
-    (id_, name, summary, archived, ds_type, ds_configs, created_at, updated_at) = get_shared_space(space.id_)
 
     st.button("Reindex", key=f"reindex_{space.value()}", on_click=lambda: reindex(space))
 
