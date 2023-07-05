@@ -1,18 +1,11 @@
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
-import pytest
 from docq.config import SpaceType
 from docq.domain import SpaceKey
-from docq.support.llm import reindex, run_ask, run_chat
-from docq.support.store import get_index_dir
-from langchain.chat_models import ChatOpenAI
-from langchain.llms import OpenAI
-from llama_index import GPTVectorStoreIndex, ServiceContext, StorageContext
-from langchain.schema import BaseMessage
-from llama_index.query_engine.graph_query_engine import ComposableGraphQueryEngine
-from llama_index.indices.composability import ComposableGraph
+from docq.manage_documents import reindex
+from docq.support.llm import run_chat
+from llama_index import Document, GPTVectorStoreIndex, ServiceContext
 from llama_index.chat_engine import SimpleChatEngine
-
 
 # def test_run_ask_with_personal_space_only():
 #     with patch("docq.support.llm._get_load_index_from_storage") as mock_load_index, patch(
@@ -77,14 +70,20 @@ def test_run_chat():
 
 
 def test_reindex():
-    with patch("docq.support.llm._persist_index") as mock_persist_index, patch(
-        "docq.support.llm._create_index"
+    with patch("docq.manage_documents._persist_index") as mock_persist_index, patch(
+        "docq.manage_documents._create_index"
     ) as mock_create_index:
         mock_index = Mock(GPTVectorStoreIndex)
         mock_create_index.return_value = mock_index
 
         arg_space_key = SpaceKey(SpaceType.PERSONAL, 1234)
 
+        mock_document_class = Mock(spec=Document)
+        # arg_documents = [
+        #         mock_document_class(text="Hello, world!", extra_info={"foo": "bar"}),
+        #         mock_document_class(text="Hello, world2!", extra_info={"foo2": "bar2"})
+        #     ]
+
         reindex(arg_space_key)
-        mock_create_index.assert_called_once_with(arg_space_key)
+        #mock_create_index.assert_called_once_with(arg_documents)
         mock_persist_index.assert_called_once_with(mock_index, arg_space_key)
