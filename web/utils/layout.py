@@ -206,11 +206,10 @@ def chat_ui(feature: FeatureKey) -> None:
 
 def documents_ui_personal(space: SpaceKey) -> None:
     """Displays the UI for managing documents in a personal space."""
- 
+
 
 def documents_ui_shared(space: SpaceKey) -> None:
     """Displays the UI for managing documents in a shared space."""
-
 
 
 def documents_ui(space: SpaceKey) -> None:
@@ -265,7 +264,6 @@ def documents_ui(space: SpaceKey) -> None:
                     st.markdown(f"Size: {format_filesize(size)} | Last Modified: {format_datetime(time)}")
 
 
-
 def chat_settings_ui(feature: FeatureKey) -> None:
     st.info("Settings for general chat are coming soon.")
 
@@ -282,18 +280,22 @@ def system_settings_ui() -> None:
         st.form_submit_button(label="Save", on_click=handle_update_system_settings)
 
 
-def _render_space_data_source_config_input_fields(data_sources: dict[str, List[ConfigKey]], prefix: str, configs: dict = None) -> None:
+def _render_space_data_source_config_input_fields(
+    data_sources: dict[str, List[ConfigKey]], prefix: str, configs: dict = None
+) -> None:
     config_keys = data_sources[st.session_state[prefix + "ds_type"]]
 
     for key in config_keys:
         input_type = "password" if key.is_secret else "default"
-        st.text_input(key.name,
-                      value=configs.get(key.key) if configs else "",
-                      key=prefix + "ds_config_" + key.key,
-                      type=input_type,
-                      help=key.ref_link,
-                      autocomplete="off" # disable autofill by password manager etc.
-                      )
+        st.text_input(
+            key.name,
+            value=configs.get(key.key) if configs else "",
+            key=prefix + "ds_config_" + key.key,
+            type=input_type,
+            help=key.ref_link,
+            autocomplete="off",  # disable autofill by password manager etc.
+        )
+
 
 def create_space_ui() -> None:
     data_sources = list_space_data_source_choices()
@@ -329,7 +331,9 @@ def list_spaces_ui(admin_access: bool = False) -> None:
                             st.text_input("Summary", value=summary, key=f"update_space_{id_}_summary")
                             st.checkbox("Is Archived", value=archived, key=f"update_space_{id_}_archived")
                             st.text_input("Type", value=ds_type, key=f"update_space_{id_}_ds_type", disabled=True)
-                            _render_space_data_source_config_input_fields(data_sources, f"update_space_{id_}_", ds_configs)
+                            _render_space_data_source_config_input_fields(
+                                data_sources, f"update_space_{id_}_", ds_configs
+                            )
                             st.form_submit_button("Save", on_click=handle_update_space, args=(id_,))
 
 
