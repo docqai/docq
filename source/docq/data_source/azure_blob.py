@@ -20,9 +20,9 @@ class AzureBlob(SpaceDataSource):
     def get_config_keys(self) -> List[ConfigKey]:
         """Get the config keys for azure blob container."""
         return [
-            ConfigKey("account_url", "Storage Account URL"),
-            ConfigKey("container_name", "Blob Container Name"),
-            ConfigKey("credential", "Credential", is_optional=True, is_secret=True),
+            ConfigKey("account_url", "Storage Account URL",ref_link="https://docqai.github.io/docq/user-guide/config-spaces/#data-source-azure-blob-container"),
+            ConfigKey("container_name", "Blob Container Name", ref_link="https://docqai.github.io/docq/user-guide/config-spaces/#data-source-azure-blob-container"),
+            ConfigKey("credential", "Credential", is_optional=True, is_secret=True, ref_link="https://docqai.github.io/docq/user-guide/config-spaces/#data-source-azure-blob-container"),
         ]
 
     def load(self, space: SpaceKey, configs: dict) -> List[Document]:

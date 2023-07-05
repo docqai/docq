@@ -279,12 +279,18 @@ def system_settings_ui() -> None:
         st.form_submit_button(label="Save", on_click=handle_update_system_settings)
 
 
-def _show_space_data_source_config(data_sources: dict[str, List[ConfigKey]], prefix: str, configs: dict = None) -> None:
+def _render_space_data_source_config_input_fields(data_sources: dict[str, List[ConfigKey]], prefix: str, configs: dict = None) -> None:
     config_keys = data_sources[st.session_state[prefix + "ds_type"]]
 
     for key in config_keys:
         input_type = "password" if key.is_secret else "default"
-        st.text_input(key.name, value=configs.get(key.key) if configs else "", key=prefix + "ds_config_" + key.key, type=input_type)
+        st.text_input(key.name,
+                      value=configs.get(key.key) if configs else "",
+                      key=prefix + "ds_config_" + key.key,
+                      type=input_type,
+                      help=key.ref_link,
+                      autocomplete="off" # disable autofill by password manager etc.
+                      )
 
 def create_space_ui() -> None:
     data_sources = list_space_data_source_choices()
@@ -297,7 +303,7 @@ def create_space_ui() -> None:
             key="create_space_ds_type",
         )
         if ds:
-            _show_space_data_source_config(data_sources, "create_space_")
+            _render_space_data_source_config_input_fields(data_sources, "create_space_")
         st.button("Create Space", on_click=handle_create_space)
 
 
@@ -320,7 +326,7 @@ def list_spaces_ui(admin_access: bool = False) -> None:
                             st.text_input("Summary", value=summary, key=f"update_space_{id_}_summary")
                             st.checkbox("Is Archived", value=archived, key=f"update_space_{id_}_archived")
                             st.text_input("Type", value=ds_type, key=f"update_space_{id_}_ds_type", disabled=True)
-                            _show_space_data_source_config(data_sources, f"update_space_{id_}_", ds_configs)
+                            _render_space_data_source_config_input_fields(data_sources, f"update_space_{id_}_", ds_configs)
                             st.form_submit_button("Save", on_click=handle_update_space, args=(id_,))
 
 

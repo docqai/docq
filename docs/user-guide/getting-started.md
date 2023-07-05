@@ -32,4 +32,4 @@ To get you started, we show you one example for each scenario below.
 
 Then use this installation as a blueprint for your production deployment, which may require more thorough planning and preparation. We are considering providing production ready Infra-as-Code (CDK for Terraform or Terraform HCL). Let us know if this would be valuable.
 
-Please refer to [Installation](./installation.md) and [Configuration](./configuration.md) for details.
+Please refer to [Installation](./installation.md) and [Configuration](config-spaces.md) for details.
