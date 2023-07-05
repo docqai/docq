@@ -1,19 +1,10 @@
 """Functions for utilising LLMs."""
 
 import logging as log
-from typing import List
 
 from langchain.chat_models import ChatOpenAI
-
-# from langchain.llms import OpenAI
-# from langchain.prompts.chat import (
-#     ChatPromptTemplate,
-#     HumanMessagePromptTemplate,
-#     SystemMessagePromptTemplate,
-# )
 from langchain.schema import BaseMessage
 from llama_index import (
-    Document,
     GPTListIndex,
     GPTVectorStoreIndex,
     LLMPredictor,
@@ -85,19 +76,10 @@ def _get_service_context() -> ServiceContext:
     return ServiceContext.from_defaults(llm_predictor=_get_llm_predictor())
 
 
-def create_index(documents: List[Document]) -> GPTVectorStoreIndex:
-    # Use default storage and service context to initialise index purely for persisting
-    return GPTVectorStoreIndex.from_documents(
-        documents, storage_context=_get_default_storage_context(), service_context=_get_service_context()
-    )
+
 
 def _load_index_from_storage(space: SpaceKey) -> GPTVectorStoreIndex:
     return load_index_from_storage(storage_context=_get_storage_context(space))
-
-
-def persist_index(index: GPTVectorStoreIndex, space: SpaceKey) -> None:
-    index.storage_context.persist(persist_dir=get_index_dir(space))
-
 
 
 

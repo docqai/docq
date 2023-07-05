@@ -6,6 +6,8 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime
 
+from .config import SpaceType
+from .domain import SpaceKey
 from .support.store import get_sqlite_system_file
 
 SQL_CREATE_SPACES_TABLE = """
@@ -21,6 +23,23 @@ CREATE TABLE IF NOT EXISTS space (
 )
 """
 
+
+def get_space_data_source(space: SpaceKey) -> tuple[str, dict]:
+    """Returns the data source type and configuration for the given space.
+
+    Args:
+        space (SpaceKey): The space to get the data source for.
+
+    Returns:
+        tuple[str, dict]: A tuple containing the data source type and configuration.
+    """
+    if space.type_ == SpaceType.PERSONAL:
+        ds_type = "MANUAL_UPLOAD"
+        ds_configs = {}
+    else:
+        (id_, name, summary, archived, ds_type, ds_configs, created_at, updated_at) = get_shared_space(space.id_)
+
+    return ds_type, ds_configs
 
 def get_shared_space(id_: int) -> tuple[int, str, str, bool, str, dict, datetime, datetime]:
     """Get a shared space."""
