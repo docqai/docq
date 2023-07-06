@@ -7,12 +7,12 @@ from typing import List, Tuple
 
 import streamlit as st
 from docq import config, domain, run_queries
-from docq.domain import SpaceKey
 from docq import manage_documents as mdocuments
 from docq import manage_settings as msettings
 from docq import manage_spaces as mspaces
 from docq import manage_users as musers
 from docq.data_source.list import SPACE_DATA_SOURCES
+from docq.domain import SpaceKey
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -104,11 +104,9 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
 
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 
-    # st.session_state[f"chat_input_{feature.value()}"] = ""
-
 
 def handle_list_documents(space: domain.SpaceKey) -> list[tuple[str, int, int]]:
-    return mdocuments.list_all(space)
+    return mspaces.list_documents(space)
 
 
 def handle_delete_document(filename: str, space: domain.SpaceKey) -> None:
@@ -188,12 +186,12 @@ def handle_create_space() -> SpaceKey:
     space = mspaces.create_shared_space(
         st.session_state["create_space_name"], st.session_state["create_space_summary"], ds_type, ds_configs
     )
-    mdocuments.reindex(space)
     return space
 
 
 def handle_reindex_space(space: SpaceKey) -> None:
-    mdocuments.reindex(space)
+    mspaces.reindex(space)
+
 
 def list_space_data_source_choices() -> dict[str, List[domain.ConfigKey]]:
     return {key: value.get_config_keys() for key, value in SPACE_DATA_SOURCES.items()}

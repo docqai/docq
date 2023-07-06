@@ -5,9 +5,8 @@ import logging as log
 from typing import List
 
 import streamlit as st
-from docq.config import FeatureType, LogType, SpaceType
+from docq.config import FeatureType, LogType
 from docq.domain import ConfigKey, FeatureKey, SpaceKey
-from docq.manage_documents import reindex
 from docq.manage_spaces import get_space_data_source
 from st_pages import hide_pages
 
@@ -204,41 +203,41 @@ def chat_ui(feature: FeatureKey) -> None:
     )
 
 
-def documents_ui_personal(space: SpaceKey) -> None:
-    """Displays the UI for managing documents in a personal space."""
-
-
-def documents_ui_shared(space: SpaceKey) -> None:
-    """Displays the UI for managing documents in a shared space."""
+def _render_document_upload(space: SpaceKey, documents: List) -> None:
+    max_size = get_max_number_of_documents(space.type_)
+    if len(documents) < max_size:
+        with st.form("Upload", clear_on_submit=True):
+            st.file_uploader(
+                "Upload your documents here",
+                type=ALLOWED_DOC_EXTS,
+                key=f"uploaded_file_{space.value()}",
+                accept_multiple_files=True,
+            )
+            st.form_submit_button(label="Upload", on_click=handle_upload_file, args=(space,))
+    else:
+        st.warning(f"You cannot upload more than {max_size} documents.")
 
 
 def documents_ui(space: SpaceKey) -> None:
     """Displays the UI for managing documents in a space."""
     documents = handle_list_documents(space)
-    (ds_type, ds_configs) = get_space_data_source(space)
-    st.button("Reindex", key=f"reindex_{space.value()}", on_click=lambda: handle_reindex_space(space))
+    (ds_type, _) = get_space_data_source(space)
+    st.button("Reindex", key=f"reindex_{space.value()}", on_click=handle_reindex_space, args=(space,))
     st.markdown(f"**Document Count**: {len(documents)}")
 
-    if ds_type == "MANUAL_UPLOAD":
-        max_size = get_max_number_of_documents(space.type_)
-        if len(documents) < max_size:
-            with st.form("Upload", clear_on_submit=True):
-                st.file_uploader(
-                    "Upload your documents here",
-                    type=ALLOWED_DOC_EXTS,
-                    key=f"uploaded_file_{space.value()}",
-                    accept_multiple_files=True,
-                )
-                st.form_submit_button(label="Upload", on_click=handle_upload_file, args=(space,))
-        else:
-            st.warning(f"You cannot upload more than {max_size} documents.")
+    show_upload = ds_type == "MANUAL_UPLOAD"
+    show_delete = ds_type == "MANUAL_UPLOAD"
 
-        if documents:
-            st.divider()
-            for i, (filename, time, size) in enumerate(documents):
-                with st.expander(filename):
-                    st.markdown(f"Size: {format_filesize(size)} | Last Modified: {format_datetime(time)}")
+    if show_upload:
+        _render_document_upload(space, documents)
 
+    if documents:
+        st.divider()
+        for i, (filename, time, size) in enumerate(documents):
+            with st.expander(filename):
+                st.markdown(f"Size: {format_filesize(size)} | Last Modified: {format_datetime(time)}")
+
+                if show_delete:
                     st.button(
                         "Delete",
                         key=f"delete_file_{i}_{space.value()}",
@@ -249,19 +248,13 @@ def documents_ui(space: SpaceKey) -> None:
                         ),
                     )
 
+        if show_delete:
             st.button(
                 "Delete all documents",
                 key=f"delete_all_files_{space.value()}",
                 on_click=handle_delete_all_documents,
                 args=(space,),
             )
-
-    elif ds_type == "AZURE_BLOB":  # noqa: SIM102
-        if documents:
-            st.divider()
-            for _i, (filename, time, size) in enumerate(documents):
-                with st.expander(filename):
-                    st.markdown(f"Size: {format_filesize(size)} | Last Modified: {format_datetime(time)}")
 
 
 def chat_settings_ui(feature: FeatureKey) -> None:
