@@ -11,7 +11,7 @@ from argon2.exceptions import VerificationError
 
 from .config import SpaceType
 from .domain import SpaceKey
-from .support.llm import reindex
+from .manage_documents import reindex
 from .support.store import get_sqlite_system_file
 
 SQL_CREATE_USERS_TABLE = """

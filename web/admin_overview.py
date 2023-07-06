@@ -11,10 +11,8 @@ add_page_title()
 tab_settings, tab_spaces = st.tabs(["System Settings", "Shared Spaces"])
 
 with tab_settings:
-    st.subheader("Settings")
     system_settings_ui()
 
 with tab_spaces:
-    st.subheader("Spaces")
     create_space_ui()
     list_spaces_ui(True)

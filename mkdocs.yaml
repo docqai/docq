@@ -1,6 +1,6 @@
 site_name: Docq - Private & Secure AI Knowledge Insight
 site_url: https://docqai.github.io/docq
-site_description: Docq offers self-hosted, private and secure AI for knowledge insight on your private data with minimal onboarding and operational effort. 
+site_description: Docq offers self-hosted, private and secure AI for knowledge insight on your private data with minimal onboarding and operational effort.
 site_author: Docq Contributors
 copyright: Copyright &copy; 2023 Docq Contributors
 site_dir: html
@@ -34,7 +34,7 @@ extra:
   analytics:
     provider: google
     property: G-SML7XH761K
-    
+
 extra_css:
   - stylesheets/extra.css
 
@@ -44,27 +44,27 @@ theme:
   favicon: assets/favicon.png
   language: en
   palette:
-    - media: '(prefers-color-scheme: light)'
+    - media: "(prefers-color-scheme: light)"
       scheme: docq
       accent: light-green
       toggle:
         icon: material/lightbulb-outline
         name: Switch to light mode
-    - media: '(prefers-color-scheme: dark)'
+    - media: "(prefers-color-scheme: dark)"
       scheme: slate
       accent: light-green
       toggle:
         icon: material/lightbulb
         name: Switch to dark mode
   features:
-  - search.suggest
-  - search.highlight
-  - content.tabs.link
-  - content.code.annotate
-  - content.tooltips
-  - navigation.instant
-  - navigation.indexes
-  - navigation.sections
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotate
+    - content.tooltips
+    - navigation.instant
+    - navigation.indexes
+    - navigation.sections
 
   icon:
     repo: fontawesome/brands/github-alt
@@ -83,30 +83,30 @@ theme:
       quote: fontawesome/solid/quote-left
 
 nav:
-  - 'Home': index.md
-  - 'Overview':
-    - 'Introduction': overview/introduction.md
-    - 'Design Principles': overview/design-principles.md
-    - 'Key Features': overview/key-features.md
-    - 'Deployment Scenarios': overview/deployment-scenarios.md
-  - 'User Guides': 
-    - 'Getting Started': user-guide/getting-started.md
-    - 'Deploy to Streamlit': user-guide/deploy-to-streamlit.md
-    - 'Deploy to Azure': user-guide/deploy-to-streamlit.md
-    - 'Deploy to AWS': user-guide/deploy-to-aws.md
-    - 'Deploy to GCP': user-guide/deploy-to-gcp.md
-    - 'Configuration': user-guide/configuration.md
-    - 'Usage': user-guide/usage.md
-    - 'FAQ': user-guide/faq.md
-  - 'Developer Guides': 
-    - 'Getting Started': developer-guide/getting-started.md
-    - 'Architecture': developer-guide/architecture.md
-    - 'Contributing': developer-guide/contributing.md
-    - 'FAQ': developer-guide/faq.md
+  - "Home": index.md
+  - "Overview":
+      - "Introduction": overview/introduction.md
+      - "Design Principles": overview/design-principles.md
+      - "Key Features": overview/key-features.md
+      - "Deployment Scenarios": overview/deployment-scenarios.md
+  - "User Guides":
+      - "Getting Started": user-guide/getting-started.md
+      - "Deploy to Streamlit": user-guide/deploy-to-streamlit.md
+      - "Deploy to Azure": user-guide/deploy-to-streamlit.md
+      - "Deploy to AWS": user-guide/deploy-to-aws.md
+      - "Deploy to GCP": user-guide/deploy-to-gcp.md
+      - "Configure Spaces": user-guide/config-spaces.md
+      - "Usage": user-guide/usage.md
+      - "FAQ": user-guide/faq.md
+  - "Developer Guides":
+      - "Getting Started": developer-guide/getting-started.md
+      - "Architecture": developer-guide/architecture.md
+      - "Contributing": developer-guide/contributing.md
+      - "FAQ": developer-guide/faq.md
   #- ... | glob=readme.md
   #- ... | regex=scenarios/.+.md
   - API: mkapi/api/docq
   - Tests: mkapi/tests/tests
-  - 'Issues GitHub': https://github.com/docqai/docq/issues
-  - 'Discussions GitHub': https://github.com/docqai/docq/discussions
-  - 'Acknowledgement': acknowledgement.md
+  - "Issues GitHub": https://github.com/docqai/docq/issues
+  - "Discussions GitHub": https://github.com/docqai/docq/discussions
+  - "Acknowledgement": acknowledgement.md

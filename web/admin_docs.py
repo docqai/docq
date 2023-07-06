@@ -19,11 +19,9 @@ if PARAM_NAME in st.experimental_get_query_params():
     tab_spaces, tab_docs = st.tabs(["Space Details", "Manage Documents"])
 
     with tab_docs:
-        st.subheader("Documents")
         documents_ui(space)
 
     with tab_spaces:
-        st.subheader("Space")
         show_space_details_ui(space)
 
 
@@ -31,5 +29,6 @@ else:
     st.subheader("Select a space from below:")
     spaces = list_shared_spaces()
     selected = st.selectbox("Spaces", spaces, format_func=lambda x: x[1])
+    st.write(selected)
     if selected:
         st.experimental_set_query_params(**{PARAM_NAME: selected[0]})

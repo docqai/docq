@@ -12,6 +12,7 @@ from docq import manage_settings as msettings
 from docq import manage_spaces as mspaces
 from docq import manage_users as musers
 from docq.data_source.list import SPACE_DATA_SOURCES
+from docq.domain import SpaceKey
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -103,18 +104,16 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
 
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 
-    # st.session_state[f"chat_input_{feature.value()}"] = ""
+
+def handle_list_documents(space: domain.SpaceKey) -> list[tuple[str, int, int]]:
+    return mspaces.list_documents(space)
 
 
-def list_documents(space: domain.SpaceKey) -> list[tuple[str, int, int]]:
-    return mdocuments.list_all(space)
-
-
-def delete_document(filename: str, space: domain.SpaceKey) -> None:
+def handle_delete_document(filename: str, space: domain.SpaceKey) -> None:
     mdocuments.delete(filename, space)
 
 
-def delete_all_documents(space: domain.SpaceKey) -> None:
+def handle_delete_all_documents(space: domain.SpaceKey) -> None:
     mdocuments.delete_all(space)
 
 
@@ -148,7 +147,7 @@ def handle_change_temperature(type_: config.SpaceType):
     msettings.change_settings(type_.value, temperature=st.session_state[f"temperature_{type_}"])
 
 
-def get_shared_space(id_: int) -> tuple[int, str, str, bool, datetime, datetime]:
+def get_shared_space(id_: int) -> tuple[int, str, str, bool, str, dict, datetime, datetime]:
     return mspaces.get_shared_space(id_)
 
 
@@ -181,12 +180,17 @@ def handle_update_space(id_: int) -> bool:
     return result
 
 
-def handle_create_space() -> int:
+def handle_create_space() -> SpaceKey:
     ds_type, ds_configs = _prepare_space_data_source("create_space_")
 
-    return mspaces.create_shared_space(
+    space = mspaces.create_shared_space(
         st.session_state["create_space_name"], st.session_state["create_space_summary"], ds_type, ds_configs
     )
+    return space
+
+
+def handle_reindex_space(space: SpaceKey) -> None:
+    mspaces.reindex(space)
 
 
 def list_space_data_source_choices() -> dict[str, List[domain.ConfigKey]]:
