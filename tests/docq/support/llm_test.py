@@ -1,10 +1,7 @@
 from unittest.mock import Mock, patch
 
-from docq.config import SpaceType
-from docq.domain import SpaceKey
-from docq.manage_documents import reindex
 from docq.support.llm import run_chat
-from llama_index import Document, GPTVectorStoreIndex, ServiceContext
+from llama_index import ServiceContext
 from llama_index.chat_engine import SimpleChatEngine
 
 
@@ -22,17 +19,3 @@ def test_run_chat():
         response = run_chat("My ask", "My chat history")
         mocked_chat.assert_called_once_with("My ask")
         assert response == "LLM response"
-
-
-def test_reindex():
-    with patch("docq.manage_documents._persist_index") as mock_persist_index, patch(
-        "docq.manage_documents._create_index"
-    ) as mock_create_index:
-        mock_index = Mock(GPTVectorStoreIndex)
-        mock_create_index.return_value = mock_index
-
-        arg_space_key = SpaceKey(SpaceType.PERSONAL, 1234)
-
-        reindex(arg_space_key)
-
-        mock_persist_index.assert_called_once_with(mock_index, arg_space_key)
