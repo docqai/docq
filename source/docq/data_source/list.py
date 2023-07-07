@@ -1,4 +1,4 @@
-"""List of all data sources supported by DocQ."""
+"""List of all data sources supported by Docq."""
 
 from .aws_s3 import AwsS3
 from .azure_blob import AzureBlob

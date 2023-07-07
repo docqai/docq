@@ -30,8 +30,6 @@ class SpaceDataSource(ABC):
         pass
 
 
-
-
 class SpaceDataSourceFileBased(SpaceDataSource):
     """Abstract definition of a file-based data source for a space. To be extended by concrete data sources."""
 
