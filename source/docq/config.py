@@ -7,14 +7,6 @@ ENV_VAR_DOCQ_DEMO = "DOCQ_DEMO"
 ENV_VAR_OPENAI_API_KEY = "OPENAI_API_KEY"
 
 
-class DocumentMetadata(Enum):
-    """Document metadata."""
-
-    FILE_PATH = "file_path"
-    SPACE_ID = "space_id"
-    SPACE_TYPE = "space_type"
-
-
 class SpaceType(Enum):
     """Space types."""
 
@@ -25,13 +17,24 @@ class SpaceType(Enum):
 class FeatureType(Enum):
     """Feature types."""
 
-    ASK_PERSONAL = "ask_personal"
-    ASK_SHARED = "ask_shared"
-    CHAT_PRIVATE = "chat_private"
+    ASK_PERSONAL = "Ask Your Documents"
+    ASK_SHARED = "Ask Shared Documents"
+    CHAT_PRIVATE = "General Chat"
 
 
 class LogType(Enum):
     """Log types."""
 
-    SYSTEM = "system"
-    ACTIVITY = "activity"
+    SYSTEM = "System"
+    ACTIVITY = "Activity"
+
+
+class SystemSettingsKey(Enum):
+    """System settings keys."""
+
+    ENABLED_FEATURES = "Enabled Features"
+    MODEL_VENDOR = "Model Vendor"
+
+
+class UserSettingsKey(Enum):
+    """User settings keys."""

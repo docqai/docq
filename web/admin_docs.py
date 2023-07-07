@@ -29,6 +29,6 @@ else:
     st.subheader("Select a space from below:")
     spaces = list_shared_spaces()
     selected = st.selectbox("Spaces", spaces, format_func=lambda x: x[1])
-    st.write(selected)
+
     if selected:
         st.experimental_set_query_params(**{PARAM_NAME: selected[0]})

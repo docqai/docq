@@ -1,11 +1,20 @@
 """Data source for Docq."""
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import List
 
 from llama_index import Document
 
 from ..domain import ConfigKey, SpaceKey
+
+
+class DocumentMetadata(Enum):
+    """Document metadata."""
+
+    FILE_PATH = "File Path"
+    SPACE_ID = "Space ID"
+    SPACE_TYPE = "Space Type"
 
 
 class SpaceDataSource(ABC):

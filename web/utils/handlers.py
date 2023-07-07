@@ -30,15 +30,15 @@ def handle_login(username: str, password: str) -> bool:
     if result:
         set_auth_session(
             {
-                SessionKeyNameForAuth.ID.value: result[0],
-                SessionKeyNameForAuth.NAME.value: result[1],
-                SessionKeyNameForAuth.ADMIN.value: result[2],
+                SessionKeyNameForAuth.ID.name: result[0],
+                SessionKeyNameForAuth.NAME.name: result[1],
+                SessionKeyNameForAuth.ADMIN.name: result[2],
             }
         )
         set_settings_session(
             {
-                SessionKeyNameForSettings.SYSTEM.value: msettings.get_system_settings(),
-                SessionKeyNameForSettings.USER.value: msettings.get_user_settings(result[0]),
+                SessionKeyNameForSettings.SYSTEM.name: msettings.get_system_settings(),
+                SessionKeyNameForSettings.USER.name: msettings.get_user_settings(result[0]),
             }
         )
         log.info(st.session_state["_docq"])
@@ -144,7 +144,7 @@ def handle_upload_file(space: domain.SpaceKey) -> None:
 
 
 def handle_change_temperature(type_: config.SpaceType):
-    msettings.change_settings(type_.value, temperature=st.session_state[f"temperature_{type_}"])
+    msettings.change_settings(type_.name, temperature=st.session_state[f"temperature_{type_.name}"])
 
 
 def get_shared_space(id_: int) -> tuple[int, str, str, bool, str, dict, datetime, datetime]:
@@ -193,6 +193,10 @@ def handle_reindex_space(space: SpaceKey) -> None:
     mspaces.reindex(space)
 
 
+def get_space_data_source(space: SpaceKey) -> Tuple[str, dict]:
+    return mspaces.get_space_data_source(space)
+
+
 def list_space_data_source_choices() -> dict[str, List[domain.ConfigKey]]:
     return {key: value.get_config_keys() for key, value in SPACE_DATA_SOURCES.items()}
 
@@ -202,13 +206,15 @@ def get_system_settings() -> dict:
 
 
 def get_enabled_features() -> list[domain.FeatureKey]:
-    return msettings.get_system_settings(msettings.SystemSettingsKey.ENABLED_FEATURES)
+    return msettings.get_system_settings(config.SystemSettingsKey.ENABLED_FEATURES)
 
 
 def handle_update_system_settings() -> None:
     msettings.update_system_settings(
         {
-            msettings.SystemSettingsKey.ENABLED_FEATURES.value: st.session_state["system_settings_enabled_features"],
+            config.SystemSettingsKey.ENABLED_FEATURES.name: [
+                f.name for f in st.session_state[f"system_settings_{config.SystemSettingsKey.ENABLED_FEATURES.name}"]
+            ],
         }
     )
 
@@ -223,10 +229,10 @@ def get_max_number_of_documents(type_: config.SpaceType):
 
 def prepare_for_chat(feature: domain.FeatureKey) -> None:
     """Prepare the session for chat."""
-    if SessionKeyNameForChat.CUTOFF.value not in get_chat_session(feature.type_):
+    if SessionKeyNameForChat.CUTOFF.name not in get_chat_session(feature.type_):
         set_chat_session(datetime.now(), feature.type_, SessionKeyNameForChat.CUTOFF)
 
-    if SessionKeyNameForChat.HISTORY.value not in get_chat_session(feature.type_):
+    if SessionKeyNameForChat.HISTORY.name not in get_chat_session(feature.type_):
         set_chat_session([], feature.type_, SessionKeyNameForChat.HISTORY)
 
     if not get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY):
