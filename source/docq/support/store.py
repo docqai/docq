@@ -28,9 +28,9 @@ HISTORY_TABLE_NAME = "history_{feature}"
 
 def _get_path(store: _StoreSubdir, type_: SpaceType, subtype: str = None, filename: str = None) -> str:
     dir_ = (
-        os.path.join(os.environ[ENV_VAR_DOCQ_DATA], store.value, type_.value, subtype)
+        os.path.join(os.environ[ENV_VAR_DOCQ_DATA], store.value, type_.name, subtype)
         if subtype
-        else os.path.join(os.environ[ENV_VAR_DOCQ_DATA], store.value, type_.value)
+        else os.path.join(os.environ[ENV_VAR_DOCQ_DATA], store.value, type_.name)
     )
     os.makedirs(dir_, exist_ok=True)
     if filename:
@@ -69,4 +69,5 @@ def get_sqlite_system_file() -> str:
 
 def get_history_table_name(type_: FeatureType) -> str:
     """Get the history table name for a feature."""
-    return HISTORY_TABLE_NAME.format(feature=type_.value)
+    # Note that because it's used for database table name, `lower()` is used to ensure it's all lowercase.
+    return HISTORY_TABLE_NAME.format(feature=type_.name.lower())

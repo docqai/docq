@@ -5,9 +5,8 @@ import logging as log
 from typing import List
 
 import streamlit as st
-from docq.config import FeatureType, LogType
+from docq.config import FeatureType, LogType, SystemSettingsKey
 from docq.domain import ConfigKey, FeatureKey, SpaceKey
-from docq.manage_spaces import get_space_data_source
 from st_pages import hide_pages
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
@@ -16,6 +15,7 @@ from .handlers import (
     get_enabled_features,
     get_max_number_of_documents,
     get_shared_space,
+    get_space_data_source,
     get_system_settings,
     handle_chat_input,
     handle_create_space,
@@ -64,7 +64,7 @@ def __no_staff_menu() -> None:
 
 
 def __no_admin_menu() -> None:
-    hide_pages(["Admin", "Admin_Overview", "Admin_Users", "Admin_Docs", "Admin_Logs"])
+    hide_pages(["Admin", "Admin_Settings", "Admin_Spaces", "Admin_Users", "Admin_Docs", "Admin_Logs"])
 
 
 def __login_form() -> None:
@@ -91,7 +91,7 @@ def __logout_button() -> None:
 def __not_authorised() -> None:
     st.error("You are not authorized to access this page.")
     st.info(
-        f"You're logged in as `{get_auth_session()[SessionKeyNameForAuth.NAME.value]}`. Please login as a different user with correct permissions to try again."
+        f"You're logged in as `{get_auth_session()[SessionKeyNameForAuth.NAME.name]}`. Please login as a different user with correct permissions to try again."
     )
     st.stop()
 
@@ -107,7 +107,7 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
         if show_logout_button:
             __logout_button()
 
-        if not auth.get(SessionKeyNameForAuth.ADMIN.value, False):
+        if not auth.get(SessionKeyNameForAuth.ADMIN.name, False):
             __no_admin_menu()
             if requiring_admin:
                 __not_authorised()
@@ -123,7 +123,7 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
 def feature_enabled(feature: FeatureKey) -> bool:
     feats = get_enabled_features()
     # Note that we are checking `feats` first and then using `not in` here because we want to allow the features to be enabled by default.
-    if feats and feature.value not in feats:
+    if feats and feature.name not in feats:
         st.error("This feature is not enabled.")
         st.info("Please contact your administrator to enable this feature.")
         st.stop()
@@ -146,7 +146,7 @@ def list_users_ui(username_match: str = None) -> None:
         for id_, username, fullname, admin, archived, created_at, updated_at in users:
             is_admin = bool(admin)
             is_archived = bool(archived)
-            is_current_user = id_ == get_auth_session()[SessionKeyNameForAuth.ID.value]
+            is_current_user = id_ == get_auth_session()[SessionKeyNameForAuth.ID.name]
             with st.expander(
                 f"{'~~' if is_archived else ''}{username} ({fullname}){'~~' if is_archived else ''} {'(You)' if is_current_user else ''}"
             ):
@@ -182,8 +182,10 @@ def chat_ui(feature: FeatureKey) -> None:
                 options=spaces,
                 default=spaces,
                 format_func=lambda x: x[1],
-                key=f"chat_spaces_{feature.value()}",
+                key=f"chat_shared_spaces_{feature.value()}",
             )
+            st.checkbox("Including your documents", value=True, key="chat_personal_space")
+            st.divider()
         if st.button("Load chat history earlier"):
             query_chat_history(feature)
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
@@ -222,17 +224,20 @@ def documents_ui(space: SpaceKey) -> None:
     """Displays the UI for managing documents in a space."""
     documents = handle_list_documents(space)
     (ds_type, _) = get_space_data_source(space)
-    st.button("Reindex", key=f"reindex_{space.value()}", on_click=handle_reindex_space, args=(space,))
-    st.markdown(f"**Document Count**: {len(documents)}")
 
     show_upload = ds_type == "MANUAL_UPLOAD"
     show_delete = ds_type == "MANUAL_UPLOAD"
+    show_reindex = True
 
     if show_upload:
         _render_document_upload(space, documents)
 
+    if show_reindex:
+        st.button("Reindex", key=f"reindex_{space.value()}_top", on_click=handle_reindex_space, args=(space,))
+
     if documents:
         st.divider()
+        st.markdown(f"**Document Count**: {len(documents)}")
         for i, (filename, time, size) in enumerate(documents):
             with st.expander(filename):
                 st.markdown(f"Size: {format_filesize(size)} | Last Modified: {format_datetime(time)}")
@@ -255,6 +260,8 @@ def documents_ui(space: SpaceKey) -> None:
                 on_click=handle_delete_all_documents,
                 args=(space,),
             )
+    else:
+        st.info("No documents or the space does not support listing documents.")
 
 
 def chat_settings_ui(feature: FeatureKey) -> None:
@@ -265,10 +272,13 @@ def system_settings_ui() -> None:
     settings = get_system_settings()
     with st.form(key="system_settings"):
         st.multiselect(
-            "Select the features you want to enable",
-            options=[f.value for f in FeatureType],
-            default=settings["enabled_features"] if settings else [f.value for f in FeatureType],
-            key="system_settings_enabled_features",
+            SystemSettingsKey.ENABLED_FEATURES.value,
+            options=[f for f in FeatureType],
+            format_func=lambda x: x.value,
+            default=[FeatureType.__members__[k] for k in settings[SystemSettingsKey.ENABLED_FEATURES.name]]
+            if settings
+            else [f for f in FeatureType],
+            key=f"system_settings_{SystemSettingsKey.ENABLED_FEATURES.name}",
         )
         st.form_submit_button(label="Save", on_click=handle_update_system_settings)
 

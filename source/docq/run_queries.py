@@ -78,7 +78,7 @@ def _retrieve_last_n_history(feature: FeatureKey) -> str:
     )
 
 
-def query(input_: str, feature: FeatureKey, space: SpaceKey, spaces: list[SpaceKey] = None) -> list[int]:
+def query(input_: str, feature: FeatureKey, space: SpaceKey = None, spaces: list[SpaceKey] = None) -> list[int]:
     """Run the query again documents in the space(s) using a LLM."""
     log.debug("Query: %s for %s with p-space %s and s-spaces %s", input_, feature, space, spaces)
     data = [(input_, True, datetime.now())]

@@ -6,10 +6,9 @@ from typing import List
 
 from llama_index import Document, SimpleDirectoryReader
 
-from ..config import DocumentMetadata
 from ..domain import ConfigKey, SpaceKey
 from ..support.store import get_upload_dir
-from .main import SpaceDataSourceFileBased
+from .main import DocumentMetadata, SpaceDataSourceFileBased
 
 
 class ManualUpload(SpaceDataSourceFileBased):
@@ -25,12 +24,13 @@ class ManualUpload(SpaceDataSourceFileBased):
 
     def load(self, space: SpaceKey, configs: dict) -> List[Document]:
         """Load the documents from manual upload."""
+
         # Keep filename as `doc_id` plus space info
         def lambda_metadata(x: str) -> dict:
             return {
-                DocumentMetadata.FILE_PATH.value: x,
-                DocumentMetadata.SPACE_ID.value: space.id_,
-                DocumentMetadata.SPACE_TYPE.value: space.type_.name,
+                DocumentMetadata.FILE_PATH.name: x,
+                DocumentMetadata.SPACE_ID.name: space.id_,
+                DocumentMetadata.SPACE_TYPE.name: space.type_.name,
             }
 
         return SimpleDirectoryReader(get_upload_dir(space), file_metadata=lambda_metadata).load_data()
@@ -46,4 +46,9 @@ class ManualUpload(SpaceDataSourceFileBased):
         Returns:
             list[tuple[str, int, int]]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
         """
-        return list(map(lambda f: (f.name, datetime.fromtimestamp(f.stat().st_ctime), f.stat().st_size), os.scandir(get_upload_dir(space))))
+        return list(
+            map(
+                lambda f: (f.name, datetime.fromtimestamp(f.stat().st_ctime), f.stat().st_size),
+                os.scandir(get_upload_dir(space)),
+            )
+        )

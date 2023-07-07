@@ -22,10 +22,10 @@ class FeatureKey:
     id_: int
 
     def __str__(self) -> str:
-        return _join_properties(_SEPARATOR_FOR_STR, self.type_.value, self.id_)
+        return _join_properties(_SEPARATOR_FOR_STR, self.type_.name, self.id_)
 
     def value(self) -> str:
-        return _join_properties(_SEPARATOR_FOR_VALUE, self.type_.value, self.id_)
+        return _join_properties(_SEPARATOR_FOR_VALUE, self.type_.name, self.id_)
 
 
 @dataclass
@@ -36,10 +36,10 @@ class SpaceKey:
     id_: int
 
     def __str__(self) -> str:
-        return _join_properties(_SEPARATOR_FOR_STR, self.type_.value, self.id_)
+        return _join_properties(_SEPARATOR_FOR_STR, self.type_.name, self.id_)
 
     def value(self) -> str:
-        return _join_properties(_SEPARATOR_FOR_VALUE, self.type_.value, self.id_)
+        return _join_properties(_SEPARATOR_FOR_VALUE, self.type_.name, self.id_)
 
 
 @dataclass

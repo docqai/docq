@@ -4,9 +4,9 @@ import json
 import logging as log
 import sqlite3
 from contextlib import closing
-from enum import Enum
 from typing import Any
 
+from .config import SystemSettingsKey, UserSettingsKey
 from .support.store import get_sqlite_system_file, get_sqlite_usage_file
 
 SQL_CREATE_SETTINGS_TABLE = """
@@ -20,17 +20,6 @@ CREATE TABLE IF NOT EXISTS settings (
 
 
 USER_ID_AS_SYSTEM = 0
-
-
-class SystemSettingsKey(Enum):
-    """System settings keys."""
-
-    ENABLED_FEATURES = "enabled_features"
-    MODEL_VENDOR = "model_vendor"
-
-
-class UserSettingsKey(Enum):
-    """User settings keys."""
 
 
 def _get_sqlite_file(user_id: int = None) -> str:
@@ -71,12 +60,12 @@ def _update_settings(settings: dict, user_id: int = None) -> bool:
 
 def get_system_settings(key: SystemSettingsKey = None) -> Any | None:
     """Get the system settings."""
-    return _get_settings() if key is None else _get_settings().get(key.value)
+    return _get_settings() if key is None else _get_settings().get(key.name)
 
 
 def get_user_settings(user_id: int, key: UserSettingsKey = None) -> Any | None:
     """Get the user settings."""
-    return _get_settings(user_id) if key is None else _get_settings(user_id).get(key.value)
+    return _get_settings(user_id) if key is None else _get_settings(user_id).get(key.name)
 
 
 def update_system_settings(settings: dict) -> bool:
