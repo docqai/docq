@@ -76,12 +76,8 @@ def _get_service_context() -> ServiceContext:
     return ServiceContext.from_defaults(llm_predictor=_get_llm_predictor())
 
 
-
-
 def _load_index_from_storage(space: SpaceKey) -> GPTVectorStoreIndex:
     return load_index_from_storage(storage_context=_get_storage_context(space))
-
-
 
 
 def run_chat(input_: str, history: str) -> BaseMessage:
@@ -100,13 +96,14 @@ def run_chat(input_: str, history: str) -> BaseMessage:
     return output
 
 
-def run_ask(input_: str, history: str, space: SpaceKey, spaces: list[SpaceKey] = None) -> Response:
+def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[SpaceKey] = None) -> Response:
     """Ask questions against existing index(es) with history."""
     if spaces is not None and len(spaces) > 0:
         # With additional spaces likely to be combining a number of shared spaces.
         indices = []
         summaries = []
-        for s_ in spaces + [space]:
+        all_spaces = spaces + ([space] if space else [])
+        for s_ in all_spaces:
             index_ = _load_index_from_storage(s_)
             summary_ = index_.as_query_engine().query("What is the summary of all the documents?")
             indices.append(index_)
@@ -115,13 +112,18 @@ def run_ask(input_: str, history: str, space: SpaceKey, spaces: list[SpaceKey] =
             GPTListIndex, indices, index_summaries=summaries, service_context=_get_service_context()
         )
         output = graph.as_query_engine().query(PROMPT_QUESTION.format(history=history, input=input_))
+
+        log.debug("(Ask combined spaces %s) Q: %s, A: %s", all_spaces, input_, output)
     else:
         # No additional spaces i.e. likely to be against a user's documents in their personal space.
-        index = _load_index_from_storage(space)
-        engine = index.as_chat_engine(verbose=True, similarity_top_k=3, vector_store_query_mode="default")
-        output = engine.chat(input_)
+        if space is None:
+            output = run_chat(input_, history)
+        else:
+            index = _load_index_from_storage(space)
+            engine = index.as_chat_engine(verbose=True, similarity_top_k=3, vector_store_query_mode="default")
+            output = engine.chat(input_)
+            log.debug("(Ask %s w/o shared spaces) Q: %s, A: %s", space, input_, output)
 
-    log.debug("(Ask w/ spaces ) Q: %s, A: %s", spaces, input_, output)
     return output
 
 

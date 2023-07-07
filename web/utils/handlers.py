@@ -93,10 +93,17 @@ def query_chat_history(feature: domain.FeatureKey) -> None:
 def handle_chat_input(feature: domain.FeatureKey) -> None:
     req = st.session_state[f"chat_input_{feature.value()}"]
 
-    space = domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_)
+    space = (
+        None
+        if feature.type_ == config.FeatureType.ASK_SHARED and not st.session_state["chat_personal_space"]
+        else domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_)
+    )
 
     spaces = (
-        [domain.SpaceKey(config.SpaceType.SHARED, s_[0]) for s_ in st.session_state[f"chat_spaces_{feature.value()}"]]
+        [
+            domain.SpaceKey(config.SpaceType.SHARED, s_[0])
+            for s_ in st.session_state[f"chat_shared_spaces_{feature.value()}"]
+        ]
         if feature.type_ == config.FeatureType.ASK_SHARED
         else None
     )
