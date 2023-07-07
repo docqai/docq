@@ -27,8 +27,8 @@ class TestGetPath:
     @pytest.mark.parametrize(
         ("type_", "id_", "expected"),
         [
-            (SpaceType.SHARED, 88, DATA_DIR + "/upload/shared/88"),
-            (SpaceType.PERSONAL, 9999, DATA_DIR + "/upload/personal/9999"),
+            (SpaceType.SHARED, 88, DATA_DIR + "/upload/SHARED/88"),
+            (SpaceType.PERSONAL, 9999, DATA_DIR + "/upload/PERSONAL/9999"),
         ],
     )
     def test_get_upload_dir(self: Self, type_: SpaceType, id_: int, expected: str):
@@ -37,8 +37,8 @@ class TestGetPath:
     @pytest.mark.parametrize(
         ("type_", "id_", "filename", "expected"),
         [
-            (SpaceType.SHARED, 1, "useful.pdf", DATA_DIR + "/upload/shared/1/useful.pdf"),
-            (SpaceType.PERSONAL, 2, "not-quite.jpeg", DATA_DIR + "/upload/personal/2/not-quite.jpeg"),
+            (SpaceType.SHARED, 1, "useful.pdf", DATA_DIR + "/upload/SHARED/1/useful.pdf"),
+            (SpaceType.PERSONAL, 2, "not-quite.jpeg", DATA_DIR + "/upload/PERSONAL/2/not-quite.jpeg"),
         ],
     )
     def test_get_upload_file(self: Self, type_: SpaceType, id_: int, filename: str, expected: str):
@@ -47,8 +47,8 @@ class TestGetPath:
     @pytest.mark.parametrize(
         ("type_", "id_", "expected"),
         [
-            (SpaceType.SHARED, 19, DATA_DIR + "/index/shared/19"),
-            (SpaceType.PERSONAL, 27, DATA_DIR + "/index/personal/27"),
+            (SpaceType.SHARED, 19, DATA_DIR + "/index/SHARED/19"),
+            (SpaceType.PERSONAL, 27, DATA_DIR + "/index/PERSONAL/27"),
         ],
     )
     def test_get_index_dir(self: Self, type_: SpaceType, id_: int, expected: str):
@@ -57,15 +57,15 @@ class TestGetPath:
     @pytest.mark.parametrize(
         ("id_", "expected"),
         [
-            (88, DATA_DIR + "/sqlite/personal/88/usage.db"),
-            (9999, DATA_DIR + "/sqlite/personal/9999/usage.db"),
+            (88, DATA_DIR + "/sqlite/PERSONAL/88/usage.db"),
+            (9999, DATA_DIR + "/sqlite/PERSONAL/9999/usage.db"),
         ],
     )
     def test_get_sqlite_usage_file(self: Self, id_: int, expected: str):
         assert get_sqlite_usage_file(id_) == expected
 
     def test_get_sqlite_system_file(self: Self):
-        assert get_sqlite_system_file() == DATA_DIR + "/sqlite/shared/system.db"
+        assert get_sqlite_system_file() == DATA_DIR + "/sqlite/SHARED/system.db"
 
 
 @pytest.mark.parametrize(
