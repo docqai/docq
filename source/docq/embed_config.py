@@ -1,7 +1,7 @@
 """Configuration for web embed."""
 
 import streamlit as st
-from st_pages import hide_pages, Page
+from st_pages import hide_pages
 
 hide_sidebar_style = """
 <style>
@@ -9,8 +9,16 @@ hide_sidebar_style = """
     display: none !important;
 }
 
+[data-testid="collapsedControl"]{
+    display: none !important;
+}
+
 .block-container {
     padding-top: 0rem !important;
+}
+
+.stChatFloatingInputContainer {
+    padding-bottom: 3rem !important;
 }
 </style>
 """
@@ -19,7 +27,7 @@ def _web_embed_config() -> None:
     st.markdown(hide_sidebar_style, unsafe_allow_html=True)
 
 def _root_embed_config() -> None:
-    hide_pages(["Public_Chat"])
+    hide_pages(["widget"])
 
 def web_embed_config() -> None:
     """Configuration for web embed."""

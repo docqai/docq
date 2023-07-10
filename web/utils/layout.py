@@ -7,6 +7,7 @@ from typing import List
 import streamlit as st
 from docq.config import FeatureType, LogType, SystemSettingsKey
 from docq.domain import ConfigKey, FeatureKey, SpaceKey
+from docq.embed_config import root_embed_config
 from st_pages import hide_pages
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
@@ -99,10 +100,12 @@ def __not_authorised() -> None:
 def public_access() -> None:
     # __no_staff_menu()
     __no_admin_menu()
+    root_embed_config()
 
 
 def auth_required(show_login_form: bool = True, requiring_admin: bool = False, show_logout_button: bool = True) -> bool:
     auth = get_auth_session()
+    root_embed_config()
     if auth:
         if show_logout_button:
             __logout_button()
