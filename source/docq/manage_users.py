@@ -103,7 +103,7 @@ def authenticate(username: str, password: str) -> tuple[id, str, bool]:
             return None
 
 
-def list_users(username_match: Optional[str] = None) -> list[tuple[int, str, bool, bool, datetime, datetime]]:
+def list_users(username_match: Optional[str] = None) -> list[tuple[int, str, str, bool, bool, datetime, datetime]]:
     """List users.
 
     Args:

@@ -2,19 +2,22 @@
 
 
 import logging as log
-from typing import List
+from typing import List, Tuple
 
 import streamlit as st
+from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SystemSettingsKey
 from docq.domain import ConfigKey, FeatureKey, SpaceKey
 from st_pages import hide_pages
+from streamlit.delta_generator import DeltaGenerator
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
-from .formatters import format_datetime, format_filesize
+from .formatters import format_archived, format_datetime, format_filesize
 from .handlers import (
     get_enabled_features,
     get_max_number_of_documents,
     get_shared_space,
+    get_shared_space_permissions,
     get_space_data_source,
     get_system_settings,
     handle_chat_input,
@@ -25,11 +28,13 @@ from .handlers import (
     handle_list_documents,
     handle_login,
     handle_logout,
+    handle_manage_space_permissions,
     handle_reindex_space,
-    handle_update_space,
+    handle_update_space_details,
     handle_update_system_settings,
     handle_update_user,
     handle_upload_file,
+    list_groups,
     list_shared_spaces,
     list_space_data_source_choices,
     list_users,
@@ -40,6 +45,7 @@ from .sessions import get_auth_session, get_chat_session
 
 
 def production_layout() -> None:
+    """Layout for the production environment."""
     hide_menu_style = """
         <style>
         #MainMenu {visibility: hidden;}
@@ -64,7 +70,7 @@ def __no_staff_menu() -> None:
 
 
 def __no_admin_menu() -> None:
-    hide_pages(["Admin", "Admin_Settings", "Admin_Spaces", "Admin_Users", "Admin_Docs", "Admin_Logs"])
+    hide_pages(["Admin", "Admin_Settings", "Admin_Spaces", "Admin_Docs", "Admin_Users", "Admin_Groups", "Admin_Logs"])
 
 
 def __login_form() -> None:
@@ -97,11 +103,13 @@ def __not_authorised() -> None:
 
 
 def public_access() -> None:
+    """Menu options for public access."""
     # __no_staff_menu()
     __no_admin_menu()
 
 
 def auth_required(show_login_form: bool = True, requiring_admin: bool = False, show_logout_button: bool = True) -> bool:
+    """Decide layout based on current user's access."""
     auth = get_auth_session()
     if auth:
         if show_logout_button:
@@ -121,6 +129,7 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
 
 
 def feature_enabled(feature: FeatureKey) -> bool:
+    """Check if a feature is enabled."""
     feats = get_enabled_features()
     # Note that we are checking `feats` first and then using `not in` here because we want to allow the features to be enabled by default.
     if feats and feature.name not in feats:
@@ -132,6 +141,7 @@ def feature_enabled(feature: FeatureKey) -> bool:
 
 
 def create_user_ui() -> None:
+    """Create a new user."""
     with st.empty().form(key="create_user"):
         st.text_input("Username", value="", key="create_user_username")
         st.text_input("Password", value="", key="create_user_password", type="password")
@@ -141,6 +151,7 @@ def create_user_ui() -> None:
 
 
 def list_users_ui(username_match: str = None) -> None:
+    """List all users."""
     users = list_users(username_match)
     if users:
         for id_, username, fullname, admin, archived, created_at, updated_at in users:
@@ -160,6 +171,16 @@ def list_users_ui(username_match: str = None) -> None:
                         st.checkbox("Is Admin", value=is_admin, key=f"update_user_{id_}_admin")
                         st.checkbox("Is Archived", value=is_archived, key=f"update_user_{id_}_archived")
                         st.form_submit_button("Save", on_click=handle_update_user, args=(id_,))
+
+
+def create_group_ui() -> None:
+    """Create a new group."""
+    st.info("Groups are coming soon.")
+
+
+def list_groups_ui() -> None:
+    """List all groups."""
+    st.info("Groups are coming soon.")
 
 
 def _chat_message(message_: str, is_user: bool) -> None:
@@ -265,10 +286,12 @@ def documents_ui(space: SpaceKey) -> None:
 
 
 def chat_settings_ui(feature: FeatureKey) -> None:
+    """Chat settings."""
     st.info("Settings for general chat are coming soon.")
 
 
 def system_settings_ui() -> None:
+    """System settings."""
     settings = get_system_settings()
     with st.form(key="system_settings"):
         st.multiselect(
@@ -301,6 +324,7 @@ def _render_space_data_source_config_input_fields(
 
 
 def create_space_ui() -> None:
+    """Create a new space."""
     data_sources = list_space_data_source_choices()
     with st.expander("### + New Space"):
         st.text_input("Name", value="", key="create_space_name")
@@ -315,39 +339,85 @@ def create_space_ui() -> None:
         st.button("Create Space", on_click=handle_create_space)
 
 
-def list_spaces_ui(admin_access: bool = False) -> None:
-    spaces = list_shared_spaces()
+def _render_view_space_details_with_container(space_data: Tuple, use_expander: bool = False) -> DeltaGenerator:
+    id_, name, summary, archived, ds_type, ds_configs, created_at, updated_at = space_data
+    container = st.expander(format_archived(name, archived)) if use_expander else st.container()
+    with container:
+        if not use_expander:
+            st.write(format_archived(name, archived))
+        st.write(f"ID: **{id_}**")
+        st.write(f"Summary: _{summary}_")
+        st.write(f"Type: **{ds_type}**")
+        st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
+    return container
+
+
+def _render_edit_space_details(space_data: Tuple) -> None:
+    id_, name, summary, archived, ds_type, ds_configs, _, _ = space_data
     data_sources = list_space_data_source_choices()
+
+    if st.button("Edit", key=f"update_space_{id_}_button"):
+        with st.form(key=f"update_space_details_{id_}"):
+            st.text_input("Name", value=name, key=f"update_space_details_{id_}_name")
+            st.text_input("Summary", value=summary, key=f"update_space_details_{id_}_summary")
+            st.checkbox("Is Archived", value=archived, key=f"update_space_details_{id_}_archived")
+            st.text_input("Type", value=ds_type, key=f"update_space_details_{id_}_ds_type", disabled=True)
+            _render_space_data_source_config_input_fields(data_sources, f"update_space_details_{id_}_", ds_configs)
+            st.form_submit_button("Save", on_click=handle_update_space_details, args=(id_,))
+
+
+def _render_manage_space_permissions(space_data: Tuple) -> None:
+    id_, *_ = space_data
+    permissions = get_shared_space_permissions(id_)
+
+    if st.button("Permissions", key=f"manage_space_permissions_{id_}_button"):
+        with st.form(key=f"manage_space_permissions_{id_}"):
+            st.checkbox(
+                "Public Access",
+                value=permissions[SpaceAccessType.PUBLIC],
+                key=f"manage_space_permissions_{id_}_{SpaceAccessType.PUBLIC.name}",
+            )
+            st.multiselect(
+                "Users",
+                options=[(u[0], u[1]) for u in list_users()],
+                default=permissions[SpaceAccessType.USER],
+                key=f"manage_space_permissions_{id_}_{SpaceAccessType.USER.name}",
+                format_func=lambda x: x[1],
+            )
+            st.multiselect(
+                "Groups",
+                options=[(g[0], g[1]) for g in list_groups()],
+                default=permissions[SpaceAccessType.GROUP],
+                key=f"manage_space_permissions_{id_}_{SpaceAccessType.GROUP.name}",
+                format_func=lambda x: x[1],
+            )
+            st.form_submit_button("Save", on_click=handle_manage_space_permissions, args=(id_,))
+
+
+def list_spaces_ui(admin_access: bool = False) -> None:
+    """List all spaces."""
+    spaces = list_shared_spaces()
     if spaces:
-        for id_, name, summary, archived, ds_type, ds_configs, created_at, updated_at in spaces:
-            if archived and not admin_access:
+        for s in spaces:
+            if s[3] and not admin_access:
                 continue
-            with st.expander(f"{'~~' if archived else ''}{name}{'~~' if archived else ''}"):
-                st.write(f"_{summary}_")
-                st.write(f"Type: **{ds_type}**")
-                st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
-                if admin_access:
-                    st.markdown(f"ID: **{id_}** | [Manage Documents](./Admin_Docs?sid={id_})")
-                    if st.button("Edit", key=f"update_space_{id_}_button"):
-                        with st.form(key=f"update_space_{id_}"):
-                            st.text_input("Name", value=name, key=f"update_space_{id_}_name")
-                            st.text_input("Summary", value=summary, key=f"update_space_{id_}_summary")
-                            st.checkbox("Is Archived", value=archived, key=f"update_space_{id_}_archived")
-                            st.text_input("Type", value=ds_type, key=f"update_space_{id_}_ds_type", disabled=True)
-                            _render_space_data_source_config_input_fields(
-                                data_sources, f"update_space_{id_}_", ds_configs
-                            )
-                            st.form_submit_button("Save", on_click=handle_update_space, args=(id_,))
+
+            container = _render_view_space_details_with_container(s, True)
+            if admin_access:
+                with container:
+                    st.markdown(f"[Manage Documents](./Admin_Docs?sid={s[0]})")
+                    col_details, col_permissions = st.columns(2)
+                    with col_details:
+                        _render_edit_space_details(s)
+                    with col_permissions:
+                        _render_manage_space_permissions(s)
 
 
 def show_space_details_ui(space: SpaceKey) -> None:
-    (id_, name, summary, archived, ds_type, ds_configs, created_at, updated_at) = get_shared_space(space.id_)
-    st.write(f"{'~~' if archived else ''}{name}{'~~' if archived else ''}")
-    st.write(f"ID: **{id_}**")
-    st.write(f"Summary: _{summary}_")
-    st.write(f"Type: **{ds_type}**")
-    st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
+    """Show details of a space."""
+    _render_view_space_details_with_container(get_shared_space(space.id_))
 
 
 def list_logs_ui(type_: LogType) -> None:
+    """List logs per log type."""
     st.info("Logs are coming soon.")
