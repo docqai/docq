@@ -3,14 +3,16 @@
 import logging as log
 import math
 from datetime import datetime
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 import streamlit as st
 from docq import config, domain, run_queries
 from docq import manage_documents as mdocuments
+from docq import manage_groups as mgroups
 from docq import manage_settings as msettings
 from docq import manage_spaces as mspaces
 from docq import manage_users as musers
+from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SPACE_DATA_SOURCES
 from docq.domain import SpaceKey
 
@@ -75,8 +77,40 @@ def handle_update_user(id_: int) -> bool:
     return result
 
 
+def handle_create_group() -> int:
+    result = mgroups.create_group(
+        st.session_state["create_group_name"],
+    )
+    log.info("Create group with id: %s", result)
+    return result
+
+
+def handle_update_group(id_: int) -> bool:
+    result = mgroups.update_group(
+        id_,
+        [x[0] for x in st.session_state[f"update_group_{id_}_members"]],
+        st.session_state[f"update_group_{id_}_name"],
+    )
+    log.info("Update group result: %s", result)
+    return result
+
+
+def handle_delete_group(id_: int) -> bool:
+    result = mgroups.delete_group(id_)
+    log.info("Update group result: %s", result)
+    return result
+
+
 def list_users(username_match: str = None) -> list[tuple]:
     return musers.list_users(username_match)
+
+
+def list_selected_users(user_ids: List[int]) -> list[tuple]:
+    return musers.list_selected_users(user_ids)
+
+
+def list_groups(groupname_match: str = None) -> list[tuple]:
+    return mgroups.list_groups(groupname_match)
 
 
 def query_chat_history(feature: domain.FeatureKey) -> None:
@@ -166,6 +200,21 @@ def handle_archive_space(id_: int):
     mspaces.archive_space(id_)
 
 
+def get_shared_space_permissions(id_: int) -> dict[SpaceAccessType, Any]:
+    permissions = mspaces.get_shared_space_permissions(id_)
+    results = {
+        SpaceAccessType.PUBLIC: any(p.type_ == SpaceAccessType.PUBLIC for p in permissions),
+        SpaceAccessType.USER: [
+            (p.accessor_id, p.accessor_name) for p in permissions if p.type_ == SpaceAccessType.USER
+        ],
+        SpaceAccessType.GROUP: [
+            (p.accessor_id, p.accessor_name) for p in permissions if p.type_ == SpaceAccessType.GROUP
+        ],
+    }
+    log.debug("Get shared space permissions: %s", results)
+    return results
+
+
 def _prepare_space_data_source(prefix: str) -> Tuple[str, dict]:
     ds_type = st.session_state[f"{prefix}ds_type"]
     ds_config_keys = list_space_data_source_choices()[ds_type]
@@ -173,18 +222,31 @@ def _prepare_space_data_source(prefix: str) -> Tuple[str, dict]:
     return ds_type, ds_configs
 
 
-def handle_update_space(id_: int) -> bool:
-    ds_type, ds_configs = _prepare_space_data_source(f"update_space_{id_}_")
+def handle_update_space_details(id_: int) -> bool:
+    ds_type, ds_configs = _prepare_space_data_source(f"update_space_details_{id_}_")
     result = mspaces.update_shared_space(
         id_,
-        st.session_state[f"update_space_{id_}_name"],
-        st.session_state[f"update_space_{id_}_summary"],
-        st.session_state[f"update_space_{id_}_archived"],
+        st.session_state[f"update_space_details_{id_}_name"],
+        st.session_state[f"update_space_details_{id_}_summary"],
+        st.session_state[f"update_space_details_{id_}_archived"],
         ds_type,
         ds_configs,
     )
-    log.info("Update space result: %s", result)
+    log.info("Update space details result: %s", result)
     return result
+
+
+def handle_manage_space_permissions(id_: int) -> bool:
+    permissions = []
+    if st.session_state[f"manage_space_permissions_{id_}_{SpaceAccessType.PUBLIC.name}"] is True:
+        permissions.append(SpaceAccessor(SpaceAccessType.PUBLIC))
+
+    for k in [SpaceAccessType.USER, SpaceAccessType.GROUP]:
+        for accessor_id, accessor_name, *_ in st.session_state[f"manage_space_permissions_{id_}_{k.name}"]:
+            permissions.append(SpaceAccessor(k, accessor_id, accessor_name))
+
+    log.debug("Manage space permissions: %s", permissions)
+    return mspaces.update_shared_space_permissions(id_, permissions)
 
 
 def handle_create_space() -> SpaceKey:

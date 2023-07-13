@@ -4,7 +4,7 @@ import logging as log
 import sqlite3
 from contextlib import closing
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
@@ -103,7 +103,7 @@ def authenticate(username: str, password: str) -> tuple[id, str, bool]:
             return None
 
 
-def list_users(username_match: Optional[str] = None) -> list[tuple[int, str, bool, bool, datetime, datetime]]:
+def list_users(username_match: Optional[str] = None) -> list[tuple[int, str, str, bool, bool, datetime, datetime]]:
     """List users.
 
     Args:
@@ -120,6 +120,27 @@ def list_users(username_match: Optional[str] = None) -> list[tuple[int, str, boo
         return cursor.execute(
             "SELECT id, username, fullname, admin, archived, created_at, updated_at FROM users WHERE username LIKE ?",
             (f"%{username_match}%" if username_match else "%",),
+        ).fetchall()
+
+
+def list_selected_users(ids_: List[int]) -> list[tuple[int, str, str, bool, bool, datetime, datetime]]:
+    """List selected users by their ids.
+
+    Args:
+        ids_ (List[int]): The list of user ids.
+
+    Returns:
+        list[tuple[int, str, str, str, bool, bool, datetime, datetime]]: The list of users.
+    """
+    log.debug("Listing users: %s", ids_)
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(SQL_CREATE_USERS_TABLE)
+        return cursor.execute(
+            "SELECT id, username, fullname, admin, archived, created_at, updated_at FROM users WHERE id IN ({})".format(
+                ",".join([str(id_) for id_ in ids_])
+            )
         ).fetchall()
 
 
