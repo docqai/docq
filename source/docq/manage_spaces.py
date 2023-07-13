@@ -6,9 +6,10 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime
 from typing import List
-from docq.access_control.main import SpaceAccessType, SpaceAccessor
 
 from llama_index import Document, GPTVectorStoreIndex
+
+from docq.access_control.main import SpaceAccessor, SpaceAccessType
 
 from .config import SpaceType
 from .data_source.list import SPACE_DATA_SOURCES
@@ -207,7 +208,7 @@ def get_shared_space_permissions(id_: int) -> List[SpaceAccessor]:
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_SPACE_ACCESS_TABLE)
         cursor.execute(
-            "SELECT sa.access_type, u.id as user_id, u.username as user_name, g.id as group_id, g.name as group_name FROM space_access sa LEFT JOIN users u on sa.accessor_id = u.id LEFT JOIN groups g on sa.accessor_id = g.id WHERE sa.space_id = ?",
+            "SELECT sa.access_type, u.id as user_id, u.username as user_name, g.id as group_id, g.name as group_name FROM space_access sa LEFT JOIN users u on sa.accessor_id = u.id LEFT JOIN user_groups g on sa.accessor_id = g.id WHERE sa.space_id = ?",
             (id_,),
         )
         rows = cursor.fetchall()
