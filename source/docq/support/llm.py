@@ -15,7 +15,17 @@ from llama_index import (
 )
 from llama_index.chat_engine import SimpleChatEngine
 from llama_index.indices.composability import ComposableGraph
+from llama_index.node_parser import SimpleNodeParser
+from llama_index.node_parser.extractors import (
+    KeywordExtractor,
+    MetadataExtractor,
+    # MetadataFeatureExtractor,
+    QuestionsAnsweredExtractor,
+    SummaryExtractor,
+    TitleExtractor,
+)
 
+from ..config import EXPERIMENTS
 from ..domain import SpaceKey
 from .store import get_index_dir
 
@@ -73,7 +83,33 @@ def _get_storage_context(space: SpaceKey) -> StorageContext:
 
 
 def _get_service_context() -> ServiceContext:
-    return ServiceContext.from_defaults(llm_predictor=_get_llm_predictor())
+    log.debug(
+        "EXPERIMENTS['INCLUDE_EXTRACTED_METADATA']['enabled']: %s", EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]
+    )
+    if EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]:
+        return ServiceContext.from_defaults(llm_predictor=_get_llm_predictor(), node_parser=_get_node_parser())
+    else:
+        return ServiceContext.from_defaults(llm_predictor=_get_llm_predictor())
+
+
+def _get_node_parser() -> SimpleNodeParser:
+    metadata_extractor = MetadataExtractor(
+        extractors=[
+            TitleExtractor(nodes=5),
+            QuestionsAnsweredExtractor(questions=3),
+            SummaryExtractor(summaries=["prev", "self"]),
+            KeywordExtractor(keywords=10),
+            # CustomExtractor()
+        ],
+    )
+
+    node_parser = (
+        SimpleNodeParser.from_defaults(  # SimpleNodeParser is the default when calling ServiceContext.from_defaults()
+            metadata_extractor=metadata_extractor,  # adds extracted metatdata as extra_info
+        )
+    )
+
+    return node_parser
 
 
 def _load_index_from_storage(space: SpaceKey) -> GPTVectorStoreIndex:
@@ -105,9 +141,14 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
         all_spaces = spaces + ([space] if space else [])
         for s_ in all_spaces:
             index_ = _load_index_from_storage(s_)
-            summary_ = index_.as_query_engine().query("What is the summary of all the documents?")
+            summary_ = index_.as_query_engine().query(
+                "What is the summary of all the documents?"
+            )  # note: we might not need to do this any longder because summary is added as node metadata.
             indices.append(index_)
-            summaries.append(summary_)
+
+            summaries.append(summary_.response)
+
+        log.debug("number summaries: %s", len(summaries))
         graph = ComposableGraph.from_indices(
             GPTListIndex, indices, index_summaries=summaries, service_context=_get_service_context()
         )

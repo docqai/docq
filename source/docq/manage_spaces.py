@@ -58,7 +58,8 @@ def reindex(space: SpaceKey) -> None:
     (ds_type, ds_configs) = get_space_data_source(space)
 
     try:
-        documents = SPACE_DATA_SOURCES[ds_type].load(space, ds_configs)
+        documents = SPACE_DATA_SOURCES[ds_type].load(space, ds_configs, get_index_dir(space))
+        log.debug("docs to index, %s", len(documents))
         index = _create_index(documents)
         _persist_index(index, space)
     except Exception as e:
@@ -72,7 +73,7 @@ def list_documents(space: SpaceKey) -> list[tuple[str, int, int]]:
     space_data_source = SPACE_DATA_SOURCES[ds_type]
     if isinstance(space_data_source, SpaceDataSourceFileBased):
         try:
-            documents_list = SPACE_DATA_SOURCES[ds_type].get_document_list(space, ds_configs)
+            documents_list = SPACE_DATA_SOURCES[ds_type].get_document_list(space, ds_configs, get_index_dir(space))
         except Exception as e:
             log.error("Error listing documents for space %s: %s", space, e)
             documents_list = []

@@ -2,6 +2,7 @@
 
 
 import logging as log
+from datetime import datetime
 from typing import List, Tuple
 
 import streamlit as st
@@ -278,7 +279,7 @@ def documents_ui(space: SpaceKey) -> None:
     show_upload = ds_type == "MANUAL_UPLOAD"
     show_delete = ds_type == "MANUAL_UPLOAD"
     show_reindex = True
-
+    log.debug(space.id_)
     if show_upload:
         _render_document_upload(space, documents)
 
@@ -290,7 +291,9 @@ def documents_ui(space: SpaceKey) -> None:
         st.markdown(f"**Document Count**: {len(documents)}")
         for i, (filename, time, size) in enumerate(documents):
             with st.expander(filename):
-                st.markdown(f"Size: {format_filesize(size)} | Last Modified: {format_datetime(time)}")
+                st.markdown(
+                    f"Size: {format_filesize(size)} | Last Modified: {format_datetime(datetime.fromtimestamp(time))}"
+                )
 
                 if show_delete:
                     st.button(

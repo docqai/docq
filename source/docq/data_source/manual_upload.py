@@ -6,6 +6,7 @@ from typing import List
 
 from llama_index import Document, SimpleDirectoryReader
 
+from ..config import SpaceDataSourceType
 from ..domain import ConfigKey, SpaceKey
 from ..support.store import get_upload_dir
 from .main import DocumentMetadata, SpaceDataSourceFileBased
@@ -16,7 +17,7 @@ class ManualUpload(SpaceDataSourceFileBased):
 
     def __init__(self) -> None:
         """Initialize the data source."""
-        super().__init__("Manual Upload")
+        super().__init__(SpaceDataSourceType.MANUAL_UPLOAD.value, SpaceDataSourceType.MANUAL_UPLOAD.name)
 
     def get_config_keys(self) -> List[ConfigKey]:
         """Get the config keys for manual upload."""
@@ -31,6 +32,8 @@ class ManualUpload(SpaceDataSourceFileBased):
                 DocumentMetadata.FILE_PATH.name: x,
                 DocumentMetadata.SPACE_ID.name: space.id_,
                 DocumentMetadata.SPACE_TYPE.name: space.type_.name,
+                DocumentMetadata.SOURCE_URI.name: x,
+                DocumentMetadata.INDEXED_ON.name: datetime.timestamp(datetime.now().utcnow()),
             }
 
         return SimpleDirectoryReader(get_upload_dir(space), file_metadata=lambda_metadata).load_data()
@@ -48,7 +51,7 @@ class ManualUpload(SpaceDataSourceFileBased):
         """
         return list(
             map(
-                lambda f: (f.name, datetime.fromtimestamp(f.stat().st_ctime), f.stat().st_size),
+                lambda f: (f.name, f.stat().st_ctime, f.stat().st_size),
                 os.scandir(get_upload_dir(space)),
             )
         )

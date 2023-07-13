@@ -6,6 +6,7 @@ from typing import List
 from azure.core.exceptions import ClientAuthenticationError
 from llama_index import Document, download_loader
 
+from ..config import SpaceDataSourceType
 from ..domain import ConfigKey, SpaceKey
 from .main import SpaceDataSourceFileBased
 
@@ -15,7 +16,7 @@ class AzureBlob(SpaceDataSourceFileBased):
 
     def __init__(self) -> None:
         """Initialize the data source."""
-        super().__init__("Azure Blob")
+        super().__init__(SpaceDataSourceType.AZURE_BLOB.value, SpaceDataSourceType.AZURE_BLOB.name)
 
     def get_config_keys(self) -> List[ConfigKey]:
         """Get the config keys for azure blob container."""

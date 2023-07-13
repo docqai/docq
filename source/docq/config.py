@@ -38,3 +38,22 @@ class SystemSettingsKey(Enum):
 
 class UserSettingsKey(Enum):
     """User settings keys."""
+
+
+class SpaceDataSourceType(Enum):
+    """Space datasource types."""
+
+    MANUAL_UPLOAD = "Manual Upload"
+    AZURE_BLOB = "Azure Blob"
+    AWS_S3 = "AWS S3"
+    WEB_SCRAPER = "Web Scraper"
+
+
+"""A dictionary of experiment names mapped to their enabled state and description."""
+# NOTE: global for now. Later we can adjust to use a different backend to set per user.
+EXPERIMENTS = {
+    "INCLUDE_EXTRACTED_METADATA": {
+        "enabled": True,
+        "description": "Include extracts, using LlamaIndex extract modules, in the document index extra_info.",
+    },
+}
