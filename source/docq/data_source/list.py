@@ -9,14 +9,6 @@ from .main import DataSource
 from .manual_upload import ManualUpload
 from .web_scraper import WebScraper
 
-# SPACE_DATA_SOURCES = {
-#     SpaceDataSourceType.MANUAL_UPLOAD.name: ManualUpload(),
-#     SpaceDataSourceType.AZURE_BLOB.name: AzureBlob(),
-#     SpaceDataSourceType.AWS_S3.name: AwsS3(),
-#     SpaceDataSourceType.WEB_SCRAPER.name: WebScraper(),
-#     SpaceDataSourceType.KNOWLEDGE_BASE_SCRAPER.name: KnowledgeBaseScraper(),
-# }
-
 
 class SpaceDataSources(Enum):
     """Space datasource list."""

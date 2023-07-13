@@ -35,7 +35,7 @@ class SpaceDataSource(ABC):
 
     def get_type(self) -> str:
         """Get the type of this data source."""
-        return self.type
+        return self._type
 
     @abstractmethod
     def get_config_keys(self) -> List[ConfigKey]:
