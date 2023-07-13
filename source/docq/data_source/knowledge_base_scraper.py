@@ -40,11 +40,11 @@ class KnowledgeBaseScraper(SpaceDataSourceWebBased):
                 ref_link="Python Regex. URLs that match will be included in the index.",
             ),
             ConfigKey(
-                "title_selector_css",
-                "Title Selector CSS",
+                "title_css_selector",
+                "Title CSS Selector",
                 ref_link="Space separated CSS class names to filter on.",
             ),
-            ConfigKey("subtitle_selector_css", "Subtitle Selector CSS"),
+            ConfigKey("subtitle_css_selector", "Subtitle CSS Selector"),
         ]
 
     def load(self, space: SpaceKey, configs: dict, persist_path: str) -> List[Document]:
@@ -63,8 +63,8 @@ class KnowledgeBaseScraper(SpaceDataSourceWebBased):
                 website_metadata=lambda_metadata,
                 website_extractor={
                     "GenericKnowledgeBaseExtractor": GenericKnowledgeBaseExtractor(
-                        title_selector_css=configs["title_selector_css"],
-                        subtitle_selector_css=configs["subtitle_selector_css"],
+                        title_css_selector=configs["title_css_selector"],
+                        subtitle_css_selector=configs["subtitle_css_selector"],
                     )
                 },
             )
@@ -127,7 +127,8 @@ class GenericKnowledgeBaseExtractor(BaseTextExtractor):
             p_tags = soup.find_all("p")
 
             for p in p_tags:
-                content_body += f"/n{p.get_text()}"
+                if p:
+                    content_body += f"/n{p.get_text()}"
 
         except IndexError:
             content_body = None

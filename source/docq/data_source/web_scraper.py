@@ -107,11 +107,11 @@ class BaseTextExtractor(ABC):
 
     def __init__(
         self,
-        tile_css_selector: str = None,
+        title_css_selector: str = None,
         subtitle_css_selector: str = None,
     ) -> None:
         """Initialize the text extractor."""
-        self._title_css_selector = tile_css_selector
+        self._title_css_selector = title_css_selector
         self._subtitle_css_selector = subtitle_css_selector
 
     @abstractmethod
@@ -136,11 +136,10 @@ class BaseTextExtractor(ABC):
             css_selector (str, optional): The CSS selector to use to find the title. BeautifulSoup style. Defaults to None.
         """
         self._title_css_selector = css_selector if css_selector else self._title_css_selector
-        return (
-            soup.find(class_=self._title_css_selector).get_text()
-            if self._title_css_selector
-            else soup.find("h1").get_text()
-        )
+
+        title_element = soup.find(class_=self._title_css_selector) if self._title_css_selector else soup.find("h1")
+
+        return title_element.get_text() if title_element else ""
 
     def extract_subtitle(self, soup: any, css_selector: str = None) -> str:
         """Extract the subtitle from a web page. Defaults to the <h2> tag.
@@ -154,11 +153,11 @@ class BaseTextExtractor(ABC):
         """
         self._subtitle_css_selector = css_selector if css_selector else self._subtitle_css_selector
 
-        return (
-            soup.find(class_=self._subtitle_css_selector).get_text()
-            if self._subtitle_css_selector
-            else soup.find("h2").get_text()
+        subtitle_element = (
+            soup.find(class_=self._subtitle_css_selector) if self._subtitle_css_selector else soup.find("h2")
         )
+
+        return subtitle_element.get_text() if subtitle_element else ""
 
     def extract_links(self, soup: any, website_url: str, extract_url: str, include_filter: str = None) -> List[str]:
         """Extract a unique list of links from a website."""
