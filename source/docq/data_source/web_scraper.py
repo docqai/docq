@@ -44,8 +44,9 @@ class WebScraper(SpaceDataSourceWebBased):
 
         def lambda_metadata(x: str) -> dict:
             return {
-                DocumentMetadata.SPACE_ID.name: space.id_,
-                DocumentMetadata.SPACE_TYPE.name: space.type_.name,
+                DocumentMetadata.SPACE_ID.value: space.id_,
+                DocumentMetadata.SPACE_TYPE.value: space.type_.name,
+                DocumentMetadata.DATA_SOURCE_TYPE.value: self.get_type(),
             }
 
         try:

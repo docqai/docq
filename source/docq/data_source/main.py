@@ -13,11 +13,12 @@ from ..domain import ConfigKey, SpaceKey
 class DocumentMetadata(Enum):
     """Document metadata."""
 
-    FILE_PATH = "File Path"
-    SPACE_ID = "Space ID"
-    SPACE_TYPE = "Space Type"
-    INDEXED_ON = "Indexed On"
-    SOURCE_URI = "Source URI"
+    FILE_PATH = "file_path"
+    SPACE_ID = "space_id"
+    SPACE_TYPE = "space_type"
+    DATA_SOURCE_TYPE = "data_source_type"
+    INDEXED_ON = "indexed_on"
+    SOURCE_URI = "source_url"
 
 
 class SpaceDataSource(ABC):
