@@ -3,11 +3,9 @@
 import json
 import logging as log
 import os
-from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import List
 
 from llama_index import Document
-from llama_index.readers.base import BaseReader
 
 from ..config import SpaceDataSourceType
 from ..domain import ConfigKey, SpaceKey
@@ -26,7 +24,9 @@ class KnowledgeBaseScraper(SpaceDataSourceWebBased):
         Args:
             persist_path (str): The path to the directory where the document list for the data source will persist its data.
         """
-        super().__init__(SpaceDataSourceType.WEB_SCRAPER.value, SpaceDataSourceType.WEB_SCRAPER.name)
+        super().__init__(
+            SpaceDataSourceType.KNOWLEDGE_BASE_SCRAPER.value, SpaceDataSourceType.KNOWLEDGE_BASE_SCRAPER.name
+        )
         self._document_list = []
 
     def get_config_keys(self) -> List[ConfigKey]:
