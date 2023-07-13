@@ -207,7 +207,7 @@ def get_shared_space_permissions(id_: int) -> List[SpaceAccessor]:
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_SPACE_ACCESS_TABLE)
         cursor.execute(
-            "SELECT sa.access_type, u.id as user_id, u.username as user_name FROM space_access sa LEFT JOIN users u on sa.accessor_id = u.id WHERE sa.space_id = ?",
+            "SELECT sa.access_type, u.id as user_id, u.username as user_name, g.id as group_id, g.name as group_name FROM space_access sa LEFT JOIN users u on sa.accessor_id = u.id LEFT JOIN groups g on sa.accessor_id = g.id WHERE sa.space_id = ?",
             (id_,),
         )
         rows = cursor.fetchall()
@@ -218,7 +218,7 @@ def get_shared_space_permissions(id_: int) -> List[SpaceAccessor]:
             elif row[0] == SpaceAccessType.USER.name:
                 results.append(SpaceAccessor(SpaceAccessType.USER, row[1], row[2]))
             elif row[0] == SpaceAccessType.GROUP.name:
-                log.warning("Group access type not implemented yet")
+                results.append(SpaceAccessor(SpaceAccessType.GROUP, row[3], row[4]))
         return results
 
 

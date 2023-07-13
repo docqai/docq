@@ -77,8 +77,36 @@ def handle_update_user(id_: int) -> bool:
     return result
 
 
+def handle_create_group() -> int:
+    result = mgroups.create_group(
+        st.session_state["create_group_name"],
+    )
+    log.info("Create group with id: %s", result)
+    return result
+
+
+def handle_update_group(id_: int) -> bool:
+    result = mgroups.update_group(
+        id_,
+        [x[0] for x in st.session_state[f"update_group_{id_}_members"]],
+        st.session_state[f"update_group_{id_}_name"],
+    )
+    log.info("Update group result: %s", result)
+    return result
+
+
+def handle_delete_group(id_: int) -> bool:
+    result = mgroups.delete_group(id_)
+    log.info("Update group result: %s", result)
+    return result
+
+
 def list_users(username_match: str = None) -> list[tuple]:
     return musers.list_users(username_match)
+
+
+def list_selected_users(user_ids: List[int]) -> list[tuple]:
+    return musers.list_selected_users(user_ids)
 
 
 def list_groups(groupname_match: str = None) -> list[tuple]:

@@ -21,20 +21,24 @@ from .handlers import (
     get_space_data_source,
     get_system_settings,
     handle_chat_input,
+    handle_create_group,
     handle_create_space,
     handle_create_user,
     handle_delete_all_documents,
     handle_delete_document,
+    handle_delete_group,
     handle_list_documents,
     handle_login,
     handle_logout,
     handle_manage_space_permissions,
     handle_reindex_space,
+    handle_update_group,
     handle_update_space_details,
     handle_update_system_settings,
     handle_update_user,
     handle_upload_file,
     list_groups,
+    list_selected_users,
     list_shared_spaces,
     list_space_data_source_choices,
     list_users,
@@ -142,7 +146,7 @@ def feature_enabled(feature: FeatureKey) -> bool:
 
 def create_user_ui() -> None:
     """Create a new user."""
-    with st.empty().form(key="create_user"):
+    with st.expander("### + New User"), st.form(key="create_user"):
         st.text_input("Username", value="", key="create_user_username")
         st.text_input("Password", value="", key="create_user_password", type="password")
         st.text_input("Full Name", value="", key="create_user_fullname")
@@ -175,12 +179,37 @@ def list_users_ui(username_match: str = None) -> None:
 
 def create_group_ui() -> None:
     """Create a new group."""
-    st.info("Groups are coming soon.")
+    with st.expander("### + New Group"), st.form(key="create_group"):
+        st.text_input("Name", value="", key="create_group_name")
+        st.form_submit_button("Create Group", on_click=handle_create_group)
 
 
-def list_groups_ui() -> None:
+def list_groups_ui(groupname_match: str = None) -> None:
     """List all groups."""
-    st.info("Groups are coming soon.")
+    groups = list_groups(groupname_match)
+    if groups:
+        for id_, name, members, created_at, updated_at in groups:
+            with st.expander(f"{name} ({len(members)} members)"):
+                st.write(f"ID: **{id_}**")
+                st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
+                edit_col, delete_col = st.columns(2)
+                with edit_col:
+                    if st.button("Edit", key=f"update_group_{id_}_button"):
+                        with st.form(key=f"update_group_{id_}"):
+                            st.text_input("Name", value=name, key=f"update_group_{id_}_name")
+                            st.multiselect(
+                                "Members",
+                                options=list_users(),
+                                default=list_selected_users(members),
+                                key=f"update_group_{id_}_members",
+                                format_func=lambda x: x[1],
+                            )
+                            st.form_submit_button("Save", on_click=handle_update_group, args=(id_,))
+                with delete_col:
+                    if st.button("Delete", key=f"delete_group_{id_}_button"):
+                        with st.form(key=f"delete_group_{id_}"):
+                            st.warning("Are you sure you want to delete this group?")
+                            st.form_submit_button("Confirm", on_click=handle_delete_group, args=(id_,))
 
 
 def _chat_message(message_: str, is_user: bool) -> None:
