@@ -9,7 +9,7 @@ def format_datetime(dt: datetime) -> str:
 
 
 def format_filesize(size: int) -> str:
-    """Format filesize to human-friendly Mb sizing."""
+    """Format filesize to human-friendly sizing string with unit."""
     if size > 1024 * 1024:
         return f"{round(size / 1024 / 1024, 1)} Mb"
     elif size > 1024:
