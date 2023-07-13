@@ -47,6 +47,7 @@ class SpaceDataSourceType(Enum):
     AZURE_BLOB = "Azure Blob"
     AWS_S3 = "AWS S3"
     WEB_SCRAPER = "Web Scraper"
+    KNOWLEDGE_BASE_SCRAPER = "Knowledge Base Scraper"
 
 
 """A dictionary of experiment names mapped to their enabled state and description."""

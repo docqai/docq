@@ -143,7 +143,7 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
             index_ = _load_index_from_storage(s_)
             summary_ = index_.as_query_engine().query(
                 "What is the summary of all the documents?"
-            )  # note: we might not need to do this any longder because summary is added as node metadata.
+            )  # note: we might not need to do this any longer because summary is added as node metadata.
             indices.append(index_)
 
             summaries.append(summary_.response)

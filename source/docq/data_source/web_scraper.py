@@ -1,9 +1,11 @@
-"""Data source backed by AWS S3 (bucket)."""
+"""Data source for scrapping a website."""
 
 import json
 import logging as log
 import os
 import re
+import sys
+from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from urllib.parse import urljoin
@@ -13,11 +15,10 @@ from llama_index.readers.base import BaseReader
 
 from ..config import SpaceDataSourceType
 from ..domain import ConfigKey, SpaceKey
-from ..support.store import get_index_dir
-from .main import DocumentMetadata, SpaceDataSourceFileBased
+from .main import DocumentMetadata, SpaceDataSourceWebBased
 
 
-class WebScraper(SpaceDataSourceFileBased):
+class WebScraper(SpaceDataSourceWebBased):
     """Data scraped from a website."""
 
     _DOCUMENT_LIST_FILENAME = "document_list.json"
@@ -54,25 +55,16 @@ class WebScraper(SpaceDataSourceFileBased):
 
         try:
             log.debug("config: %s", configs)
-            documents = BeautifulSoupWebReader(website_metadata=lambda_metadata).load_data(
+
+            bs_web_reader = BeautifulSoupWebReader(website_metadata=lambda_metadata)
+            documents = bs_web_reader.load_data(
                 urls=[configs["website_url"]],
                 custom_hostname=configs["extractor_name"],
                 include_filter=configs["include_filter"],
             )
 
-            self._document_list = list(
-                map(
-                    lambda doc: (
-                        doc.extra_info[DocumentMetadata.SOURCE_URI.name.lower()],
-                        datetime.timestamp(datetime.now().utcnow()),
-                        0,
-                    ),
-                    documents,
-                )
-            )  # TODO: add size. maybe change to be returned directly from BeautifulSoupWebReader.load_data()
-
-            # path = os.path.join(get_index_dir(space), "documents_metadata.json")
-            # path = os.path.join(persist_path, self._DOCUMENT_LIST_FILENAME)
+            self._document_list = bs_web_reader.get_document_list()
+            log.debug("_document_list: %s", self._document_list)
             self._save_document_list(persist_path, self._DOCUMENT_LIST_FILENAME)
 
             log.info(f"web doc count {len(documents)}")  # noqa: G004
@@ -93,7 +85,7 @@ class WebScraper(SpaceDataSourceFileBased):
         Returns:
             list[tuple[str, int, int]]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
         """
-        return self._get_document_list(persist_path, self._DOCUMENT_LIST_FILENAME)
+        return self._load_document_list(persist_path, self._DOCUMENT_LIST_FILENAME)
 
     def _save_document_list(self, persist_path: str, filename: str) -> None:
         path = os.path.join(persist_path, filename)
@@ -104,128 +96,156 @@ class WebScraper(SpaceDataSourceFileBased):
                 ensure_ascii=False,
             )
 
-    def _get_document_list(self, persist_path: str, filename: str) -> list[tuple[str, int, int]]:
+    def _load_document_list(self, persist_path: str, filename: str) -> list[tuple[str, int, int]]:
         path = os.path.join(persist_path, filename)
         with open(path, "r") as f:
             return json.load(f)
 
 
-def _readthedocs_reader(
-    soup: Any,
-    url: str,
-    extra_info: dict = None,
-    include_filter: str = None,
-) -> List[Document]:
-    """Extract text from a ReadTheDocs documentation site."""
-    import requests
-    from bs4 import BeautifulSoup
+class BaseTextExtractor(ABC):
+    """Abstract base class for webpage text extractors."""
 
-    documents = []
+    def __init__(
+        self,
+        tile_css_selector: str = None,
+        subtitle_css_selector: str = None,
+    ) -> None:
+        """Initialize the text extractor."""
+        self._title_css_selector = tile_css_selector
+        self._subtitle_css_selector = subtitle_css_selector
 
-    log.debug(">> %s", url)
-    links = soup.find_all("a", {"class": "reference internal"})
-    rtd_links = []
+    @abstractmethod
+    def extract_text(
+        self,
+        soup: any,
+        page_url: str,
+    ) -> str:
+        """Extract text from a web page."""
+        pass
 
-    for link in links:
-        rtd_links.append(link["href"])
-    for i in range(len(rtd_links)):  # convert any relative links to fully qualified
-        if not rtd_links[i].startswith("http"):
-            rtd_links[i] = urljoin(url, rtd_links[i])
+    @abstractmethod
+    def link_extract_selector() -> any:
+        """Criteria filter specific <a> tags to extract links from. To extract all links, return None."""
+        pass
 
-    for doc_link in rtd_links:
-        log.debug(
-            "include filter: %s, ismatch: %s",
-            include_filter,
-            bool(re.search(include_filter, doc_link)),
+    def extract_title(self, soup: any, css_selector: str = None) -> str:  # noqa: D102
+        """Extract the title from a web page. Defaults to the <h1> tag.
+
+        Args:
+            soup (any): The BeautifulSoup object representing the web page.
+            css_selector (str, optional): The CSS selector to use to find the title. BeautifulSoup style. Defaults to None.
+        """
+        self._title_css_selector = css_selector if css_selector else self._title_css_selector
+        return (
+            soup.find(class_=self._title_css_selector).get_text()
+            if self._title_css_selector
+            else soup.find("h1").get_text()
         )
-        if (not include_filter) or (  # no filter means index everything
-            include_filter and re.search(include_filter, doc_link)
-        ):
-            page_link = requests.get(doc_link, timeout=5)
-            soup = BeautifulSoup(page_link.text, "html.parser")
-            try:
-                text = soup.find(attrs={"role": "main"}).get_text()
-                # title = soup.title.get_text()
 
-            except IndexError:
-                text = None
-                log.info("readthedocs_reader: No text blocks found on: %s", doc_link)
+    def extract_subtitle(self, soup: any, css_selector: str = None) -> str:
+        """Extract the subtitle from a web page. Defaults to the <h2> tag.
 
-            metadata = {
-                "source_website": url,
-                "source_uri": doc_link,
-                "indexed_on": datetime.timestamp(datetime.now().utcnow()),
-            }
-            if extra_info is not None:
-                metadata.update(extra_info)
+        Args:
+            soup (any): The BeautifulSoup object representing the web page.
+            css_selector (str, optional): The CSS selector to use to find the subtitle. BeautifulSoup style. Defaults to None.
 
-            documents.append(Document(text=text, extra_info=metadata))
-    return documents
+        Returns:
+            str: The subtitle text.
+        """
+        self._subtitle_css_selector = css_selector if css_selector else self._subtitle_css_selector
 
-
-def _generic_reader(
-    soup: Any,
-    url: str,
-    extra_info: dict = None,
-    include_filter: str = None,
-) -> List[Document]:
-    """Extract text from a ReadTheDocs documentation site."""
-    import requests
-    from bs4 import BeautifulSoup
-
-    documents = []
-
-    log.debug(">> %s", url)
-    links = soup.find_all("a")
-    rtd_links = []
-
-    for link in links:
-        rtd_links.append(link["href"])
-    for i in range(len(rtd_links)):  # convert any relative links to fully qualified
-        if not rtd_links[i].startswith("http"):
-            rtd_links[i] = urljoin(url, rtd_links[i])
-
-    loaded_links = []
-
-    for doc_link in rtd_links:
-        log.debug(
-            "include filter: %s, ismatch: %s",
-            include_filter,
-            bool(re.search(include_filter, doc_link)),
+        return (
+            soup.find(class_=self._subtitle_css_selector).get_text()
+            if self._subtitle_css_selector
+            else soup.find("h2").get_text()
         )
-        if (doc_link not in loaded_links) and (
-            (not include_filter) or (include_filter and re.search(include_filter, doc_link))
-        ):  # no filter means index everything
-            loaded_links.append(doc_link)  # track URLs we hit already
-            page_link = requests.get(doc_link, timeout=5)
-            soup = BeautifulSoup(page_link.text, "html.parser")
-            try:
-                tags = soup.find_all("p")
-                p_text = ""
-                for p in tags:
-                    p_text += f"/n{p.get_text()}"
-                    # title = soup.title.get_text()
-            except IndexError:
-                p_text = None
-                log.info("generic_reader: No text blocks (<p> tags) found on: %s", doc_link)
 
-            metadata = {
-                "source_website": url,
-                "source_uri": doc_link,
-                "indexed_on": datetime.timestamp(datetime.now().utcnow()),
-            }
-            if extra_info is not None:
-                metadata.update(extra_info)
+    def extract_links(self, soup: any, website_url: str, extract_url: str, include_filter: str = None) -> List[str]:
+        """Extract a unique list of links from a website."""
+        log.debug("Extract links from root URL: %s", extract_url)
 
-            log.debug("generic_reader - uri: %s, extra_infro: %s, text: %s", doc_link, metadata, bool(p_text))
-            documents.append(Document(text=p_text, extra_info=metadata))
+        links = (
+            soup.find_all("a", class_=self.link_extract_selector())
+            if self.link_extract_selector() is not None
+            else soup.find_all("a")
+        )
+        log.debug("Total links on page: %s", len(links))
+        rtd_links = []
 
-    return documents
+        for link in links:
+            href = link.get("href")
+            log.debug("link: %s, href: %s", link, href)
+            ismatch = False
+            if (
+                (href is not None)
+                and (href not in rtd_links)
+                and ((not include_filter) or (include_filter and re.search(include_filter, href)))
+            ):  # apply filter and ignore duplicate links
+                # no filter means index everything
+                ismatch = True
+
+                if not href.startswith("http"):
+                    href = urljoin(website_url, href)
+
+                rtd_links.append(href)
+
+            log.debug("include filter: %s, ismatch: %s", include_filter, ismatch)
+
+        log.debug("Total links for extraction: %s", len(rtd_links))
+        return rtd_links
+
+
+class ReadTheDocsTextExtractor(BaseTextExtractor):
+    """Extract text from a ReadTheDocs documentation site."""
+
+    def extract_text(
+        self,
+        soup: any,
+        page_url: str,
+    ) -> str:
+        """Extract text from a ReadTheDocs documentation site."""
+        try:
+            text = soup.find(attrs={"role": "main"}).get_text()
+            # title = soup.title.get_text()
+
+        except IndexError:
+            text = None
+            log.info("readthedocs_reader: No text blocks found on: %s", page_url)
+
+        return text
+
+    def link_extract_selector(self) -> any:  # noqa: D102
+        """Return CSS class names to filter <a> tags. To extract all links, return None."""
+        return "reference internal"
+
+
+class GenericTextExtractor(BaseTextExtractor):
+    """Extract text from any website on a best efforts basis, naive implementaion. Not recursive."""
+
+    def extract_text(
+        self,
+        soup: any,
+        page_url: str,
+    ) -> str:
+        """Extract text from any website on a best efforts basis, naive implementaion. Not recursive."""
+        try:
+            tags = soup.find_all("p")
+            page_text = ""
+            for p in tags:
+                page_text += f"/n{p.get_text()}"
+        except IndexError:
+            page_text = None
+            log.info("generic_reader: No text blocks (<p> tags) found on: %s", page_url)
+
+        return page_text
+
+    def link_extract_selector(self) -> any:  # noqa: D102
+        return None
 
 
 DEFAULT_WEBSITE_EXTRACTOR: Dict[str, Callable[[Any, str], Tuple[str, Dict[str, Any]]]] = {  # noqa: N806
-    "default": _generic_reader,
-    "readthedocs.io": _readthedocs_reader,
+    "default": GenericTextExtractor(),
+    "readthedocs.io": ReadTheDocsTextExtractor(),
 }
 
 
@@ -249,6 +269,7 @@ class BeautifulSoupWebReader(BaseReader):
         """Initialize with parameters."""
         self.website_extractor = website_extractor or DEFAULT_WEBSITE_EXTRACTOR
         self.website_metadata = website_metadata
+        self._document_list: list[tuple[str, int, int]] = []
 
     def load_data(
         self,
@@ -274,32 +295,65 @@ class BeautifulSoupWebReader(BaseReader):
         import requests
         from bs4 import BeautifulSoup
 
-        all_documents = []
+        all_documents: List[Document] = []
         for url in urls:
+            hostname = custom_hostname or urlparse(url).hostname or ""
+
             try:
                 page = requests.get(url, timeout=5)
-            except Exception:
-                raise ValueError(f"One of the inputs is not a valid url: {url}")  # noqa: B904
-
-            hostname = custom_hostname or urlparse(url).hostname or ""
+            except Exception as e:
+                raise ValueError(f"One of the inputs is not a valid url: {url}", e)  # noqa: B904
 
             soup = BeautifulSoup(page.content, "html.parser")
 
             if hostname in self.website_extractor:
-                documents = self.website_extractor[hostname](
-                    soup=soup,
-                    url=url,
-                    extra_info=self.website_metadata(url) if self.website_metadata is not None else {},
-                    include_filter=include_filter,
-                )
+                extractor: BaseTextExtractor = self.website_extractor[hostname]
             else:
-                documents = self.website_extractor["default"](
-                    soup=soup,
-                    url=url,
-                    extra_info=self.website_metadata(url) if self.website_metadata is not None else {},
-                    include_filter=include_filter,
-                )
+                extractor: BaseTextExtractor = self.website_extractor["default"]
 
-            all_documents = all_documents + documents
+            page_links = extractor.extract_links(soup, url, url, include_filter=include_filter)
+
+            for page_link in page_links:
+                try:
+                    page_reponse = requests.get(page_link, timeout=5)
+                    soup = BeautifulSoup(
+                        page_reponse.text, "html.parser"
+                    )  # TODO: not sure why the original code used reponse.text here and response.content above. dig in later.
+
+                    page_text = extractor.extract_text(
+                        soup=soup,
+                        page_url=page_link,
+                    )
+
+                    page_title = extractor.extract_title(soup=soup)
+                    page_subtitle = extractor.extract_subtitle(soup=soup)
+
+                    metadata = {
+                        "source_website": url,
+                        "source_uri": page_link,
+                        "indexed_on": datetime.timestamp(datetime.now().utcnow()),
+                        "page_title": page_title,
+                        "page_subtitle": page_subtitle,
+                    }
+
+                    if self.website_metadata is not None:
+                        metadata.update(self.website_metadata(url))
+
+                    all_documents.append(Document(text=page_text, extra_info=metadata))
+
+                    size_in_bytes = sys.getsizeof(page_text)
+
+                    size_in_megabytes = size_in_bytes if size_in_bytes > 0 else 0
+
+                    self._document_list.append(
+                        (page_link, datetime.timestamp(datetime.now().utcnow()), size_in_megabytes)
+                    )
+                except Exception as e:
+                    log.error("Error requesting web page, skipped: %s, Error: %s", page_link, e)
+                    continue
 
         return all_documents
+
+    def get_document_list(self) -> List[tuple[str, int, int]]:
+        """Return a list of documents. Can be used for tracking state overtime by implementing persistence and displaying document lists to users."""
+        return self._document_list

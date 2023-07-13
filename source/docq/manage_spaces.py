@@ -13,7 +13,7 @@ from docq.access_control.main import SpaceAccessor, SpaceAccessType
 
 from .config import SpaceType
 from .data_source.list import SPACE_DATA_SOURCES
-from .data_source.main import SpaceDataSourceFileBased
+from .data_source.main import SpaceDataSourceFileBased, SpaceDataSourceWebBased
 from .domain import SpaceKey
 from .support.llm import _get_default_storage_context, _get_service_context
 from .support.store import get_index_dir, get_sqlite_system_file
@@ -71,7 +71,7 @@ def list_documents(space: SpaceKey) -> list[tuple[str, int, int]]:
     (ds_type, ds_configs) = get_space_data_source(space)
 
     space_data_source = SPACE_DATA_SOURCES[ds_type]
-    if isinstance(space_data_source, SpaceDataSourceFileBased):
+    if isinstance(space_data_source, (SpaceDataSourceWebBased, SpaceDataSourceFileBased)):
         try:
             documents_list = SPACE_DATA_SOURCES[ds_type].get_document_list(space, ds_configs, get_index_dir(space))
         except Exception as e:
