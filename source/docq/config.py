@@ -40,16 +40,6 @@ class UserSettingsKey(Enum):
     """User settings keys."""
 
 
-# class SpaceDataSourceType(Enum):
-#     """Space datasource types."""
-
-#     MANUAL_UPLOAD = "Manual Upload"
-#     AZURE_BLOB = "Azure Blob"
-#     AWS_S3 = "AWS S3"
-#     WEB_SCRAPER = "Web Scraper"
-#     KNOWLEDGE_BASE_SCRAPER = "Knowledge Base Scraper"
-
-
 """A dictionary of experiment names mapped to their enabled state and description."""
 # NOTE: global for now. Later we can adjust to use a different backend to set per user.
 EXPERIMENTS = {
