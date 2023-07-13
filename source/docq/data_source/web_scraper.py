@@ -204,8 +204,8 @@ class ReadTheDocsTextExtractor(BaseTextExtractor):
     ) -> str:
         """Extract text from a ReadTheDocs documentation site."""
         try:
-            text = soup.find(attrs={"role": "main"}).get_text()
-            # title = soup.title.get_text()
+            node = soup.find(attrs={"role": "main"})
+            text = node.get_text() if node else None
 
         except IndexError:
             text = None
@@ -295,7 +295,12 @@ class BeautifulSoupWebReader(BaseReader):
         from bs4 import BeautifulSoup
 
         all_documents: List[Document] = []
+        urls = urls[0].split(",")
+        log.debug("Number of root URLs supplied: %s", len(urls))
+        log.debug("root URLs supplied: %s", urls)
+
         for url in urls:
+            log.debug("Now processing root URL: %s", url)
             hostname = custom_hostname or urlparse(url).hostname or ""
 
             try:
