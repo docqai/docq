@@ -266,12 +266,8 @@ def get_space_data_source(space: SpaceKey) -> Tuple[str, dict]:
     return mspaces.get_space_data_source(space)
 
 
-def list_space_data_source_choices() -> dict[str, List[domain.ConfigKey], str]:
+def list_space_data_source_choices() -> dict[str, List[domain.ConfigKey]]:
     return {key: value.value.impl.get_config_keys() for key, value in SpaceDataSources.__members__.items()}
-
-
-def list_web_scraper_extractor_choices() -> dict[str]:
-    return {"sdfsfs"}
 
 
 def get_system_settings() -> dict:
