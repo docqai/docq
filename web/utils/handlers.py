@@ -13,7 +13,7 @@ from docq import manage_settings as msettings
 from docq import manage_spaces as mspaces
 from docq import manage_users as musers
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
-from docq.data_source.list import SPACE_DATA_SOURCES
+from docq.data_source.list import SpaceDataSources
 from docq.domain import SpaceKey
 
 from .constants import (
@@ -266,8 +266,12 @@ def get_space_data_source(space: SpaceKey) -> Tuple[str, dict]:
     return mspaces.get_space_data_source(space)
 
 
-def list_space_data_source_choices() -> dict[str, List[domain.ConfigKey]]:
-    return {key: value.get_config_keys() for key, value in SPACE_DATA_SOURCES.items()}
+def list_space_data_source_choices() -> dict[str, List[domain.ConfigKey], str]:
+    return {key: value.value.impl.get_config_keys() for key, value in SpaceDataSources.__members__.items()}
+
+
+def list_web_scraper_extractor_choices() -> dict[str]:
+    return {"sdfsfs"}
 
 
 def get_system_settings() -> dict:

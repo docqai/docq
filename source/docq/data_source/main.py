@@ -1,6 +1,7 @@
 """Data source for Docq."""
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import List
 
@@ -79,3 +80,16 @@ class SpaceDataSourceWebBased(SpaceDataSource):
             list[tuple[str, int, int]]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
         """
         pass
+
+
+@dataclass
+class DataSource:
+    """Data source."""
+
+    def __init__(self, impl: SpaceDataSource) -> None:
+        """Initialize."""
+        self.impl = impl
+        self.name = impl.get_name()
+
+    name: str
+    impl: SpaceDataSource

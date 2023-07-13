@@ -7,7 +7,6 @@ from typing import List
 
 from llama_index import Document
 
-from ..config import SpaceDataSourceType
 from ..domain import ConfigKey, SpaceKey
 from .main import DocumentMetadata, SpaceDataSourceWebBased
 from .web_scraper import BaseTextExtractor, BeautifulSoupWebReader
@@ -19,14 +18,8 @@ class KnowledgeBaseScraper(SpaceDataSourceWebBased):
     _DOCUMENT_LIST_FILENAME = "document_list.json"
 
     def __init__(self) -> None:
-        """Initialize the data source.
-
-        Args:
-            persist_path (str): The path to the directory where the document list for the data source will persist its data.
-        """
-        super().__init__(
-            SpaceDataSourceType.KNOWLEDGE_BASE_SCRAPER.value, SpaceDataSourceType.KNOWLEDGE_BASE_SCRAPER.name
-        )
+        """Initialize the data source."""
+        super().__init__("Knowledge Base Scraper", "KNOWLEDGE_BASE_SCRAPER")
         self._document_list = []
 
     def get_config_keys(self) -> List[ConfigKey]:

@@ -12,7 +12,7 @@ from llama_index import Document, GPTVectorStoreIndex
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 
 from .config import SpaceType
-from .data_source.list import SPACE_DATA_SOURCES
+from .data_source.list import SpaceDataSources
 from .data_source.main import SpaceDataSourceFileBased, SpaceDataSourceWebBased
 from .domain import SpaceKey
 from .support.llm import _get_default_storage_context, _get_service_context
@@ -58,7 +58,7 @@ def reindex(space: SpaceKey) -> None:
     (ds_type, ds_configs) = get_space_data_source(space)
 
     try:
-        documents = SPACE_DATA_SOURCES[ds_type].load(space, ds_configs, get_index_dir(space))
+        documents = SpaceDataSources[ds_type].value.impl.load(space, ds_configs, get_index_dir(space))
         log.debug("docs to index, %s", len(documents))
         index = _create_index(documents)
         _persist_index(index, space)
@@ -70,10 +70,10 @@ def list_documents(space: SpaceKey) -> list[tuple[str, int, int]]:
     """Return a list of tuples containing the filename, creation time, and size of each file in the space."""
     (ds_type, ds_configs) = get_space_data_source(space)
 
-    space_data_source = SPACE_DATA_SOURCES[ds_type]
+    space_data_source = SpaceDataSources[ds_type].value.impl
     if isinstance(space_data_source, (SpaceDataSourceWebBased, SpaceDataSourceFileBased)):
         try:
-            documents_list = SPACE_DATA_SOURCES[ds_type].get_document_list(space, ds_configs, get_index_dir(space))
+            documents_list = space_data_source.get_document_list(space, ds_configs, get_index_dir(space))
         except Exception as e:
             log.error("Error listing documents for space %s: %s", space, e)
             documents_list = []

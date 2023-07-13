@@ -4,7 +4,6 @@ from typing import List
 
 from llama_index import Document
 
-from ..config import SpaceDataSourceType
 from ..domain import ConfigKey, SpaceKey
 from .main import SpaceDataSourceFileBased
 
@@ -14,7 +13,7 @@ class AwsS3(SpaceDataSourceFileBased):
 
     def __init__(self) -> None:
         """Initialize the data source."""
-        super().__init__(SpaceDataSourceType.AWS_S3.value, SpaceDataSourceType.AWS_S3.name)
+        super().__init__("AWS S3", "AWS_S3")
 
     def get_config_keys(self) -> List[ConfigKey]:
         """Get the config keys for aws s3 bucket."""
