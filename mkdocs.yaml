@@ -96,6 +96,7 @@ nav:
       - "Deploy to AWS": user-guide/deploy-to-aws.md
       - "Deploy to GCP": user-guide/deploy-to-gcp.md
       - "Configure Spaces": user-guide/config-spaces.md
+      - "Data Sources": user-guide/data-sources.md
       - "Usage": user-guide/usage.md
       - "FAQ": user-guide/faq.md
   - "Developer Guides":
