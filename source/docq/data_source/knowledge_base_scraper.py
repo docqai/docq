@@ -39,12 +39,12 @@ class KnowledgeBaseScraper(SpaceDataSourceWebBased):
                 "Include Filter Regex",
                 ref_link="Python Regex. URLs that match will be included in the index.",
             ),
-            # ConfigKey(
-            #     "title_selector_css",
-            #     "Title Selector CSS",
-            #     ref_link="BeautifulSoup style syntax e.g.: '{'class':'classname1 classname2'}' ",
-            # ),
-            # ConfigKey("subtitle_selector_css", "Subtitle Selector CSS"),
+            ConfigKey(
+                "title_selector_css",
+                "Title Selector CSS",
+                ref_link="Space separated CSS class names to filter on.",
+            ),
+            ConfigKey("subtitle_selector_css", "Subtitle Selector CSS"),
         ]
 
     def load(self, space: SpaceKey, configs: dict, persist_path: str) -> List[Document]:
