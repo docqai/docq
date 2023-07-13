@@ -71,31 +71,25 @@ def list_documents(space: SpaceKey) -> list[tuple[str, int, int]]:
     (ds_type, ds_configs) = get_space_data_source(space)
 
     space_data_source = SpaceDataSources[ds_type].value.impl
-    if isinstance(space_data_source, (SpaceDataSourceWebBased)):
-        try:
+
+    try:
+        if isinstance(space_data_source, (SpaceDataSourceWebBased)):
             documents_list = space_data_source.get_document_list(space, ds_configs, get_index_dir(space))
-        except Exception as e:
-            log.error(
-                "Error listing documents for space '%s' of data source type '%s': %s",
-                space,
-                space_data_source.get_type(),
-                e,
-            )
-            documents_list = []
-    elif isinstance(space_data_source, (SpaceDataSourceFileBased)):
-        try:
+        elif isinstance(space_data_source, (SpaceDataSourceFileBased)):
             documents_list = space_data_source.get_document_list(space, ds_configs)
-        except Exception as e:
-            log.error(
-                "Error listing documents for space '%s' of data source type '%s': %s",
-                space,
-                space_data_source.get_type(),
-                e,
+        else:
+            log.warning(
+                "This category of SpaceDataSource class doesn't support listing documents. data source type is %s",
+                ds_type,
             )
             documents_list = []
-    else:
-        log.warning(
-            "This category of SpaceDataSource class doesn't support listing documents. data source type is %s", ds_type
+
+    except Exception as e:
+        log.error(
+            "Error listing documents for space '%s' of data source type '%s': %s",
+            space,
+            space_data_source.get_type(),
+            e,
         )
         documents_list = []
 
