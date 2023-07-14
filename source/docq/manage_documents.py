@@ -7,7 +7,7 @@ import shutil
 from datetime import datetime
 from mimetypes import guess_type
 
-from llama_index.data_structs.node import NodeWithScore
+from llama_index.schema import NodeWithScore
 from llama_index.utils import truncate_text
 from streamlit import runtime
 
@@ -71,6 +71,7 @@ def format_document_sources(source_nodes: list[NodeWithScore], space: SpaceKey) 
 
         for source_node in source_nodes:
             try:
+                log.debug("source node text:  %s", source_node.node.get_text())
                 source = truncate_text(source_node.node.get_text(), 100)
                 page_label = re.search(r"(?<=page_label:)(.*)(?=\n)", source)
                 file_name = re.search(r"(?<=file_name:)(.*)(?=\n)", source)

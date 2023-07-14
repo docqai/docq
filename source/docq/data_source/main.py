@@ -1,6 +1,7 @@
 """Data source for Docq."""
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import List
 
@@ -12,9 +13,12 @@ from ..domain import ConfigKey, SpaceKey
 class DocumentMetadata(Enum):
     """Document metadata."""
 
-    FILE_PATH = "File Path"
-    SPACE_ID = "Space ID"
-    SPACE_TYPE = "Space Type"
+    FILE_PATH = "file_path"
+    SPACE_ID = "space_id"
+    SPACE_TYPE = "space_type"
+    DATA_SOURCE_TYPE = "data_source_type"
+    INDEXED_ON = "indexed_on"
+    SOURCE_URI = "source_url"
 
 
 class SpaceDataSource(ABC):
@@ -47,9 +51,26 @@ class SpaceDataSourceFileBased(SpaceDataSource):
         """Returns a list of tuples containing the name, creation time, and size (Mb) of each document in the specified space's cnfigured data source.
 
         Args:
-            self (ManualUpload): The ManualUpload object.
             space (SpaceKey): The space to retrieve the document list for.
             configs (dict): A dictionary of configuration options.
+
+        Returns:
+            list[tuple[str, int, int]]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
+        """
+        pass
+
+
+class SpaceDataSourceWebBased(SpaceDataSource):
+    """Abstract definition of a file-based data source for a space. To be extended by concrete data sources."""
+
+    @abstractmethod
+    def get_document_list(self, space: SpaceKey, configs: dict, persist_path: str) -> list[tuple[str, int, int]]:
+        """Returns a list of tuples containing the name, creation time, and size (Mb) of each document in the specified space's cnfigured data source.
+
+        Args:
+            space (SpaceKey): The space to retrieve the document list for.
+            configs (dict): A dictionary of configuration options.
+            persist_path (str): The path to persist the downloaded document list.
 
         Returns:
             list[tuple[str, int, int]]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.

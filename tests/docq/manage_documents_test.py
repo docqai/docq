@@ -9,15 +9,16 @@ from shutil import rmtree
 import pytest
 from docq.domain import SpaceKey
 from docq.manage_documents import _get_download_link, format_document_sources
-from llama_index.data_structs.node import Node, NodeWithScore
+from llama_index.schema import NodeWithScore, TextNode
 
 node_text = """
 page_label: 0
 file_name: test.txt
 Mock text
 """
-mock_node = Node(node_text, "test", [1, 2, 3], "test")
-mock_node_with_score = NodeWithScore(mock_node, 0.5)
+# mock_node = TextNode(text=node_text, "test", [1, 2, 3], "test")
+mock_node = TextNode(text=node_text, hash="test")
+mock_node_with_score = NodeWithScore(node=mock_node, score=0.5)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -30,7 +31,7 @@ def setup() -> None:
     # Add a mock file to the test directory
     with open("test_dir/mock.txt", "w", encoding="utf-8") as f:
         f.write("test")
-    yield # type: ignore
+    yield  # type: ignore
     print("\x1b[1;34mTearing down manage_documents_test.py\x1b[0m")
     # remove the mock test directory
     rmtree("test_dir")
@@ -53,9 +54,9 @@ def test_get_download_link(filename: str, space: SpaceKey, expected: str) -> Non
     ("source_nodes", "space", "expected"),
     [
         ([], "personal_1234", ""),
-        ([mock_node_with_score], "personal_1234", '> *File:* [test.txt]()<br> *Pages:* 0'),
-        (["failing-node"], "personal_1234", "")
-    ]
+        ([mock_node_with_score], "personal_1234", "> *File:* [test.txt]()<br> *Pages:* 0"),
+        (["failing-node"], "personal_1234", ""),
+    ],
 )
 def test_format_document_sources(source_nodes: list[NodeWithScore], space: SpaceKey, expected: str) -> None:
     """Test that the document sources are formatted correctly."""

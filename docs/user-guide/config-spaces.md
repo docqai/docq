@@ -45,9 +45,23 @@ Storage account 'Access Keys' screen in the Azure portal:
 Blob container 'Shared access tokens' screen in Azure portal:
 ![Azure portal storage blob contianer access keys screenshot](../assets/azure-portal-blob-contianer-access-token-screen.png)
 
-## Data source: Website
+## Data source: Web Scraper
 
-Coming soon
+- **Data Source**: `WEB_SCRAPER`
+- **Website URL**: The root URL with links to pages you want to in the space. Multiple URLs can be provided as a comma seperated list.
+- **Extract Template Name**: type `readthedocs.io` or `default`.
+- **Include Filter Regex**: only URLs that match this regex will be scrapped. Leave blank to scrape all links. Uses Python RegEx.
+
+## Data Source: Knowledgebase Scraper
+
+This one is similar to the `WEB_SCRAPER` but tuned to specifically handle knowledge bases type sites.
+
+- **Data Source**: `KNOWLEDGE_BASE_SCRAPER`
+- **Website URL**: The root URL with links to pages you want to in the space. Multiple URLs can be provided as a comma seperated list.
+- **Extract Template Name**: type `GenericKnowledgeBaseExtractor`.
+- **Include Filter Regex**: only URLs that match this regex will be scrapped. Leave blank to scrape all links. Uses Python RegEx.
+- **Title CSS Selector**: a CSS class string that matches the element you want to pull title text from. Defaults to <h1>. The value is added as metadata in the index hence tuning results.
+- **Subtitle CSS Selector** a CSS class string that matches the element you want to pull subtitle text from. Defaults to <h2>. The value is added as metadata in the index tuning results.
 
 ## Data source: AWS S3
 
