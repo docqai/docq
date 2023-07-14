@@ -216,8 +216,8 @@ def get_shared_space_permissions(id_: int) -> dict[SpaceAccessType, Any]:
 
 
 def _prepare_space_data_source(prefix: str) -> Tuple[str, dict]:
-    ds_type = st.session_state[f"{prefix}ds_type"]
-    ds_config_keys = list_space_data_source_choices()[ds_type]
+    ds_type = st.session_state[f"{prefix}ds_type"][0]
+    ds_config_keys = SpaceDataSources.__members__[ds_type].value.get_config_keys()
     ds_configs = {key.key: st.session_state[f"{prefix}ds_config_{key.key}"] for key in ds_config_keys}
     return ds_type, ds_configs
 
@@ -266,8 +266,19 @@ def get_space_data_source(space: SpaceKey) -> Tuple[str, dict]:
     return mspaces.get_space_data_source(space)
 
 
-def list_space_data_source_choices() -> dict[str, List[domain.ConfigKey]]:
-    return {key: value.value.impl.get_config_keys() for key, value in SpaceDataSources.__members__.items()}
+def list_space_data_source_choices() -> List[Tuple[str, str, List[domain.ConfigKey]]]:
+    return [
+        (key, value.value.get_name(), value.value.get_config_keys())
+        for key, value in SpaceDataSources.__members__.items()
+    ]
+
+
+def get_space_data_source_choice_by_type(type_: str) -> Tuple[str, str, List[domain.ConfigKey]]:
+    return (
+        type_,
+        SpaceDataSources.__members__[type_].value.get_name(),
+        SpaceDataSources.__members__[type_].value.get_config_keys(),
+    )
 
 
 def get_system_settings() -> dict:

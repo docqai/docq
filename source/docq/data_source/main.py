@@ -24,18 +24,13 @@ class DocumentMetadata(Enum):
 class SpaceDataSource(ABC):
     """Abstract definition of the data source for a space. To be extended by concrete data sources."""
 
-    def __init__(self, name: str, _type: str) -> None:
+    def __init__(self, name: str) -> None:
         """Initialize the data source."""
         self.name = name
-        self._type = _type
 
     def get_name(self) -> str:
         """Get the name of the data source."""
         return self.name
-
-    def get_type(self) -> str:
-        """Get the type of this data source."""
-        return self._type
 
     @abstractmethod
     def get_config_keys(self) -> List[ConfigKey]:
@@ -81,16 +76,3 @@ class SpaceDataSourceWebBased(SpaceDataSource):
             list[tuple[str, int, int]]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
         """
         pass
-
-
-@dataclass
-class DataSource:
-    """Data source."""
-
-    def __init__(self, impl: SpaceDataSource) -> None:
-        """Initialize."""
-        self.impl = impl
-        self.name = impl.get_name()
-
-    name: str
-    impl: SpaceDataSource

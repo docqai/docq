@@ -15,7 +15,7 @@ class AzureBlob(SpaceDataSourceFileBased):
 
     def __init__(self) -> None:
         """Initialize the data source."""
-        super().__init__("Azure Blob", "AZURE_BLOB")
+        super().__init__("Azure Blob")
 
     def get_config_keys(self) -> List[ConfigKey]:
         """Get the config keys for azure blob container."""

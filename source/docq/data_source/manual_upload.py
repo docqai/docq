@@ -16,7 +16,7 @@ class ManualUpload(SpaceDataSourceFileBased):
 
     def __init__(self) -> None:
         """Initialize the data source."""
-        super().__init__("Manual Upload", "MANUAL_UPLOAD")
+        super().__init__("Manual Upload")
 
     def get_config_keys(self) -> List[ConfigKey]:
         """Get the config keys for manual upload."""
@@ -31,7 +31,7 @@ class ManualUpload(SpaceDataSourceFileBased):
                 DocumentMetadata.FILE_PATH.value: x,
                 DocumentMetadata.SPACE_ID.value: space.id_,
                 DocumentMetadata.SPACE_TYPE.value: space.type_.name,
-                DocumentMetadata.DATA_SOURCE_TYPE.value: self.get_type(),
+                DocumentMetadata.DATA_SOURCE_TYPE.value: self.get_name(),
                 DocumentMetadata.SOURCE_URI.value: x,
                 DocumentMetadata.INDEXED_ON.value: datetime.timestamp(datetime.now().utcnow()),
             }

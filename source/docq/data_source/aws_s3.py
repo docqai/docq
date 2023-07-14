@@ -13,7 +13,7 @@ class AwsS3(SpaceDataSourceFileBased):
 
     def __init__(self) -> None:
         """Initialize the data source."""
-        super().__init__("AWS S3", "AWS_S3")
+        super().__init__("AWS S3")
 
     def get_config_keys(self) -> List[ConfigKey]:
         """Get the config keys for aws s3 bucket."""

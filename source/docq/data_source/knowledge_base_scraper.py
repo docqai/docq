@@ -19,7 +19,7 @@ class KnowledgeBaseScraper(SpaceDataSourceWebBased):
 
     def __init__(self) -> None:
         """Initialize the data source."""
-        super().__init__("Knowledge Base Scraper", "KNOWLEDGE_BASE_SCRAPER")
+        super().__init__("Knowledge Base Scraper")
         self._document_list = []
 
     def get_config_keys(self) -> List[ConfigKey]:
@@ -47,7 +47,7 @@ class KnowledgeBaseScraper(SpaceDataSourceWebBased):
             return {
                 DocumentMetadata.SPACE_ID.value: space.id_,
                 DocumentMetadata.SPACE_TYPE.value: space.type_.name,
-                DocumentMetadata.DATA_SOURCE_TYPE.value: self.get_type(),
+                DocumentMetadata.DATA_SOURCE_TYPE.value: self.get_name(),
             }
 
         try:

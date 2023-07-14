@@ -58,7 +58,7 @@ def reindex(space: SpaceKey) -> None:
     (ds_type, ds_configs) = get_space_data_source(space)
 
     try:
-        documents = SpaceDataSources[ds_type].value.impl.load(space, ds_configs, get_index_dir(space))
+        documents = SpaceDataSources[ds_type].value.load(space, ds_configs, get_index_dir(space))
         log.debug("docs to index, %s", len(documents))
         index = _create_index(documents)
         _persist_index(index, space)
@@ -70,7 +70,7 @@ def list_documents(space: SpaceKey) -> list[tuple[str, int, int]]:
     """Return a list of tuples containing the filename, creation time, and size of each file in the space."""
     (ds_type, ds_configs) = get_space_data_source(space)
 
-    space_data_source = SpaceDataSources[ds_type].value.impl
+    space_data_source = SpaceDataSources[ds_type].value
 
     try:
         if isinstance(space_data_source, (SpaceDataSourceWebBased)):
@@ -88,7 +88,7 @@ def list_documents(space: SpaceKey) -> list[tuple[str, int, int]]:
         log.error(
             "Error listing documents for space '%s' of data source type '%s': %s",
             space,
-            space_data_source.get_type(),
+            space_data_source.get_name(),
             e,
         )
         documents_list = []
