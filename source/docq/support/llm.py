@@ -140,13 +140,19 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
         summaries = []
         all_spaces = spaces + ([space] if space else [])
         for s_ in all_spaces:
-            index_ = _load_index_from_storage(s_)
-            summary_ = index_.as_query_engine().query(
-                "What is the summary of all the documents?"
-            )  # note: we might not need to do this any longer because summary is added as node metadata.
-            indices.append(index_)
+            try:
+                index_ = _load_index_from_storage(s_)
+                summary_ = index_.as_query_engine().query(
+                    "What is the summary of all the documents?"
+                )  # note: we might not need to do this any longer because summary is added as node metadata.
+                indices.append(index_)
 
-            summaries.append(summary_.response)
+                summaries.append(summary_.response)
+            except Exception as e:
+                log.warning(
+                    "Index for space '%s' failed to load. Maybe the index isn't created yet. Error message: %s", s_, e
+                )
+                continue
 
         log.debug("number summaries: %s", len(summaries))
         graph = ComposableGraph.from_indices(

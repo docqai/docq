@@ -216,7 +216,10 @@ def get_shared_space_permissions(id_: int) -> dict[SpaceAccessType, Any]:
 
 
 def _prepare_space_data_source(prefix: str) -> Tuple[str, dict]:
-    ds_type = st.session_state[f"{prefix}ds_type"][0]
+    ds_type = (
+        st.session_state[f"{prefix}ds_type"][0] if prefix == "create_space_" else st.session_state[f"{prefix}ds_type"]
+    )
+    log.debug(">>> ds_type:%s, prefic:%s, %s", ds_type, prefix, st.session_state[f"{prefix}ds_type"])
     ds_config_keys = SpaceDataSources.__members__[ds_type].value.get_config_keys()
     ds_configs = {key.key: st.session_state[f"{prefix}ds_config_{key.key}"] for key in ds_config_keys}
     return ds_type, ds_configs
