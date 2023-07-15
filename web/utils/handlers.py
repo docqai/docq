@@ -216,10 +216,7 @@ def get_shared_space_permissions(id_: int) -> dict[SpaceAccessType, Any]:
 
 
 def _prepare_space_data_source(prefix: str) -> Tuple[str, dict]:
-    ds_type = (
-        st.session_state[f"{prefix}ds_type"][0] if prefix == "create_space_" else st.session_state[f"{prefix}ds_type"]
-    )
-    log.debug(">>> ds_type:%s, prefic:%s, %s", ds_type, prefix, st.session_state[f"{prefix}ds_type"])
+    ds_type = st.session_state[f"{prefix}ds_type"][0]
     ds_config_keys = SpaceDataSources.__members__[ds_type].value.get_config_keys()
     ds_configs = {key.key: st.session_state[f"{prefix}ds_config_{key.key}"] for key in ds_config_keys}
     return ds_type, ds_configs
@@ -232,7 +229,7 @@ def handle_update_space_details(id_: int) -> bool:
         st.session_state[f"update_space_details_{id_}_name"],
         st.session_state[f"update_space_details_{id_}_summary"],
         st.session_state[f"update_space_details_{id_}_archived"],
-        ds_type,
+        ds_type,  # The actual update on data source has been disabled on UI; This may be enabled in the future.
         ds_configs,
     )
     log.info("Update space details result: %s", result)

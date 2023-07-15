@@ -14,6 +14,7 @@ from llama_index import Document
 from llama_index.readers.base import BaseReader
 
 from ..domain import ConfigKey, SpaceKey
+from ..support.store import get_index_dir
 from .main import DocumentMetadata, SpaceDataSourceWebBased
 
 
@@ -30,7 +31,7 @@ class WebScraper(SpaceDataSourceWebBased):
     def get_config_keys(self) -> List[ConfigKey]:
         """Get the config keys for web scraper."""
         return [
-            ConfigKey("website_url", "Website URL"),
+            ConfigKey("website_url", "Website URL", False),
             ConfigKey("extractor_name", "Extractor Template Name"),
             ConfigKey(
                 "include_filter",
@@ -39,7 +40,7 @@ class WebScraper(SpaceDataSourceWebBased):
             ),
         ]
 
-    def load(self, space: SpaceKey, configs: dict, persist_path: str) -> List[Document]:
+    def load(self, space: SpaceKey, configs: dict) -> List[Document]:
         """Extract text from web pages on a website and load each page as a Document."""
 
         def lambda_metadata(x: str) -> dict:
@@ -51,6 +52,7 @@ class WebScraper(SpaceDataSourceWebBased):
 
         try:
             log.debug("config: %s", configs)
+            persist_path = get_index_dir(space)
 
             bs_web_reader = BeautifulSoupWebReader(website_metadata=lambda_metadata)
             documents = bs_web_reader.load_data(

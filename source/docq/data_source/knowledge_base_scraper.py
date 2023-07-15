@@ -1,4 +1,4 @@
-"""Data source for scrapping articles from a Knowledgebase systen."""
+"""Data source for scrapping articles from a knowledge base."""
 
 import json
 import logging as log
@@ -8,12 +8,13 @@ from typing import List
 from llama_index import Document
 
 from ..domain import ConfigKey, SpaceKey
+from ..support.store import get_index_dir
 from .main import DocumentMetadata, SpaceDataSourceWebBased
 from .web_scraper import BaseTextExtractor, BeautifulSoupWebReader
 
 
 class KnowledgeBaseScraper(SpaceDataSourceWebBased):
-    """Data source for scrapping articles from a Knowledgebase systen."""
+    """Data source for scrapping articles from a knowledge base."""
 
     _DOCUMENT_LIST_FILENAME = "document_list.json"
 
@@ -40,7 +41,7 @@ class KnowledgeBaseScraper(SpaceDataSourceWebBased):
             ConfigKey("subtitle_css_selector", "Subtitle CSS Selector"),
         ]
 
-    def load(self, space: SpaceKey, configs: dict, persist_path: str) -> List[Document]:
+    def load(self, space: SpaceKey, configs: dict) -> List[Document]:
         """Extract text from web pages on a website and load each page as a Document."""
 
         def lambda_metadata(x: str) -> dict:
@@ -52,6 +53,7 @@ class KnowledgeBaseScraper(SpaceDataSourceWebBased):
 
         try:
             log.debug("config: %s", configs)
+            persist_path = get_index_dir(space)
 
             bs_web_reader = BeautifulSoupWebReader(
                 website_metadata=lambda_metadata,

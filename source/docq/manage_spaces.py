@@ -58,7 +58,7 @@ def reindex(space: SpaceKey) -> None:
     (ds_type, ds_configs) = get_space_data_source(space)
 
     try:
-        documents = SpaceDataSources[ds_type].value.load(space, ds_configs, get_index_dir(space))
+        documents = SpaceDataSources[ds_type].value.load(space, ds_configs)
         log.debug("docs to index, %s", len(documents))
         index = _create_index(documents)
         _persist_index(index, space)

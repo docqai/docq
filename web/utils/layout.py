@@ -389,7 +389,14 @@ def _render_edit_space_details(space_data: Tuple, data_source: Tuple) -> None:
             st.text_input("Name", value=name, key=f"update_space_details_{id_}_name")
             st.text_input("Summary", value=summary, key=f"update_space_details_{id_}_summary")
             st.checkbox("Is Archived", value=archived, key=f"update_space_details_{id_}_archived")
-            st.text_input("Type", value=ds_type, key=f"update_space_details_{id_}_ds_type", disabled=True)
+            st.selectbox(
+                "Data Source",
+                options=[data_source],
+                index=0,
+                key=f"update_space_details_{id_}_ds_type",
+                disabled=True,
+                format_func=lambda x: x[1],
+            )
             _render_space_data_source_config_input_fields(data_source, f"update_space_details_{id_}_", ds_configs)
             st.form_submit_button("Save", on_click=handle_update_space_details, args=(id_,))
 
