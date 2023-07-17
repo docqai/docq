@@ -1,12 +1,11 @@
 import logging
-import os
-
-import streamlit as st
 
 from .manage_users import _init_admin_if_necessary
 
+
 def _config_logging():
     logging.basicConfig(level=logging.DEBUG)
+
 
 def init():
     _config_logging()
