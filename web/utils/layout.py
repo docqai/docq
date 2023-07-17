@@ -13,13 +13,14 @@ from st_pages import hide_pages
 from streamlit.delta_generator import DeltaGenerator
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
-from .formatters import format_archived, format_datetime, format_filesize
+from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
     get_enabled_features,
     get_max_number_of_documents,
     get_shared_space,
     get_shared_space_permissions,
     get_space_data_source,
+    get_space_data_source_choice_by_type,
     get_system_settings,
     handle_chat_input,
     handle_create_group,
@@ -293,7 +294,7 @@ def documents_ui(space: SpaceKey) -> None:
         st.markdown(f"**Document Count**: {len(documents)}")
         for i, (filename, time, size) in enumerate(documents):
             with st.expander(filename):
-                st.markdown(f"Size: {format_filesize(size)} | Last Modified: {format_datetime(time)}")
+                st.markdown(f"Size: {format_filesize(size)} | Last Modified: {format_timestamp(time)}")
 
                 if show_delete:
                     st.button(
@@ -338,15 +339,11 @@ def system_settings_ui() -> None:
         st.form_submit_button(label="Save", on_click=handle_update_system_settings)
 
 
-def _render_space_data_source_config_input_fields(
-    data_sources: dict[str, List[ConfigKey]], prefix: str, configs: dict = None
-) -> None:
-    config_keys = data_sources[st.session_state[prefix + "ds_type"]]
-
-    for key in config_keys:
+def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: str, configs: dict = None) -> None:
+    for key in data_source[2]:
         input_type = "password" if key.is_secret else "default"
         st.text_input(
-            key.name,
+            f"{key.name}{'' if key.is_optional else ' *'}",
             value=configs.get(key.key) if configs else "",
             key=prefix + "ds_config_" + key.key,
             type=input_type,
@@ -363,15 +360,18 @@ def create_space_ui() -> None:
         st.text_input("Summary", value="", key="create_space_summary")
         ds = st.selectbox(
             "Data Source",
-            options=data_sources.keys(),
+            options=data_sources,
             key="create_space_ds_type",
+            format_func=lambda x: x[1],
         )
         if ds:
-            _render_space_data_source_config_input_fields(data_sources, "create_space_")
+            _render_space_data_source_config_input_fields(ds, "create_space_")
         st.button("Create Space", on_click=handle_create_space)
 
 
-def _render_view_space_details_with_container(space_data: Tuple, use_expander: bool = False) -> DeltaGenerator:
+def _render_view_space_details_with_container(
+    space_data: Tuple, data_source: Tuple, use_expander: bool = False
+) -> DeltaGenerator:
     id_, name, summary, archived, ds_type, ds_configs, created_at, updated_at = space_data
     container = st.expander(format_archived(name, archived)) if use_expander else st.container()
     with container:
@@ -379,22 +379,28 @@ def _render_view_space_details_with_container(space_data: Tuple, use_expander: b
             st.write(format_archived(name, archived))
         st.write(f"ID: **{id_}**")
         st.write(f"Summary: _{summary}_")
-        st.write(f"Type: **{ds_type}**")
+        st.write(f"Type: **{data_source[1]}**")
         st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
     return container
 
 
-def _render_edit_space_details(space_data: Tuple) -> None:
+def _render_edit_space_details(space_data: Tuple, data_source: Tuple) -> None:
     id_, name, summary, archived, ds_type, ds_configs, _, _ = space_data
-    data_sources = list_space_data_source_choices()
 
     if st.button("Edit", key=f"update_space_{id_}_button"):
         with st.form(key=f"update_space_details_{id_}"):
             st.text_input("Name", value=name, key=f"update_space_details_{id_}_name")
             st.text_input("Summary", value=summary, key=f"update_space_details_{id_}_summary")
             st.checkbox("Is Archived", value=archived, key=f"update_space_details_{id_}_archived")
-            st.text_input("Type", value=ds_type, key=f"update_space_details_{id_}_ds_type", disabled=True)
-            _render_space_data_source_config_input_fields(data_sources, f"update_space_details_{id_}_", ds_configs)
+            st.selectbox(
+                "Data Source",
+                options=[data_source],
+                index=0,
+                key=f"update_space_details_{id_}_ds_type",
+                disabled=True,
+                format_func=lambda x: x[1],
+            )
+            _render_space_data_source_config_input_fields(data_source, f"update_space_details_{id_}_", ds_configs)
             st.form_submit_button("Save", on_click=handle_update_space_details, args=(id_,))
 
 
@@ -433,21 +439,23 @@ def list_spaces_ui(admin_access: bool = False) -> None:
         for s in spaces:
             if s[3] and not admin_access:
                 continue
-
-            container = _render_view_space_details_with_container(s, True)
+            ds = get_space_data_source_choice_by_type(s[4])
+            container = _render_view_space_details_with_container(s, ds, True)
             if admin_access:
                 with container:
                     st.markdown(f"[Manage Documents](./Admin_Docs?sid={s[0]})")
                     col_details, col_permissions = st.columns(2)
                     with col_details:
-                        _render_edit_space_details(s)
+                        _render_edit_space_details(s, ds)
                     with col_permissions:
                         _render_manage_space_permissions(s)
 
 
 def show_space_details_ui(space: SpaceKey) -> None:
     """Show details of a space."""
-    _render_view_space_details_with_container(get_shared_space(space.id_))
+    s = get_shared_space(space.id_)
+    ds = get_space_data_source_choice_by_type(s[4])
+    _render_view_space_details_with_container(s, ds)
 
 
 def list_logs_ui(type_: LogType) -> None:

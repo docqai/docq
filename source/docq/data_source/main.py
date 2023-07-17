@@ -15,6 +15,9 @@ class DocumentMetadata(Enum):
     FILE_PATH = "File Path"
     SPACE_ID = "Space ID"
     SPACE_TYPE = "Space Type"
+    DATA_SOURCE_TYPE = "Data Source Type"
+    INDEXED_ON = "Indexed Timestamp"
+    SOURCE_URI = "Source URI"
 
 
 class SpaceDataSource(ABC):
@@ -47,7 +50,6 @@ class SpaceDataSourceFileBased(SpaceDataSource):
         """Returns a list of tuples containing the name, creation time, and size (Mb) of each document in the specified space's cnfigured data source.
 
         Args:
-            self (ManualUpload): The ManualUpload object.
             space (SpaceKey): The space to retrieve the document list for.
             configs (dict): A dictionary of configuration options.
 
@@ -55,3 +57,7 @@ class SpaceDataSourceFileBased(SpaceDataSource):
             list[tuple[str, int, int]]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
         """
         pass
+
+
+class SpaceDataSourceWebBased(SpaceDataSourceFileBased):
+    """Abstract definition of a file-based data source for a space. To be extended by concrete data sources."""

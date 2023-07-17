@@ -12,8 +12,8 @@ from llama_index import Document, GPTVectorStoreIndex
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 
 from .config import SpaceType
-from .data_source.list import SPACE_DATA_SOURCES
-from .data_source.main import SpaceDataSourceFileBased
+from .data_source.list import SpaceDataSources
+from .data_source.main import SpaceDataSourceFileBased, SpaceDataSourceWebBased
 from .domain import SpaceKey
 from .support.llm import _get_default_storage_context, _get_service_context
 from .support.store import get_index_dir, get_sqlite_system_file
@@ -58,7 +58,8 @@ def reindex(space: SpaceKey) -> None:
     (ds_type, ds_configs) = get_space_data_source(space)
 
     try:
-        documents = SPACE_DATA_SOURCES[ds_type].load(space, ds_configs)
+        documents = SpaceDataSources[ds_type].value.load(space, ds_configs)
+        log.debug("docs to index, %s", len(documents))
         index = _create_index(documents)
         _persist_index(index, space)
     except Exception as e:
@@ -69,16 +70,17 @@ def list_documents(space: SpaceKey) -> list[tuple[str, int, int]]:
     """Return a list of tuples containing the filename, creation time, and size of each file in the space."""
     (ds_type, ds_configs) = get_space_data_source(space)
 
-    space_data_source = SPACE_DATA_SOURCES[ds_type]
-    if isinstance(space_data_source, SpaceDataSourceFileBased):
-        try:
-            documents_list = SPACE_DATA_SOURCES[ds_type].get_document_list(space, ds_configs)
-        except Exception as e:
-            log.error("Error listing documents for space %s: %s", space, e)
-            documents_list = []
-    else:
-        log.warning(
-            "This category of SpaceDataSource class doesn't support listing documents. data source type is %s", ds_type
+    space_data_source = SpaceDataSources[ds_type].value
+
+    try:
+        documents_list = space_data_source.get_document_list(space, ds_configs)
+
+    except Exception as e:
+        log.error(
+            "Error listing documents for space '%s' of data source type '%s': %s",
+            space,
+            space_data_source.get_name(),
+            e,
         )
         documents_list = []
 
