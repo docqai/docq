@@ -38,3 +38,13 @@ class SystemSettingsKey(Enum):
 
 class UserSettingsKey(Enum):
     """User settings keys."""
+
+
+"""A dictionary of experiment names mapped to their enabled state and description."""
+# NOTE: global for now. Later we can adjust to use a different backend to set per user.
+EXPERIMENTS = {
+    "INCLUDE_EXTRACTED_METADATA": {
+        "enabled": False,
+        "description": "Include extracts, using LlamaIndex extract modules, in the document index extra_info.",
+    },
+}

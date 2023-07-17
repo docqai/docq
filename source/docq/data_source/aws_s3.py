@@ -30,12 +30,11 @@ class AwsS3(SpaceDataSourceFileBased):
         """Returns a list of tuples containing the name, creation time, and size (Mb) of each document in the specified space's cnfigured data source.
 
         Args:
-            self (ManualUpload): The ManualUpload object.
             space (SpaceKey): The space to retrieve the document list for.
             configs (dict): A dictionary of configuration options.
 
         Returns:
             list[tuple[str, int, int]]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
         """
-        #TODO: use aws s3 bucket to get the document list
+        # TODO: use aws s3 bucket to get the document list
         pass

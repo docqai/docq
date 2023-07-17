@@ -28,9 +28,12 @@ class ManualUpload(SpaceDataSourceFileBased):
         # Keep filename as `doc_id` plus space info
         def lambda_metadata(x: str) -> dict:
             return {
-                DocumentMetadata.FILE_PATH.name: x,
-                DocumentMetadata.SPACE_ID.name: space.id_,
-                DocumentMetadata.SPACE_TYPE.name: space.type_.name,
+                DocumentMetadata.FILE_PATH.value: x,
+                DocumentMetadata.SPACE_ID.value: space.id_,
+                DocumentMetadata.SPACE_TYPE.value: space.type_.name,
+                DocumentMetadata.DATA_SOURCE_TYPE.value: self.get_name(),
+                DocumentMetadata.SOURCE_URI.value: x,
+                DocumentMetadata.INDEXED_ON.value: datetime.timestamp(datetime.now().utcnow()),
             }
 
         return SimpleDirectoryReader(get_upload_dir(space), file_metadata=lambda_metadata).load_data()
@@ -48,7 +51,7 @@ class ManualUpload(SpaceDataSourceFileBased):
         """
         return list(
             map(
-                lambda f: (f.name, datetime.fromtimestamp(f.stat().st_ctime), f.stat().st_size),
+                lambda f: (f.name, f.stat().st_ctime, f.stat().st_size),
                 os.scandir(get_upload_dir(space)),
             )
         )
