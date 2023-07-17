@@ -2,7 +2,7 @@
 import unittest
 
 from bs4 import BeautifulSoup
-from docq.data_source.web_scraper import ReadTheDocsTextExtractor
+from docq.data_source.support.web_extracting import ReadTheDocsTextExtractor
 
 
 class TestReadTheDocsTextExtractor(unittest.TestCase):  # noqa: D101
