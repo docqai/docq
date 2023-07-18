@@ -70,9 +70,11 @@ def format_document_sources(source_nodes: list[NodeWithScore], space: SpaceKey) 
         source_groups: dict[str, list[str]] = {}
 
         for source_node in source_nodes:
+            for k, v in source_node.node.metadata.items():
+                print(f"\x1b[1;32m{k}: {v}\x1b[0m")
             try:
-                log.debug("source node text:  %s", source_node.node.get_text())
-                source = truncate_text(source_node.node.get_text(), 100)
+                log.debug("source node text:  %s", source_node.node.get_content())
+                source = truncate_text(source_node.node.get_content(), 100)
                 page_label = re.search(r"(?<=page_label:)(.*)(?=\n)", source)
                 file_name = re.search(r"(?<=file_name:)(.*)(?=\n)", source)
                 if page_label and file_name:
