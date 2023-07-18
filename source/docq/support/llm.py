@@ -133,9 +133,6 @@ def run_chat(input_: str, history: str) -> BaseMessage:
 
 def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[SpaceKey] = None) -> Response:
     """Ask questions against existing index(es) with history."""
-    print(f"\x1b[1;31mSpace ---- {space}\x1b[0m")
-    print(f"\x1b[1;31mSpaces ---- {spaces}\x1b[0m")
-
     if spaces is not None and len(spaces) > 0:
         # With additional spaces likely to be combining a number of shared spaces.
         indices = []
