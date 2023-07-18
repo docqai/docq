@@ -2,15 +2,14 @@
 
 import logging as log
 import os
-import re
 import shutil
 from datetime import datetime
 from mimetypes import guess_type
 
 from llama_index.schema import NodeWithScore
-from llama_index.utils import truncate_text
 from streamlit import runtime
 
+from .data_source.support.data_source_handler import DataSourceType, Source
 from .domain import SpaceKey
 from .manage_spaces import reindex
 from .support.store import get_upload_dir, get_upload_file
@@ -44,10 +43,10 @@ def delete_all(space: SpaceKey) -> None:
     reindex(space)
 
 
-def _get_download_link(filename: str, space: SpaceKey) -> str:
+def _get_download_link(filename: str, path: str) -> str:
     """Return the download link for the file if runtime exists, otherwise return an empty string."""
     if runtime.exists():
-        file = get_upload_file(space, filename)
+        file = path
         mime_type = guess_type(file)[0] or "application/octet-stream"
         coordinates = str(datetime.now())
         return runtime.get_instance().media_file_mgr.add(
@@ -68,29 +67,29 @@ def format_document_sources(source_nodes: list[NodeWithScore], space: SpaceKey) 
         delimiter = "\n\n"
         _sources = []
         source_groups: dict[str, list[str]] = {}
+        source_uri: dict[str, str] = {}
+        source_types: dict[str, str] = {}
 
         for source_node in source_nodes:
-            for k, v in source_node.node.metadata.items():
-                print(f"\x1b[1;32m{k}: {v}\x1b[0m")
-            try:
-                log.debug("source node text:  %s", source_node.node.get_content())
-                source = truncate_text(source_node.node.get_content(), 100)
-                page_label = re.search(r"(?<=page_label:)(.*)(?=\n)", source)
-                file_name = re.search(r"(?<=file_name:)(.*)(?=\n)", source)
-                if page_label and file_name:
-                    page_label = page_label.group(1).strip()
-                    file_name = file_name.group(1).strip()
-                    if source_groups.get(file_name):
-                        source_groups[file_name].append(page_label)
-                    else:
-                        source_groups[file_name] = [page_label]
-            except Exception as e:
-                log.exception("Error formatting source %s", e)
-                continue
+            with Source(source_node.node.metadata) as source:
+                data = source.data
+                if data is not None:
+                    uri, page_label, file_name, s_type = data.values()
+                    manual_upload = s_type == DataSourceType.MANUAL_UPLOAD.value
+                    if manual_upload and (not uri or not page_label or not file_name):
+                        continue
+                    if not manual_upload and (not uri or not file_name or not s_type):
+                        continue
+                    source_groups = source.group_sources(page_label, file_name, source_groups)
+                    source_uri = source.group_source_uri(uri, file_name, source_uri)
+                    source_types = source.group_source_uri(s_type, file_name, source_types)
 
         for file_name, page_labels in source_groups.items():
-            download_url = _get_download_link(file_name, space)
-            _sources.append(f"> *File:* [{file_name}]({download_url})<br> *Pages:* {', '.join(page_labels)}")
+            uri = source_uri.get(file_name)
+            source_type = source_types.get(file_name)
+            if uri:
+                download_url = _get_download_link(file_name, uri) if source_type == DataSourceType.MANUAL_UPLOAD.value else uri
+                _sources.append(f"> *File:* [{file_name}]({download_url})<br> *Pages:* {', '.join(page_labels)}")
         return delimiter.join(_sources)
 
     except Exception as e:
