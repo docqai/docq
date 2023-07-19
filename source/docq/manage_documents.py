@@ -46,13 +46,10 @@ def delete_all(space: SpaceKey) -> None:
 def _get_download_link(filename: str, path: str) -> str:
     """Return the download link for the file if runtime exists, otherwise return an empty string."""
     if runtime.exists():
-        file = path
-        mime_type = guess_type(file)[0] or "application/octet-stream"
-        coordinates = str(datetime.now())
         return runtime.get_instance().media_file_mgr.add(
-            path_or_data=file,
-            mimetype=mime_type,
-            coordinates=coordinates,
+            path_or_data=path,
+            mimetype=guess_type(path)[0] or "application/octet-stream",
+            coordinates=str(datetime.now()),
             file_name=filename,
             is_for_static_download=True,
         )
