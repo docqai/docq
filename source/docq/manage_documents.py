@@ -97,10 +97,6 @@ def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
             data = _parse_metadata(source_node.node.metadata)
             if data is not None:
                 uri, page_label, name, s_type = data
-                print(f"\x1b[1;32mDEBUG- {uri}\x1b[0m")
-                print(f"\x1b[1;32mDEBUG- {page_label}\x1b[0m")
-                print(f"\x1b[1;32mDEBUG- {name}\x1b[0m")
-                print(f"\x1b[1;32mDEBUG- {s_type}\x1b[0m")
                 if not uri or not name or not s_type:
                     continue
                 scraper = s_type == "Web Scraper" or s_type ==  "Knowledge Base Scraper"
@@ -112,7 +108,6 @@ def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
                 web_sources[name] = uri
 
         for name, page_labels in source_groups.items():
-            print(f"\x1b[1;32mDEBUG- {name}: {page_labels}\x1b[0m")
             uri = source_uri.get(name)
             source_type = source_types.get(name)
             if uri:
