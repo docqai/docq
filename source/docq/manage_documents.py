@@ -94,7 +94,7 @@ def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
         web_sources: dict[str, str] = {}
 
         for source_node in source_nodes:
-            data = _parse_metadata(source_node.node.metadata)
+            data = _parse_metadata(source_node.node.metadata or source_node.node.extra_info)
             if data is not None:
                 uri, page_label, name, s_type = data
                 if not uri or not name or not s_type:

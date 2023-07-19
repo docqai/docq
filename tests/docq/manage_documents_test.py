@@ -7,17 +7,17 @@ from contextlib import suppress
 from shutil import rmtree
 
 import pytest
-from docq.domain import SpaceKey
-from docq.manage_documents import _get_download_link, format_document_sources
+from docq.manage_documents import DocumentMetadata, _get_download_link, format_document_sources
 from llama_index.schema import NodeWithScore, TextNode
 
-node_text = """
-page_label: 0
-file_name: test.txt
-Mock text
-"""
-# mock_node = TextNode(text=node_text, "test", [1, 2, 3], "test")
-mock_node = TextNode(text=node_text, hash="test", metadata_template="page_label: 2, file_name: test")
+metadata = {
+    DocumentMetadata.SOURCE_URI.value: "https://example.com",
+    DocumentMetadata.DATA_SOURCE_TYPE.value: "Manual Upload",
+    DocumentMetadata.SPACE_TYPE.value: "PERSONAL",
+    "file_name": "test.txt",
+    "page_label": "0",
+}
+mock_node = TextNode(text="node_text", extra_info=metadata)
 mock_node_with_score = NodeWithScore(node=mock_node, score=0.5)
 
 
@@ -50,15 +50,12 @@ def test_get_download_link(filename: str, path: str, expected: str) -> None:
     assert _get_download_link(filename, path) == expected
 
 
-# TODO: Redefine test with to with the different data source types
-# @pytest.mark.parametrize(
-#     ("source_nodes", "space", "expected"),
-#     [
-#         ([], "personal_1234", ""),
-#         ([mock_node_with_score], "personal_1234", "> *File:* [test.txt]()<br> *Pages:* 0"),
-#         (["failing-node"], "personal_1234", ""),
-#     ],
-# )
-# def test_format_document_sources(source_nodes: list[NodeWithScore], space: SpaceKey, expected: str) -> None:
-#     """Test that the document sources are formatted correctly."""
-#     assert format_document_sources(source_nodes, space) == expected
+@pytest.mark.parametrize(
+    ("source_nodes", "expected"),
+    [
+        ([mock_node_with_score], "> *File:* [test.txt]()<br> *Pages:* 0"),
+    ],
+)
+def test_format_document_sources(source_nodes: list[NodeWithScore], expected: str) -> None:
+    """Test that the document sources are formatted correctly."""
+    assert format_document_sources(source_nodes) == expected
