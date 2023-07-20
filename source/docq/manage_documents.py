@@ -62,13 +62,17 @@ def _get_download_link(filename: str, path: str) -> str:
 def _parse_metadata(metadata: Dict[str, Any]) -> tuple[Any, Any, Any, Any] | None:
     if not metadata:
         return None
-    s_type = metadata.get(DocumentMetadata.DATA_SOURCE_TYPE.value)
+    s_type = metadata.get(
+        DocumentMetadata.DATA_SOURCE_TYPE.value
+        ) or "Web Scraper" # Default to Web Scraper if key doesn't exist as a temp fix for key error
     if s_type == "Web Scraper" or s_type ==  "Knowledge Base Scraper":
-        website = metadata.get("website")
-        page_url = metadata.get("page_url")
+        website = metadata.get("source_website")
+        page_url = metadata.get("source_uri")
+        page_title = metadata.get("page_title")
+
         if not website or not page_url:
             return None
-        return page_url, None, website, s_type
+        return page_url, page_title, website, s_type
     uri = metadata.get(DocumentMetadata.SOURCE_URI.value)
     if not uri:
         return None
@@ -91,10 +95,11 @@ def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
         source_groups: dict[str, list[str]] = {}
         source_uri: dict[str, str] = {}
         source_types: dict[str, str] = {}
-        web_sources: dict[str, str] = {}
+        web_sources: dict[str, tuple[str, str]] = {}
 
         for source_node in source_nodes:
-            data = _parse_metadata(source_node.node.metadata or source_node.node.extra_info)
+            metadata = dict(source_node.node.metadata,  **source_node.node.extra_info)
+            data = _parse_metadata(metadata)
             if data is not None:
                 uri, page_label, name, s_type = data
                 if not uri or not name or not s_type:
@@ -105,7 +110,7 @@ def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
                     source_uri[name] = uri
                     source_types[name] = s_type
                     continue
-                web_sources[name] = uri
+                web_sources[page_label] = name, uri
 
         for name, page_labels in source_groups.items():
             uri = source_uri.get(name)
@@ -113,8 +118,9 @@ def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
             if uri:
                 download_url = _get_download_link(name, uri) if source_type == "Manual Upload" else uri
                 _sources.append(f"> *File:* [{name}]({download_url})<br> *Pages:* {', '.join(page_labels)}")
-        for name, page_url in web_sources.items():
-            _sources.append(f"> *Site:* [{name}]({page_url})")
+        for page_title, links in web_sources.items():
+            name, page_url = links
+            _sources.append(f"> *Site:* {name}<br>*Page:* [{page_title}]({page_url})")
         return delimiter.join(_sources)
 
     except Exception as e:
