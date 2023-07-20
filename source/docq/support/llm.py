@@ -24,6 +24,7 @@ from llama_index.node_parser.extractors import (
     SummaryExtractor,
     TitleExtractor,
 )
+from llama_index.response.schema import RESPONSE_TYPE
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
@@ -138,13 +139,19 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
         # With additional spaces likely to be combining a number of shared spaces.
         indices = []
         summaries = []
+        output = _default_response()
         all_spaces = spaces + ([space] if space else [])
         for s_ in all_spaces:
             try:
                 index_ = _load_index_from_storage(s_)
+                index_
+                if index_ is None:
+                    log.warning(">>>index is none, %s, %s", s_, index_)
+
                 summary_ = index_.as_query_engine().query(
                     "What is the summary of all the documents?"
                 )  # note: we might not need to do this any longer because summary is added as node metadata.
+
                 indices.append(index_)
 
                 summaries.append(summary_.response)
@@ -155,12 +162,17 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
                 continue
 
         log.debug("number summaries: %s", len(summaries))
-        graph = ComposableGraph.from_indices(
-            GPTListIndex, indices, index_summaries=summaries, service_context=_get_service_context()
-        )
-        output = graph.as_query_engine().query(PROMPT_QUESTION.format(history=history, input=input_))
-
-        log.debug("(Ask combined spaces %s) Q: %s, A: %s", all_spaces, input_, output)
+        try:
+            graph = ComposableGraph.from_indices(
+                GPTListIndex, indices, index_summaries=summaries, service_context=_get_service_context()
+            )
+            output = graph.as_query_engine().query(PROMPT_QUESTION.format(history=history, input=input_))
+            log.debug("(Ask combined spaces %s) Q: %s, A: %s", all_spaces, input_, output)
+        except Exception as e:
+            log.error(
+                "Failed to create ComposableGraph. Maybe there was an issue with one of the Space indexes. Error message: %s",
+                e,
+            )
     else:
         # No additional spaces i.e. likely to be against a user's documents in their personal space.
         if space is None:
