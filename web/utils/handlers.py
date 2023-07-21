@@ -6,13 +6,17 @@ from datetime import datetime
 from typing import Any, List, Tuple
 
 import streamlit as st
-from docq import config, domain, run_queries
-from docq import manage_documents as mdocuments
-from docq import manage_engagements as mengagements
-from docq import manage_groups as mgroups
-from docq import manage_settings as msettings
-from docq import manage_spaces as mspaces
-from docq import manage_users as musers
+from docq import (
+    config,
+    domain,
+    manage_documents,
+    manage_settings,
+    manage_space_groups,
+    manage_spaces,
+    manage_user_groups,
+    manage_users,
+    run_queries,
+)
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import SpaceKey
@@ -34,7 +38,7 @@ from .sessions import (
 
 
 def handle_login(username: str, password: str) -> bool:
-    result = musers.authenticate(username, password)
+    result = manage_users.authenticate(username, password)
     log.info("Login result: %s", result)
     if result:
         set_auth_session(
@@ -46,8 +50,8 @@ def handle_login(username: str, password: str) -> bool:
         )
         set_settings_session(
             {
-                SessionKeyNameForSettings.SYSTEM.name: msettings.get_system_settings(),
-                SessionKeyNameForSettings.USER.name: msettings.get_user_settings(result[0]),
+                SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_system_settings(),
+                SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(result[0]),
             }
         )
         log.info(st.session_state["_docq"])
@@ -61,7 +65,7 @@ def handle_logout() -> None:
 
 
 def handle_create_user() -> int:
-    result = musers.create_user(
+    result = manage_users.create_user(
         st.session_state["create_user_username"],
         st.session_state["create_user_password"],
         st.session_state["create_user_fullname"],
@@ -72,7 +76,7 @@ def handle_create_user() -> int:
 
 
 def handle_update_user(id_: int) -> bool:
-    result = musers.update_user(
+    result = manage_users.update_user(
         id_,
         st.session_state[f"update_user_{id_}_username"],
         st.session_state[f"update_user_{id_}_password"],
@@ -84,66 +88,66 @@ def handle_update_user(id_: int) -> bool:
     return result
 
 
-def list_users(username_match: str = None) -> list[tuple]:
-    return musers.list_users(username_match)
+def list_users(name_match: str = None) -> list[tuple]:
+    return manage_users.list_users(name_match)
 
 
-def handle_create_group() -> int:
-    result = mgroups.create_group(
-        st.session_state["create_group_name"],
+def handle_create_user_group() -> int:
+    result = manage_user_groups.create_user_group(
+        st.session_state["create_user_group_name"],
     )
-    log.info("Create group with id: %s", result)
+    log.info("Create user group result: %s", result)
     return result
 
 
-def handle_update_group(id_: int) -> bool:
-    result = mgroups.update_group(
+def handle_update_user_group(id_: int) -> bool:
+    result = manage_user_groups.update_user_group(
         id_,
-        [x[0] for x in st.session_state[f"update_group_{id_}_members"]],
-        st.session_state[f"update_group_{id_}_name"],
+        [x[0] for x in st.session_state[f"update_user_group_{id_}_members"]],
+        st.session_state[f"update_user_group_{id_}_name"],
     )
-    log.info("Update group result: %s", result)
+    log.info("Update user group result: %s", result)
     return result
 
 
-def handle_delete_group(id_: int) -> bool:
-    result = mgroups.delete_group(id_)
-    log.info("Update group result: %s", result)
+def handle_delete_user_group(id_: int) -> bool:
+    result = manage_user_groups.delete_user_group(id_)
+    log.info("Update user group result: %s", result)
     return result
 
 
-def list_groups(groupname_match: str = None) -> List[Tuple]:
-    return mgroups.list_groups(groupname_match)
+def list_user_groups(name_match: str = None) -> List[Tuple]:
+    return manage_user_groups.list_user_groups(name_match)
 
 
-def handle_create_engagement() -> int:
-    result = mengagements.create_engagement(
-        st.session_state["create_engagement_name"],
-        st.session_state["create_engagement_summary"],
+def handle_create_space_group() -> int:
+    result = manage_space_groups.create_space_group(
+        st.session_state["create_space_group_name"],
+        st.session_state["create_space_group_summary"],
     )
-    log.info("Create engagement with id: %s", result)
+    log.info("Create space group with id: %s", result)
     return result
 
 
-def handle_update_engagement(id_: int) -> bool:
-    result = mengagements.update_engagement(
+def handle_update_space_group(id_: int) -> bool:
+    result = manage_space_groups.update_space_group(
         id_,
-        [x[0] for x in st.session_state[f"update_engagement_{id_}_associates"]],
-        st.session_state[f"update_engagement_{id_}_name"],
-        st.session_state[f"update_engagement_{id_}_summary"],
+        [x[0] for x in st.session_state[f"update_space_group_{id_}_members"]],
+        st.session_state[f"update_space_group_{id_}_name"],
+        st.session_state[f"update_space_group_{id_}_summary"],
     )
-    log.info("Update engagement result: %s", result)
+    log.info("Update space group result: %s", result)
     return result
 
 
-def handle_delete_engagement(id_: int) -> bool:
-    result = mengagements.delete_engagement(id_)
-    log.info("Update engagement result: %s", result)
+def handle_delete_space_group(id_: int) -> bool:
+    result = manage_space_groups.delete_space_group(id_)
+    log.info("Update space group result: %s", result)
     return result
 
 
-def list_engagements(name_match: str = None) -> List[Tuple]:
-    return mengagements.list_engagements(name_match)
+def list_space_groups(name_match: str = None) -> List[Tuple]:
+    return manage_space_groups.list_space_groups(name_match)
 
 
 def query_chat_history(feature: domain.FeatureKey) -> None:
@@ -180,15 +184,15 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
 
 
 def handle_list_documents(space: domain.SpaceKey) -> list[tuple[str, int, int]]:
-    return mspaces.list_documents(space)
+    return manage_spaces.list_documents(space)
 
 
 def handle_delete_document(filename: str, space: domain.SpaceKey) -> None:
-    mdocuments.delete(filename, space)
+    manage_documents.delete(filename, space)
 
 
 def handle_delete_all_documents(space: domain.SpaceKey) -> None:
-    mdocuments.delete_all(space)
+    manage_documents.delete_all(space)
 
 
 def handle_upload_file(space: domain.SpaceKey) -> None:
@@ -205,7 +209,7 @@ def handle_upload_file(space: domain.SpaceKey) -> None:
         try:
             file_no += 1
             disp.info(f"Uploading file {file_no} of {len(files)}")
-            mdocuments.upload(file.name, file.getvalue(), space)
+            manage_documents.upload(file.name, file.getvalue(), space)
         except Exception as e:
             log.exception("Error uploading file %s", e)
             break
@@ -218,24 +222,24 @@ def handle_upload_file(space: domain.SpaceKey) -> None:
 
 
 def handle_change_temperature(type_: config.SpaceType):
-    msettings.change_settings(type_.name, temperature=st.session_state[f"temperature_{type_.name}"])
+    manage_settings.change_settings(type_.name, temperature=st.session_state[f"temperature_{type_.name}"])
 
 
 def get_shared_space(id_: int) -> tuple[int, str, str, bool, str, dict, datetime, datetime]:
-    return mspaces.get_shared_space(id_)
+    return manage_spaces.get_shared_space(id_)
 
 
 def list_shared_spaces():
     user_id = get_authenticated_user_id()
-    return mspaces.list_shared_spaces(user_id)
+    return manage_spaces.list_shared_spaces(user_id)
 
 
 def handle_archive_space(id_: int):
-    mspaces.archive_space(id_)
+    manage_spaces.archive_space(id_)
 
 
 def get_shared_space_permissions(id_: int) -> dict[SpaceAccessType, Any]:
-    permissions = mspaces.get_shared_space_permissions(id_)
+    permissions = manage_spaces.get_shared_space_permissions(id_)
     results = {
         SpaceAccessType.PUBLIC: any(p.type_ == SpaceAccessType.PUBLIC for p in permissions),
         SpaceAccessType.USER: [
@@ -258,7 +262,7 @@ def _prepare_space_data_source(prefix: str) -> Tuple[str, dict]:
 
 def handle_update_space_details(id_: int) -> bool:
     ds_type, ds_configs = _prepare_space_data_source(f"update_space_details_{id_}_")
-    result = mspaces.update_shared_space(
+    result = manage_spaces.update_shared_space(
         id_,
         st.session_state[f"update_space_details_{id_}_name"],
         st.session_state[f"update_space_details_{id_}_summary"],
@@ -280,24 +284,24 @@ def handle_manage_space_permissions(id_: int) -> bool:
             permissions.append(SpaceAccessor(k, accessor_id, accessor_name))
 
     log.debug("Manage space permissions: %s", permissions)
-    return mspaces.update_shared_space_permissions(id_, permissions)
+    return manage_spaces.update_shared_space_permissions(id_, permissions)
 
 
 def handle_create_space() -> SpaceKey:
     ds_type, ds_configs = _prepare_space_data_source("create_space_")
 
-    space = mspaces.create_shared_space(
+    space = manage_spaces.create_shared_space(
         st.session_state["create_space_name"], st.session_state["create_space_summary"], ds_type, ds_configs
     )
     return space
 
 
 def handle_reindex_space(space: SpaceKey) -> None:
-    mspaces.reindex(space)
+    manage_spaces.reindex(space)
 
 
 def get_space_data_source(space: SpaceKey) -> Tuple[str, dict]:
-    return mspaces.get_space_data_source(space)
+    return manage_spaces.get_space_data_source(space)
 
 
 def list_space_data_source_choices() -> List[Tuple[str, str, List[domain.ConfigKey]]]:
@@ -316,15 +320,15 @@ def get_space_data_source_choice_by_type(type_: str) -> Tuple[str, str, List[dom
 
 
 def get_system_settings() -> dict:
-    return msettings.get_system_settings()
+    return manage_settings.get_system_settings()
 
 
 def get_enabled_features() -> list[domain.FeatureKey]:
-    return msettings.get_system_settings(config.SystemSettingsKey.ENABLED_FEATURES)
+    return manage_settings.get_system_settings(config.SystemSettingsKey.ENABLED_FEATURES)
 
 
 def handle_update_system_settings() -> None:
-    msettings.update_system_settings(
+    manage_settings.update_system_settings(
         {
             config.SystemSettingsKey.ENABLED_FEATURES.name: [
                 f.name for f in st.session_state[f"system_settings_{config.SystemSettingsKey.ENABLED_FEATURES.name}"]

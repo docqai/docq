@@ -8,8 +8,8 @@ from typing import List, Tuple
 
 from .support.store import get_sqlite_system_file
 
-SQL_CREATE_GROUPS_TABLE = """
-CREATE TABLE IF NOT EXISTS groups (
+SQL_CREATE_USER_GROUPS_TABLE = """
+CREATE TABLE IF NOT EXISTS user_groups (
     id INTEGER PRIMARY KEY,
     name TEXT UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -17,11 +17,11 @@ CREATE TABLE IF NOT EXISTS groups (
 )
 """
 
-SQL_CREATE_MEMBERSHIPS_TABLE = """
-CREATE TABLE IF NOT EXISTS memberships (
+SQL_CREATE_USER_GROUP_MEMBERS_TABLE = """
+CREATE TABLE IF NOT EXISTS user_group_members (
     group_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
-    FOREIGN KEY (group_id) REFERENCES groups (id),
+    FOREIGN KEY (group_id) REFERENCES user_groups (id),
     FOREIGN KEY (user_id) REFERENCES users (id),
     PRIMARY KEY (group_id, user_id)
 )
@@ -33,75 +33,75 @@ def _init() -> None:
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(SQL_CREATE_GROUPS_TABLE)
-        cursor.execute(SQL_CREATE_MEMBERSHIPS_TABLE)
+        cursor.execute(SQL_CREATE_USER_GROUPS_TABLE)
+        cursor.execute(SQL_CREATE_USER_GROUP_MEMBERS_TABLE)
         connection.commit()
 
 
-def list_groups(
+def list_user_groups(
     name_match: str = None,
-) -> list[Tuple[int, str, List[Tuple[int, str]], datetime, datetime]]:
-    """List groups.
+) -> List[Tuple[int, str, List[Tuple[int, str]], datetime, datetime]]:
+    """List user groups.
 
     Args:
         name_match (str, optional): The group name match. Defaults to None.
 
     Returns:
-        list[tuple[int, str, datetime, datetime]]: The list of groups.
+        List[Tuple[int, str, List[Tuple[int, str]], datetime, datetime]]: The list of user groups.
     """
-    log.debug("Listing groups: %s", name_match)
+    log.debug("Listing user groups: %s", name_match)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        groups = cursor.execute(
-            "SELECT id, name, created_at, updated_at FROM groups WHERE name LIKE ?",
+        user_groups = cursor.execute(
+            "SELECT id, name, created_at, updated_at FROM user_groups WHERE name LIKE ?",
             (f"%{name_match}%" if name_match else "%",),
         ).fetchall()
 
-        memberships = cursor.execute(
-            "SELECT m.group_id, u.id, u.fullname from memberships m, users u WHERE m.group_id IN ({}) AND m.user_id = u.id".format(  # noqa: S608
-                ",".join([str(x[0]) for x in groups])
+        members = cursor.execute(
+            "SELECT m.group_id, u.id, u.fullname from user_group_members m, users u WHERE m.group_id IN ({}) AND m.user_id = u.id".format(  # noqa: S608
+                ",".join([str(x[0]) for x in user_groups])
             )
         ).fetchall()
 
-        return [(x[0], x[1], [(y[1], y[2]) for y in memberships if y[0] == x[0]], x[2], x[3]) for x in groups]
+        return [(x[0], x[1], [(y[1], y[2]) for y in members if y[0] == x[0]], x[2], x[3]) for x in user_groups]
 
 
-def create_group(name: str) -> bool:
-    """Create a group.
+def create_user_group(name: str) -> bool:
+    """Create a user group.
 
     Args:
         name (str): The group name.
 
     Returns:
-        bool: True if the group is created, False otherwise.
+        bool: True if the user group is created, False otherwise.
     """
-    log.debug("Creating group: %s", name)
+    log.debug("Creating user group: %s", name)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
-            "INSERT INTO groups (name) VALUES (?)",
+            "INSERT INTO user_groups (name) VALUES (?)",
             (name,),
         )
         connection.commit()
         return True
 
 
-def update_group(id_: int, members: List[int], name: str = None) -> bool:
+def update_user_group(id_: int, members: List[int], name: str = None) -> bool:
     """Update a group.
 
     Args:
         id_ (int): The group id.
-        members (list[int], optional): The members. Defaults to None.
+        members (List[int]): The members.
         name (str, optional): The group name. Defaults to None.
 
     Returns:
-        bool: True if the group is updated, False otherwise.
+        bool: True if the user group is updated, False otherwise.
     """
-    log.debug("Updating group: %d", id_)
+    log.debug("Updating user group: %d", id_)
 
-    query = "UPDATE groups SET updated_at = ?"
+    query = "UPDATE user_groups SET updated_at = ?"
     params = [
         datetime.now(),
     ]
@@ -117,25 +117,28 @@ def update_group(id_: int, members: List[int], name: str = None) -> bool:
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(query, params)
-        cursor.execute("DELETE FROM memberships WHERE group_id = ?", (id_,))
-        cursor.executemany("INSERT INTO memberships (group_id, user_id) VALUES (?, ?)", [(id_, x) for x in members])
+        cursor.execute("DELETE FROM user_group_members WHERE group_id = ?", (id_,))
+        cursor.executemany(
+            "INSERT INTO user_group_members (group_id, user_id) VALUES (?, ?)", [(id_, x) for x in members]
+        )
         connection.commit()
         return True
 
 
-def delete_group(id_: int) -> bool:
-    """Delete a group.
+def delete_user_group(id_: int) -> bool:
+    """Delete a user group.
 
     Args:
-        id_ (int): The group id.
+        id_ (int): The user group id.
 
     Returns:
-        bool: True if the group is deleted, False otherwise.
+        bool: True if the user group is deleted, False otherwise.
     """
-    log.debug("Deleting group: %d", id_)
+    log.debug("Deleting user group: %d", id_)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute("DELETE FROM groups WHERE id = ?", (id_,))
+        cursor.execute("DELETE FROM user_group_members WHERE group_id = ?", (id_,))
+        cursor.execute("DELETE FROM user_groups WHERE id = ?", (id_,))
         connection.commit()
         return True

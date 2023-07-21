@@ -216,7 +216,7 @@ def get_shared_space_permissions(id_: int) -> List[SpaceAccessor]:
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
-            "SELECT sa.access_type, u.id as user_id, u.username as user_name, g.id as group_id, g.name as group_name FROM space_access sa LEFT JOIN users u on sa.accessor_id = u.id LEFT JOIN groups g on sa.accessor_id = g.id WHERE sa.space_id = ?",
+            "SELECT sa.access_type, u.id as user_id, u.username as user_name, g.id as group_id, g.name as group_name FROM space_access sa LEFT JOIN users u on sa.accessor_id = u.id LEFT JOIN user_groups g on sa.accessor_id = g.id WHERE sa.space_id = ?",
             (id_,),
         )
         rows = cursor.fetchall()

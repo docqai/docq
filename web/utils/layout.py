@@ -22,29 +22,29 @@ from .handlers import (
     get_space_data_source_choice_by_type,
     get_system_settings,
     handle_chat_input,
-    handle_create_engagement,
-    handle_create_group,
     handle_create_space,
+    handle_create_space_group,
     handle_create_user,
+    handle_create_user_group,
     handle_delete_all_documents,
     handle_delete_document,
-    handle_delete_engagement,
-    handle_delete_group,
+    handle_delete_space_group,
+    handle_delete_user_group,
     handle_list_documents,
     handle_login,
     handle_logout,
     handle_manage_space_permissions,
     handle_reindex_space,
-    handle_update_engagement,
-    handle_update_group,
     handle_update_space_details,
+    handle_update_space_group,
     handle_update_system_settings,
     handle_update_user,
+    handle_update_user_group,
     handle_upload_file,
-    list_engagements,
-    list_groups,
     list_shared_spaces,
     list_space_data_source_choices,
+    list_space_groups,
+    list_user_groups,
     list_users,
     prepare_for_chat,
     query_chat_history,
@@ -83,10 +83,10 @@ def __no_admin_menu() -> None:
             "Admin",
             "Admin_Settings",
             "Admin_Spaces",
+            "Admin_Space_Groups",
             "Admin_Docs",
-            "Admin_Engagements",
             "Admin_Users",
-            "Admin_Groups",
+            "Admin_User_Groups",
             "Admin_Logs",
         ]
     )
@@ -192,16 +192,16 @@ def list_users_ui(username_match: str = None) -> None:
                         st.form_submit_button("Save", on_click=handle_update_user, args=(id_,))
 
 
-def create_group_ui() -> None:
+def create_user_group_ui() -> None:
     """Create a new group."""
-    with st.expander("### + New Group"), st.form(key="create_group"):
-        st.text_input("Name", value="", key="create_group_name")
-        st.form_submit_button("Create Group", on_click=handle_create_group)
+    with st.expander("### + New User Group"), st.form(key="create_user_group"):
+        st.text_input("Name", value="", key="create_user_group_name")
+        st.form_submit_button("Create User Group", on_click=handle_create_user_group)
 
 
-def list_groups_ui(groupname_match: str = None) -> None:
+def list_user_groups_ui(name_match: str = None) -> None:
     """List all groups."""
-    groups = list_groups(groupname_match)
+    groups = list_user_groups(name_match)
     if groups:
         for id_, name, members, created_at, updated_at in groups:
             with st.expander(f"{name} ({len(members)} members)"):
@@ -209,59 +209,60 @@ def list_groups_ui(groupname_match: str = None) -> None:
                 st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
                 edit_col, delete_col = st.columns(2)
                 with edit_col:
-                    if st.button("Edit", key=f"update_group_{id_}_button"):
-                        with st.form(key=f"update_group_{id_}"):
-                            st.text_input("Name", value=name, key=f"update_group_{id_}_name")
+                    if st.button("Edit", key=f"update_user_group_{id_}_button"):
+                        with st.form(key=f"update_user_group_{id_}"):
+                            st.text_input("Name", value=name, key=f"update_user_group_{id_}_name")
                             st.multiselect(
                                 "Members",
                                 options=[(x[0], x[2]) for x in list_users()],
                                 default=members,
-                                key=f"update_group_{id_}_members",
+                                key=f"update_user_group_{id_}_members",
                                 format_func=lambda x: x[1],
                             )
-                            st.form_submit_button("Save", on_click=handle_update_group, args=(id_,))
+                            st.form_submit_button("Save", on_click=handle_update_user_group, args=(id_,))
                 with delete_col:
-                    if st.button("Delete", key=f"delete_group_{id_}_button"):
-                        with st.form(key=f"delete_group_{id_}"):
+                    if st.button("Delete", key=f"delete_user_group_{id_}_button"):
+                        with st.form(key=f"delete_user_group_{id_}"):
                             st.warning("Are you sure you want to delete this group?")
-                            st.form_submit_button("Confirm", on_click=handle_delete_group, args=(id_,))
+                            st.form_submit_button("Confirm", on_click=handle_delete_user_group, args=(id_,))
 
 
-def create_engagement_ui() -> None:
-    """Create a new engagement."""
-    with st.expander("### + New Engagement"), st.form(key="create_engagement"):
-        st.text_input("Name", value="", key="create_engagement_name")
-        st.text_input("Summary", value="", key="create_engagement_summary")
-        st.form_submit_button("Create Engagement", on_click=handle_create_engagement)
+def create_space_group_ui() -> None:
+    """Create a new space group."""
+    with st.expander("### + New Space Group"), st.form(key="create_space_group"):
+        st.text_input("Name", value="", key="create_space_group_name")
+        st.text_input("Summary", value="", key="create_space_group_summary")
+        st.form_submit_button("Create Space Group", on_click=handle_create_space_group)
 
 
-def list_engagements_ui(name_match: str = None) -> None:
-    """List all groups."""
-    engagements = list_engagements(name_match)
-    if engagements:
-        for id_, name, summary, associates, created_at, updated_at in engagements:
-            with st.expander(f"{name} ({len(associates)} spaces)"):
+def list_space_groups_ui(name_match: str = None) -> None:
+    """List all space groups."""
+    groups = list_space_groups(name_match)
+    if groups:
+        for id_, name, summary, members, created_at, updated_at in groups:
+            with st.expander(f"{name} ({len(members)} spaces)"):
                 st.write(f"ID: **{id_}**")
+                st.write(f"Summary: _{summary}_")
                 st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
                 edit_col, delete_col = st.columns(2)
                 with edit_col:
-                    if st.button("Edit", key=f"update_engagement_{id_}_button"):
-                        with st.form(key=f"update_engagement_{id_}"):
-                            st.text_input("Name", value=name, key=f"update_engagement_{id_}_name")
-                            st.text_input("Summary", value=summary, key=f"update_engagement_{id_}_summary")
+                    if st.button("Edit", key=f"update_space_group_{id_}_button"):
+                        with st.form(key=f"update_space_group_{id_}"):
+                            st.text_input("Name", value=name, key=f"update_space_group_{id_}_name")
+                            st.text_input("Summary", value=summary, key=f"update_space_group_{id_}_summary")
                             st.multiselect(
                                 "Spaces",
                                 options=[(x[0], x[1]) for x in list_shared_spaces()],
-                                default=associates,
-                                key=f"update_engagement_{id_}_associates",
+                                default=members,
+                                key=f"update_space_group_{id_}_members",
                                 format_func=lambda x: x[1],
                             )
-                            st.form_submit_button("Save", on_click=handle_update_engagement, args=(id_,))
+                            st.form_submit_button("Save", on_click=handle_update_space_group, args=(id_,))
                 with delete_col:
-                    if st.button("Delete", key=f"delete_engagement_{id_}_button"):
-                        with st.form(key=f"delete_engagement_{id_}"):
-                            st.warning("Are you sure you want to delete this engagement?")
-                            st.form_submit_button("Confirm", on_click=handle_delete_engagement, args=(id_,))
+                    if st.button("Delete", key=f"delete_space_group_{id_}_button"):
+                        with st.form(key=f"delete_space_group_{id_}"):
+                            st.warning("Are you sure you want to delete this group?")
+                            st.form_submit_button("Confirm", on_click=handle_delete_space_group, args=(id_,))
 
 
 def _chat_message(message_: str, is_user: bool) -> None:
