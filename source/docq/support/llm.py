@@ -1,7 +1,6 @@
 """Functions for utilising LLMs."""
 
 import logging as log
-import traceback
 
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import BaseMessage
@@ -20,12 +19,10 @@ from llama_index.node_parser import SimpleNodeParser
 from llama_index.node_parser.extractors import (
     KeywordExtractor,
     MetadataExtractor,
-    # MetadataFeatureExtractor,
     QuestionsAnsweredExtractor,
     SummaryExtractor,
     TitleExtractor,
 )
-from llama_index.response.schema import RESPONSE_TYPE
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
@@ -152,7 +149,7 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
                     indices.append(index_)
                     summaries.append(summary_.response)
                 else:
-                    log.warning("The summary generated for Space '%s' was empty so skipping the frin Graph index.", s_)
+                    log.warning("The summary generated for Space '%s' was empty so skipping from the Graph index.", s_)
                     continue
             except Exception as e:
                 log.warning(
@@ -160,7 +157,6 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
                     s_,
                     e,
                 )
-                log.error(traceback.format_exc())
                 continue
 
         log.debug("number summaries: %s", len(summaries))
@@ -176,7 +172,6 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
                 "Failed to create ComposableGraph. Maybe there was an issue with one of the Space indexes. Error message: %s",
                 e,
             )
-            log.error(traceback.format_exc())
     else:
         # No additional spaces i.e. likely to be against a user's documents in their personal space.
         if space is None:
