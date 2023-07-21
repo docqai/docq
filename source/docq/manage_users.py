@@ -4,7 +4,7 @@ import logging as log
 import sqlite3
 from contextlib import closing
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Tuple
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
@@ -36,12 +36,20 @@ DEFAULT_ADMIN_FULLNAME = "Docq Admin"
 PH = PasswordHasher()
 
 
+def _init() -> None:
+    """Initialize the database."""
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(SQL_CREATE_USERS_TABLE)
+        connection.commit()
+
+
 def _init_admin_if_necessary() -> bool:
     created = False
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(SQL_CREATE_USERS_TABLE)
         (count,) = cursor.execute("SELECT COUNT(*) FROM users WHERE admin = ?", (True,)).fetchone()
         if int(count) > 0:
             log.debug("%d admin user found, skipping...", count)
@@ -63,7 +71,7 @@ def _init_admin_if_necessary() -> bool:
     return created
 
 
-def authenticate(username: str, password: str) -> tuple[id, str, bool]:
+def authenticate(username: str, password: str) -> Tuple[int, str, bool]:
     """Authenticate a user.
 
     Args:
@@ -77,7 +85,6 @@ def authenticate(username: str, password: str) -> tuple[id, str, bool]:
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(SQL_CREATE_USERS_TABLE)
         selected = cursor.execute(
             "SELECT id, password, fullname, admin FROM users WHERE username = ? AND archived = 0",
             (username,),
@@ -103,42 +110,40 @@ def authenticate(username: str, password: str) -> tuple[id, str, bool]:
             return None
 
 
-def list_users(username_match: Optional[str] = None) -> list[tuple[int, str, str, bool, bool, datetime, datetime]]:
+def list_users(username_match: str = None) -> List[Tuple[int, str, str, bool, bool, datetime, datetime]]:
     """List users.
 
     Args:
         username_match (str, optional): The username match. Defaults to None.
 
     Returns:
-        list[tuple[int, str, str, str, bool, bool, datetime, datetime]]: The list of users.
+        List[Tuple[int, str, str, str, bool, bool, datetime, datetime]]: The list of users.
     """
     log.debug("Listing users: %s", username_match)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(SQL_CREATE_USERS_TABLE)
         return cursor.execute(
             "SELECT id, username, fullname, admin, archived, created_at, updated_at FROM users WHERE username LIKE ?",
             (f"%{username_match}%" if username_match else "%",),
         ).fetchall()
 
 
-def list_selected_users(ids_: List[int]) -> list[tuple[int, str, str, bool, bool, datetime, datetime]]:
+def list_selected_users(ids_: List[int]) -> List[Tuple[int, str, str, bool, bool, datetime, datetime]]:
     """List selected users by their ids.
 
     Args:
         ids_ (List[int]): The list of user ids.
 
     Returns:
-        list[tuple[int, str, str, str, bool, bool, datetime, datetime]]: The list of users.
+        List[Tuple[int, str, str, str, bool, bool, datetime, datetime]]: The list of users.
     """
     log.debug("Listing users: %s", ids_)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(SQL_CREATE_USERS_TABLE)
         return cursor.execute(
-            "SELECT id, username, fullname, admin, archived, created_at, updated_at FROM users WHERE id IN ({})".format(
+            "SELECT id, username, fullname, admin, archived, created_at, updated_at FROM users WHERE id IN ({})".format(  # noqa: S608
                 ",".join([str(id_) for id_ in ids_])
             )
         ).fetchall()
@@ -146,11 +151,11 @@ def list_selected_users(ids_: List[int]) -> list[tuple[int, str, str, bool, bool
 
 def update_user(
     id_: int,
-    username: Optional[str] = None,
-    password: Optional[str] = None,
-    fullname: Optional[str] = None,
-    is_admin: Optional[bool] = False,
-    is_archived: Optional[bool] = False,
+    username: str = None,
+    password: str = None,
+    fullname: str = None,
+    is_admin: bool = False,
+    is_archived: bool = False,
 ) -> bool:
     """Update a user.
 
@@ -197,13 +202,12 @@ def update_user(
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(SQL_CREATE_USERS_TABLE)
         cursor.execute(query, tuple(params))
         connection.commit()
         return True
 
 
-def create_user(username: str, password: str, fullname: Optional[str] = None, is_admin: Optional[bool] = False) -> int:
+def create_user(username: str, password: str, fullname: str = None, is_admin: bool = False) -> int:
     """Create a user.
 
     Args:
@@ -222,7 +226,6 @@ def create_user(username: str, password: str, fullname: Optional[str] = None, is
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(SQL_CREATE_USERS_TABLE)
         cursor.execute(
             "INSERT INTO users (username, password, fullname, admin) VALUES (?, ?, ?, ?)",
             (

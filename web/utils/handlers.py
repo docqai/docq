@@ -8,6 +8,7 @@ from typing import Any, List, Tuple
 import streamlit as st
 from docq import config, domain, run_queries
 from docq import manage_documents as mdocuments
+from docq import manage_engagements as mengagements
 from docq import manage_groups as mgroups
 from docq import manage_settings as msettings
 from docq import manage_spaces as mspaces
@@ -23,7 +24,13 @@ from .constants import (
     SessionKeyNameForChat,
     SessionKeyNameForSettings,
 )
-from .sessions import get_chat_session, set_auth_session, set_chat_session, set_settings_session
+from .sessions import (
+    get_authenticated_user_id,
+    get_chat_session,
+    set_auth_session,
+    set_chat_session,
+    set_settings_session,
+)
 
 
 def handle_login(username: str, password: str) -> bool:
@@ -77,6 +84,10 @@ def handle_update_user(id_: int) -> bool:
     return result
 
 
+def list_users(username_match: str = None) -> list[tuple]:
+    return musers.list_users(username_match)
+
+
 def handle_create_group() -> int:
     result = mgroups.create_group(
         st.session_state["create_group_name"],
@@ -101,16 +112,38 @@ def handle_delete_group(id_: int) -> bool:
     return result
 
 
-def list_users(username_match: str = None) -> list[tuple]:
-    return musers.list_users(username_match)
-
-
-def list_selected_users(user_ids: List[int]) -> list[tuple]:
-    return musers.list_selected_users(user_ids)
-
-
-def list_groups(groupname_match: str = None) -> list[tuple]:
+def list_groups(groupname_match: str = None) -> List[Tuple]:
     return mgroups.list_groups(groupname_match)
+
+
+def handle_create_engagement() -> int:
+    result = mengagements.create_engagement(
+        st.session_state["create_engagement_name"],
+        st.session_state["create_engagement_summary"],
+    )
+    log.info("Create engagement with id: %s", result)
+    return result
+
+
+def handle_update_engagement(id_: int) -> bool:
+    result = mengagements.update_engagement(
+        id_,
+        [x[0] for x in st.session_state[f"update_engagement_{id_}_associates"]],
+        st.session_state[f"update_engagement_{id_}_name"],
+        st.session_state[f"update_engagement_{id_}_summary"],
+    )
+    log.info("Update engagement result: %s", result)
+    return result
+
+
+def handle_delete_engagement(id_: int) -> bool:
+    result = mengagements.delete_engagement(id_)
+    log.info("Update engagement result: %s", result)
+    return result
+
+
+def list_engagements(name_match: str = None) -> List[Tuple]:
+    return mengagements.list_engagements(name_match)
 
 
 def query_chat_history(feature: domain.FeatureKey) -> None:
@@ -193,7 +226,8 @@ def get_shared_space(id_: int) -> tuple[int, str, str, bool, str, dict, datetime
 
 
 def list_shared_spaces():
-    return mspaces.list_shared_spaces()
+    user_id = get_authenticated_user_id()
+    return mspaces.list_shared_spaces(user_id)
 
 
 def handle_archive_space(id_: int):

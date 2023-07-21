@@ -7,7 +7,7 @@ from typing import List, Tuple
 import streamlit as st
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SystemSettingsKey
-from docq.domain import ConfigKey, FeatureKey, SpaceKey
+from docq.domain import FeatureKey, SpaceKey
 from st_pages import hide_pages
 from streamlit.delta_generator import DeltaGenerator
 
@@ -22,24 +22,27 @@ from .handlers import (
     get_space_data_source_choice_by_type,
     get_system_settings,
     handle_chat_input,
+    handle_create_engagement,
     handle_create_group,
     handle_create_space,
     handle_create_user,
     handle_delete_all_documents,
     handle_delete_document,
+    handle_delete_engagement,
     handle_delete_group,
     handle_list_documents,
     handle_login,
     handle_logout,
     handle_manage_space_permissions,
     handle_reindex_space,
+    handle_update_engagement,
     handle_update_group,
     handle_update_space_details,
     handle_update_system_settings,
     handle_update_user,
     handle_upload_file,
+    list_engagements,
     list_groups,
-    list_selected_users,
     list_shared_spaces,
     list_space_data_source_choices,
     list_users,
@@ -75,7 +78,18 @@ def __no_staff_menu() -> None:
 
 
 def __no_admin_menu() -> None:
-    hide_pages(["Admin", "Admin_Settings", "Admin_Spaces", "Admin_Docs", "Admin_Users", "Admin_Groups", "Admin_Logs"])
+    hide_pages(
+        [
+            "Admin",
+            "Admin_Settings",
+            "Admin_Spaces",
+            "Admin_Docs",
+            "Admin_Engagements",
+            "Admin_Users",
+            "Admin_Groups",
+            "Admin_Logs",
+        ]
+    )
 
 
 def __login_form() -> None:
@@ -200,8 +214,8 @@ def list_groups_ui(groupname_match: str = None) -> None:
                             st.text_input("Name", value=name, key=f"update_group_{id_}_name")
                             st.multiselect(
                                 "Members",
-                                options=list_users(),
-                                default=list_selected_users(members),
+                                options=[(x[0], x[2]) for x in list_users()],
+                                default=members,
                                 key=f"update_group_{id_}_members",
                                 format_func=lambda x: x[1],
                             )
@@ -211,6 +225,43 @@ def list_groups_ui(groupname_match: str = None) -> None:
                         with st.form(key=f"delete_group_{id_}"):
                             st.warning("Are you sure you want to delete this group?")
                             st.form_submit_button("Confirm", on_click=handle_delete_group, args=(id_,))
+
+
+def create_engagement_ui() -> None:
+    """Create a new engagement."""
+    with st.expander("### + New Engagement"), st.form(key="create_engagement"):
+        st.text_input("Name", value="", key="create_engagement_name")
+        st.text_input("Summary", value="", key="create_engagement_summary")
+        st.form_submit_button("Create Engagement", on_click=handle_create_engagement)
+
+
+def list_engagements_ui(name_match: str = None) -> None:
+    """List all groups."""
+    engagements = list_engagements(name_match)
+    if engagements:
+        for id_, name, summary, associates, created_at, updated_at in engagements:
+            with st.expander(f"{name} ({len(associates)} spaces)"):
+                st.write(f"ID: **{id_}**")
+                st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
+                edit_col, delete_col = st.columns(2)
+                with edit_col:
+                    if st.button("Edit", key=f"update_engagement_{id_}_button"):
+                        with st.form(key=f"update_engagement_{id_}"):
+                            st.text_input("Name", value=name, key=f"update_engagement_{id_}_name")
+                            st.text_input("Summary", value=summary, key=f"update_engagement_{id_}_summary")
+                            st.multiselect(
+                                "Spaces",
+                                options=[(x[0], x[1]) for x in list_shared_spaces()],
+                                default=associates,
+                                key=f"update_engagement_{id_}_associates",
+                                format_func=lambda x: x[1],
+                            )
+                            st.form_submit_button("Save", on_click=handle_update_engagement, args=(id_,))
+                with delete_col:
+                    if st.button("Delete", key=f"delete_engagement_{id_}_button"):
+                        with st.form(key=f"delete_engagement_{id_}"):
+                            st.warning("Are you sure you want to delete this engagement?")
+                            st.form_submit_button("Confirm", on_click=handle_delete_engagement, args=(id_,))
 
 
 def _chat_message(message_: str, is_user: bool) -> None:

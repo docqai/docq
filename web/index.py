@@ -23,6 +23,7 @@ show_pages(
         Page("web/admin_settings.py", "Admin_Settings"),
         Page("web/admin_spaces.py", "Admin_Spaces"),
         Page("web/admin_docs.py", "Admin_Docs"),
+        Page("web/admin_engagements.py", "Admin_Engagements"),
         Page("web/admin_users.py", "Admin_Users"),
         Page("web/admin_groups.py", "Admin_Groups"),
         Page("web/admin_logs.py", "Admin_Logs"),

@@ -15,6 +15,15 @@ CREATE TABLE IF NOT EXISTS sharing (
 """
 
 
+def _init() -> None:
+    """Initialize the database."""
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(SQL_CREATE_SHARING_TABLE)
+        connection.commit()
+
+
 def associate_user_with_space(user_id: int, space_id: int, by: int) -> bool:
     """Associate a user with a space.
 
@@ -30,7 +39,6 @@ def associate_user_with_space(user_id: int, space_id: int, by: int) -> bool:
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(SQL_CREATE_SHARING_TABLE)
         cursor.execute(
             "INSERT INTO access (user_id, space_id) VALUES (?, ?)",
             (
@@ -57,7 +65,6 @@ def dissociate_user_from_space(user_id: int, space_id: int, by: int) -> bool:
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(SQL_CREATE_SHARING_TABLE)
         cursor.execute(
             "DELETE FROM sharing WHERE user_id = ? AND space_id = ?",
             (

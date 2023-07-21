@@ -22,6 +22,15 @@ CREATE TABLE IF NOT EXISTS settings (
 USER_ID_AS_SYSTEM = 0
 
 
+def _init() -> None:
+    """Initialize the database."""
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(SQL_CREATE_SETTINGS_TABLE)
+        connection.commit()
+
+
 def _get_sqlite_file(user_id: int = None) -> str:
     """Get the sqlite file for the given user."""
     return get_sqlite_usage_file(user_id) if user_id else get_sqlite_system_file()
@@ -32,7 +41,6 @@ def _get_settings(user_id: int = None) -> dict:
     with closing(
         sqlite3.connect(_get_sqlite_file(user_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(SQL_CREATE_SETTINGS_TABLE)
         id_ = user_id or USER_ID_AS_SYSTEM
         rows = cursor.execute(
             "SELECT key, val FROM settings WHERE user_id = ?",
@@ -48,7 +56,6 @@ def _update_settings(settings: dict, user_id: int = None) -> bool:
     with closing(
         sqlite3.connect(_get_sqlite_file(user_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(SQL_CREATE_SETTINGS_TABLE)
         id_ = user_id or USER_ID_AS_SYSTEM
         cursor.executemany(
             "INSERT OR REPLACE INTO settings (user_id, key, val) VALUES (?, ?, ?)",
