@@ -1,6 +1,7 @@
 """Functions for utilising LLMs."""
 
 import logging as log
+import traceback
 
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import BaseMessage
@@ -144,21 +145,22 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
         for s_ in all_spaces:
             try:
                 index_ = _load_index_from_storage(s_)
-                index_
-                if index_ is None:
-                    log.warning(">>>index is none, %s, %s", s_, index_)
-
                 summary_ = index_.as_query_engine().query(
                     "What is the summary of all the documents?"
                 )  # note: we might not need to do this any longer because summary is added as node metadata.
-
-                indices.append(index_)
-
-                summaries.append(summary_.response)
+                if summary_ and summary_.response is not None:
+                    indices.append(index_)
+                    summaries.append(summary_.response)
+                else:
+                    log.warning("The summary generated for Space '%s' was empty so skipping the frin Graph index.", s_)
+                    continue
             except Exception as e:
                 log.warning(
-                    "Index for space '%s' failed to load. Maybe the index isn't created yet. Error message: %s", s_, e
+                    "Index for space '%s' failed to load, skipping. Maybe the index isn't created yet. Error message: %s",
+                    s_,
+                    e,
                 )
+                log.error(traceback.format_exc())
                 continue
 
         log.debug("number summaries: %s", len(summaries))
@@ -167,12 +169,14 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
                 GPTListIndex, indices, index_summaries=summaries, service_context=_get_service_context()
             )
             output = graph.as_query_engine().query(PROMPT_QUESTION.format(history=history, input=input_))
+
             log.debug("(Ask combined spaces %s) Q: %s, A: %s", all_spaces, input_, output)
         except Exception as e:
             log.error(
                 "Failed to create ComposableGraph. Maybe there was an issue with one of the Space indexes. Error message: %s",
                 e,
             )
+            log.error(traceback.format_exc())
     else:
         # No additional spaces i.e. likely to be against a user's documents in their personal space.
         if space is None:
