@@ -19,7 +19,6 @@ from llama_index.node_parser import SimpleNodeParser
 from llama_index.node_parser.extractors import (
     KeywordExtractor,
     MetadataExtractor,
-    # MetadataFeatureExtractor,
     QuestionsAnsweredExtractor,
     SummaryExtractor,
     TitleExtractor,
@@ -105,7 +104,7 @@ def _get_node_parser() -> SimpleNodeParser:
 
     node_parser = (
         SimpleNodeParser.from_defaults(  # SimpleNodeParser is the default when calling ServiceContext.from_defaults()
-            metadata_extractor=metadata_extractor,  # adds extracted metatdata as extra_info
+            metadata_extractor=metadata_extractor,  # adds extracted metadata as extra_info
         )
     )
 
@@ -138,6 +137,7 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
         # With additional spaces likely to be combining a number of shared spaces.
         indices = []
         summaries = []
+        output = _default_response()
         all_spaces = spaces + ([space] if space else [])
         for s_ in all_spaces:
             try:
@@ -145,22 +145,33 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
                 summary_ = index_.as_query_engine().query(
                     "What is the summary of all the documents?"
                 )  # note: we might not need to do this any longer because summary is added as node metadata.
-                indices.append(index_)
-
-                summaries.append(summary_.response)
+                if summary_ and summary_.response is not None:
+                    indices.append(index_)
+                    summaries.append(summary_.response)
+                else:
+                    log.warning("The summary generated for Space '%s' was empty so skipping from the Graph index.", s_)
+                    continue
             except Exception as e:
                 log.warning(
-                    "Index for space '%s' failed to load. Maybe the index isn't created yet. Error message: %s", s_, e
+                    "Index for space '%s' failed to load, skipping. Maybe the index isn't created yet. Error message: %s",
+                    s_,
+                    e,
                 )
                 continue
 
         log.debug("number summaries: %s", len(summaries))
-        graph = ComposableGraph.from_indices(
-            GPTListIndex, indices, index_summaries=summaries, service_context=_get_service_context()
-        )
-        output = graph.as_query_engine().query(PROMPT_QUESTION.format(history=history, input=input_))
+        try:
+            graph = ComposableGraph.from_indices(
+                GPTListIndex, indices, index_summaries=summaries, service_context=_get_service_context()
+            )
+            output = graph.as_query_engine().query(PROMPT_QUESTION.format(history=history, input=input_))
 
-        log.debug("(Ask combined spaces %s) Q: %s, A: %s", all_spaces, input_, output)
+            log.debug("(Ask combined spaces %s) Q: %s, A: %s", all_spaces, input_, output)
+        except Exception as e:
+            log.error(
+                "Failed to create ComposableGraph. Maybe there was an issue with one of the Space indexes. Error message: %s",
+                e,
+            )
     else:
         # No additional spaces i.e. likely to be against a user's documents in their personal space.
         if space is None:
