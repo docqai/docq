@@ -104,7 +104,7 @@ def _get_node_parser() -> SimpleNodeParser:
 
     node_parser = (
         SimpleNodeParser.from_defaults(  # SimpleNodeParser is the default when calling ServiceContext.from_defaults()
-            metadata_extractor=metadata_extractor,  # adds extracted metatdata as extra_info
+            metadata_extractor=metadata_extractor,  # adds extracted metadata as extra_info
         )
     )
 
