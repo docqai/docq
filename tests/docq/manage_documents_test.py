@@ -53,7 +53,7 @@ def test_get_download_link(filename: str, path: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("source_nodes", "expected"),
     [
-        ([mock_node_with_score], "> *File:* [test.txt]()<br> *Pages:* 0"),
+        ([mock_node_with_score], "\n##### Source:\n > *File:* [test.txt]()<br> *Pages:* 0"),
     ],
 )
 def test_format_document_sources(source_nodes: list[NodeWithScore], expected: str) -> None:
