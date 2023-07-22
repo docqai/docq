@@ -5,7 +5,7 @@ import os
 import shutil
 from datetime import datetime
 from mimetypes import guess_type
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 
 from llama_index.schema import NodeWithScore
 from streamlit import runtime
@@ -69,6 +69,8 @@ def _parse_metadata(metadata: Dict[str, Any]) -> tuple[Any, Any, Any, Any] | Non
         website = metadata.get("source_website")
         page_url = metadata.get("source_uri")
         page_title = metadata.get("page_title")
+        if ord(str(page_title)[-1]) < 32 or ord(str(page_title)[-1]) > 126:
+            page_title = str(page_title)[:-1]
 
         if not website or not page_url:
             return None
@@ -125,11 +127,13 @@ def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
             source_type = source_types.get(name)
             if uri:
                 download_url = _get_download_link(name, uri) if source_type == "Manual Upload" else uri
-                _sources.append(f"> *File:* [{name}]({download_url})<br> *Pages:* {', '.join(page_labels)}")
+                _sources.append(f"*File:* [{name}]({download_url})<br> *Pages:* {', '.join(page_labels)}")
         for site, pages in web_sources.items():
             page_str = site_delimiter.join([f"[{title}]({page})" for title, page in pages])
-            _sources.append(f"> {site} {site_delimiter if page_str else ''}{page_str}")
-        return delimiter.join(_sources)
+            _sources.append(f"{site} {site_delimiter if page_str else ''} {page_str}")
+
+        fmt_sources = f'\n>**Source{"s" if len(_sources) > 1 else ""}:** <br> {delimiter.join(_sources)}'
+        return fmt_sources if bool(_sources) else ""
 
     except Exception as e:
         log.exception("Error formatting sources %s", e)

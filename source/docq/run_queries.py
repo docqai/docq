@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS {table} (
 
 MESSAGE_TEMPLATE = "{message}"
 
-MESSAGE_WITH_SOURCES_TEMPLATE = "{message}\n\nSource(s):\n{source}"
+MESSAGE_WITH_SOURCES_TEMPLATE = "{message}\n{source}"
 
 NUMBER_OF_MESSAGES_IN_HISTORY = 10
 
