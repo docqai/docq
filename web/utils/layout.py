@@ -2,7 +2,7 @@
 
 
 import logging as log
-from typing import List, Tuple
+from typing import Callable, List, Tuple
 
 import streamlit as st
 from docq.access_control.main import SpaceAccessType
@@ -273,7 +273,26 @@ def _chat_message(message_: str, is_user: bool) -> None:
         with st.chat_message("assistant"):
             st.markdown(message_, unsafe_allow_html=True)
 
+def _chat_ui_style(chat_ui: Callable) -> Callable:
+    def wrapper(*args: tuple, **kwargs: dict) -> None:
+        st.write("""
+                 <style>
+                  [data-testid="stMarkdownContainer"] h6 {
+                      padding: 0px !important;
+                    }
+                  [data-testid="stMarkdownContainer"] h5 {
+                      padding: 1rem 0 0 0 !important;
+                    }
+                  [data-testid="stMarkdownContainer"] blockquote {
+                      margin-top: 0.5rem !important;
+                    }
+                 </style>
+                 """, unsafe_allow_html=True)
+        chat_ui(*args, **kwargs)
 
+    return wrapper
+
+@_chat_ui_style
 def chat_ui(feature: FeatureKey) -> None:
     """Chat UI layout."""
     prepare_for_chat(feature)
