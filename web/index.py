@@ -22,9 +22,10 @@ show_pages(
         Section("Admin", icon="💂"),
         Page("web/admin_settings.py", "Admin_Settings"),
         Page("web/admin_spaces.py", "Admin_Spaces"),
+        Page("web/admin_space_groups.py", "Admin_Space_Groups"),
         Page("web/admin_docs.py", "Admin_Docs"),
         Page("web/admin_users.py", "Admin_Users"),
-        Page("web/admin_groups.py", "Admin_Groups"),
+        Page("web/admin_user_groups.py", "Admin_User_Groups"),
         Page("web/admin_logs.py", "Admin_Logs"),
     ]
 )
