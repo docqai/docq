@@ -46,19 +46,19 @@ def _set_session_config(result: tuple | None = None) -> bool:
     """Authenticate automatically."""
     if result:
         set_auth_session(
-                {
-                    SessionKeyNameForAuth.ID.name: result[0],
-                    SessionKeyNameForAuth.NAME.name: result[1],
-                    SessionKeyNameForAuth.ADMIN.name: result[2],
+            {
+                SessionKeyNameForAuth.ID.name: result[0],
+                SessionKeyNameForAuth.NAME.name: result[1],
+                SessionKeyNameForAuth.ADMIN.name: result[2],
                 SessionKeyNameForAuth.USERNAME.name: result[3],
-                }
-            )
+            }
+        )
         set_settings_session(
-                {
-                    SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_system_settings(),
-                    SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(result[0]),
-                }
-            )
+            {
+                SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_system_settings(),
+                SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(result[0]),
+            }
+        )
         log.info(st.session_state["_docq"])
         return True
     return False
@@ -66,11 +66,12 @@ def _set_session_config(result: tuple | None = None) -> bool:
 
 def handle_auto_login(auth_layout: Callable) -> Callable:
     """Authenticate automatically."""
+    results = auth_result()
     def wrapper(*args: tuple, **kwargs: dict) -> Any:  # noqa: ANN401
         """Auth wrapper."""
-        results = auth_result()
         if results:
             _set_session_config(results)
+            return auth_layout(*args, **kwargs)
         return auth_layout(*args, **kwargs)
     return wrapper
 
