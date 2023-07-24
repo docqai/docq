@@ -42,7 +42,7 @@ from .sessions import (
 )
 
 
-def _set_session_config(result: tuple | None = None) -> bool:
+def _set_session_config(result: list | None = None) -> bool:
     """Authenticate automatically."""
     if result:
         set_auth_session(
