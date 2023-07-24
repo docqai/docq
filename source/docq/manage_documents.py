@@ -70,7 +70,6 @@ def format_document_sources(source_nodes: list[NodeWithScore], space: SpaceKey) 
         source_groups: dict[str, list[str]] = {}
 
         for source_node in source_nodes:
-            log.debug(">>>>source node:  %s", source_node)
             try:
                 log.debug("source node text:  %s", source_node.node.get_text())
                 source = truncate_text(source_node.node.get_text(), 100)
