@@ -40,7 +40,7 @@ class ManualUpload(SpaceDataSourceFileBased):
         return SimpleDirectoryReader(get_upload_dir(space), file_metadata=lambda_metadata).load_data()
 
     def get_document_list(self, space: SpaceKey, configs: dict) -> list[tuple[str, int, int]]:
-        """Returns a list of tuples containing the name, creation time, and size (Mb) of each document in the specified space's cnfigured data source.
+        """Returns a list of tuples containing the name, creation time, and size (Mb) of each document in the specified space's configured data source.
 
         Args:
             self (ManualUpload): The ManualUpload object.
