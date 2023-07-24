@@ -49,6 +49,7 @@ from .handlers import (
     prepare_for_chat,
     query_chat_history,
 )
+from .layout import allow_auto_login
 from .sessions import get_auth_session, get_chat_session
 
 
@@ -126,7 +127,7 @@ def public_access() -> None:
     # __no_staff_menu()
     __no_admin_menu()
 
-
+@allow_auto_login
 def auth_required(show_login_form: bool = True, requiring_admin: bool = False, show_logout_button: bool = True) -> bool:
     """Decide layout based on current user's access."""
     auth = get_auth_session()

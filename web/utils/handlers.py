@@ -3,7 +3,7 @@
 import logging as log
 import math
 from datetime import datetime
-from typing import Any, List, Tuple
+from typing import Any, Callable, List, Tuple
 
 import streamlit as st
 from docq import (
@@ -20,6 +20,7 @@ from docq import (
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import SpaceKey
+from docq.support.utils import auth_result
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -37,27 +38,44 @@ from .sessions import (
 )
 
 
-def handle_login(username: str, password: str) -> bool:
-    result = manage_users.authenticate(username, password)
-    log.info("Login result: %s", result)
+def _set_session_config(result: list | None = None) -> bool:
+    """Authenticate automatically."""
     if result:
         set_auth_session(
-            {
-                SessionKeyNameForAuth.ID.name: result[0],
-                SessionKeyNameForAuth.NAME.name: result[1],
-                SessionKeyNameForAuth.ADMIN.name: result[2],
-            }
-        )
+                {
+                    SessionKeyNameForAuth.ID.name: result[0],
+                    SessionKeyNameForAuth.NAME.name: result[1],
+                    SessionKeyNameForAuth.ADMIN.name: result[2],
+                }
+            )
         set_settings_session(
-            {
-                SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_system_settings(),
-                SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(result[0]),
-            }
-        )
+                {
+                    SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_system_settings(),
+                    SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(result[0]),
+                }
+            )
         log.info(st.session_state["_docq"])
         return True
-    else:
-        return False
+    return False
+
+
+def allow_auto_login(auth_layout: Callable) -> Callable:
+    """Authenticate automatically."""
+    results = auth_result()
+    def wrapper(*args: tuple, **kwargs: dict) -> Any:  # noqa: ANN401
+        """Auth wrapper."""
+        if results:
+            _set_session_config(results)
+            return auth_layout(*args, **kwargs)
+        return auth_layout(*args, **kwargs)
+    return wrapper
+
+
+def handle_login(username: str | None = None, password: str | None = None) -> bool:
+    """Handle login."""
+    result = manage_users.authenticate(username, password)
+    log.info("Login result: %s", result)
+    return _set_session_config(result)
 
 
 def handle_logout() -> None:
