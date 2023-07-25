@@ -11,13 +11,13 @@ from docq.manage_documents import DocumentMetadata, _get_download_link, format_d
 from llama_index.schema import NodeWithScore, TextNode
 
 metadata = {
-    DocumentMetadata.SOURCE_URI.value: "https://example.com",
-    DocumentMetadata.DATA_SOURCE_TYPE.value: "Manual Upload",
-    DocumentMetadata.SPACE_TYPE.value: "PERSONAL",
+    str(DocumentMetadata.SOURCE_URI.name).lower(): "https://example.com",
+    str(DocumentMetadata.DATA_SOURCE_NAME.name).lower(): "Manual Upload",
+    str(DocumentMetadata.SPACE_TYPE.name).lower(): "PERSONAL",
     "file_name": "test.txt",
     "page_label": "0",
 }
-mock_node = TextNode(text="node_text", extra_info=metadata)
+mock_node = TextNode(text="node_text", extra_info=metadata) # type: ignore
 mock_node_with_score = NodeWithScore(node=mock_node, score=0.5)
 
 
