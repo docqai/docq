@@ -16,6 +16,7 @@ class DocumentMetadata(Enum):
     SPACE_ID = "Space ID"
     SPACE_TYPE = "Space Type"
     DATA_SOURCE_TYPE = "Data Source Type"
+    DATA_SOURCE_NAME = "Data Source Name"
     INDEXED_ON = "Indexed Timestamp"
     SOURCE_URI = "Source URI"
 
