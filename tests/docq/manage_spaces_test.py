@@ -17,7 +17,7 @@ def test_reindex():
 
         mock_get_space_data_source.return_value = ("MANUAL_UPLOAD", {})
         mock_ManualUpload_load.return_value = [
-            Document(doc_id="testid", text="test", extra_info={"source_uri": "https://example.com}"})
+            Document(doc_id="testid", text="test", metadata={"source_uri": "https://example.com}"})
         ]
 
         arg_space_key = SpaceKey(SpaceType.PERSONAL, 1234)
