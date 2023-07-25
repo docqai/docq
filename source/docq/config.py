@@ -45,6 +45,6 @@ class UserSettingsKey(Enum):
 EXPERIMENTS = {
     "INCLUDE_EXTRACTED_METADATA": {
         "enabled": False,
-        "description": "Include extracts, using LlamaIndex extract modules, in the document index extra_info.",
+        "description": "Include extracts, using LlamaIndex extract modules, in the document index metadata.",
     },
 }

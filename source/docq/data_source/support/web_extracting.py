@@ -267,7 +267,7 @@ class BeautifulSoupWebReader(BaseReader):
                     if self.website_metadata is not None:
                         metadata.update(self.website_metadata(url))
 
-                    all_documents.append(Document(text=page_text, extra_info=metadata))
+                    all_documents.append(Document(text=page_text, metadata=metadata))
 
                     size_in_bytes = sys.getsizeof(page_text)
 
