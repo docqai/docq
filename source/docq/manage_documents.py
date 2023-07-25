@@ -10,6 +10,7 @@ from typing import Any, Dict
 from llama_index.schema import NodeWithScore
 from streamlit import runtime
 
+from .data_source.list import SpaceDataSources
 from .data_source.main import DocumentMetadata
 from .domain import SpaceKey
 from .manage_spaces import reindex
@@ -62,25 +63,23 @@ def _get_download_link(filename: str, path: str) -> str:
 def _parse_metadata(metadata: Dict[str, Any]) -> tuple[Any, Any, Any, Any] | None:
     if not metadata:
         return None
-    s_type = metadata.get(
-        DocumentMetadata.DATA_SOURCE_TYPE.value
-        ) or "Web Scraper" # Default to Web Scraper if key doesn't exist as a temp fix for key error
-    if s_type == "Web Scraper" or s_type ==  "Knowledge Base Scraper":
+    s_name = metadata.get(str(DocumentMetadata.DATA_SOURCE_NAME.name).lower())
+    if s_name == SpaceDataSources.WEB_SCRAPER.value.get_name() or s_name ==  SpaceDataSources.KNOWLEDGE_BASE_SCRAPER.value.get_name():
         website = metadata.get("source_website")
-        page_url = metadata.get("source_uri")
+        page_url = metadata.get(str(DocumentMetadata.SOURCE_URI.name).lower())
         page_title = metadata.get("page_title")
         if ord(str(page_title)[-1]) < 32 or ord(str(page_title)[-1]) > 126:
             page_title = str(page_title)[:-1]
 
         if not website or not page_url:
             return None
-        return page_url, page_title, website, s_type
-    uri = metadata.get(DocumentMetadata.SOURCE_URI.value)
+        return page_url, page_title, website, s_name
+    uri = metadata.get(str(DocumentMetadata.SOURCE_URI.name).lower())
     if not uri:
         return None
     page_label = metadata.get("page_label")
     file_name = metadata.get("file_name")
-    return uri, page_label, file_name, s_type
+    return uri, page_label, file_name, s_name
 
 def _group_sources(page: str, filename: str, group: dict[str, list[str]] = {}) -> dict[str, list[str]]:  # noqa: B006
     if filename in group:
@@ -104,29 +103,28 @@ def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
         _sources = []
         source_groups: dict[str, list[str]] = {}
         source_uri: dict[str, str] = {}
-        source_types: dict[str, str] = {}
+        source_names: dict[str, str] = {}
         web_sources: dict[str, list[tuple[str, str]]] = {}
 
         for source_node in source_nodes:
-            metadata = dict(source_node.node.metadata,  **source_node.node.extra_info)
-            data = _parse_metadata(metadata)
+            data = _parse_metadata(source_node.node.metadata)
             if data is not None:
-                uri, page_label, name, s_type = data
-                if not uri or not name or not s_type:
+                uri, page_label, name, s_name = data
+                if not uri or not name or not s_name:
                     continue
-                scraper = s_type == "Web Scraper" or s_type ==  "Knowledge Base Scraper"
+                scraper = s_name == SpaceDataSources.WEB_SCRAPER.value.get_name() or s_name ==  SpaceDataSources.KNOWLEDGE_BASE_SCRAPER.value.get_name()
                 if not scraper:
                     source_groups = _group_sources(page_label, name, source_groups)
                     source_uri[name] = uri
-                    source_types[name] = s_type
+                    source_names[name] = s_name
                     continue
                 web_sources = _group_web_source(name, page_label, uri, web_sources)
 
         for name, page_labels in source_groups.items():
             uri = source_uri.get(name)
-            source_type = source_types.get(name)
+            source_name = source_names.get(name)
             if uri:
-                download_url = _get_download_link(name, uri) if source_type == "Manual Upload" else uri
+                download_url = _get_download_link(name, uri) if source_name == SpaceDataSources.MANUAL_UPLOAD.value.get_name() else uri
                 _sources.append(f"> *File:* [{name}]({download_url})<br> *Pages:* {', '.join(page_labels)}")
         for site, pages in web_sources.items():
             page_str = site_delimiter.join([f"[{title}]({page})" for title, page in pages])
