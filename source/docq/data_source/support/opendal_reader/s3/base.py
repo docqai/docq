@@ -54,8 +54,8 @@ class OpendalS3Reader(BaseReader):
         bucket (str): the name of your S3 bucket
         path (str): the path of the data. If none is provided,
             this loader will iterate through the entire bucket. If path is endswith `/`, this loader will iterate through the entire dir. Otherwise, this loeader will load the file.
-        endpoint Optional[str]: the endpoint of the S3 service.
-        region: Optional[str]: the region of the S3 service.
+        endpoint (Optional[str]): the endpoint of the S3 service.
+        region: (Optional[str]): the region of the S3 service.
         access_key_id (Optional[str]): provide AWS access key directly.
         secret_access_key (Optional[str]): provide AWS access key directly.
         file_extractor (Optional[Dict[str, BaseReader]]): A mapping of file
@@ -78,7 +78,6 @@ class OpendalS3Reader(BaseReader):
 
     def load_data(self) -> List[Document]:
         """Load file(s) from OpenDAL."""
-
         try:
             from llama_hub.utils import import_loader
 

@@ -25,10 +25,10 @@
 A loader that fetches a file or iterates through a directory on AWS S3 or other compatible service.
 
 """
+import asyncio
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast
-import asyncio
 
 from llama_index import download_loader
 from llama_index.readers.base import BaseReader
@@ -43,18 +43,18 @@ class OpendalReader(BaseReader):
         scheme: str,
         path: str = "/",
         file_extractor: Optional[Dict[str, Union[str, BaseReader]]] = None,
-        **kwargs,
+        **kwargs: Optional[dict[str, any]],
     ) -> None:
         """Initialize opendal operator, along with credentials if needed.
 
-
         Args:
-        scheme (str): the scheme of the service
-        path (str): the path of the data. If none is provided,
-            this loader will iterate through the entire bucket. If path is endswith `/`, this loader will iterate through the entire dir. Otherwise, this loeader will load the file.
-        file_extractor (Optional[Dict[str, BaseReader]]): A mapping of file
-            extension to a BaseReader class that specifies how to convert that file
-            to text. See `SimpleDirectoryReader` for more details.
+            scheme (str): the scheme of the service
+            path (str): the path of the data. If none is provided,
+                this loader will iterate through the entire bucket. If path is endswith `/`, this loader will iterate through the entire dir. Otherwise, this loader will load the file.
+            file_extractor (Optional[Dict[str, BaseReader]]): A mapping of file
+                extension to a BaseReader class that specifies how to convert that file
+                to text. See `SimpleDirectoryReader` for more details.
+            **kwargs (Optional dict[str, any]): Additional arguments to pass to the `opendal.AsyncOperator` constructor. These are the scheme (object store) specific options.
         """
         import opendal
 
@@ -67,7 +67,6 @@ class OpendalReader(BaseReader):
 
     def load_data(self) -> List[Document]:
         """Load file(s) from OpenDAL."""
-
         with tempfile.TemporaryDirectory() as temp_dir:
             if not self.path.endswith("/"):
                 asyncio.run(download_file_from_opendal(self.op, temp_dir, self.path))
@@ -101,11 +100,10 @@ async def download_file_from_opendal(op: Any, temp_dir: str, path: str) -> str:
     return filepath
 
 
-async def download_dir_from_opendal(op: Any, temp_dir: str, dir: str) -> str:
+async def download_dir_from_opendal(op: Any, temp_dir: str, dir_: str) -> str:
     """Download directory from opendal."""
-
     import opendal
 
     op = cast(opendal.AsyncOperator, op)
-    async for obj in await op.scan(dir):
+    async for obj in await op.scan(dir_):
         await download_file_from_opendal(op, temp_dir, obj.path)
