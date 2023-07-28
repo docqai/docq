@@ -31,15 +31,16 @@ def _init() -> None:
         connection.commit()
 
 
-def _get_sqlite_file(user_id: int = None) -> str:
+def _get_sqlite_file(user_id: int | None = None) -> str:
     """Get the sqlite file for the given user."""
     return get_sqlite_usage_file(user_id) if user_id else get_sqlite_system_file()
 
 
-def _get_settings(user_id: int = None) -> dict:
+def _get_settings(user_id: int | None = None) -> dict:
     log.debug("Getting settings for user %s", str(user_id))
     with closing(
-        sqlite3.connect(_get_sqlite_file(user_id), detect_types=sqlite3.PARSE_DECLTYPES)
+        # sqlite3.connect(_get_sqlite_file(user_id), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(_get_sqlite_file(), detect_types=sqlite3.PARSE_DECLTYPES) # FIXME: fix sqlite3.OperationalError: no such table: settings if user_id is not None
     ) as connection, closing(connection.cursor()) as cursor:
         id_ = user_id or USER_ID_AS_SYSTEM
         rows = cursor.execute(
