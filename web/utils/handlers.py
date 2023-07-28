@@ -59,13 +59,13 @@ def _set_session_config(result: tuple | None = None) -> bool:
     return False
 
 
-def allow_auto_login(auth_layout: Callable) -> Callable:
+def handle_auto_login(auth_layout: Callable) -> Callable:
     """Authenticate automatically."""
     def wrapper(*args: tuple, **kwargs: dict) -> Any:  # noqa: ANN401
         """Auth wrapper."""
         results = auth_result()
         if results:
-            return _set_session_config(results)
+            _set_session_config(results)
         return auth_layout(*args, **kwargs)
     return wrapper
 

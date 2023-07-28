@@ -14,7 +14,7 @@ from streamlit.delta_generator import DeltaGenerator
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
-    allow_auto_login,
+    handle_auto_login,
     get_enabled_features,
     get_max_number_of_documents,
     get_shared_space,
@@ -127,7 +127,7 @@ def public_access() -> None:
     # __no_staff_menu()
     __no_admin_menu()
 
-@allow_auto_login
+@handle_auto_login
 def auth_required(show_login_form: bool = True, requiring_admin: bool = False, show_logout_button: bool = True) -> bool:
     """Decide layout based on current user's access."""
     auth = get_auth_session()
