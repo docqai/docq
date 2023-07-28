@@ -20,7 +20,7 @@ from docq import (
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import SpaceKey
-from docq.support.utils import auth_result
+from docq.support.utils import auth_result, session_logout
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -38,7 +38,7 @@ from .sessions import (
 )
 
 
-def _set_session_config(result: list | None = None) -> bool:
+def _set_session_config(result: tuple | None = None) -> bool:
     """Authenticate automatically."""
     if result:
         set_auth_session(
@@ -61,12 +61,11 @@ def _set_session_config(result: list | None = None) -> bool:
 
 def allow_auto_login(auth_layout: Callable) -> Callable:
     """Authenticate automatically."""
-    results = auth_result()
     def wrapper(*args: tuple, **kwargs: dict) -> Any:  # noqa: ANN401
         """Auth wrapper."""
+        results = auth_result()
         if results:
-            _set_session_config(results)
-            return auth_layout(*args, **kwargs)
+            return _set_session_config(results)
         return auth_layout(*args, **kwargs)
     return wrapper
 
@@ -79,6 +78,8 @@ def handle_login(username: str | None = None, password: str | None = None) -> bo
 
 
 def handle_logout() -> None:
+    """Handle logout."""
+    session_logout()
     set_auth_session()
 
 

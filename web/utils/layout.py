@@ -14,6 +14,7 @@ from streamlit.delta_generator import DeltaGenerator
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
+    allow_auto_login,
     get_enabled_features,
     get_max_number_of_documents,
     get_shared_space,
@@ -49,7 +50,6 @@ from .handlers import (
     prepare_for_chat,
     query_chat_history,
 )
-from .layout import allow_auto_login
 from .sessions import get_auth_session, get_chat_session
 
 
