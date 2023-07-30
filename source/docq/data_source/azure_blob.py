@@ -2,13 +2,14 @@
 
 import logging as log
 from datetime import datetime
-from typing import List
+from typing import Any, Dict, List
 
 from azure.core.exceptions import ClientAuthenticationError
-from llama_index import Document, download_loader
+from llama_index import Document
 
 from ..domain import ConfigKey, SpaceKey
 from .main import DocumentMetadata, SpaceDataSourceFileBased
+from .support.az_reader import AzStorageBlobReader
 
 
 class AzureBlob(SpaceDataSourceFileBased):
@@ -44,29 +45,26 @@ class AzureBlob(SpaceDataSourceFileBased):
         """Load the documents from azure blob container."""
 
         # str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower(): self.__class__.__base_.__name__,
-        def lambda_apend_metadata(doc: Document) -> Document:
-            doc.metadata.update(
-                {
-                    str(DocumentMetadata.SPACE_ID.name).lower(): space.id_,
-                    str(DocumentMetadata.SPACE_TYPE.name).lower(): space.type_.name,
-                    str(DocumentMetadata.DATA_SOURCE_NAME.name).lower(): self.get_name(),
-                    str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower(): self.__class__.__base__.__name__,
+        def lambda_apend_metadata(x: str) -> Dict:
+           return {
+                    DocumentMetadata.SPACE_ID.name: space.id_,
+                    DocumentMetadata.SPACE_TYPE.name: space.type_.name,
+                    DocumentMetadata.DATA_SOURCE_NAME.name: self.get_name(),
+                    DocumentMetadata.DATA_SOURCE_TYPE.name: self.__class__.__base__.__name__,
+                    "debug_key": x,
                 }
-            )
-            return doc
 
-        AzStorageBlobReader = download_loader("AzStorageBlobReader")  # noqa: N806
+        # AzStorageBlobReader = download_loader("AzStorageBlobReader")  # noqa: N806
         log.debug("account_url: %s", configs["account_url"])
         log.debug("container_name: %s", configs["container_name"])
         loader = AzStorageBlobReader(
             container_name=configs["container_name"],
             account_url=configs["account_url"],
             credential=configs["credential"],
+            file_metadata=lambda_apend_metadata,
         )
 
         documents = loader.load_data()
-
-        documents = list(map(lambda_apend_metadata, documents))
 
         return documents
 

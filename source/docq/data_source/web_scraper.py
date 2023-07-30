@@ -75,10 +75,10 @@ class WebScraper(SpaceDataSourceWebBased):
 
         def lambda_metadata(x: str) -> dict:
             return {
-                str(DocumentMetadata.SPACE_ID.name).lower(): space.id_,
-                str(DocumentMetadata.SPACE_TYPE.name).lower(): space.type_.name,
-                str(DocumentMetadata.DATA_SOURCE_NAME.name).lower(): self.get_name(),
-                str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower(): self.__class__.__base__.__name__,
+                DocumentMetadata.SPACE_ID.name: space.id_,
+                DocumentMetadata.SPACE_TYPE.name: space.type_.name,
+                DocumentMetadata.DATA_SOURCE_NAME.name: self.get_name(),
+                DocumentMetadata.DATA_SOURCE_TYPE.name: self.__class__.__base__.__name__,
             }
 
         return BeautifulSoupWebReader(

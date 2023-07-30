@@ -63,10 +63,10 @@ def _get_download_link(filename: str, path: str) -> str:
 def _parse_metadata(metadata: Dict[str, Any]) -> tuple[Any, Any, Any, Any] | None:
     if not metadata:
         return None
-    s_name = metadata.get(str(DocumentMetadata.DATA_SOURCE_NAME.name).lower())
+    s_name = metadata.get(DocumentMetadata.DATA_SOURCE_NAME.name)
     if s_name == SpaceDataSources.WEB_SCRAPER.value.get_name() or s_name ==  SpaceDataSources.KNOWLEDGE_BASE_SCRAPER.value.get_name():
         website = metadata.get("source_website")
-        page_url = metadata.get(str(DocumentMetadata.SOURCE_URI.name).lower())
+        page_url = metadata.get(DocumentMetadata.SOURCE_URI.name)
         page_title = metadata.get("page_title")
         if ord(str(page_title)[-1]) < 32 or ord(str(page_title)[-1]) > 126:
             page_title = str(page_title)[:-1]
@@ -74,7 +74,7 @@ def _parse_metadata(metadata: Dict[str, Any]) -> tuple[Any, Any, Any, Any] | Non
         if not website or not page_url:
             return None
         return page_url, page_title, website, s_name
-    uri = metadata.get(str(DocumentMetadata.SOURCE_URI.name).lower())
+    uri = metadata.get(DocumentMetadata.SOURCE_URI.name)
     if not uri:
         return None
     page_label = metadata.get("page_label")
@@ -107,6 +107,7 @@ def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
         web_sources: dict[str, list[tuple[str, str]]] = {}
 
         for source_node in source_nodes:
+            print(f"\x1b[1;32mDebug metadata: {source_node.node.metadata}\x1b[0m")
             data = _parse_metadata(source_node.node.metadata)
             if data is not None:
                 uri, page_label, name, s_name = data
