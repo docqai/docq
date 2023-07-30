@@ -6,9 +6,10 @@ import tempfile
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
+from urllib.parse import quote
 
-from azure.storage.blob import ContainerClient, generate_blob_sas
+from azure.storage.blob import BlobSasPermissions, ContainerClient, generate_blob_sas
 from llama_index import Document, SimpleDirectoryReader
 from llama_index.readers.base import BaseReader
 
@@ -46,6 +47,7 @@ class AzStorageBlobReader(BaseReader):
         account_url: str,
         credential: Optional[Any] = None,
         file_metadata: Optional[Any] = None,
+        metadata_template: Optional[Any] = None,
         **kwargs: Optional[Any],
     ) -> None:
         """Initializes Azure Storage Account."""
@@ -59,27 +61,31 @@ class AzStorageBlobReader(BaseReader):
         self.account_url = account_url
         self.credential = credential
         self.file_metadata = file_metadata,
-        self.extra_metadata = {}
+        self.metadata_template = metadata_template
+        self.__extra_metadata = {}
 
     def _get_blob_sas(self, blob_name: str) -> str:
         """Generate a blob SAS token."""
-        return generate_blob_sas(
-            account_name=self.account_url.split(".")[0],
+        sas_token = generate_blob_sas(
+            account_name=self.account_url.split(".")[0].split("//")[-1],
             container_name=self.container_name,
             blob_name=blob_name,
             account_key=self.credential,
-            permission="r",
+            permission=BlobSasPermissions(read=True),
             expiry=datetime.utcnow() + timedelta(weeks=4),
         )
 
+        return f"{self.account_url}/{self.container_name}/{quote(blob_name)}?{sas_token}"
+
     def _load_metadata(self, x: str) -> Dict[str, Any]:
         if self.file_metadata:
-            return { **self.file_metadata(x), **self.extra_metadata.get(x) }
-        return self.extra_metadata.get(x, {})
+            _metadata = self.metadata_template(x) if isinstance(self.metadata_template, Callable) else self.metadata_template
+            return { **_metadata, **self.__extra_metadata.get(x) }
+        return self.__extra_metadata.get(x, {})
 
     def _set_extra_metadata(self, path: str, key: str) -> None:
         blob_url = self._get_blob_sas(key)
-        self.extra_metadata[path] = {
+        self.__extra_metadata[path] = {
             "blob_url": blob_url,
             "blob_name": key,
         }

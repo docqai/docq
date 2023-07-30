@@ -61,7 +61,7 @@ class AzureBlob(SpaceDataSourceFileBased):
             container_name=configs["container_name"],
             account_url=configs["account_url"],
             credential=configs["credential"],
-            file_metadata=lambda_apend_metadata,
+            metadata_template=lambda_apend_metadata,
         )
 
         documents = loader.load_data()
