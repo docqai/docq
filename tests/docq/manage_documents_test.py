@@ -11,9 +11,9 @@ from docq.manage_documents import DocumentMetadata, _get_download_link, format_d
 from llama_index.schema import NodeWithScore, TextNode
 
 metadata = {
-    str(DocumentMetadata.SOURCE_URI.name).lower(): "https://example.com",
-    str(DocumentMetadata.DATA_SOURCE_NAME.name).lower(): "Manual Upload",
-    str(DocumentMetadata.SPACE_TYPE.name).lower(): "PERSONAL",
+    DocumentMetadata.SOURCE_URI.name: "https://example.com",
+    DocumentMetadata.DATA_SOURCE_NAME.name: "Manual Upload",
+    DocumentMetadata.SPACE_TYPE.name: "PERSONAL",
     "file_name": "test.txt",
     "page_label": "0",
 }
