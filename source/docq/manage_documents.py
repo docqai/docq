@@ -107,7 +107,6 @@ def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
         web_sources: dict[str, list[tuple[str, str]]] = {}
 
         for source_node in source_nodes:
-            print(f"\x1b[1;32mDebug metadata: {source_node.node.metadata}\x1b[0m")
             data = _parse_metadata(source_node.node.metadata)
             if data is not None:
                 uri, page_label, name, s_name = data
