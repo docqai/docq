@@ -20,6 +20,7 @@ class AwsS3(SpaceDataSourceFileBased):
         """Get the config keys for aws s3 bucket."""
         return [
             ConfigKey("bucket", "S3 Bucket Name"),
+            ConfigKey("aws_region", "AWS Region"),
             ConfigKey("aws_access_id", "AWS Access Key ID", is_secret=True),
             ConfigKey("aws_secret_key", "AWS Secret Access Key", is_secret=True)
         ]
@@ -38,6 +39,7 @@ class AwsS3(SpaceDataSourceFileBased):
             bucket=configs["bucket"],
             aws_access_id=configs["aws_access_id"],
             aws_access_secret=configs["aws_secret_key"],
+            region=configs["aws_region"],
             file_metadata=lambda_apend_metadata,
         )
 

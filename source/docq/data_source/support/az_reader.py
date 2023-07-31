@@ -13,6 +13,8 @@ from azure.storage.blob import BlobSasPermissions, ContainerClient, generate_blo
 from llama_index import Document, SimpleDirectoryReader
 from llama_index.readers.base import BaseReader
 
+from ..main import DocumentMetadata
+
 
 class AzStorageBlobReader(BaseReader):
     """General reader for any Azure Storage Blob file or directory.
@@ -86,8 +88,8 @@ class AzStorageBlobReader(BaseReader):
     def _set_extra_metadata(self, path: str, key: str) -> None:
         blob_url = self._get_blob_sas(key)
         self.__extra_metadata[path] = {
-            "blob_url": blob_url,
-            "blob_name": key,
+            DocumentMetadata.SOURCE_URI.name: blob_url,
+            "file_name": key,
         }
 
     def load_data(self) -> List[Document]:

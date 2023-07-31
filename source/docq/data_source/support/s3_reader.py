@@ -14,13 +14,18 @@ from llama_index import SimpleDirectoryReader
 from llama_index.readers.base import BaseReader
 from llama_index.readers.schema.base import Document
 
+from ..main import DocumentMetadata
+
 
 class S3Reader(BaseReader):
     """General reader for any S3 file or directory."""
+    _s3_client = None
+
     def __init__(  # noqa: D417
         self,
         *args: Optional[Any],
         bucket: str,
+        region: str,
         key: Optional[str] = None,
         prefix: Optional[str] = "",
         file_extractor: Optional[Dict[str, Union[str, BaseReader]]] = None,
@@ -61,6 +66,7 @@ class S3Reader(BaseReader):
         super().__init__(*args, **kwargs)
 
         self.bucket = bucket
+        self.region = region
         self.key = key
         self.prefix = prefix
 
@@ -82,17 +88,17 @@ class S3Reader(BaseReader):
             return s3_client.generate_presigned_url(
                 'get_object',
                 Params = {'Bucket': self.bucket, 'Key': key},
-                ExpiresIn = 60 * 60 * 24 * 7 * 4, # 4 weeks
+                ExpiresIn = (60 * 60 * 24 * 7 * 1) - 1, # 1 week
             )
         except ClientError as e:
             log.error(e)
             return None
 
     def _set_metadata(self, key: str, path: str) -> None:
-        blob_url = self._generate_presigned_url(key)
+        blob_url = self._generate_presigned_url(self._s3_client, key)
         self.extra_metadata[path] = {
-            "blob_url": blob_url,
-            "blob_name": key,
+            DocumentMetadata.SOURCE_URI.name: blob_url,
+            "file_name": key,
         }
 
     def _load_metadata(self, key: str) -> Dict[str, Any]:
@@ -103,17 +109,15 @@ class S3Reader(BaseReader):
 
     def load_data(self) -> List[Document]:
         """Load file(s) from S3."""
-        s3 = boto3.resource("s3")
-        s3_client = boto3.client("s3")
-        if self.aws_access_id:
-            session = boto3.Session(
-                aws_access_key_id=self.aws_access_id,
-                aws_secret_access_key=self.aws_access_secret,
-                aws_session_token=self.aws_session_token,
-            )
-            s3 = session.resource("s3")
-            s3_client = session.client("s3", endpoint_url=self.s3_endpoint_url)
-
+        session = boto3.Session(
+            aws_access_key_id=self.aws_access_id,
+            aws_secret_access_key=self.aws_access_secret,
+            region_name=self.region,
+            #aws_session_token=self.aws_session_token,
+        )
+        s3 = session.resource("s3")
+        s3_client = session.client("s3") #, endpoint_url=self.s3_endpoint_url)
+        self._s3_client = s3_client
         with tempfile.TemporaryDirectory() as temp_dir:
             if self.key:
                 suffix = Path(self.key).suffix
@@ -122,7 +126,9 @@ class S3Reader(BaseReader):
                 self._set_metadata(self.key, filepath)
             else:
                 bucket = s3.Bucket(self.bucket)
+                print(f"\x1b[31m Debug bucket {bucket} \x1b[0m")
                 for i, obj in enumerate(bucket.objects.filter(Prefix=self.prefix)):
+                    print(f"\x1b[31m Debug obj {obj} \x1b[0m")
                     if self.num_files_limit is not None and i > self.num_files_limit:
                         break
 
@@ -139,15 +145,16 @@ class S3Reader(BaseReader):
                     filepath = (
                         f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
                     )
-                    s3_client.download_file(self.bucket, obj.key, filepath)
-                    self._set_metadata(obj.key, filepath)
-
+                    try:
+                        s3_client.download_file(self.bucket, obj.key, filepath)
+                        self._set_metadata(obj.key, filepath)
+                        print(f"\x1b[31m Blob download compleated {obj.key} \x1b[0m")
+                    except ClientError as e:
+                        print(f"\x1b[31m Error downloading blob {e} \x1b[0m")
+                        log.error("Error process %s", e)
             loader = SimpleDirectoryReader(
                 temp_dir,
                 file_extractor=self.file_extractor,
-                required_exts=self.required_exts,
-                filename_as_id=self.filename_as_id,
-                num_files_limit=self.num_files_limit,
                 file_metadata=self._load_metadata,
             )
 
