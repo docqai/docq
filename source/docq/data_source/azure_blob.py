@@ -1,15 +1,13 @@
 """Data source backed by Azure Blob (container)."""
 
 import logging as log
-from datetime import datetime
-from typing import Any, Dict, List
+from typing import List
 
 from azure.core.exceptions import ClientAuthenticationError
-from llama_index import Document
+from llama_index import Document, download_loader
 
 from ..domain import ConfigKey, SpaceKey
-from .main import DocumentMetadata, SpaceDataSourceFileBased
-from .support.az_reader import AzStorageBlobReader
+from .main import SpaceDataSourceFileBased
 
 
 class AzureBlob(SpaceDataSourceFileBased):
@@ -43,27 +41,14 @@ class AzureBlob(SpaceDataSourceFileBased):
 
     def load(self, space: SpaceKey, configs: dict) -> List[Document]:
         """Load the documents from azure blob container."""
-
-        # str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower(): self.__class__.__base_.__name__,
-        def lambda_apend_metadata(x: str) -> Dict:
-           return {
-                    DocumentMetadata.SPACE_ID.name: space.id_,
-                    DocumentMetadata.SPACE_TYPE.name: space.type_.name,
-                    DocumentMetadata.DATA_SOURCE_NAME.name: self.get_name(),
-                    DocumentMetadata.DATA_SOURCE_TYPE.name: self.__class__.__base__.__name__,
-                    "debug_key": x,
-                }
-
-        # AzStorageBlobReader = download_loader("AzStorageBlobReader")  # noqa: N806
+        AzStorageBlobReader = download_loader("AzStorageBlobReader")  # noqa: N806
         log.debug("account_url: %s", configs["account_url"])
         log.debug("container_name: %s", configs["container_name"])
         loader = AzStorageBlobReader(
             container_name=configs["container_name"],
             account_url=configs["account_url"],
             credential=configs["credential"],
-            metadata_template=lambda_apend_metadata,
         )
-
         documents = loader.load_data()
 
         return documents
@@ -75,7 +60,7 @@ class AzureBlob(SpaceDataSourceFileBased):
         try:
             container_client = ContainerClient(configs["account_url"], configs["container_name"], configs["credential"])
             blobs_list = container_client.list_blobs()
-            return list(map(lambda b: (b.name, datetime.timestamp(b.last_modified), b.size), blobs_list))
+            return list(map(lambda b: (b.name, b.last_modified, b.size), blobs_list))
         except ClientAuthenticationError as e:
             log.error("Error - get_document_list(): authenticating to Azure Blob: %s", e)
             raise Exception(
