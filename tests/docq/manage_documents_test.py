@@ -11,8 +11,9 @@ from docq.manage_documents import DocumentMetadata, _get_download_link, format_d
 from llama_index.schema import NodeWithScore, TextNode
 
 metadata = {
-    str(DocumentMetadata.SOURCE_URI.name).lower(): "https://example.com",
+    str(DocumentMetadata.SOURCE_URI.name).lower(): "test_dir/mock.txt",
     str(DocumentMetadata.DATA_SOURCE_NAME.name).lower(): "Manual Upload",
+    str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower(): "SpaceDataSourceFileBased",
     str(DocumentMetadata.SPACE_TYPE.name).lower(): "PERSONAL",
     "file_name": "test.txt",
     "page_label": "0",
@@ -41,8 +42,8 @@ def setup() -> None:
 @pytest.mark.parametrize(
     ("filename", "path", "expected"),
     [
-        ("test.txt", "test_dir/test.txt", ""),
-        ("mock.txt", "test_dir/mock.txt", ""),
+        ("test.txt", "test_dir/test.txt", "#"),
+        ("mock.txt", "test_dir/mock.txt", "#"),
     ],
 )
 def test_get_download_link(filename: str, path: str, expected: str) -> None:
@@ -53,7 +54,7 @@ def test_get_download_link(filename: str, path: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("source_nodes", "expected"),
     [
-        ([mock_node_with_score], "\n##### Source:\n > *File:* [test.txt]()<br> *Pages:* 0"),
+        ([mock_node_with_score], "\n##### Source:\n > *File:* [test.txt](#)<br> *Pages:* 0"),
     ],
 )
 def test_format_document_sources(source_nodes: list[NodeWithScore], expected: str) -> None:
