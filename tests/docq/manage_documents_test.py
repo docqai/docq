@@ -18,7 +18,7 @@ metadata = {
     "file_name": "test.txt",
     "page_label": "0",
 }
-mock_node = TextNode(text="node_text", extra_info=metadata) # type: ignore
+mock_node = TextNode(text="node_text", metadata=metadata) # type: ignore
 mock_node_with_score = NodeWithScore(node=mock_node, score=0.5)
 
 
