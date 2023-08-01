@@ -28,18 +28,18 @@ class ManualUpload(SpaceDataSourceFileBased):
         # Keep filename as `doc_id` plus space info
         def lambda_metadata(x: str) -> dict:
             return {
-                DocumentMetadata.FILE_PATH.name: x,
-                DocumentMetadata.SPACE_ID.name: space.id_,
-                DocumentMetadata.SPACE_TYPE.name: space.type_.name,
-                DocumentMetadata.DATA_SOURCE_NAME.name: self.get_name(),
-                DocumentMetadata.DATA_SOURCE_TYPE.name: self.__class__.__base__.__name__,
-                DocumentMetadata.SOURCE_URI.name: x,
-                DocumentMetadata.INDEXED_ON.name: datetime.timestamp(datetime.now().utcnow()),
+                str(DocumentMetadata.FILE_PATH.name).lower(): x,
+                str(DocumentMetadata.SPACE_ID.name).lower(): space.id_,
+                str(DocumentMetadata.SPACE_TYPE.name).lower(): space.type_.name,
+                str(DocumentMetadata.DATA_SOURCE_NAME.name).lower(): self.get_name(),
+                str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower(): self.__class__.__base__.__name__,
+                str(DocumentMetadata.SOURCE_URI.name).lower(): x,
+                str(DocumentMetadata.INDEXED_ON.name).lower(): datetime.timestamp(datetime.now().utcnow()),
             }
 
         return SimpleDirectoryReader(get_upload_dir(space), file_metadata=lambda_metadata).load_data()
 
-    def get_document_list(self, space: SpaceKey, configs: dict) -> list[tuple[str, float, int]]:
+    def get_document_list(self, space: SpaceKey, configs: dict) -> list[tuple[str, int, int]]:
         """Returns a list of tuples containing the name, creation time, and size (Mb) of each document in the specified space's configured data source.
 
         Args:
