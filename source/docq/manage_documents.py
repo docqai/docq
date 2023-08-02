@@ -5,7 +5,7 @@ import os
 import shutil
 from datetime import datetime
 from mimetypes import guess_type
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from llama_index.schema import NodeWithScore
 from streamlit import runtime
@@ -65,24 +65,21 @@ def _remove_ascii_control_characters(s: str) -> str:
     return s
 
 
-def _parse_metadata(metadata: Dict[str, Any]) -> tuple[Any, Any, Any, Any] | None:
-    if not metadata:
-        return None
-    s_type = metadata.get(str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower())
-    if s_type == 'SpaceDataSourceWebBased':
-        website = metadata.get("source_website")
-        page_url = metadata.get(str(DocumentMetadata.SOURCE_URI.name).lower())
-        page_title = _remove_ascii_control_characters(metadata.get("page_title"))
-
-        if not website or not page_url:
-            return None
-        return page_url, page_title, website, s_type
-    uri = metadata.get(str(DocumentMetadata.SOURCE_URI.name).lower())
-    if not uri:
-        return None
-    page_label = metadata.get("page_label")
-    file_name = metadata.get("file_name")
-    return uri, page_label, file_name, s_type
+def _parse_metadata(metadata: Dict[str, Any]) -> Optional[tuple[Any, Any, Any, Any]]:
+    if metadata:
+        s_type = metadata.get(str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower())
+        uri = metadata.get(str(DocumentMetadata.SOURCE_URI.name).lower())
+        if s_type == 'SpaceDataSourceWebBased':
+            website = metadata.get("source_website")
+            page_url = metadata.get(str(DocumentMetadata.SOURCE_URI.name).lower())
+            page_title = _remove_ascii_control_characters(metadata.get("page_title"))
+            if website and page_url:
+                return page_url, page_title, website, s_type
+        elif uri:
+            page_label = metadata.get("page_label")
+            file_name = metadata.get("file_name")
+            return uri, page_label, file_name, s_type
+    return None
 
 def _group_sources(page: str, filename: str, group: dict[str, list[str]] = {}) -> dict[str, list[str]]:  # noqa: B006
     if filename in group:
