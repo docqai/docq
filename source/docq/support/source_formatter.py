@@ -129,7 +129,7 @@ def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
         file_sources = DefaultDict(list)
         web_sources = DefaultDict(list)
         site_delimiter = "\n>- "
-        file_delimiter = "\n\n"
+        delimiter = "\n\n"
 
         for source_node in source_nodes:
             source = parse_source(source_node.node.metadata)
@@ -145,9 +145,9 @@ def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
             _sources.append(f"> *File:* [{name}]({source.source_uri})<br> *Pages:* {', '.join(pages)}")
         for site, pages in web_sources.items():
             page_str = "\n>- ".join([f"[{title}]({page})" for title, page in pages])
-            _sources.append(f"\n> ###### {site} {site_delimiter if page_str else ''} {page_str}")
+            _sources.append(f"\n> ###### {site}{site_delimiter if page_str else ''}{page_str}")
 
-        fmt_sources = f'\n##### Source{"s" if len(_sources) > 1 else ""}:\n {file_delimiter.join(_sources)}'
+        fmt_sources = f'\n##### Source{"s" if len(_sources) > 1 else ""}:\n {delimiter.join(_sources)}'
         return fmt_sources if bool(_sources) else ""
     except Exception as e:
         log.exception("Error formatting sources %s", e)
