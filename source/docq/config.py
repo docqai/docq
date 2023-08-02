@@ -5,7 +5,9 @@ from enum import Enum
 ENV_VAR_DOCQ_DATA = "DOCQ_DATA"
 ENV_VAR_DOCQ_DEMO = "DOCQ_DEMO"
 ENV_VAR_OPENAI_API_KEY = "OPENAI_API_KEY"
+ENV_VAR_COOKIE_SECRET_KEY = "COOKIE_SECRET_KEY"
 
+COOKIE_NAME = "docqai/_docq"
 
 class SpaceType(Enum):
     """Space types."""
