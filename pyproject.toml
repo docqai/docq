@@ -21,7 +21,6 @@ pypdf = "^3.9.0"
 docx2txt = "^0.8"
 argon2-cffi = "^21.3.0"
 azure-core = "^1.27.1"
-streamlit_javascript = "^0.1.5"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.18.1"
