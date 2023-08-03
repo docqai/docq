@@ -13,6 +13,7 @@ from docq.access_control.main import SpaceAccessor, SpaceAccessType
 
 from .config import SpaceType
 from .data_source.list import SpaceDataSources
+from .data_source.support.utils import DocumentListItem
 from .domain import SpaceKey
 from .support.llm import _get_default_storage_context, _get_service_context
 from .support.store import get_index_dir, get_sqlite_system_file
@@ -67,15 +68,16 @@ def reindex(space: SpaceKey) -> None:
     (ds_type, ds_configs) = get_space_data_source(space)
 
     try:
+        log.debug("get datasource instance")
         documents = SpaceDataSources[ds_type].value.load(space, ds_configs)
         log.debug("docs to index, %s", len(documents))
         index = _create_index(documents)
         _persist_index(index, space)
     except Exception as e:
-        log.error("Error indexing space %s: %s", space, e)
+        log.exception("Error indexing space %s: %s", space, e)
 
 
-def list_documents(space: SpaceKey) -> list[tuple[str, int, int]]:
+def list_documents(space: SpaceKey) -> List[DocumentListItem]:
     """Return a list of tuples containing the filename, creation time, and size of each file in the space."""
     (ds_type, ds_configs) = get_space_data_source(space)
 

@@ -2,17 +2,13 @@
 
 This loader parses any file via [OpenDAL](https://github.com/apache/incubator-opendal).
 
-All files are temporarily downloaded locally and subsequently parsed with `SimpleDirectoryReader`. Hence, you may also specify a custom `file_extractor`, relying on any of the loaders in this library (or your own)!
+All files are temporarily downloaded locally and subsequently parsed. Hence, you may also specify a custom `file_extractor`, relying on any of the loaders in this library (or your own)!
 
 ## Usage
 
 `OpendalReader` can read data from any supported storage services including `s3`, `azblob`, `gcs` and so on.
 
 ```python
-from llama_index import download_loader
-
-OpendalReader = download_loader("OpendalReader")
-
 loader = OpendalReader(
     scheme="s3",
     bucket='bucket',

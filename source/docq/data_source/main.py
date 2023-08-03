@@ -1,5 +1,8 @@
 """Data source for Docq."""
 
+import json
+import logging as log
+import os
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List
@@ -7,6 +10,8 @@ from typing import List
 from llama_index import Document
 
 from ..domain import ConfigKey, SpaceKey
+from ..support.store import get_index_dir
+from .support.utils import DocumentListItem
 
 
 class DocumentMetadata(Enum):
@@ -42,12 +47,8 @@ class SpaceDataSource(ABC):
         """Load the documents from the data source."""
         pass
 
-
-class SpaceDataSourceFileBased(SpaceDataSource):
-    """Abstract definition of a file-based data source for a space. To be extended by concrete data sources."""
-
     @abstractmethod
-    def get_document_list(self, space: SpaceKey, configs: dict) -> list[tuple[str, int, int]]:
+    def get_document_list(self, space: SpaceKey, configs: dict) -> List[DocumentListItem]:
         """Returns a list of tuples containing the name, creation time, and size (Mb) of each document in the specified space's cnfigured data source.
 
         Args:
@@ -55,10 +56,43 @@ class SpaceDataSourceFileBased(SpaceDataSource):
             configs (dict): A dictionary of configuration options.
 
         Returns:
-            list[tuple[str, int, int]]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
+            List[DocumentListItem]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
         """
         pass
 
 
-class SpaceDataSourceWebBased(SpaceDataSourceFileBased):
+class SpaceDataSourceFileBased(SpaceDataSource):
     """Abstract definition of a file-based data source for a space. To be extended by concrete data sources."""
+
+    _DOCUMENT_LIST_FILENAME = "document_list.json"
+
+    def get_document_list(self, space: SpaceKey, configs: dict) -> List[DocumentListItem]:
+        """Get the list of documents."""
+        persist_path = get_index_dir(space)
+        return self._load_document_list(persist_path, self._DOCUMENT_LIST_FILENAME)
+
+    def _save_document_list(self, document_list: List[DocumentListItem], persist_path: str, filename: str) -> None:
+        path = os.path.join(persist_path, filename)
+        try:
+            with open(path, "w") as f:
+                # the field names of the namedtuple are lost when we serialize to json.
+                json.dump(
+                    document_list,
+                    f,
+                    ensure_ascii=False,
+                )
+            log.debug("Saved space index document list to '%s'", path)
+        except Exception as e:
+            log.error("Failed to save space index document list to '%s': %s", path, e, stack_info=True)
+
+    def _load_document_list(self, persist_path: str, filename: str) -> List[DocumentListItem]:
+        path = os.path.join(persist_path, filename)
+        with open(path, "r") as f:
+            data = json.load(f)
+            # convert back to a namedtuple so we have field names.
+            document_list = [DocumentListItem(*item) for item in data]
+            return document_list
+
+
+class SpaceDataSourceWebBased(SpaceDataSourceFileBased):
+    """Abstract definition of a web-based data source for a space. To be extended by concrete data sources."""

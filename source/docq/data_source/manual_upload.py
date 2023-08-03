@@ -9,6 +9,7 @@ from llama_index import Document, SimpleDirectoryReader
 from ..domain import ConfigKey, SpaceKey
 from ..support.store import get_upload_dir
 from .main import DocumentMetadata, SpaceDataSourceFileBased
+from .support.utils import DocumentListItem
 
 
 class ManualUpload(SpaceDataSourceFileBased):
@@ -39,7 +40,7 @@ class ManualUpload(SpaceDataSourceFileBased):
 
         return SimpleDirectoryReader(get_upload_dir(space), file_metadata=lambda_metadata).load_data()
 
-    def get_document_list(self, space: SpaceKey, configs: dict) -> list[tuple[str, int, int]]:
+    def get_document_list(self, space: SpaceKey, configs: dict) -> List[DocumentListItem]:
         """Returns a list of tuples containing the name, creation time, and size (Mb) of each document in the specified space's configured data source.
 
         Args:
@@ -48,11 +49,11 @@ class ManualUpload(SpaceDataSourceFileBased):
             configs (dict): A dictionary of configuration options.
 
         Returns:
-            list[tuple[str, int, int]]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
+            List[DocumentListItem]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
         """
         return list(
             map(
-                lambda f: (f.name, f.stat().st_ctime, f.stat().st_size),
+                lambda f: DocumentListItem(f.name, f.stat().st_ctime, f.stat().st_size),
                 os.scandir(get_upload_dir(space)),
             )
         )
