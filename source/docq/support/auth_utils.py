@@ -17,7 +17,7 @@ from ..config import COOKIE_NAME, ENV_VAR_COOKIE_SECRET_KEY
 
 CACHE_CONFIG = (1024 * 1, 60 * 60 * 24)
 AUTH_KEY = Fernet.generate_key()
-COOKIE_SECRET = st.secrets[ENV_VAR_COOKIE_SECRET_KEY]
+COOKIE_SECRET = st.secrets.get(ENV_VAR_COOKIE_SECRET_KEY, "secret_key")
 
 """Session Cache"""
 cached_sessions:TTLCache[str, bytes] = TTLCache(*CACHE_CONFIG)
