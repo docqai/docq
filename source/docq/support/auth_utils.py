@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import logging as log
+from contextlib import suppress
 from datetime import datetime, timedelta
 from secrets import token_hex
 from typing import Callable, Dict, Optional
@@ -17,7 +18,10 @@ from ..config import COOKIE_NAME, ENV_VAR_COOKIE_SECRET_KEY
 
 CACHE_CONFIG = (1024 * 1, 60 * 60 * 24)
 AUTH_KEY = Fernet.generate_key()
-COOKIE_SECRET = st.secrets.get(ENV_VAR_COOKIE_SECRET_KEY, "secret_key")
+COOKIE_SECRET = "secret_key"
+
+with suppress(FileNotFoundError):
+    COOKIE_SECRET = st.secrets[ENV_VAR_COOKIE_SECRET_KEY]
 
 """Session Cache"""
 cached_sessions:TTLCache[str, bytes] = TTLCache(*CACHE_CONFIG)
