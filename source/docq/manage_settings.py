@@ -22,10 +22,10 @@ CREATE TABLE IF NOT EXISTS settings (
 USER_ID_AS_SYSTEM = 0
 
 
-def _init() -> None:
+def _init(user_id: int = None) -> None:
     """Initialize the database."""
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(_get_sqlite_file(user_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_SETTINGS_TABLE)
         connection.commit()
