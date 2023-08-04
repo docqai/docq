@@ -476,7 +476,7 @@ def _render_manage_space_permissions(space_data: Tuple) -> None:
             )
             st.multiselect(
                 "Groups",
-                options=[(g[0], g[1]) for g in list_groups()],
+                options=[(g[0], g[1]) for g in list_user_groups()],
                 default=permissions[SpaceAccessType.GROUP],
                 key=f"manage_space_permissions_{id_}_{SpaceAccessType.GROUP.name}",
                 format_func=lambda x: x[1],
