@@ -59,12 +59,13 @@ def _retrieve_messages(cutoff: datetime, size: int, feature: FeatureKey) -> list
             )
         )
         rows = cursor.execute(
-            f"SELECT id, message, human, timestamp FROM {tablename} WHERE timestamp < ? ORDER BY timestamp LIMIT ?",
+            f"SELECT id, message, human, timestamp FROM {tablename} WHERE timestamp < ? ORDER BY timestamp DESC LIMIT ?",
             (
                 cutoff,
                 size,
             ),
         ).fetchall()
+        rows.reverse()
 
     return rows
 
