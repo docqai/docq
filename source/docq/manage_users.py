@@ -9,9 +9,10 @@ from typing import List, Tuple
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
 
+from . import manage_documents as mdocuments
+from . import manage_settings as msettings
 from .config import SpaceType
 from .domain import SpaceKey
-from .manage_documents import reindex
 from .support.auth_utils import cache_auth
 from .support.store import get_sqlite_system_file
 
@@ -67,9 +68,18 @@ def _init_admin_if_necessary() -> bool:
 
     # Reindex the user's space for the first time
     if created:
-        reindex(SpaceKey(SpaceType.PERSONAL, DEFAULT_ADMIN_ID))
+        _reindex_user_docs(DEFAULT_ADMIN_ID)
 
     return created
+
+
+def _init_user_data(user_id: int) -> None:
+    msettings._init(user_id)
+    log.info("Initialised user data for user: %d", user_id)
+
+
+def _reindex_user_docs(user_id: int) -> None:
+    mdocuments.reindex(SpaceKey(SpaceType.PERSONAL, user_id))
 
 @cache_auth
 def authenticate(username: str, password: str) -> Tuple[int, str, bool]:
@@ -106,6 +116,9 @@ def authenticate(username: str, password: str) -> Tuple[int, str, bool]:
                     (PH.hash(password), datetime.now(), id_),
                 )
                 connection.commit()
+
+            if result:
+                _init_user_data(id_)
             return result
         else:
             return None
@@ -241,7 +254,7 @@ def create_user(username: str, password: str, fullname: str = None, is_admin: bo
 
     # Reindex the user's space for the first time
     if rowid:
-        reindex(SpaceKey(SpaceType.PERSONAL, rowid))
+        _reindex_user_docs(rowid)
 
     return rowid
 
