@@ -26,7 +26,7 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
             file1 = mock_os_dir_entry()
             # use configure_mock because `dir_entry` has a property `name`
             file1.configure_mock(
-                name="misc/test_files/Research-Revealing-the-True-GenAI-Data-Exposure-Risk.pdf",
+                name=".persisted/upload/PERSONAL/1000/www_gartner_com_doc_reprints_id_1_2BZFRDHS_ct_221212_st_sb.pdf",
                 is_file=True,
             )
             file1.stat.return_value = MagicMock(st_ctime=1234567890, st_size=1024)
@@ -37,8 +37,8 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
             document_list = self.manual_upload.get_document_list(space, configs)
 
             assert document_list == [
-                DocumentListItem(
-                    "misc/test_files/Research-Revealing-the-True-GenAI-Data-Exposure-Risk.pdf",
+                (
+                    ".persisted/upload/PERSONAL/1000/www_gartner_com_doc_reprints_id_1_2BZFRDHS_ct_221212_st_sb.pdf",
                     1234567890,
                     1024,
                 )
