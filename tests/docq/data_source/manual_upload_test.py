@@ -26,7 +26,7 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
             file1 = mock_os_dir_entry()
             # use configure_mock because `dir_entry` has a property `name`
             file1.configure_mock(
-                name=".persisted/upload/PERSONAL/1000/www_gartner_com_doc_reprints_id_1_2BZFRDHS_ct_221212_st_sb.pdf",
+                name="abc.pdf",
                 is_file=True,
             )
             file1.stat.return_value = MagicMock(st_ctime=1234567890, st_size=1024)
@@ -38,7 +38,7 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
 
             assert document_list == [
                 (
-                    ".persisted/upload/PERSONAL/1000/www_gartner_com_doc_reprints_id_1_2BZFRDHS_ct_221212_st_sb.pdf",
+                    "abc.pdf",
                     1234567890,
                     1024,
                 )
@@ -50,7 +50,7 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
         configs = {}
 
         with patch("docq.data_source.manual_upload.get_upload_dir") as mock_get_upload_dir:
-            mock_get_upload_dir.return_value = "tests/docq/data_source/test_files"
+            mock_get_upload_dir.return_value = "misc/test_files"
 
             documents = self.manual_upload.load(space, configs)
 
@@ -63,11 +63,11 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
             )
             assert (
                 documents[0].metadata[str(DocumentMetadata.SOURCE_URI.name).lower()]
-                == "tests/docq/data_source/test_files/Research-Revealing-the-True-GenAI-Data-Exposure-Risk.pdf"
+                == "misc/test_files/Research-Revealing-the-True-GenAI-Data-Exposure-Risk.pdf"
             )
             assert (
                 documents[0].metadata[str(DocumentMetadata.FILE_PATH.name).lower()]
-                == "tests/docq/data_source/test_files/Research-Revealing-the-True-GenAI-Data-Exposure-Risk.pdf"
+                == "misc/test_files/Research-Revealing-the-True-GenAI-Data-Exposure-Risk.pdf"
             )
             self.assertAlmostEqual(  # noqa: PT009
                 documents[0].metadata[str(DocumentMetadata.INDEXED_ON.name).lower()],
