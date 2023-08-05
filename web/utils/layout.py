@@ -7,8 +7,7 @@ from typing import List, Tuple
 import streamlit as st
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SystemSettingsKey
-from docq.data_source.support.utils import DocumentListItem
-from docq.domain import FeatureKey, SpaceKey
+from docq.domain import DocumentListItem, FeatureKey, SpaceKey
 from st_pages import hide_pages
 from streamlit.delta_generator import DeltaGenerator
 

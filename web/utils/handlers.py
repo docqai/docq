@@ -20,8 +20,7 @@ from docq import (
 )
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
-from docq.data_source.support.utils import DocumentListItem
-from docq.domain import SpaceKey
+from docq.domain import DocumentListItem, SpaceKey
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,

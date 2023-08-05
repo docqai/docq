@@ -45,7 +45,7 @@ from llama_index.readers.file.tabular_reader import PandasCSVReader
 from llama_index.readers.file.video_audio_reader import VideoAudioReader
 from llama_index.readers.schema.base import Document
 
-from ...support.utils import DocumentListItem
+from ....domain import DocumentListItem
 
 DEFAULT_FILE_READER_CLS: Dict[str, Type[BaseReader]] = {
     ".pdf": PDFReader,

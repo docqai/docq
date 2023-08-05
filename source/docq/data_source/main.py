@@ -9,9 +9,8 @@ from typing import List
 
 from llama_index import Document
 
-from ..domain import ConfigKey, SpaceKey
+from ..domain import ConfigKey, DocumentListItem, SpaceKey
 from ..support.store import get_index_dir
-from .support.utils import DocumentListItem
 
 
 class DocumentMetadata(Enum):
