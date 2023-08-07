@@ -14,8 +14,9 @@ from . import manage_settings as msettings
 from .config import SpaceType
 from .domain import SpaceKey
 from .support.auth_utils import cache_auth
+from .manage_documents import reindex
+from .support.auth_utils import cache_auth
 from .support.store import get_sqlite_system_file
-from .support.utils import cache_auth
 
 SQL_CREATE_USERS_TABLE = """
 CREATE TABLE IF NOT EXISTS users (

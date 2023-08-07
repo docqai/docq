@@ -4,7 +4,6 @@ from typing import Any
 
 import streamlit as st
 from docq import config
-from docq.support.utils import auth_result
 
 from .constants import (
     SESSION_KEY_NAME_DOCQ,
