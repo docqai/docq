@@ -20,11 +20,7 @@ from docq import (
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import SpaceKey
-<<<<<<< HEAD
 from docq.support.auth_utils import auth_result, session_logout
-=======
-from docq.support.utils import auth_result
->>>>>>> b3639d2 (Add caching for session data)
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -42,11 +38,7 @@ from .sessions import (
 )
 
 
-<<<<<<< HEAD
 def _set_session_config(result: tuple | None = None) -> bool:
-=======
-def _set_session_config(result: list | None = None) -> bool:
->>>>>>> b3639d2 (Add caching for session data)
     """Authenticate automatically."""
     if result:
         set_auth_session(
@@ -67,7 +59,6 @@ def _set_session_config(result: list | None = None) -> bool:
     return False
 
 
-<<<<<<< HEAD
 def handle_auto_login(auth_layout: Callable) -> Callable:
     """Authenticate automatically."""
     def wrapper(*args: tuple, **kwargs: dict) -> Any:  # noqa: ANN401
@@ -75,16 +66,6 @@ def handle_auto_login(auth_layout: Callable) -> Callable:
         results = auth_result()
         if results:
             _set_session_config(results)
-=======
-def allow_auto_login(auth_layout: Callable) -> Callable:
-    """Authenticate automatically."""
-    results = auth_result()
-    def wrapper(*args: tuple, **kwargs: dict) -> Any:  # noqa: ANN401
-        """Auth wrapper."""
-        if results:
-            _set_session_config(results)
-            return auth_layout(*args, **kwargs)
->>>>>>> b3639d2 (Add caching for session data)
         return auth_layout(*args, **kwargs)
     return wrapper
 
