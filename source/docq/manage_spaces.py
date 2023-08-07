@@ -199,7 +199,6 @@ def create_shared_space(name: str, summary: str, datasource_type: str, datasourc
 
 def list_shared_spaces(user_id: int = None) -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
     """List all shared spaces."""
-
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:

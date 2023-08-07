@@ -3,12 +3,11 @@ import hashlib
 import hmac
 import json
 import logging as log
-from contextlib import suppress
+import os
 from datetime import datetime, timedelta
 from secrets import token_hex
 from typing import Callable, Dict, Optional
 
-import streamlit as st
 from cachetools import TTLCache
 from cryptography.fernet import Fernet
 from streamlit.components.v1 import html
@@ -16,12 +15,18 @@ from streamlit.web.server.websocket_headers import _get_websocket_headers
 
 from ..config import COOKIE_NAME, ENV_VAR_COOKIE_SECRET_KEY
 
-CACHE_CONFIG = (1024 * 1, 60 * 60 * 24)
+EXPIRY_HOURS = 4
+CACHE_CONFIG = (1024 * 1, 60 * 60 * EXPIRY_HOURS)
 AUTH_KEY = Fernet.generate_key()
-COOKIE_SECRET = "secret_key"
 
-with suppress(FileNotFoundError):
-    COOKIE_SECRET = st.secrets[ENV_VAR_COOKIE_SECRET_KEY]
+def init() -> None:
+    """Initialize the cache."""
+    log.info("Initializing session cache...")
+    global COOKIE_SECRET
+    COOKIE_SECRET = os.environ.get(ENV_VAR_COOKIE_SECRET_KEY)
+    if COOKIE_SECRET is None:
+        log.fatal("Cookie secret key not found in environment variable %s", ENV_VAR_COOKIE_SECRET_KEY)
+        raise RuntimeError("Cookie secret key not found in environment variable %s", ENV_VAR_COOKIE_SECRET_KEY)
 
 """Session Cache"""
 cached_sessions:TTLCache[str, bytes] = TTLCache(*CACHE_CONFIG)
@@ -30,7 +35,7 @@ session_data:TTLCache[str, str]= TTLCache(*CACHE_CONFIG)
 def _set_cookie(cookie: str) -> None:
     """Set client cookie for authentication."""
     try:
-        expiry = datetime.now() + timedelta(hours=4)
+        expiry = datetime.now() + timedelta(hours=EXPIRY_HOURS)
         html(f"""
         <script>
             document.cookie = "{COOKIE_NAME}={cookie}; expires={expiry.strftime('%a, %d %b %Y %H:%M:%S GMT')}; path=/;";
