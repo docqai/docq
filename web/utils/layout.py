@@ -1,7 +1,6 @@
 """Layout components for the web app."""
 
 
-import logging as log
 from typing import List, Tuple
 
 import streamlit as st
