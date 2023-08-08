@@ -73,7 +73,7 @@ def _parse_metadata(metadata: dict) -> tuple:
         return file_name, page_label, uri, s_type
 
 def _classify_file_sources(name: str, uri: str, page: str, sources: dict = None) -> str:
-    """Group the sources."""
+    """Classify file sources for easy grouping."""
     if sources is None:
         sources = {}
     if uri in sources:
@@ -83,7 +83,7 @@ def _classify_file_sources(name: str, uri: str, page: str, sources: dict = None)
     return sources
 
 def _classify_web_sources(website: str, uri: str, page_title: str, sources: dict = None) -> str:
-    """Group the sources."""
+    """Classify web sources for easy grouping."""
     if sources is None:
         sources = {}
     if website in sources:
@@ -103,11 +103,11 @@ def _generate_file_markdown(file_sources: dict) -> str:
 
 
 def _generate_web_markdown(web_sources: dict) -> str:
-    """Template to generate markdown for listing web sources."""
+    """Generate markdown for listing web sources."""
     markdown_list = []
     site_delimiter = "\n>- "
     for website, page in web_sources.items():
-        unique_pages = list(set(page))
+        unique_pages = list(set(page)) # Remove duplicate pages
         page_list_str = site_delimiter.join([f"[{page_title}]({uri})" for page_title, uri in unique_pages])
         markdown_list.append(f"\n> ###### {website}{site_delimiter if page_list_str else ''}{page_list_str}")
     return "\n\n".join(markdown_list) + "\n\n" if markdown_list else ""

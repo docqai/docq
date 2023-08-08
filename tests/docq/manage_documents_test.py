@@ -23,9 +23,9 @@ class TestManageDocuments(unittest.TestCase):
         self.web_metadata = {"source_website": "https://example.net", "page_title": "page_title", "data_source_type": "SpaceDataSourceWebBased", "source_uri": "source_uri"}
         self.file_metadata = {"file_name": "file_name", "page_label": "page_label", "data_source_type": "SpaceDataSourceFileBased", "source_uri": "source_uri"}
         self.web_source_node = []
-        node = MagicMock()
-        node.metadata = self.web_metadata
-        self.web_source_node.append(Mock(node=node, score=1))
+        web_node = MagicMock()
+        web_node.metadata = self.web_metadata
+        self.web_source_node.append(Mock(node=web_node, score=1))
 
         # file_source_node
         file_node = MagicMock()
