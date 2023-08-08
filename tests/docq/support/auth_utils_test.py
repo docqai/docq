@@ -1,8 +1,10 @@
 """Test auth utils."""
 import unittest
+from secrets import token_hex
 from typing import Self
 from unittest.mock import Mock, patch
 
+from docq.support import auth_utils
 from docq.support.auth_utils import (
     _clear_cookie,
     _create_hmac,
@@ -24,6 +26,10 @@ from docq.support.auth_utils import (
 
 class TestAuthUtils(unittest.TestCase):
     """Test auth utils."""
+
+    def setUp(self: Self) -> None:
+        """Setup module."""
+        auth_utils.AUTH_SESSION_SECRET_KEY = token_hex(32)
 
     @patch("docq.support.auth_utils.html")
     def test_set_cookie(self: Self, mock_html: Mock) -> None:
