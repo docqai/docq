@@ -18,19 +18,20 @@ from ..config import COOKIE_NAME, ENV_VAR_COOKIE_SECRET_KEY
 EXPIRY_HOURS = 4
 CACHE_CONFIG = (1024 * 1, 60 * 60 * EXPIRY_HOURS)
 AUTH_KEY = Fernet.generate_key()
-
-def init() -> None:
-    """Initialize the cache."""
-    log.info("Initializing session cache...")
-    global COOKIE_SECRET
-    COOKIE_SECRET = os.environ.get(ENV_VAR_COOKIE_SECRET_KEY)
-    if COOKIE_SECRET is None:
-        log.fatal("Cookie secret key not found in environment variable %s", ENV_VAR_COOKIE_SECRET_KEY)
-        raise RuntimeError("Cookie secret key not found in environment variable %s", ENV_VAR_COOKIE_SECRET_KEY)
+AUTH_SESSION_SECRET_KEY: str = os.environ.get(ENV_VAR_COOKIE_SECRET_KEY)
 
 """Session Cache"""
 cached_sessions:TTLCache[str, bytes] = TTLCache(*CACHE_CONFIG)
 session_data:TTLCache[str, str]= TTLCache(*CACHE_CONFIG)
+
+def init_session_cache() -> None:
+    """Initialize session cache."""
+    if AUTH_SESSION_SECRET_KEY is None:
+        log.fatal("Failed to initialize session cache: %s not set", ENV_VAR_COOKIE_SECRET_KEY)
+        raise ValueError(f"{ENV_VAR_COOKIE_SECRET_KEY} must be set")
+    if len(AUTH_SESSION_SECRET_KEY) < 64:
+        log.fatal("Failed to initialize session cache: %s must be 64 or more characters", ENV_VAR_COOKIE_SECRET_KEY)
+        raise ValueError(f"{ENV_VAR_COOKIE_SECRET_KEY} must be 64 or more characters")
 
 def _set_cookie(cookie: str) -> None:
     """Set client cookie for authentication."""
@@ -68,10 +69,10 @@ def _get_cookies() -> Optional[Dict[str, str]]:
         log.error("Failed to get cookies: %s", e)
         return None
 
-def _create_hmac( msg: str, key: str = COOKIE_SECRET) -> str:
+def _create_hmac( msg: str) -> str:
     """Create a HMAC hash."""
     return hmac.new(
-        key.encode(),
+        AUTH_SESSION_SECRET_KEY.encode(),
         msg.encode(),
         hashlib.sha256
     ).hexdigest()
@@ -132,6 +133,15 @@ def _decrypt_auth(auth: bytes) -> tuple:
         log.error("Failed to decrypt auth data: %s", e)
         return None
 
+def _update_auth_expiry(session_id: str) -> None:
+    """Update the auth expiry time."""
+    try:
+        cached_sessions[session_id] = cached_sessions[session_id]
+        session_data[session_id] = session_data[session_id]
+        _set_session_id(session_id)
+    except Exception as e:
+        log.error("Failed to update auth expiry: %s", e)
+
 def cache_auth(auth: Callable) -> Callable:
     """Cache the auth session value to remember credentials on page reload."""
 
@@ -147,6 +157,7 @@ def cache_auth(auth: Callable) -> Callable:
                 if _auth is None:
                     return _auth
                 cached_sessions[session_id] = _encrypt_auth(_auth)
+                _update_auth_expiry(session_id)
             return _decrypt_auth(cached_sessions[session_id])
         except Exception as e:
             log.error("Failed in auth wrapper: %s", e)
