@@ -1,11 +1,9 @@
 """Functions to manage documents."""
-import logging as log
 import os
 import shutil
 import unicodedata
 from datetime import datetime
 from mimetypes import guess_type
-from typing import DefaultDict
 
 from llama_index.schema import NodeWithScore
 from streamlit import runtime
@@ -59,7 +57,7 @@ def _get_download_link(filename: str, path: str) -> str:
 
 def _remove_ascii_control_characters(text: str) -> str:
     """Remove ascii control characters from the text."""
-    return "".join(ch for ch in text if unicodedata.category(ch)[0] != "C")
+    return "".join(ch for ch in text if unicodedata.category(ch)[0] != "C").strip()
 
 def _parse_metadata(metadata: dict) -> tuple:
     """Parse the metadata."""
@@ -69,65 +67,65 @@ def _parse_metadata(metadata: dict) -> tuple:
         website = _remove_ascii_control_characters(metadata.get("source_website"))
         page_title = _remove_ascii_control_characters(metadata.get("page_title"))
         return website, page_title, uri, s_type
-    # File based data source
-    file_name = metadata.get("file_name")
-    page_label = metadata.get("page_label")
-    return file_name, page_label, uri, s_type
+    else:
+        file_name = metadata.get("file_name")
+        page_label = metadata.get("page_label")
+        return file_name, page_label, uri, s_type
 
-def _group_file_sources(name: str, uri: str, page: str, sources: dict) -> str:
+def _classify_file_sources(name: str, uri: str, page: str, sources: dict = None) -> str:
     """Group the sources."""
-    if not name or not uri or not page:
-        return # Skip if any of the required fields are missing
+    if sources is None:
+        sources = {}
     if uri in sources:
         sources[uri].append(page)
     else:
         sources[uri] = [name, page]
+    return sources
 
-def _group_web_sources(website: str, uri: str, page_title: str, sources: dict) -> str:
+def _classify_web_sources(website: str, uri: str, page_title: str, sources: dict = None) -> str:
     """Group the sources."""
-    if not website or not uri or not page_title:
-        return # Skip if any of the required fields are missing
+    if sources is None:
+        sources = {}
     if website in sources:
         sources[website].append((page_title, uri))
     else:
         sources[website] = [(page_title, uri)]
+    return sources
 
 def _generate_file_markdown(file_sources: dict) -> str:
-    """Template to generate markdown for listing file sources."""
-    file_sources_markdown = ""
+    """Generate markdown for listing file sources."""
+    markdown_list = []
     for uri, sources in file_sources.items():
         name, pages = sources[0], list(set(sources[1:]))
-        file_sources_markdown += f"> **File:** ({name})[{_get_download_link(name, uri)}]<br> **Pages:** {', '.join(pages)}\n\n"
-    return file_sources_markdown
+        download_link = _get_download_link(name, uri)
+        markdown_list.append(f"> *File:* [{name}]({download_link})<br> *Pages:* {', '.join(pages)}")
+    return "\n\n".join(markdown_list) + "\n\n"
+
 
 def _generate_web_markdown(web_sources: dict) -> str:
     """Template to generate markdown for listing web sources."""
-    web_sources_markdown = ""
+    markdown_list = []
     site_delimiter = "\n>- "
     for website, page in web_sources.items():
         unique_pages = list(set(page))
-        page_list_str = "\n>- ".join([f"[{page_title}]({uri})" for page_title, uri in unique_pages])
-        web_sources_markdown += f"\n> ###### {website}{site_delimiter if page_list_str else ''}{page_list_str}{page_list_str}\n"
-    return web_sources_markdown + "\n"
+        page_list_str = site_delimiter.join([f"[{page_title}]({uri})" for page_title, uri in unique_pages])
+        markdown_list.append(f"\n> ###### {website}{site_delimiter if page_list_str else ''}{page_list_str}")
+    return "\n\n".join(markdown_list) + "\n\n"
 
 def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
     """Format document sources."""
-    file_sources = DefaultDict(list)
-    web_sources = DefaultDict(list)
+    file_sources = {}
+    web_sources = {}
 
-    try:
-        for source_node in source_nodes:
-            metadata = source_node.node.metadata
-            if metadata:
-                name, page, uri, s_type = _parse_metadata(metadata)
-                if s_type == "SpaceDataSourceWebBased":
-                    web_sources = _group_web_sources(name, uri, page, web_sources)
-                else:
-                    file_sources = _group_file_sources(name, uri, page, file_sources)
+    for source_node in source_nodes:
+        metadata = source_node.node.metadata
+        if metadata:
+            name, page, uri, s_type = _parse_metadata(metadata)
+            if s_type == "SpaceDataSourceWebBased":
+                web_sources = _classify_web_sources(name, uri, page, web_sources)
+            else:
+                file_sources = _classify_file_sources(name, uri, page, file_sources)
 
-        total = len(file_sources) + len(web_sources)
-        fmt_sources = f"\n##### Source{'s' if total > 1 else ''}:\n" + _generate_file_markdown(file_sources) + _generate_web_markdown(web_sources)
-        return fmt_sources if total > 0 else ""
-
-    except Exception as e:
-        log.error("Error formatting document sources: %s", e)
+    total = len(file_sources) + len(web_sources)
+    fmt_sources = f"\n##### Source{'s' if total > 1 else ''}:\n" + _generate_file_markdown(file_sources) + _generate_web_markdown(web_sources)
+    return fmt_sources if total else ""

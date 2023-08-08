@@ -7,8 +7,8 @@ from datetime import datetime
 
 from .config import FeatureType
 from .domain import FeatureKey, SpaceKey
+from .manage_documents import format_document_sources
 from .support.llm import query_error, run_ask, run_chat
-from .support.source_formatter import format_document_sources
 from .support.store import get_history_table_name, get_sqlite_usage_file
 
 SQL_CREATE_TABLE = """
