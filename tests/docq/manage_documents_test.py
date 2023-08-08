@@ -62,6 +62,7 @@ class TestManageDocuments(unittest.TestCase):
         """Test _generate_file_markdown."""
         sources = {"uri": ["name", "page", "page"]}
         download_link.return_value = "https://some_link.host"
+
         assert _generate_file_markdown(sources) == "> *File:* [name](https://some_link.host)<br> *Pages:* page\n\n"
 
     def test_generate_web_markdown(self: Self) -> None:
