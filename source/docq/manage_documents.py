@@ -99,7 +99,7 @@ def _generate_file_markdown(file_sources: dict) -> str:
         name, pages = sources[0], list(set(sources[1:]))
         download_link = _get_download_link(name, uri)
         markdown_list.append(f"> *File:* [{name}]({download_link})<br> *Pages:* {', '.join(pages)}")
-    return "\n\n".join(markdown_list) + "\n\n"
+    return "\n\n".join(markdown_list) + "\n\n" if markdown_list else ""
 
 
 def _generate_web_markdown(web_sources: dict) -> str:
@@ -110,7 +110,7 @@ def _generate_web_markdown(web_sources: dict) -> str:
         unique_pages = list(set(page))
         page_list_str = site_delimiter.join([f"[{page_title}]({uri})" for page_title, uri in unique_pages])
         markdown_list.append(f"\n> ###### {website}{site_delimiter if page_list_str else ''}{page_list_str}")
-    return "\n\n".join(markdown_list) + "\n\n"
+    return "\n\n".join(markdown_list) + "\n\n" if markdown_list else ""
 
 def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
     """Format document sources."""
