@@ -49,7 +49,6 @@ from .handlers import (
     prepare_for_chat,
     query_chat_history,
 )
-from .layout import allow_auto_login
 from .sessions import get_auth_session, get_chat_session
 
 
