@@ -1,11 +1,10 @@
 """Utils function for data sources."""
 import logging as log
 import sys
-from collections import namedtuple
 from datetime import datetime
-from typing import Optional
+from typing import NamedTuple, Optional
 
-DocumentListItem = namedtuple("DocumentListItem", ["link", "indexed_on", "size"])
+DocumentListItem = NamedTuple("DocumentListItem", [("link", str), ("indexed_on", int), ("size", int)])
 """A tuple containing information about a document. These entries are used to create the document list for rendering UI.
 
 Attributes:
