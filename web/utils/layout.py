@@ -616,3 +616,15 @@ def show_space_details_ui(space: SpaceKey) -> None:
 def list_logs_ui(type_: LogType) -> None:
     """List logs per log type."""
     st.info("Logs are coming soon.")
+
+
+def ask_shared_layout_style() -> None:
+    """Customize the shared layout style."""
+    html(
+        """
+        <script>
+            const container = document.getElementsByClassName("main")
+            console.log(container)
+        </script>
+        """
+    )
