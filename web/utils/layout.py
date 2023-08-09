@@ -273,9 +273,12 @@ def _chat_message(message_: str, is_user: bool) -> None:
         with st.chat_message("assistant"):
             st.markdown(message_, unsafe_allow_html=True)
 
-def _chat_ui_style(chat_ui: Callable) -> Callable:
-    def wrapper(*args: tuple, **kwargs: dict) -> None:
-        st.write("""
+
+def chat_ui(feature: FeatureKey) -> None:
+    """Chat UI layout."""
+    prepare_for_chat(feature)
+    # Style for formatting sources list.
+    st.write("""
                  <style>
                   [data-testid="stMarkdownContainer"] h6 {
                       padding: 0px !important;
@@ -287,15 +290,9 @@ def _chat_ui_style(chat_ui: Callable) -> Callable:
                       margin-top: 0.5rem !important;
                     }
                  </style>
-                 """, unsafe_allow_html=True)
-        chat_ui(*args, **kwargs)
-
-    return wrapper
-
-@_chat_ui_style
-def chat_ui(feature: FeatureKey) -> None:
-    """Chat UI layout."""
-    prepare_for_chat(feature)
+                 """,
+        unsafe_allow_html=True
+    )
     with st.container():
         if feature.type_ == FeatureType.ASK_SHARED:
             spaces = list_shared_spaces()
