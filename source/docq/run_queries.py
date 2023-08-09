@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS {table} (
 
 MESSAGE_TEMPLATE = "{message}"
 
-MESSAGE_WITH_SOURCES_TEMPLATE = "{message}\n\nSource(s):\n{source}"
+MESSAGE_WITH_SOURCES_TEMPLATE = "{message}\n{source}"
 
 NUMBER_OF_MESSAGES_IN_HISTORY = 10
 
@@ -99,7 +99,7 @@ def query(input_: str, feature: FeatureKey, space: SpaceKey = None, spaces: list
             MESSAGE_TEMPLATE.format(message=response.response)
             if is_chat
             else MESSAGE_WITH_SOURCES_TEMPLATE.format(
-                message=response.response, source=format_document_sources(response.source_nodes, space)
+                message=response.response, source=format_document_sources(response.source_nodes)
             ),
             False,
             datetime.now(),
