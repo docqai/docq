@@ -8,6 +8,7 @@ from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SystemSettingsKey
 from docq.domain import FeatureKey, SpaceKey
 from st_pages import hide_pages
+from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
@@ -294,6 +295,28 @@ def chat_ui(feature: FeatureKey) -> None:
     )
     with st.container():
         if feature.type_ == FeatureType.ASK_SHARED:
+            st.write("""
+                <style>
+                    [data-testid="stExpander"] {
+                        z-index: 1000;
+                        position: fixed;
+                        width: 50%;
+                        # background-color: white;
+                        top: 46px;
+                    }
+
+                    [data-testid="stExpander"] .row-widget.stMultiSelect label {
+                        display: none !important;
+                    }
+
+                    .row-widget.stButton {
+                        margin-top: 1rem !important;
+                    }
+                </style>
+            """,
+                unsafe_allow_html=True
+            )
+        with st.expander("Including these shared spaces:"):
             spaces = list_shared_spaces()
             st.multiselect(
                 "Including these shared spaces:",
@@ -303,7 +326,19 @@ def chat_ui(feature: FeatureKey) -> None:
                 key=f"chat_shared_spaces_{feature.value()}",
             )
             st.checkbox("Including your documents", value=True, key="chat_personal_space")
-            st.divider()
+            # st.divider()
+    with st.container():
+        # if feature.type_ == FeatureType.ASK_SHARED:
+        #     spaces = list_shared_spaces()
+        #     st.multiselect(
+        #         "Including these shared spaces:",
+        #         options=spaces,
+        #         default=spaces,
+        #         format_func=lambda x: x[1],
+        #         key=f"chat_shared_spaces_{feature.value()}",
+        #     )
+        #     st.checkbox("Including your documents", value=True, key="chat_personal_space")
+        #     st.divider()
         if st.button("Load chat history earlier"):
             query_chat_history(feature)
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
@@ -525,3 +560,15 @@ def show_space_details_ui(space: SpaceKey) -> None:
 def list_logs_ui(type_: LogType) -> None:
     """List logs per log type."""
     st.info("Logs are coming soon.")
+
+
+def ask_shared_layout_style() -> None:
+    """Customize the shared layout style."""
+    html(
+        """
+        <script>
+            const container = document.getElementsByClassName("main")
+            console.log(container)
+        </script>
+        """
+    )
