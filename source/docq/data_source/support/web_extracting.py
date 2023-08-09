@@ -2,16 +2,17 @@
 
 import logging as log
 import re
-import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional
 from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 from llama_index import Document
 from llama_index.readers.base import BaseReader
+
+from .utils import DocumentListItem, create_document_list_item
 
 
 class BaseTextExtractor(ABC):
@@ -201,7 +202,7 @@ class BeautifulSoupWebReader(BaseReader):
         """Initialize with parameters."""
         self.website_extractors = website_extractors
         self.website_metadata = website_metadata
-        self._document_list: list[tuple[str, int, int]] = []
+        self._document_list: List[DocumentListItem] = []
 
     def load_data(
         self,
@@ -255,11 +256,11 @@ class BeautifulSoupWebReader(BaseReader):
 
                     page_title = extractor.extract_title(soup=soup)
                     page_subtitle = extractor.extract_subtitle(soup=soup)
-
+                    indexed_on = datetime.timestamp(datetime.now().utcnow())
                     metadata = {
                         "source_website": url,
                         "source_uri": page_link,
-                        "indexed_on": datetime.timestamp(datetime.now().utcnow()),
+                        "indexed_on": indexed_on,
                         "page_title": page_title,
                         "page_subtitle": page_subtitle,
                     }
@@ -269,19 +270,14 @@ class BeautifulSoupWebReader(BaseReader):
 
                     all_documents.append(Document(text=page_text, metadata=metadata))
 
-                    size_in_bytes = sys.getsizeof(page_text)
+                    self._document_list.append(create_document_list_item(page_link, page_text, indexed_on))
 
-                    size_in_megabytes = size_in_bytes if size_in_bytes > 0 else 0
-
-                    self._document_list.append(
-                        (page_link, datetime.timestamp(datetime.now().utcnow()), size_in_megabytes)
-                    )
                 except Exception as e:
-                    log.error("Error requesting web page, skipped: %s, Error: %s", page_link, e)
+                    log.exception("Error requesting web page, skipped: %s, Error: %s", page_link, e)
                     continue
 
         return all_documents
 
-    def get_document_list(self) -> List[tuple[str, int, int]]:
+    def get_document_list(self) -> List[DocumentListItem]:
         """Return a list of documents. Can be used for tracking state overtime by implementing persistence and displaying document lists to users."""
         return self._document_list

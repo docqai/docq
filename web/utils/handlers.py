@@ -1,5 +1,6 @@
 """Handlers for the web app."""
 
+import asyncio
 import logging as log
 import math
 from datetime import datetime
@@ -19,6 +20,7 @@ from docq import (
 )
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
+from docq.data_source.support.utils import DocumentListItem
 from docq.domain import SpaceKey
 
 from .constants import (
@@ -183,7 +185,7 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 
 
-def handle_list_documents(space: domain.SpaceKey) -> list[tuple[str, int, int]]:
+def handle_list_documents(space: domain.SpaceKey) -> List[DocumentListItem]:
     return manage_spaces.list_documents(space)
 
 
@@ -297,6 +299,7 @@ def handle_create_space() -> SpaceKey:
 
 
 def handle_reindex_space(space: SpaceKey) -> None:
+    log.debug("handle re-indexing space: %s", space)
     manage_spaces.reindex(space)
 
 
