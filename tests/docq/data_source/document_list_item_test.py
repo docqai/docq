@@ -1,11 +1,9 @@
 """A module for testing the DocumentList data structure serialisation."""
 
-import os
 import tempfile
 import unittest
 
 from docq.data_source.azure_blob import AzureBlob
-from docq.data_source.main import SpaceDataSourceFileBased
 from docq.domain import DocumentListItem
 
 
