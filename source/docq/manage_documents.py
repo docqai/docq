@@ -120,6 +120,16 @@ def _generate_web_markdown(web_sources: dict) -> str:
     return "\n\n".join(markdown_list) + "\n\n" if markdown_list else ""
 
 
+def _generate_web_markdown(web_sources: dict) -> str:
+    """Generate markdown for listing web sources."""
+    markdown_list = []
+    site_delimiter = "\n>- "
+    for website, page in web_sources.items():
+        unique_pages = list(set(page)) # Remove duplicate pages
+        page_list_str = site_delimiter.join([f"[{page_title}]({uri})" for page_title, uri in unique_pages])
+        markdown_list.append(f"\n> ###### {website}{site_delimiter if page_list_str else ''}{page_list_str}")
+    return "\n\n".join(markdown_list) + "\n\n" if markdown_list else ""
+
 def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
     """Format document sources."""
     file_sources = {}
@@ -129,17 +139,11 @@ def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
         metadata = source_node.node.metadata
         if metadata:
             name, page, uri, s_type = _parse_metadata(metadata)
-            log.debug("Source: %s", s_type)
             if s_type == "SpaceDataSourceWebBased":
                 web_sources = _classify_web_sources(name, uri, page, web_sources)
-            elif s_type == "SpaceDataSourceFileBased":
-                file_sources = _classify_file_sources(name, uri, page, file_sources)
             else:
-                log.warning("Unknown source type: %s. uri: %s, Node ID: %s", s_type, uri, source_node.node.id_)
+                file_sources = _classify_file_sources(name, uri, page, file_sources)
+
     total = len(file_sources) + len(web_sources)
-    fmt_sources = (
-        f"\n##### Source{'s' if total > 1 else ''}:\n"
-        + _generate_file_markdown(file_sources)
-        + _generate_web_markdown(web_sources)
-    )
+    fmt_sources = f"\n##### Source{'s' if total > 1 else ''}:\n" + _generate_file_markdown(file_sources) + _generate_web_markdown(web_sources)
     return fmt_sources if total else ""
