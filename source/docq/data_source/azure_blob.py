@@ -44,7 +44,7 @@ class AzureBlob(SpaceDataSourceFileBased):
         """Load the documents from azure blob container."""
 
         # str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower(): self.__class__.__base_.__name__,
-        def lambda_apend_metadata(doc: Document) -> Document:
+        def lambda_append_metadata(doc: Document) -> Document:
             doc.metadata.update(
                 {
                     str(DocumentMetadata.SPACE_ID.name).lower(): space.id_,
@@ -66,7 +66,7 @@ class AzureBlob(SpaceDataSourceFileBased):
 
         documents = loader.load_data()
 
-        documents = list(map(lambda_apend_metadata, documents))
+        documents = list(map(lambda_append_metadata, documents))
 
         return documents
 
