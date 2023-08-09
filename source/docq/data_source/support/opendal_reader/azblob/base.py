@@ -53,7 +53,7 @@ class OpendalAzblobReader(BaseReader):
         container (str): the name of your azblob bucket
         path (str): the path of the data. If none is provided,
             this loader will iterate through the entire bucket. If path is endswith `/`, this loader will iterate through the entire dir. Otherwise, this loeader will load the file.
-        endpoint Optional[str]: the endpoint of the azblob service.
+        endpoint (Optional[str]): the endpoint of the azblob service.
         account_name (Optional[str]): provide azblob access key directly.
         account_key (Optional[str]): provide azblob access key directly.
         file_extractor (Optional[Dict[str, BaseReader]]): A mapping of file
@@ -76,7 +76,6 @@ class OpendalAzblobReader(BaseReader):
 
     def load_data(self) -> List[Document]:
         """Load file(s) from OpenDAL."""
-
         try:
             from llama_hub.utils import import_loader
 
