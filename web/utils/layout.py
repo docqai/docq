@@ -1,7 +1,6 @@
 """Layout components for the web app."""
 
 
-import logging as log
 from typing import List, Tuple
 
 import streamlit as st
@@ -277,6 +276,22 @@ def _chat_message(message_: str, is_user: bool) -> None:
 def chat_ui(feature: FeatureKey) -> None:
     """Chat UI layout."""
     prepare_for_chat(feature)
+    # Style for formatting sources list.
+    st.write("""
+                 <style>
+                  [data-testid="stMarkdownContainer"] h6 {
+                      padding: 0px !important;
+                    }
+                  [data-testid="stMarkdownContainer"] h5 {
+                      padding: 1rem 0 0 0 !important;
+                    }
+                  [data-testid="stMarkdownContainer"] blockquote {
+                      margin-top: 0.5rem !important;
+                    }
+                 </style>
+                 """,
+        unsafe_allow_html=True
+    )
     with st.container():
         if feature.type_ == FeatureType.ASK_SHARED:
             spaces = list_shared_spaces()
