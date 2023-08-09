@@ -1,16 +1,14 @@
 """Functions to manage documents."""
-
-import logging as log
 import os
-import re
 import shutil
+import unicodedata
 from datetime import datetime
 from mimetypes import guess_type
 
 from llama_index.schema import NodeWithScore
-from llama_index.utils import truncate_text
 from streamlit import runtime
 
+from .data_source.main import DocumentMetadata
 from .domain import SpaceKey
 from .manage_spaces import reindex
 from .support.store import get_upload_dir, get_upload_file
@@ -43,54 +41,91 @@ def delete_all(space: SpaceKey) -> None:
 
     reindex(space)
 
-
-def _get_download_link(filename: str, space: SpaceKey) -> str:
+def _get_download_link(filename: str, path: str) -> str:
     """Return the download link for the file if runtime exists, otherwise return an empty string."""
-    if runtime.exists():
-        file = get_upload_file(space, filename)
-        mime_type = guess_type(file)[0] or "application/octet-stream"
-        coordinates = str(datetime.now())
+    if runtime.exists() and os.path.isfile(path):
         return runtime.get_instance().media_file_mgr.add(
-            path_or_data=file,
-            mimetype=mime_type,
-            coordinates=coordinates,
+            path_or_data=path,
+            mimetype=guess_type(path)[0] or "application/octet-stream",
+            coordinates=str(datetime.now()),
             file_name=filename,
             is_for_static_download=True,
         )
 
     else:
-        return ""
+        return "#"
+
+def _remove_ascii_control_characters(text: str) -> str:
+    """Remove ascii control characters from the text."""
+    return "".join(ch for ch in text if unicodedata.category(ch)[0] != "C").strip()
+
+def _parse_metadata(metadata: dict) -> tuple:
+    """Parse the metadata."""
+    s_type = metadata.get(str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower())
+    uri = metadata.get(str(DocumentMetadata.SOURCE_URI.name).lower())
+    if s_type == "SpaceDataSourceWebBased":
+        website = _remove_ascii_control_characters(metadata.get("source_website"))
+        page_title = _remove_ascii_control_characters(metadata.get("page_title"))
+        return website, page_title, uri, s_type
+    else:
+        file_name = metadata.get("file_name")
+        page_label = metadata.get("page_label")
+        return file_name, page_label, uri, s_type
+
+def _classify_file_sources(name: str, uri: str, page: str, sources: dict = None) -> str:
+    """Classify file sources for easy grouping."""
+    if sources is None:
+        sources = {}
+    if uri in sources:
+        sources[uri].append(page)
+    else:
+        sources[uri] = [name, page]
+    return sources
+
+def _classify_web_sources(website: str, uri: str, page_title: str, sources: dict = None) -> str:
+    """Classify web sources for easy grouping."""
+    if sources is None:
+        sources = {}
+    if website in sources:
+        sources[website].append((page_title, uri))
+    else:
+        sources[website] = [(page_title, uri)]
+    return sources
+
+def _generate_file_markdown(file_sources: dict) -> str:
+    """Generate markdown for listing file sources."""
+    markdown_list = []
+    for uri, sources in file_sources.items():
+        name, pages = sources[0], list(set(sources[1:]))
+        download_link = _get_download_link(name, uri)
+        markdown_list.append(f"> *File:* [{name}]({download_link})<br> *Pages:* {', '.join(pages)}")
+    return "\n\n".join(markdown_list) + "\n\n" if markdown_list else ""
 
 
-def format_document_sources(source_nodes: list[NodeWithScore], space: SpaceKey) -> str:
-    """Return the formatted sources with a clickable download link."""
-    try:
-        delimiter = "\n\n"
-        _sources = []
-        source_groups: dict[str, list[str]] = {}
+def _generate_web_markdown(web_sources: dict) -> str:
+    """Generate markdown for listing web sources."""
+    markdown_list = []
+    site_delimiter = "\n>- "
+    for website, page in web_sources.items():
+        unique_pages = list(set(page)) # Remove duplicate pages
+        page_list_str = site_delimiter.join([f"[{page_title}]({uri})" for page_title, uri in unique_pages])
+        markdown_list.append(f"\n> ###### {website}{site_delimiter if page_list_str else ''}{page_list_str}")
+    return "\n\n".join(markdown_list) + "\n\n" if markdown_list else ""
 
-        for source_node in source_nodes:
-            try:
-                log.debug("source node text:  %s", source_node.node.get_text())
-                source = truncate_text(source_node.node.get_text(), 100)
-                page_label = re.search(r"(?<=page_label:)(.*)(?=\n)", source)
-                file_name = re.search(r"(?<=file_name:)(.*)(?=\n)", source)
-                if page_label and file_name:
-                    page_label = page_label.group(1).strip()
-                    file_name = file_name.group(1).strip()
-                    if source_groups.get(file_name):
-                        source_groups[file_name].append(page_label)
-                    else:
-                        source_groups[file_name] = [page_label]
-            except Exception as e:
-                log.exception("Error formatting source %s", e)
-                continue
+def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
+    """Format document sources."""
+    file_sources = {}
+    web_sources = {}
 
-        for file_name, page_labels in source_groups.items():
-            download_url = _get_download_link(file_name, space)
-            _sources.append(f"> *File:* [{file_name}]({download_url})<br> *Pages:* {', '.join(page_labels)}")
-        return delimiter.join(_sources)
+    for source_node in source_nodes:
+        metadata = source_node.node.metadata
+        if metadata:
+            name, page, uri, s_type = _parse_metadata(metadata)
+            if s_type == "SpaceDataSourceWebBased":
+                web_sources = _classify_web_sources(name, uri, page, web_sources)
+            else:
+                file_sources = _classify_file_sources(name, uri, page, file_sources)
 
-    except Exception as e:
-        log.exception("Error formatting sources %s", e)
-        return "Unable to list sources."
+    total = len(file_sources) + len(web_sources)
+    fmt_sources = f"\n##### Source{'s' if total > 1 else ''}:\n" + _generate_file_markdown(file_sources) + _generate_web_markdown(web_sources)
+    return fmt_sources if total else ""
