@@ -1,8 +1,7 @@
 """Layout components for the web app."""
 
 
-import logging as log
-from typing import Callable, List, Tuple
+from typing import List, Tuple
 
 import streamlit as st
 from docq.access_control.main import SpaceAccessType
