@@ -4,9 +4,8 @@ from typing import List
 
 from llama_index import Document
 
-from ..domain import ConfigKey, SpaceKey
+from ..domain import ConfigKey, DocumentListItem, SpaceKey
 from .main import SpaceDataSourceFileBased
-from .support.utils import DocumentListItem
 
 
 class AwsS3(SpaceDataSourceFileBased):

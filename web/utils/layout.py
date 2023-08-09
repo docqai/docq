@@ -6,8 +6,7 @@ from typing import List, Tuple
 import streamlit as st
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SystemSettingsKey
-from docq.data_source.support.utils import DocumentListItem
-from docq.domain import FeatureKey, SpaceKey
+from docq.domain import DocumentListItem, FeatureKey, SpaceKey
 from st_pages import hide_pages
 from streamlit.delta_generator import DeltaGenerator
 
@@ -357,10 +356,6 @@ def documents_ui(space: SpaceKey) -> None:
     if documents:
         st.divider()
         st.markdown(f"**Document Count**: {len(documents)}")
-
-        t = DocumentListItem(link="", size=0, indexed_on=0)
-        log.debug(">>>> %s", t)
-        log.debug(">>>> %s", documents)
         for i, document in enumerate(documents):
             with st.expander(document.link):
                 st.markdown(

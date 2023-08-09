@@ -16,8 +16,6 @@ from .support.opendal_reader.base import OpendalReader
 class AzureBlob(SpaceDataSourceFileBased):
     """Space with data from Azure Blob."""
 
-    _DOCUMENT_LIST_FILENAME = "document_list.json"
-
     def __init__(self) -> None:
         """Initialize the data source."""
         super().__init__("Azure Blob")
@@ -58,13 +56,7 @@ class AzureBlob(SpaceDataSourceFileBased):
                 str(DocumentMetadata.INDEXED_ON.name).lower(): datetime.timestamp(datetime.now().utcnow()),
             }
 
-        log.debug("account_url: %s", configs["account_url"])
-        log.debug("container_name: %s", configs["container_name"])
-
         parsed_endpoint = urlparse(configs["account_url"])
-        log.debug("parsing endpoint")
-        log.debug("parsed_endpoint.hostname: %s", parsed_endpoint.hostname)
-        log.debug("parsed_endpoint: %s", parsed_endpoint)
 
         # Handle Azurite endpoint https://github.com/Azure/Azurite vs a real endpoint
         if parsed_endpoint.hostname == "127.0.0.1" or parsed_endpoint.hostname == "localhost":

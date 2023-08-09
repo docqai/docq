@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 from llama_index import Document
 from llama_index.readers.base import BaseReader
 
-from .utils import DocumentListItem, create_document_list_item
+from ...domain import DocumentListItem
 
 
 class BaseTextExtractor(ABC):
@@ -270,7 +270,7 @@ class BeautifulSoupWebReader(BaseReader):
 
                     all_documents.append(Document(text=page_text, metadata=metadata))
 
-                    self._document_list.append(create_document_list_item(page_link, page_text, indexed_on))
+                    self._document_list.append(DocumentListItem.create_instance(page_link, page_text, indexed_on))
 
                 except Exception as e:
                     log.exception("Error requesting web page, skipped: %s, Error: %s", page_link, e)

@@ -45,7 +45,7 @@ from llama_index.readers.file.tabular_reader import PandasCSVReader
 from llama_index.readers.file.video_audio_reader import VideoAudioReader
 from llama_index.readers.schema.base import Document
 
-from ...support.utils import DocumentListItem
+from ....domain import DocumentListItem
 
 DEFAULT_FILE_READER_CLS: Dict[str, Type[BaseReader]] = {
     ".pdf": PDFReader,
@@ -250,13 +250,6 @@ async def extract_file(
     supported_suffix = list(DEFAULT_FILE_READER_CLS.keys())
     if file_suffix in supported_suffix:
         log.debug("file extractor found for file_suffix: %s", file_suffix)
-        # if file_suffix in supported_suffix or file_suffix in file_extractor:
-        # use file readers
-        # if file_suffix not in file_extractor:
-        #     # instantiate file reader if not already
-        #     reader_cls = DEFAULT_FILE_READER_CLS[file_suffix]
-        #     file_extractor[file_suffix] = reader_cls()
-        # reader = file_extractor[file_suffix]
 
         # NOTE: pondering if its worth turning this into a class and uncomment the code above so reader classes are only instantiated once.
         reader = DEFAULT_FILE_READER_CLS[file_suffix]()

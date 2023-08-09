@@ -6,10 +6,9 @@ from typing import List
 
 from llama_index import Document, SimpleDirectoryReader
 
-from ..domain import ConfigKey, SpaceKey
+from ..domain import ConfigKey, DocumentListItem, SpaceKey
 from ..support.store import get_upload_dir
 from .main import DocumentMetadata, SpaceDataSourceFileBased
-from .support.utils import DocumentListItem
 
 
 class ManualUpload(SpaceDataSourceFileBased):

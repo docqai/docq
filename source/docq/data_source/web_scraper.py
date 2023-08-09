@@ -1,8 +1,6 @@
 """Data source for scrapping a website."""
 
-import json
 import logging as log
-import os
 from typing import List
 
 from llama_index import Document

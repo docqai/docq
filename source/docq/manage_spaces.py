@@ -13,8 +13,7 @@ from docq.access_control.main import SpaceAccessor, SpaceAccessType
 
 from .config import SpaceType
 from .data_source.list import SpaceDataSources
-from .data_source.support.utils import DocumentListItem
-from .domain import SpaceKey
+from .domain import DocumentListItem, SpaceKey
 from .support.llm import _get_default_storage_context, _get_service_context
 from .support.store import get_index_dir, get_sqlite_system_file
 

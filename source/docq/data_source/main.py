@@ -4,14 +4,14 @@ import json
 import logging as log
 import os
 from abc import ABC, abstractmethod
+from dataclasses import asdict
 from enum import Enum
 from typing import List
 
 from llama_index import Document
 
-from ..domain import ConfigKey, SpaceKey
+from ..domain import ConfigKey, DocumentListItem, SpaceKey
 from ..support.store import get_index_dir
-from .support.utils import DocumentListItem
 
 
 class DocumentMetadata(Enum):
@@ -74,10 +74,11 @@ class SpaceDataSourceFileBased(SpaceDataSource):
     def _save_document_list(self, document_list: List[DocumentListItem], persist_path: str, filename: str) -> None:
         path = os.path.join(persist_path, filename)
         try:
+            data = [asdict(item) for item in document_list]
             with open(path, "w") as f:
                 # the field names of the namedtuple are lost when we serialize to json.
                 json.dump(
-                    document_list,
+                    data,
                     f,
                     ensure_ascii=False,
                 )
@@ -90,7 +91,7 @@ class SpaceDataSourceFileBased(SpaceDataSource):
         with open(path, "r") as f:
             data = json.load(f)
             # convert back to a namedtuple so we have field names.
-            document_list = [DocumentListItem(*item) for item in data]
+            document_list = [DocumentListItem(**item) for item in data]
             return document_list
 
 
