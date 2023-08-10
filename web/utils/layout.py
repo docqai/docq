@@ -1,6 +1,6 @@
 """Layout components for the web app."""
 
-
+import hashlib
 from typing import List, Tuple
 
 import streamlit as st
@@ -8,6 +8,7 @@ from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SystemSettingsKey
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
 from st_pages import hide_pages
+from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
@@ -164,6 +165,7 @@ def create_user_ui() -> None:
         st.text_input("Username", value="", key="create_user_username")
         st.text_input("Password", value="", key="create_user_password", type="password")
         st.text_input("Full Name", value="", key="create_user_fullname")
+        st.text_input("Email", value="", key="create_user_email", help="This is only used for gravatars.")
         st.checkbox("Is Admin", value=False, key="create_user_admin")
         st.form_submit_button("Create User", on_click=handle_create_user)
 
@@ -264,12 +266,22 @@ def list_space_groups_ui(name_match: str = None) -> None:
                             st.form_submit_button("Confirm", on_click=handle_delete_space_group, args=(id_,))
 
 
+def _get_gravatar_url(email: str = None) -> str:
+    """Get Gravatar URL for the specified email."""
+    if email is None:
+        email = "jashonosala@gmail.com"
+
+    size, default, rating = 200, "identicon", "g"
+    email_hash = hashlib.md5(email.lower().encode("utf-8")).hexdigest()  # noqa: S324
+    return f"https://www.gravatar.com/avatar/{email_hash}?s={size}&d={default}&r={rating}"
+
+
 def _chat_message(message_: str, is_user: bool) -> None:
     if is_user:
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar=_get_gravatar_url()):
             st.write(message_)
     else:
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant", avatar="https://github.com/docqai/docq/blob/main/docs/assets/logo.jpg?raw=true"):
             st.markdown(message_, unsafe_allow_html=True)
 
 def _personal_ask_style() -> None:
@@ -308,8 +320,8 @@ def chat_ui(feature: FeatureKey) -> None:
     """Chat UI layout."""
     prepare_for_chat(feature)
     # Style for formatting sources list.
-    st.write("""
-                 <style>
+    st.write(
+    """<style>
                   [data-testid="stMarkdownContainer"] h6 {
                       padding: 0px !important;
                     }
@@ -319,9 +331,38 @@ def chat_ui(feature: FeatureKey) -> None:
                   [data-testid="stMarkdownContainer"] blockquote {
                       margin-top: 0.5rem !important;
                     }
-                 </style>
-                 """,
-        unsafe_allow_html=True
+                  [alt="user avatar"] {
+                        border-radius: 0 !important;
+                        width: 2.5rem !important;
+                        height: 2.5rem !important;
+                        cursor: pointer;
+                    }
+        </style>
+    """, unsafe_allow_html=True
+    )
+    html("""      <script>
+                    console.log('script active');
+                    parent = window.parent.document
+
+                    const tooltip = parent.createElement('div')
+                    tooltip.setAttribute('id', 'tooltip')
+                    tooltip.setAttribute('style', 'position: absolute; z-index: 1; visibility: hidden; top: 0; left: 0; background-color: #555; color: #fff; text-align: center; padding: 5px; border-radius: 6px;')
+                    tooltip.innerHTML = 'Edit avatar!'
+
+                    const all = parent.querySelectorAll('[alt="user avatar"]')
+
+                    all.forEach((el) => {
+                        el.parentNode.insertBefore(tooltip, el.nextSibling)
+                    })
+
+                    all.forEach((el) => {
+                        el.addEventListener('click', () => {
+                            const email = el.getAttribute('src').split('?')[0].split('/').slice(-1)[0]
+                            console.log(email)
+                            window.open(`https://www.gravatar.com/${email}`, '_blank')
+                        })})
+                 </script>
+                 """
     )
     if feature.type_ == FeatureType.ASK_SHARED:
         _personal_ask_style()

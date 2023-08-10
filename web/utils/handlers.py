@@ -71,6 +71,7 @@ def handle_create_user() -> int:
         st.session_state["create_user_password"],
         st.session_state["create_user_fullname"],
         st.session_state["create_user_admin"],
+        st.session_state["create_user_email"],
     )
     log.info("Create user with id: %s", result)
     return result

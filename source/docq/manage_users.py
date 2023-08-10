@@ -1,5 +1,6 @@
 """Functions to manage users."""
 
+import hashlib
 import logging as log
 import sqlite3
 from contextlib import closing
@@ -21,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT UNIQUE,
     password TEXT,
     fullname TEXT,
+    email TEXT,
     admin BOOL default 0,
     archived BOOL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -220,13 +222,14 @@ def update_user(
         return True
 
 
-def create_user(username: str, password: str, fullname: str = None, is_admin: bool = False) -> int:
+def create_user(username: str, password: str, fullname: str = None, email: str = None, is_admin: bool = False) -> int:
     """Create a user.
 
     Args:
         username (str): The username.
         password (str): The password.
         fullname (str, optional): The full name. Defaults to ''.
+        email (str, optional): The email. Defaults to ''.
         is_admin (bool, optional): Whether the user is an admin. Defaults to False.
 
     Returns:
@@ -234,17 +237,19 @@ def create_user(username: str, password: str, fullname: str = None, is_admin: bo
     """
     log.debug("Creating user: %s", username)
     hashed_password = PH.hash(password)
+    email_hash = hashlib.md5(email.lower().encode("utf-8")).hexdigest() if email else None  # noqa: S324
 
     rowid = None
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
-            "INSERT INTO users (username, password, fullname, admin) VALUES (?, ?, ?, ?)",
+            "INSERT INTO users (username, password, fullname, email, admin) VALUES (?, ?, ?, ?, ?)",
             (
                 username,
                 hashed_password,
                 fullname,
+                email_hash,
                 is_admin,
             ),
         )
