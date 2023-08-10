@@ -8,7 +8,6 @@ from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SystemSettingsKey
 from docq.domain import FeatureKey, SpaceKey
 from st_pages import hide_pages
-from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
