@@ -50,9 +50,14 @@ class BaseTextExtractor(ABC):
         """
         self._title_css_selector = css_selector if css_selector else self._title_css_selector
 
-        title_element = soup.find(class_=self._title_css_selector) if self._title_css_selector else soup.find("h1")
+        if self._title_css_selector:
+            title_element = soup.find(class_=self._title_css_selector)
+        elif soup.find("h1"):
+            title_element = soup.find("h1")
+        else:
+            title_element = soup.find("title")
 
-        return title_element.get_text() if title_element else ""
+        return title_element.get_text() if title_element else "web page"
 
     def extract_subtitle(self, soup: any, css_selector: str = None) -> str:
         """Extract the subtitle from a web page. Defaults to the <h2> tag.
