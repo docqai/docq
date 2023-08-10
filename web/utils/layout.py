@@ -273,6 +273,37 @@ def _chat_message(message_: str, is_user: bool) -> None:
         with st.chat_message("assistant"):
             st.markdown(message_, unsafe_allow_html=True)
 
+def _personal_ask_style() -> None:
+    """Custom style for personal ask."""
+    st.write(
+    """
+    <style>
+        [data-testid="stExpander"] {
+            z-index: 1000;
+            position: fixed;
+            width: 52%;
+            background-color: white;
+            top: 46px;
+        }
+
+        [data-testid="stExpander"] .row-widget.stMultiSelect label {
+            display: none !important;
+        }
+
+        .row-widget.stButton {
+            margin-top: 1rem !important;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            [data-testid="stExpander"] {
+                background-color: #1f1f1f;
+            }
+        }
+    </style>
+    """,
+        unsafe_allow_html=True,
+    )
+
 
 def chat_ui(feature: FeatureKey) -> None:
     """Chat UI layout."""
@@ -293,29 +324,8 @@ def chat_ui(feature: FeatureKey) -> None:
                  """,
         unsafe_allow_html=True
     )
-    with st.container():
-        if feature.type_ == FeatureType.ASK_SHARED:
-            st.write("""
-                <style>
-                    [data-testid="stExpander"] {
-                        z-index: 1000;
-                        position: fixed;
-                        width: 50%;
-                        # background-color: white;
-                        top: 46px;
-                    }
-
-                    [data-testid="stExpander"] .row-widget.stMultiSelect label {
-                        display: none !important;
-                    }
-
-                    .row-widget.stButton {
-                        margin-top: 1rem !important;
-                    }
-                </style>
-            """,
-                unsafe_allow_html=True
-            )
+    if feature.type_ == FeatureType.ASK_SHARED:
+        _personal_ask_style()
         with st.expander("Including these shared spaces:"):
             spaces = list_shared_spaces()
             st.multiselect(
@@ -326,19 +336,8 @@ def chat_ui(feature: FeatureKey) -> None:
                 key=f"chat_shared_spaces_{feature.value()}",
             )
             st.checkbox("Including your documents", value=True, key="chat_personal_space")
-            # st.divider()
+
     with st.container():
-        # if feature.type_ == FeatureType.ASK_SHARED:
-        #     spaces = list_shared_spaces()
-        #     st.multiselect(
-        #         "Including these shared spaces:",
-        #         options=spaces,
-        #         default=spaces,
-        #         format_func=lambda x: x[1],
-        #         key=f"chat_shared_spaces_{feature.value()}",
-        #     )
-        #     st.checkbox("Including your documents", value=True, key="chat_personal_space")
-        #     st.divider()
         if st.button("Load chat history earlier"):
             query_chat_history(feature)
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
