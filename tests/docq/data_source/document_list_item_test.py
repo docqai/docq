@@ -1,5 +1,7 @@
 """A module for testing the DocumentList data structure serialisation."""
 
+from datetime import datetime
+import sys
 import tempfile
 import unittest
 
@@ -26,3 +28,18 @@ class TestDocumentListSerialisation(unittest.TestCase):
             )
             loaded_document_list = AzureBlob()._load_document_list(persist_path=persist_path, filename=self.filename)
             assert loaded_document_list == self.document_list
+
+    def test_create_instance_method(self):
+        """Test that the create_instance method works as expected."""
+        document_link = "document1.pdf"
+        document_text = "This is the text of the document."
+        document_list_item = DocumentListItem.create_instance(document_link=document_link, document_text=document_text)
+        assert document_list_item.link == document_link
+        assert document_list_item.indexed_on is not None
+        self.assertAlmostEqual(  # noqa: PT009
+            document_list_item.indexed_on,
+            datetime.timestamp(datetime.now().utcnow()),
+            delta=5,
+        )
+        assert document_list_item.indexed_on
+        assert document_list_item.size == sys.getsizeof(document_text)
