@@ -90,7 +90,7 @@ class DocumentListItem:
             if indexed_on is None:
                 indexed_on = datetime.timestamp(datetime.now().utcnow())
 
-            item = DocumentListItem(document_link, size_in_bytes, indexed_on)
+            item = DocumentListItem(document_link, indexed_on, size_in_bytes)
             log.debug("Created document list item: %s", item)
             return item
         except Exception as e:
