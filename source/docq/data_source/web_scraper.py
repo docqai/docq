@@ -1,8 +1,6 @@
 """Data source for scrapping a website."""
 
-import json
 import logging as log
-import os
 from typing import List
 
 from llama_index import Document
@@ -15,8 +13,6 @@ from .support.web_extracting import BeautifulSoupWebReader, GenericTextExtractor
 
 class WebScraper(SpaceDataSourceWebBased):
     """Data scraped from a website."""
-
-    _DOCUMENT_LIST_FILENAME = "document_list.json"
 
     def __init__(self, alternative_name: str = None) -> None:
         """Initialize the data source."""
@@ -56,20 +52,6 @@ class WebScraper(SpaceDataSourceWebBased):
             log.error("Error loading web documents", e)
         return documents
 
-    def get_document_list(self, space: SpaceKey, configs: dict) -> list[tuple[str, int, int]]:
-        """Returns a list of tuples containing the name, creation time, and size (Mb) of each document in the specified space's configured data source.
-
-        Args:
-            self (ManualUpload): The ManualUpload object.
-            space (SpaceKey): The space to retrieve the document list for.
-            configs (dict): A dictionary of configuration options.
-
-        Returns:
-            list[tuple[str, int, int]]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
-        """
-        persist_path = get_index_dir(space)
-        return self._load_document_list(persist_path, self._DOCUMENT_LIST_FILENAME)
-
     def _initiate_web_reader(self, space: SpaceKey, configs: dict) -> BeautifulSoupWebReader:
         """Initialize the web reader."""
 
@@ -87,17 +69,3 @@ class WebScraper(SpaceDataSourceWebBased):
             },
             lambda_metadata,
         )
-
-    def _save_document_list(self, document_list: List, persist_path: str, filename: str) -> None:
-        path = os.path.join(persist_path, filename)
-        with open(path, "w") as f:
-            json.dump(
-                document_list,
-                f,
-                ensure_ascii=False,
-            )
-
-    def _load_document_list(self, persist_path: str, filename: str) -> list[tuple[str, int, int]]:
-        path = os.path.join(persist_path, filename)
-        with open(path, "r") as f:
-            return json.load(f)
