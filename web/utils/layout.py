@@ -6,7 +6,7 @@ from typing import List, Tuple
 import streamlit as st
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SystemSettingsKey
-from docq.domain import FeatureKey, SpaceKey
+from docq.domain import DocumentListItem, FeatureKey, SpaceKey
 from st_pages import hide_pages
 from streamlit.delta_generator import DeltaGenerator
 
@@ -340,7 +340,7 @@ def _render_document_upload(space: SpaceKey, documents: List) -> None:
 
 def documents_ui(space: SpaceKey) -> None:
     """Displays the UI for managing documents in a space."""
-    documents = handle_list_documents(space)
+    documents: List[DocumentListItem] = handle_list_documents(space)
     (ds_type, _) = get_space_data_source(space)
 
     show_upload = ds_type == "MANUAL_UPLOAD"
@@ -356,9 +356,11 @@ def documents_ui(space: SpaceKey) -> None:
     if documents:
         st.divider()
         st.markdown(f"**Document Count**: {len(documents)}")
-        for i, (filename, time, size) in enumerate(documents):
-            with st.expander(filename):
-                st.markdown(f"Size: {format_filesize(size)} | Last Modified: {format_timestamp(time)}")
+        for i, document in enumerate(documents):
+            with st.expander(document.link):
+                st.markdown(
+                    f"Size: {format_filesize(document.size)} | Last Modified: {format_timestamp(document.indexed_on)}"
+                )
 
                 if show_delete:
                     st.button(
@@ -366,7 +368,7 @@ def documents_ui(space: SpaceKey) -> None:
                         key=f"delete_file_{i}_{space.value()}",
                         on_click=handle_delete_document,
                         args=(
-                            filename,
+                            document.link,
                             space,
                         ),
                     )

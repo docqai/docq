@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from docq.config import SpaceType
 from docq.data_source.main import DocumentMetadata
 from docq.data_source.manual_upload import ManualUpload
-from docq.domain import SpaceKey
+from docq.domain import DocumentListItem, SpaceKey
 
 
 class TestManualUpload(unittest.TestCase):  # noqa: D101
@@ -26,7 +26,7 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
             file1 = mock_os_dir_entry()
             # use configure_mock because `dir_entry` has a property `name`
             file1.configure_mock(
-                name="abc.pdf",
+                name="misc/test_files/Research-Revealing-the-True-GenAI-Data-Exposure-Risk.pdf",
                 is_file=True,
             )
             file1.stat.return_value = MagicMock(st_ctime=1234567890, st_size=1024)
@@ -37,8 +37,8 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
             document_list = self.manual_upload.get_document_list(space, configs)
 
             assert document_list == [
-                (
-                    "abc.pdf",
+                DocumentListItem(
+                    "misc/test_files/Research-Revealing-the-True-GenAI-Data-Exposure-Risk.pdf",
                     1234567890,
                     1024,
                 )

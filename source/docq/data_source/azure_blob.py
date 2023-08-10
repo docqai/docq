@@ -3,12 +3,14 @@
 import logging as log
 from datetime import datetime
 from typing import List
+from urllib.parse import urlparse
 
-from azure.core.exceptions import ClientAuthenticationError
-from llama_index import Document, download_loader
+from llama_index import Document
 
 from ..domain import ConfigKey, SpaceKey
+from ..support.store import get_index_dir
 from .main import DocumentMetadata, SpaceDataSourceFileBased
+from .support.opendal_reader.base import OpendalReader
 
 
 class AzureBlob(SpaceDataSourceFileBased):
@@ -43,51 +45,45 @@ class AzureBlob(SpaceDataSourceFileBased):
     def load(self, space: SpaceKey, configs: dict) -> List[Document]:
         """Load the documents from azure blob container."""
 
-        # str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower(): self.__class__.__base_.__name__,
-        def lambda_apend_metadata(doc: Document) -> Document:
-            doc.metadata.update(
-                {
-                    str(DocumentMetadata.SPACE_ID.name).lower(): space.id_,
-                    str(DocumentMetadata.SPACE_TYPE.name).lower(): space.type_.name,
-                    str(DocumentMetadata.DATA_SOURCE_NAME.name).lower(): self.get_name(),
-                    str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower(): self.__class__.__base__.__name__,
-                }
-            )
-            return doc
+        def lambda_metadata(x: str) -> dict:
+            return {
+                str(DocumentMetadata.FILE_PATH.name).lower(): x,
+                str(DocumentMetadata.SPACE_ID.name).lower(): space.id_,
+                str(DocumentMetadata.SPACE_TYPE.name).lower(): space.type_.name,
+                str(DocumentMetadata.DATA_SOURCE_NAME.name).lower(): self.get_name(),
+                str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower(): self.__class__.__base__.__name__,
+                str(DocumentMetadata.SOURCE_URI.name).lower(): x,
+                str(DocumentMetadata.INDEXED_ON.name).lower(): datetime.timestamp(datetime.now().utcnow()),
+            }
 
-        AzStorageBlobReader = download_loader("AzStorageBlobReader")  # noqa: N806
-        log.debug("account_url: %s", configs["account_url"])
-        log.debug("container_name: %s", configs["container_name"])
-        loader = AzStorageBlobReader(
-            container_name=configs["container_name"],
-            account_url=configs["account_url"],
-            credential=configs["credential"],
+        parsed_endpoint = urlparse(configs["account_url"])
+
+        # Handle Azurite endpoint https://github.com/Azure/Azurite vs a real endpoint
+        if parsed_endpoint.hostname == "127.0.0.1" or parsed_endpoint.hostname == "localhost":
+            account_name = parsed_endpoint.path.split("/")[1]
+        else:
+            account_name = parsed_endpoint.hostname.split(".")[0]
+
+        log.debug("account_name: %s", account_name)
+
+        options = {
+            "container": configs["container_name"],
+            "endpoint": configs["account_url"],
+            "account_name": account_name,
+            "account_key": configs["credential"],
+        }
+
+        loader = OpendalReader(
+            scheme="azblob",
+            file_metadata=lambda_metadata,
+            **options,
         )
 
         documents = loader.load_data()
 
-        documents = list(map(lambda_apend_metadata, documents))
+        file_list = loader.get_document_list()
+        log.debug("Number of files: %s", len(file_list))
+        persist_path = get_index_dir(space)
+        self._save_document_list(file_list, persist_path, self._DOCUMENT_LIST_FILENAME)
 
         return documents
-
-    def get_document_list(self, space: SpaceKey, configs: dict) -> list[tuple[str, int, int]]:
-        """Get the list of documents."""
-        from azure.storage.blob import ContainerClient
-
-        try:
-            container_client = ContainerClient(configs["account_url"], configs["container_name"], configs["credential"])
-            blobs_list = container_client.list_blobs()
-            return list(map(lambda b: (b.name, datetime.timestamp(b.last_modified), b.size), blobs_list))
-        except ClientAuthenticationError as e:
-            log.error("Error - get_document_list(): authenticating to Azure Blob: %s", e)
-            raise Exception(
-                "Ooops! something went wrong authenticating to Azure storage. Please check your datasource credentials are correct and try again. If using a SAS Token make sure it hasn't expired.",
-            ) from e
-        except PermissionError as e:
-            log.error("Error - get_document_list(): checking permissions on Azure Blob: %s", e)
-            raise Exception(
-                "Ooops! something went wrong checking permissions on Azure storage. Please check your datasource credentials are correct and try again. Make sure you have 'Read' and 'List' permission for the Blob container."
-            ) from e
-        except Exception as e:
-            log.error("Error - get_document_list(): %s", e)
-            raise Exception("Ooops! something that we didn't anticipate went wrong, sorry.") from e
