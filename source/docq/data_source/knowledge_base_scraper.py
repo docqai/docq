@@ -12,8 +12,6 @@ from .web_scraper import WebScraper
 class KnowledgeBaseScraper(WebScraper):
     """Data source for scrapping articles from a knowledge base."""
 
-    _DOCUMENT_LIST_FILENAME = "document_list.json"
-
     def __init__(self) -> None:
         """Initialize the data source."""
         super().__init__("Knowledge Base Scraper")

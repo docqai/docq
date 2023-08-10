@@ -4,7 +4,7 @@ from typing import List
 
 from llama_index import Document
 
-from ..domain import ConfigKey, SpaceKey
+from ..domain import ConfigKey, DocumentListItem, SpaceKey
 from .main import SpaceDataSourceFileBased
 
 
@@ -26,7 +26,7 @@ class AwsS3(SpaceDataSourceFileBased):
         # TODO: use aws s3 bucket to load the documents
         pass
 
-    def get_document_list(self, space: SpaceKey, configs: dict) -> list[tuple[str, int, int]]:
+    def get_document_list(self, space: SpaceKey, configs: dict) -> List[DocumentListItem]:
         """Returns a list of tuples containing the name, creation time, and size (Mb) of each document in the specified space's cnfigured data source.
 
         Args:
@@ -34,7 +34,7 @@ class AwsS3(SpaceDataSourceFileBased):
             configs (dict): A dictionary of configuration options.
 
         Returns:
-            list[tuple[str, int, int]]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
+            List[DocumentListItem]: A list of tuples containing the name, creation time, and size of each document in the specified space's upload directory.
         """
         # TODO: use aws s3 bucket to get the document list
         pass
