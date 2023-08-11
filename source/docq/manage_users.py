@@ -1,6 +1,5 @@
 """Functions to manage users."""
 
-import hashlib
 import logging as log
 import sqlite3
 from contextlib import closing
