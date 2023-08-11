@@ -332,37 +332,52 @@ def chat_ui(feature: FeatureKey) -> None:
                       margin-top: 0.5rem !important;
                     }
                   [alt="user avatar"] {
-                        border-radius: 0 !important;
+                        border-radius: 8px !important;
                         width: 2.5rem !important;
                         height: 2.5rem !important;
                         cursor: pointer;
                     }
+                  [alt="assistant avatar"] {
+                        border-radius: 0 !important;
+                        width: 2.5rem !important;
+                        height: 2.5rem !important;
+                    }
         </style>
     """, unsafe_allow_html=True
     )
-    html("""      <script>
-                    console.log('script active');
-                    parent = window.parent.document
+    html("""
+         <script>
+            console.log('script active');
+            parent = window.parent.document
 
-                    const tooltip = parent.createElement('div')
-                    tooltip.setAttribute('id', 'tooltip')
-                    tooltip.setAttribute('style', 'position: absolute; z-index: 1; visibility: hidden; top: 0; left: 0; background-color: #555; color: #fff; text-align: center; padding: 5px; border-radius: 6px;')
-                    tooltip.innerHTML = 'Edit avatar!'
+            const tooltip = parent.createElement('div')
+            const activeTheme = localStorage.getItem('stActiveTheme-/-v1')
+            const theme = JSON.parse(activeTheme)
+            console.log('Debug theme', theme)
+            tooltip.setAttribute('class', 'chat-tooltip')
+            tooltip.setAttribute('style', 'position: absolute; z-index: 1; visibility: hidden; top: 0; left: 0; background-color: #555; color: #fff; text-align: center; padding: 5px; border-radius: 6px;')
+            tooltip.innerHTML = 'Edit avatar!'
 
-                    const all = parent.querySelectorAll('[alt="user avatar"]')
+            const all = parent.querySelectorAll('[alt="user avatar"]')
 
-                    all.forEach((el) => {
-                        el.parentNode.insertBefore(tooltip, el.nextSibling)
-                    })
+            all.forEach((el) => {
+                el.parentNode.insertBefore(tooltip, el.nextSibling)
+            })
 
-                    all.forEach((el) => {
-                        el.addEventListener('click', () => {
-                            const email = el.getAttribute('src').split('?')[0].split('/').slice(-1)[0]
-                            console.log(email)
-                            window.open(`https://www.gravatar.com/${email}`, '_blank')
-                        })})
-                 </script>
-                 """
+            /**
+             * Open users gravatar profile in new tab.
+             */
+            all.forEach((el) => {
+                el.addEventListener('click', () => {
+                    const email = el.getAttribute('src').split('?')[0].split('/').slice(-1)[0]
+                    if (email) {
+                        window.open(`https://www.gravatar.com/${email}`, '_blank')
+                    } else {
+                        window.open('https://www.gravatar.com/', '_blank')
+                    }
+            })})
+        </script>
+        """
     )
     if feature.type_ == FeatureType.ASK_SHARED:
         _personal_ask_style()
