@@ -56,32 +56,39 @@ _chat_ui_script = """
 <script>
     parent = window.parent.document || window.document
 
-    const activeTheme = localStorage.getItem('stActiveTheme-/-v1')
+    const activeTheme = localStorage.getItem('stActiveTheme-/Ask_Shared_Documents-v1') || localStorage.getItem('stActiveTheme-/-v1')
     const theme = JSON.parse(activeTheme)
-
-    // Space Selector
-
     const spaceSelector = parent.getElementsByClassName('streamlit-expander')[0]
-    if (spaceSelector) {
-        const _parent = spaceSelector.parentNode.parentNode
-        const _container = spaceSelector.parentNode
-        const parentWidth = _parent.offsetWidth
-        _container.setAttribute('style', `width: ${parentWidth}px;`)
-        console.log('Debug Container', _container)
+    const spaceSelectorPresent = spaceSelector && spaceSelector.parentNode && spaceSelector.parentNode.parentNode
+
+    /* Space Selector. */
+
+    const resizeSelector = (spaceSelector) => {
+        if (spaceSelectorPresent) {
+            const _parent = spaceSelector.parentNode.parentNode
+            const _container = spaceSelector.parentNode
+            const parentWidth = _parent.offsetWidth
+            _container.setAttribute('style', `width: ${parentWidth}px;`)
+        }
+    };
+
+    const formatSpaceSelector = (theme = null) => {
+        resizeSelector(spaceSelector)
+
+        // Set background color to the space selector based on active theme.
+        if (theme && theme === 'Light' && spaceSelector) {
+            spaceSelector.setAttribute('style', 'background-color: #fff;');
+        } else if (theme && theme === 'Dark' && spaceSelector) {
+            spaceSelector.setAttribute('style', 'background-color: #1f1f1f;');
+        }
     }
 
-    // Set background color to the space selector based on active theme
+    formatSpaceSelector(theme.name)
 
-    if (theme && theme['name'] === 'Light' && spaceSelector) {
-        spaceSelector.setAttribute('style', 'background-color: #fff;');
-    } else if (theme && theme['name'] === 'Dark' && spaceSelector) {
-        spaceSelector.setAttribute('style', 'background-color: #1f1f1f;');
-    }
-
+    /* Gravatar */
     const all = parent.querySelectorAll('[alt="user avatar"]')
 
     // Open users gravatar profile in new tab.
-
     all.forEach((el) => {
         el.addEventListener('click', () => {
             const email = el.getAttribute('src').split('?')[0].split('/').slice(-1)[0]
@@ -91,6 +98,23 @@ _chat_ui_script = """
                 window.open('https://www.gravatar.com/', '_blank')
             }
     })})
+
+    // Update space selector theme automatically on theme change
+    window.onstorage = (e) => {
+        if (e.key === 'stActiveTheme-/Ask_Shared_Documents-v1' || e.key === 'stActiveTheme-/-v1') {
+            const activeTheme = localStorage.getItem('stActiveTheme-/Ask_Shared_Documents-v1') || localStorage.getItem('stActiveTheme-/-v1')
+            const theme = JSON.parse(activeTheme)
+            formatSpaceSelector(theme.name)
+        }
+    }
+
+    // Format Logout button and listen for resize event.
+    if (spaceSelectorPresent) {
+      const logoutBtn = parent.querySelectorAll('button[kind="secondary"]')[0]
+      logoutBtn.setAttribute('style', 'margin-top: 1rem !important;');
+      const resizeObserver = new ResizeObserver(() => resizeSelector(spaceSelector))
+      resizeObserver.observe(spaceSelector.parentNode.parentNode)
+    }
 
 </script>
 """
@@ -341,13 +365,7 @@ def _personal_ask_style() -> None:
         [data-testid="stExpander"] {
             z-index: 1000;
             position: fixed;
-            width: fit-content;
             top: 46px;
-        }
-
-        .element-container  iframe {
-            height: 0 !important;
-            min-height: 0 !important;
         }
 
         [data-testid="stExpander"] .row-widget.stMultiSelect label {
@@ -415,13 +433,13 @@ def chat_ui(feature: FeatureKey) -> None:
                 st.markdown(f"#### {day}")
             _chat_message(text, is_user)
 
-    # st.divider()
     st.chat_input(
         "Type your question here",
         key=f"chat_input_{feature.value()}",
         on_submit=handle_chat_input,
         args=(feature,),
     )
+    chat_ui_script()
 
 
 def _render_document_upload(space: SpaceKey, documents: List) -> None:
@@ -628,15 +646,3 @@ def show_space_details_ui(space: SpaceKey) -> None:
 def list_logs_ui(type_: LogType) -> None:
     """List logs per log type."""
     st.info("Logs are coming soon.")
-
-
-def ask_shared_layout_style() -> None:
-    """Customize the shared layout style."""
-    html(
-        """
-        <script>
-            const container = document.getElementsByClassName("main")
-            console.log(container)
-        </script>
-        """
-    )
