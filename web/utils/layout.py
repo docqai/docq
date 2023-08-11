@@ -8,6 +8,7 @@ from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SystemSettingsKey
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
 from st_pages import hide_pages
+from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
@@ -29,6 +30,7 @@ from .handlers import (
     handle_delete_document,
     handle_delete_space_group,
     handle_delete_user_group,
+    handle_get_user_email,
     handle_list_documents,
     handle_login,
     handle_logout,
@@ -50,6 +52,53 @@ from .handlers import (
 )
 from .sessions import get_auth_session, get_chat_session
 
+_chat_ui_script = """
+<script>
+    parent = window.parent.document || window.document
+
+    const activeTheme = localStorage.getItem('stActiveTheme-/-v1')
+    const theme = JSON.parse(activeTheme)
+
+    // Space Selector
+
+    const spaceSelector = parent.getElementsByClassName('streamlit-expander')[0]
+    if (spaceSelector) {
+        const _parent = spaceSelector.parentNode.parentNode
+        const _container = spaceSelector.parentNode
+        const parentWidth = _parent.offsetWidth
+        _container.setAttribute('style', `width: ${parentWidth}px;`)
+        console.log('Debug Container', _container)
+    }
+
+    // Set background color to the space selector based on active theme
+
+    if (theme && theme['name'] === 'Light' && spaceSelector) {
+        spaceSelector.setAttribute('style', 'background-color: #fff;');
+    } else if (theme && theme['name'] === 'Dark' && spaceSelector) {
+        spaceSelector.setAttribute('style', 'background-color: #1f1f1f;');
+    }
+
+    const all = parent.querySelectorAll('[alt="user avatar"]')
+
+    // Open users gravatar profile in new tab.
+
+    all.forEach((el) => {
+        el.addEventListener('click', () => {
+            const email = el.getAttribute('src').split('?')[0].split('/').slice(-1)[0]
+            if (email) {
+                window.open(`https://www.gravatar.com/${email}`, '_blank')
+            } else {
+                window.open('https://www.gravatar.com/', '_blank')
+            }
+    })})
+
+</script>
+"""
+
+def chat_ui_script() -> None:
+    """A javascript snippet that runs on the chat UI."""
+    st.write("<style> iframe {min-height: 0; height: 0}</style>", unsafe_allow_html=True)
+    html(_chat_ui_script)
 
 def production_layout() -> None:
     """Layout for the production environment."""
@@ -187,6 +236,7 @@ def list_users_ui(username_match: str = None) -> None:
                         st.text_input("Username", value=username, key=f"update_user_{id_}_username")
                         st.text_input("Password", type="password", key=f"update_user_{id_}_password")
                         st.text_input("Full Name", value=fullname, key=f"update_user_{id_}_fullname")
+                        st.text_input("Email", value="", key=f"update_user_{id_}_email")
                         st.checkbox("Is Admin", value=is_admin, key=f"update_user_{id_}_admin")
                         st.checkbox("Is Archived", value=is_archived, key=f"update_user_{id_}_archived")
                         st.form_submit_button("Save", on_click=handle_update_user, args=(id_,))
@@ -265,11 +315,11 @@ def list_space_groups_ui(name_match: str = None) -> None:
                             st.form_submit_button("Confirm", on_click=handle_delete_space_group, args=(id_,))
 
 
-def _get_gravatar_url(email: str = None) -> str:
+def _get_gravatar_url() -> str:
     """Get Gravatar URL for the specified email."""
+    email = handle_get_user_email()
     if email is None:
-        email = "jashonosala@gmail.com"
-
+        email = "example@example.com"
     size, default, rating = 200, "identicon", "g"
     email_hash = hashlib.md5(email.lower().encode("utf-8")).hexdigest()  # noqa: S324
     return f"https://www.gravatar.com/avatar/{email_hash}?s={size}&d={default}&r={rating}"
@@ -291,24 +341,19 @@ def _personal_ask_style() -> None:
         [data-testid="stExpander"] {
             z-index: 1000;
             position: fixed;
-            width: 52%;
-            background-color: white;
+            width: fit-content;
             top: 46px;
+        }
+
+        .element-container  iframe {
+            height: 0 !important;
+            min-height: 0 !important;
         }
 
         [data-testid="stExpander"] .row-widget.stMultiSelect label {
             display: none !important;
         }
 
-        .row-widget.stButton {
-            margin-top: 1rem !important;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            [data-testid="stExpander"] {
-                background-color: #1f1f1f;
-            }
-        }
     </style>
     """,
         unsafe_allow_html=True,
@@ -321,77 +366,45 @@ def chat_ui(feature: FeatureKey) -> None:
     # Style for formatting sources list.
     st.write(
     """<style>
-                  [data-testid="stMarkdownContainer"] h6 {
-                      padding: 0px !important;
-                    }
-                  [data-testid="stMarkdownContainer"] h5 {
-                      padding: 1rem 0 0 0 !important;
-                    }
-                  [data-testid="stMarkdownContainer"] blockquote {
-                      margin-top: 0.5rem !important;
-                    }
-                  [alt="user avatar"] {
-                        border-radius: 8px !important;
-                        width: 2.5rem !important;
-                        height: 2.5rem !important;
-                        cursor: pointer;
-                    }
-                  [alt="assistant avatar"] {
-                        border-radius: 0 !important;
-                        width: 2.5rem !important;
-                        height: 2.5rem !important;
-                    }
+            [data-testid="stMarkdownContainer"] h6 {
+                padding: 0px !important;
+            }
+
+            [data-testid="stMarkdownContainer"] h5 {
+                padding: 1rem 0 0 0 !important;
+            }
+
+            [data-testid="stMarkdownContainer"] blockquote {
+                margin-top: 0.5rem !important;
+            }
+
+            [alt="user avatar"], [alt="assistant avatar"] {
+                border-radius: 8px;
+                width: 2.5rem !important;
+                height: 2.5rem !important;
+                cursor: pointer;
+            }
+
+            [alt="assistant avatar"] {
+                border-radius: 0;
+            }
+
         </style>
     """, unsafe_allow_html=True
     )
-    html("""
-         <script>
-            console.log('script active');
-            parent = window.parent.document
-
-            const tooltip = parent.createElement('div')
-            const activeTheme = localStorage.getItem('stActiveTheme-/-v1')
-            const theme = JSON.parse(activeTheme)
-            console.log('Debug theme', theme)
-            tooltip.setAttribute('class', 'chat-tooltip')
-            tooltip.setAttribute('style', 'position: absolute; z-index: 1; visibility: hidden; top: 0; left: 0; background-color: #555; color: #fff; text-align: center; padding: 5px; border-radius: 6px;')
-            tooltip.innerHTML = 'Edit avatar!'
-
-            const all = parent.querySelectorAll('[alt="user avatar"]')
-
-            all.forEach((el) => {
-                el.parentNode.insertBefore(tooltip, el.nextSibling)
-            })
-
-            /**
-             * Open users gravatar profile in new tab.
-             */
-            all.forEach((el) => {
-                el.addEventListener('click', () => {
-                    const email = el.getAttribute('src').split('?')[0].split('/').slice(-1)[0]
-                    if (email) {
-                        window.open(`https://www.gravatar.com/${email}`, '_blank')
-                    } else {
-                        window.open('https://www.gravatar.com/', '_blank')
-                    }
-            })})
-        </script>
-        """
-    )
-    if feature.type_ == FeatureType.ASK_SHARED:
-        _personal_ask_style()
-        with st.expander("Including these shared spaces:"):
-            spaces = list_shared_spaces()
-            st.multiselect(
-                "Including these shared spaces:",
-                options=spaces,
-                default=spaces,
-                format_func=lambda x: x[1],
-                key=f"chat_shared_spaces_{feature.value()}",
-            )
-            st.checkbox("Including your documents", value=True, key="chat_personal_space")
-
     with st.container():
+        if feature.type_ == FeatureType.ASK_SHARED:
+            _personal_ask_style()
+            with st.expander("Including these shared spaces:"):
+                spaces = list_shared_spaces()
+                st.multiselect(
+                    "Including these shared spaces:",
+                    options=spaces,
+                    default=spaces,
+                    format_func=lambda x: x[1],
+                    key=f"chat_shared_spaces_{feature.value()}",
+                )
+                st.checkbox("Including your documents", value=True, key="chat_personal_space")
         if st.button("Load chat history earlier"):
             query_chat_history(feature)
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))

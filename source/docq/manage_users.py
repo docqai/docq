@@ -169,6 +169,7 @@ def update_user(
     username: str = None,
     password: str = None,
     fullname: str = None,
+    email: str = None,
     is_admin: bool = False,
     is_archived: bool = False,
 ) -> bool:
@@ -179,6 +180,7 @@ def update_user(
         username (str, optional): The username. Defaults to None.
         password (str, optional): The password. Defaults to None.
         fullname (str, optional): The full name. Defaults to None.
+        email (str, optional): The email. Defaults to None.
         is_admin (bool, optional): Whether the user is an admin. Defaults to None.
         is_archived (bool, optional): Whether the user is archived. Defaults to None.
 
@@ -202,6 +204,9 @@ def update_user(
     if fullname:
         query += ", fullname = ?"
         params.append(fullname)
+    if email:
+        query += ", email = ?"
+        params.append(email)
 
     query += ", admin = ?"
     params.append(is_admin)
@@ -237,7 +242,6 @@ def create_user(username: str, password: str, fullname: str = None, email: str =
     """
     log.debug("Creating user: %s", username)
     hashed_password = PH.hash(password)
-    email_hash = hashlib.md5(email.lower().encode("utf-8")).hexdigest() if email else None  # noqa: S324
 
     rowid = None
     with closing(
@@ -249,7 +253,7 @@ def create_user(username: str, password: str, fullname: str = None, email: str =
                 username,
                 hashed_password,
                 fullname,
-                email_hash,
+                email,
                 is_admin,
             ),
         )
@@ -312,3 +316,12 @@ def archive_user(id_: int) -> bool:
         )
         connection.commit()
         return True
+
+
+def get_user_email(id_: int) -> str:
+    """Get a user's email."""
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        result = cursor.execute("SELECT email FROM users WHERE id = ?", (id_,)).fetchone()
+        return result[0] if result else ""
