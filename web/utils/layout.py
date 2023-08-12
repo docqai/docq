@@ -64,7 +64,7 @@ _chat_ui_script = """
     /* Space Selector. */
 
     const resizeSelector = (spaceSelector) => {
-        if (spaceSelectorPresent) {
+        if (spaceSelectorPresent && spaceSelector) {
             const _parent = spaceSelector.parentNode.parentNode
             const _container = spaceSelector.parentNode
             const parentWidth = _parent.offsetWidth
@@ -432,6 +432,7 @@ def chat_ui(feature: FeatureKey) -> None:
                 day = format_datetime(time)
                 st.markdown(f"#### {day}")
             _chat_message(text, is_user)
+        chat_ui_script()
 
     st.chat_input(
         "Type your question here",
@@ -439,7 +440,6 @@ def chat_ui(feature: FeatureKey) -> None:
         on_submit=handle_chat_input,
         args=(feature,),
     )
-    chat_ui_script()
 
 
 def _render_document_upload(space: SpaceKey, documents: List) -> None:
