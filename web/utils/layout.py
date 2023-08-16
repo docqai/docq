@@ -30,7 +30,7 @@ from .handlers import (
     handle_delete_document,
     handle_delete_space_group,
     handle_delete_user_group,
-    handle_get_user_email,
+    handle_get_gravatar_email,
     handle_list_documents,
     handle_login,
     handle_logout,
@@ -237,7 +237,6 @@ def create_user_ui() -> None:
         st.text_input("Username", value="", key="create_user_username")
         st.text_input("Password", value="", key="create_user_password", type="password")
         st.text_input("Full Name", value="", key="create_user_fullname")
-        st.text_input("Email", value="", key="create_user_email", help="This is only used for gravatars.")
         st.checkbox("Is Admin", value=False, key="create_user_admin")
         st.form_submit_button("Create User", on_click=handle_create_user)
 
@@ -260,7 +259,6 @@ def list_users_ui(username_match: str = None) -> None:
                         st.text_input("Username", value=username, key=f"update_user_{id_}_username")
                         st.text_input("Password", type="password", key=f"update_user_{id_}_password")
                         st.text_input("Full Name", value=fullname, key=f"update_user_{id_}_fullname")
-                        st.text_input("Email", value="", key=f"update_user_{id_}_email")
                         st.checkbox("Is Admin", value=is_admin, key=f"update_user_{id_}_admin")
                         st.checkbox("Is Archived", value=is_archived, key=f"update_user_{id_}_archived")
                         st.form_submit_button("Save", on_click=handle_update_user, args=(id_,))
@@ -341,10 +339,10 @@ def list_space_groups_ui(name_match: str = None) -> None:
 
 def _get_gravatar_url() -> str:
     """Get Gravatar URL for the specified email."""
-    email = handle_get_user_email()
+    email = handle_get_gravatar_email()
     if email is None:
         email = "example@example.com"
-    size, default, rating = 200, "identicon", "g"
+    size, default, rating = 200, "retro", "g"
     email_hash = hashlib.md5(email.lower().encode("utf-8")).hexdigest()  # noqa: S324
     return f"https://www.gravatar.com/avatar/{email_hash}?s={size}&d={default}&r={rating}"
 

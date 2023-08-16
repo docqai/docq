@@ -13,4 +13,5 @@ feature_enabled(FeatureType.ASK_SHARED)
 add_page_title()
 
 feature = FeatureKey(FeatureType.ASK_SHARED, get_authenticated_user_id())
+
 chat_ui(feature)

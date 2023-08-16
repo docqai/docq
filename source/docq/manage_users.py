@@ -21,7 +21,6 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT UNIQUE,
     password TEXT,
     fullname TEXT,
-    email TEXT,
     admin BOOL default 0,
     archived BOOL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -168,7 +167,6 @@ def update_user(
     username: str = None,
     password: str = None,
     fullname: str = None,
-    email: str = None,
     is_admin: bool = False,
     is_archived: bool = False,
 ) -> bool:
@@ -179,7 +177,6 @@ def update_user(
         username (str, optional): The username. Defaults to None.
         password (str, optional): The password. Defaults to None.
         fullname (str, optional): The full name. Defaults to None.
-        email (str, optional): The email. Defaults to None.
         is_admin (bool, optional): Whether the user is an admin. Defaults to None.
         is_archived (bool, optional): Whether the user is archived. Defaults to None.
 
@@ -203,9 +200,6 @@ def update_user(
     if fullname:
         query += ", fullname = ?"
         params.append(fullname)
-    if email:
-        query += ", email = ?"
-        params.append(email)
 
     query += ", admin = ?"
     params.append(is_admin)
@@ -226,14 +220,13 @@ def update_user(
         return True
 
 
-def create_user(username: str, password: str, fullname: str = None, email: str = None, is_admin: bool = False) -> int:
+def create_user(username: str, password: str, fullname: str = None, is_admin: bool = False) -> int:
     """Create a user.
 
     Args:
         username (str): The username.
         password (str): The password.
         fullname (str, optional): The full name. Defaults to ''.
-        email (str, optional): The email. Defaults to ''.
         is_admin (bool, optional): Whether the user is an admin. Defaults to False.
 
     Returns:
@@ -247,12 +240,11 @@ def create_user(username: str, password: str, fullname: str = None, email: str =
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
-            "INSERT INTO users (username, password, fullname, email, admin) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO users (username, password, fullname, admin) VALUES (?, ?, ?, ?)",
             (
                 username,
                 hashed_password,
                 fullname,
-                email,
                 is_admin,
             ),
         )
@@ -316,11 +308,10 @@ def archive_user(id_: int) -> bool:
         connection.commit()
         return True
 
-
 def get_user_email(id_: int) -> str:
     """Get a user's email."""
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        result = cursor.execute("SELECT email FROM users WHERE id = ?", (id_,)).fetchone()
+        result = cursor.execute("SELECT username FROM users WHERE id = ?", (id_,)).fetchone()
         return result[0] if result else ""

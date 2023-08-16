@@ -70,7 +70,6 @@ def handle_create_user() -> int:
         st.session_state["create_user_username"],
         st.session_state["create_user_password"],
         st.session_state["create_user_fullname"],
-        st.session_state["create_user_email"],
         st.session_state["create_user_admin"],
     )
     log.info("Create user with id: %s", result)
@@ -83,7 +82,6 @@ def handle_update_user(id_: int) -> bool:
         st.session_state[f"update_user_{id_}_username"],
         st.session_state[f"update_user_{id_}_password"],
         st.session_state[f"update_user_{id_}_fullname"],
-        st.session_state[f"update_user_{id_}_email"],
         st.session_state[f"update_user_{id_}_admin"],
         st.session_state[f"update_user_{id_}_archived"],
     )
@@ -366,6 +364,7 @@ def prepare_for_chat(feature: domain.FeatureKey) -> None:
                 SessionKeyNameForChat.HISTORY,
             )
 
-def handle_get_user_email() -> str:
+
+def handle_get_gravatar_email() -> str:
     """Get the email of the authenticated user."""
     return manage_users.get_user_email(get_authenticated_user_id())
