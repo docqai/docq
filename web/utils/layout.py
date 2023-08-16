@@ -342,7 +342,7 @@ def _get_gravatar_url() -> str:
     email = handle_get_gravatar_email()
     if email is None:
         email = "example@example.com"
-    size, default, rating = 200, "retro", "g"
+    size, default, rating = 200, "identicon", "g"
     email_hash = hashlib.md5(email.lower().encode("utf-8")).hexdigest()  # noqa: S324
     return f"https://www.gravatar.com/avatar/{email_hash}?s={size}&d={default}&r={rating}"
 
