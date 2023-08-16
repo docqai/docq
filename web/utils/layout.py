@@ -1,6 +1,5 @@
 """Layout components for the web app."""
 
-import hashlib
 from typing import List, Tuple
 
 import streamlit as st
@@ -30,7 +29,7 @@ from .handlers import (
     handle_delete_document,
     handle_delete_space_group,
     handle_delete_user_group,
-    handle_get_gravatar_email,
+    handle_get_gravatar_url,
     handle_list_documents,
     handle_login,
     handle_logout,
@@ -50,7 +49,7 @@ from .handlers import (
     prepare_for_chat,
     query_chat_history,
 )
-from .sessions import get_auth_session, get_chat_session
+from .sessions import get_auth_session, get_authenticated_username, get_chat_session
 
 _chat_ui_script = """
 <script>
@@ -337,22 +336,13 @@ def list_space_groups_ui(name_match: str = None) -> None:
                             st.form_submit_button("Confirm", on_click=handle_delete_space_group, args=(id_,))
 
 
-def _get_gravatar_url() -> str:
-    """Get Gravatar URL for the specified email."""
-    email = handle_get_gravatar_email()
-    if email is None:
-        email = "example@example.com"
-    size, default, rating = 200, "identicon", "g"
-    email_hash = hashlib.md5(email.lower().encode("utf-8")).hexdigest()  # noqa: S324
-    return f"https://www.gravatar.com/avatar/{email_hash}?s={size}&d={default}&r={rating}"
-
-
 def _chat_message(message_: str, is_user: bool) -> None:
     if is_user:
-        with st.chat_message("user", avatar=_get_gravatar_url()):
+        with st.chat_message("user", avatar=handle_get_gravatar_url()):
             st.write(message_)
     else:
-        with st.chat_message("assistant", avatar="https://github.com/docqai/docq/blob/main/docs/assets/logo.jpg?raw=true"):
+        with st.chat_message("assistant",
+            avatar="https://github.com/docqai/docq/blob/main/docs/assets/logo.jpg?raw=true"):
             st.markdown(message_, unsafe_allow_html=True)
 
 def _personal_ask_style() -> None:

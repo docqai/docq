@@ -1,6 +1,7 @@
 """Handlers for the web app."""
 
 import asyncio
+import hashlib
 import logging as log
 import math
 from datetime import datetime
@@ -31,6 +32,7 @@ from .constants import (
 )
 from .sessions import (
     get_authenticated_user_id,
+    get_authenticated_username,
     get_chat_session,
     set_auth_session,
     set_chat_session,
@@ -39,6 +41,7 @@ from .sessions import (
 
 
 def handle_login(username: str, password: str) -> bool:
+    """Handle login."""
     result = manage_users.authenticate(username, password)
     log.info("Login result: %s", result)
     if result:
@@ -47,6 +50,7 @@ def handle_login(username: str, password: str) -> bool:
                 SessionKeyNameForAuth.ID.name: result[0],
                 SessionKeyNameForAuth.NAME.name: result[1],
                 SessionKeyNameForAuth.ADMIN.name: result[2],
+                SessionKeyNameForAuth.USERNAME.name: result[3],
             }
         )
         set_settings_session(
@@ -364,7 +368,11 @@ def prepare_for_chat(feature: domain.FeatureKey) -> None:
                 SessionKeyNameForChat.HISTORY,
             )
 
-
-def handle_get_gravatar_email() -> str:
-    """Get the email of the authenticated user."""
-    return manage_users.get_user_email(get_authenticated_user_id())
+def handle_get_gravatar_url() -> str:
+    """Get Gravatar URL for the specified email."""
+    email = get_authenticated_username()
+    if email is None:
+        email = "example@example.com"
+    size, default, rating = 200, "identicon", "g"
+    email_hash = hashlib.md5(email.lower().encode("utf-8")).hexdigest()  # noqa: S324
+    return f"https://www.gravatar.com/avatar/{email_hash}?s={size}&d={default}&r={rating}"

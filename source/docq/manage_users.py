@@ -103,7 +103,7 @@ def authenticate(username: str, password: str) -> Tuple[int, str, bool]:
             log.debug("User found: %s", selected)
             (id_, saved_password, fullname, is_admin) = selected
             try:
-                result = (id_, fullname, is_admin) if PH.verify(saved_password, password) else None
+                result = (id_, fullname, is_admin, username) if PH.verify(saved_password, password) else None
             except VerificationError as e:
                 log.warning("Failing to authenticate user: %s for [%s]", username, e)
                 return None
@@ -307,11 +307,3 @@ def archive_user(id_: int) -> bool:
         )
         connection.commit()
         return True
-
-def get_user_email(id_: int) -> str:
-    """Get a user's email."""
-    with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
-    ) as connection, closing(connection.cursor()) as cursor:
-        result = cursor.execute("SELECT username FROM users WHERE id = ?", (id_,)).fetchone()
-        return result[0] if result else ""

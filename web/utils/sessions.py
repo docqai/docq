@@ -82,6 +82,11 @@ def get_authenticated_user_id() -> int | None:
     return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.ID.name)
 
 
+def get_authenticated_username() -> str | None:
+    """Get the authenticated user name."""
+    return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.USERNAME.name)
+
+
 def get_settings_session(key: SessionKeyNameForSettings = None) -> dict | None:
     """Get the settings session value."""
     return _get_session_value(SessionKeySubName.SETTINGS, key.name if key is not None else None)
