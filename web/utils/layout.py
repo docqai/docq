@@ -49,7 +49,7 @@ from .handlers import (
     prepare_for_chat,
     query_chat_history,
 )
-from .sessions import get_auth_session, get_authenticated_username, get_chat_session
+from .sessions import get_auth_session, get_chat_session
 
 _chat_ui_script = """
 <script>
