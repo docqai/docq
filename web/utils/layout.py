@@ -418,10 +418,10 @@ def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: st
         )
 
 
-def create_space_ui() -> None:
+def create_space_ui(expanded: bool = False) -> None:
     """Create a new space."""
     data_sources = list_space_data_source_choices()
-    with st.expander("### + New Space"):
+    with st.expander("### + New Space", expanded=expanded):
         st.text_input("Name", value="", key="create_space_name")
         st.text_input("Summary", value="", key="create_space_summary")
         ds = st.selectbox(
