@@ -5,7 +5,7 @@ from typing import List, Tuple
 
 import streamlit as st
 from docq.access_control.main import SpaceAccessType
-from docq.config import FeatureType, LogType, SystemSettingsKey
+from docq.config import FeatureType, LogType, SpaceType, SystemSettingsKey
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
 from st_pages import hide_pages
 from streamlit.delta_generator import DeltaGenerator
@@ -432,7 +432,14 @@ def create_space_ui(expanded: bool = False) -> None:
         )
         if ds:
             _render_space_data_source_config_input_fields(ds, "create_space_")
-        st.button("Create Space", on_click=handle_create_space)
+        if st.button("Create Space"):
+            space = handle_create_space()
+            alert: DeltaGenerator = st.session_state["admin_docs_alert"]
+            if isinstance(space, SpaceKey) and alert:
+                alert.success(f"Successfully created space with ID: {space.id_}")
+                st.session_state["admin_docs_active_space"] = space.id_
+            elif alert:
+                alert.error(f"Failed to create space. Error: {space}")
 
 
 def _render_view_space_details_with_container(
@@ -450,52 +457,63 @@ def _render_view_space_details_with_container(
     return container
 
 
-def _render_edit_space_details(space_data: Tuple, data_source: Tuple) -> None:
+def _edit_space_details_form(space_data: Tuple, data_source: Tuple) -> None:
     id_, name, summary, archived, ds_type, ds_configs, _, _ = space_data
+    with st.form(key=f"update_space_details_{id_}"):
+        st.text_input("Name", value=name, key=f"update_space_details_{id_}_name")
+        st.text_input("Summary", value=summary, key=f"update_space_details_{id_}_summary")
+        st.checkbox("Is Archived", value=archived, key=f"update_space_details_{id_}_archived")
+        st.selectbox(
+            "Data Source",
+            options=[data_source],
+            index=0,
+            key=f"update_space_details_{id_}_ds_type",
+            disabled=True,
+            format_func=lambda x: x[1],
+        )
+        _render_space_data_source_config_input_fields(data_source, f"update_space_details_{id_}_", ds_configs)
+        st.form_submit_button("Save", on_click=handle_update_space_details, args=(id_,))
+
+
+def _render_edit_space_details(space_data: Tuple, data_source: Tuple) -> None:
+    id_, *_ = space_data
 
     if st.button("Edit", key=f"update_space_{id_}_button"):
-        with st.form(key=f"update_space_details_{id_}"):
-            st.text_input("Name", value=name, key=f"update_space_details_{id_}_name")
-            st.text_input("Summary", value=summary, key=f"update_space_details_{id_}_summary")
-            st.checkbox("Is Archived", value=archived, key=f"update_space_details_{id_}_archived")
-            st.selectbox(
-                "Data Source",
-                options=[data_source],
-                index=0,
-                key=f"update_space_details_{id_}_ds_type",
-                disabled=True,
-                format_func=lambda x: x[1],
-            )
-            _render_space_data_source_config_input_fields(data_source, f"update_space_details_{id_}_", ds_configs)
-            st.form_submit_button("Save", on_click=handle_update_space_details, args=(id_,))
+        _edit_space_details_form(space_data, data_source)
+
+
+def _manage_space_permissions_form(space_data: Tuple) -> None:
+    id_, *_ = space_data
+    permissions = get_shared_space_permissions(id_)
+
+    with st.form(key=f"manage_space_permissions_{id_}"):
+        st.checkbox(
+            "Public Access",
+            value=permissions[SpaceAccessType.PUBLIC],
+            key=f"manage_space_permissions_{id_}_{SpaceAccessType.PUBLIC.name}",
+        )
+        st.multiselect(
+            "Users",
+            options=[(u[0], u[1]) for u in list_users()],
+            default=permissions[SpaceAccessType.USER],
+            key=f"manage_space_permissions_{id_}_{SpaceAccessType.USER.name}",
+            format_func=lambda x: x[1],
+        )
+        st.multiselect(
+            "Groups",
+            options=[(g[0], g[1]) for g in list_user_groups()],
+            default=permissions[SpaceAccessType.GROUP],
+            key=f"manage_space_permissions_{id_}_{SpaceAccessType.GROUP.name}",
+            format_func=lambda x: x[1],
+        )
+        st.form_submit_button("Save", on_click=handle_manage_space_permissions, args=(id_,))
 
 
 def _render_manage_space_permissions(space_data: Tuple) -> None:
     id_, *_ = space_data
-    permissions = get_shared_space_permissions(id_)
 
     if st.button("Permissions", key=f"manage_space_permissions_{id_}_button"):
-        with st.form(key=f"manage_space_permissions_{id_}"):
-            st.checkbox(
-                "Public Access",
-                value=permissions[SpaceAccessType.PUBLIC],
-                key=f"manage_space_permissions_{id_}_{SpaceAccessType.PUBLIC.name}",
-            )
-            st.multiselect(
-                "Users",
-                options=[(u[0], u[1]) for u in list_users()],
-                default=permissions[SpaceAccessType.USER],
-                key=f"manage_space_permissions_{id_}_{SpaceAccessType.USER.name}",
-                format_func=lambda x: x[1],
-            )
-            st.multiselect(
-                "Groups",
-                options=[(g[0], g[1]) for g in list_user_groups()],
-                default=permissions[SpaceAccessType.GROUP],
-                key=f"manage_space_permissions_{id_}_{SpaceAccessType.GROUP.name}",
-                format_func=lambda x: x[1],
-            )
-            st.form_submit_button("Save", on_click=handle_manage_space_permissions, args=(id_,))
+        _manage_space_permissions_form(space_data)
 
 
 def list_spaces_ui(admin_access: bool = False) -> None:
@@ -527,3 +545,54 @@ def show_space_details_ui(space: SpaceKey) -> None:
 def list_logs_ui(type_: LogType) -> None:
     """List logs per log type."""
     st.info("Logs are coming soon.")
+
+
+def _editor_view(q_param: str) -> None:
+    if q_param in st.experimental_get_query_params():
+        space = SpaceKey(SpaceType.SHARED, int(st.experimental_get_query_params()[q_param][0]))
+        s = get_shared_space(space.id_)
+        ds = get_space_data_source_choice_by_type(s[4])
+
+        tab_spaces, tab_docs, tab_edit, tab_permissions = st.tabs(
+            ["Space Details", "Manage Documents", "Edit Space", "Permissions"]
+        )
+
+        with tab_docs:
+            documents_ui(space)
+        with tab_spaces:
+            show_space_details_ui(space)
+        with tab_edit:
+            _edit_space_details_form(s, ds)
+        with tab_permissions:
+            _manage_space_permissions_form(s)
+
+
+def admin_docs_ui(q_param: str = None) -> None:
+    """Manage Documents UI."""
+    st.subheader("Select a space from below:")
+    spaces = list_shared_spaces()
+
+    def _on_change() -> None:
+        del st.session_state["admin_docs_active_space"]
+
+    try: # Get the space id from the query param with prefence to the newly created space.
+        _sid = int(st.experimental_get_query_params()[q_param][0]) if q_param in st.experimental_get_query_params() else None
+    except ValueError:
+        _sid = None
+    new_space = st.session_state.get("admin_docs_active_space", _sid)
+    default_sid = next(
+        (i for i, s in enumerate(spaces) if s[0] == new_space), None
+    )
+
+    selected = st.selectbox(
+        "Spaces",
+        spaces,
+        format_func=lambda x: x[1],
+        on_change=_on_change,
+        label_visibility="collapsed",
+        index=default_sid if default_sid else 0,
+    )
+
+    if selected:
+        st.experimental_set_query_params(**{q_param: selected[0]})
+    _editor_view(q_param)
