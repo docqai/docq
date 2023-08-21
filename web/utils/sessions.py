@@ -82,7 +82,7 @@ def get_authenticated_user_id() -> int | None:
     return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.ID.name)
 
 
-def get_authenticated_username() -> str | None:
+def get_user_email() -> str | None:
     """Get the authenticated user name."""
     return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.USERNAME.name)
 
