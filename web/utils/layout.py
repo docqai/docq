@@ -354,7 +354,7 @@ def _chat_message(message_: str, is_user: bool) -> None:
 def _personal_ask_style() -> None:
     """Custom style for personal ask."""
     st.write(
-        """
+    """
     <style>
         [data-testid="stExpander"] {
             z-index: 1000;
