@@ -33,7 +33,7 @@ from .constants import (
 from .sessions import (
     get_authenticated_user_id,
     get_chat_session,
-    get_user_email,
+    get_username,
     set_auth_session,
     set_chat_session,
     set_settings_session,
@@ -370,7 +370,7 @@ def prepare_for_chat(feature: domain.FeatureKey) -> None:
 
 def handle_get_gravatar_url() -> str:
     """Get Gravatar URL for the specified email."""
-    email = get_user_email()
+    email = get_username()
     if email is None:
         email = "example@example.com"
     size, default, rating = 200, "identicon", "g"
