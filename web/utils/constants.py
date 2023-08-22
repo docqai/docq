@@ -19,6 +19,7 @@ class SessionKeyNameForAuth(Enum):
     ID = "id"
     NAME = "name"
     ADMIN = "admin"
+    USERNAME = "username"
 
 
 class SessionKeyNameForSettings(Enum):
