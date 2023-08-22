@@ -1,6 +1,7 @@
 """Handlers for the web app."""
 
 import asyncio
+import hashlib
 import logging as log
 import math
 from datetime import datetime
@@ -33,6 +34,7 @@ from .constants import (
 from .sessions import (
     get_authenticated_user_id,
     get_chat_session,
+    get_username,
     set_auth_session,
     set_chat_session,
     set_settings_session,
@@ -43,12 +45,13 @@ def _set_session_config(result: tuple | None = None) -> bool:
     """Authenticate automatically."""
     if result:
         set_auth_session(
-                {
-                    SessionKeyNameForAuth.ID.name: result[0],
-                    SessionKeyNameForAuth.NAME.name: result[1],
-                    SessionKeyNameForAuth.ADMIN.name: result[2],
-                }
-            )
+            {
+                SessionKeyNameForAuth.ID.name: result[0],
+                SessionKeyNameForAuth.NAME.name: result[1],
+                SessionKeyNameForAuth.ADMIN.name: result[2],
+                SessionKeyNameForAuth.USERNAME.name: result[3],
+            }
+        )
         set_settings_session(
                 {
                     SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_system_settings(),
@@ -382,3 +385,12 @@ def prepare_for_chat(feature: domain.FeatureKey) -> None:
                 feature.type_,
                 SessionKeyNameForChat.HISTORY,
             )
+
+def handle_get_gravatar_url() -> str:
+    """Get Gravatar URL for the specified email."""
+    email = get_username()
+    if email is None:
+        email = "example@example.com"
+    size, default, rating = 200, "identicon", "g"
+    email_hash = hashlib.md5(email.lower().encode("utf-8")).hexdigest()  # noqa: S324
+    return f"https://www.gravatar.com/avatar/{email_hash}?s={size}&d={default}&r={rating}"

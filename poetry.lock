@@ -1201,20 +1201,20 @@ requests = ">=2,<3"
 
 [[package]]
 name = "llama-index"
-version = "0.7.4"
+version = "0.8.5.post2"
 description = "Interface between LLMs and your data"
 optional = false
 python-versions = "*"
 files = [
-    {file = "llama_index-0.7.4-py3-none-any.whl", hash = "sha256:bf6b70f2bb26d5eb03fb6faf49bd0613bb72147fe4817f23e10c4558baf57772"},
-    {file = "llama_index-0.7.4.tar.gz", hash = "sha256:1f7ef411280e65e5cfd81f7394d2447c473f684d890183b993e733294c81a6d5"},
+    {file = "llama_index-0.8.5.post2-py3-none-any.whl", hash = "sha256:934bc01095cd959d7b363acf5f108c4841ba20e450a95b4c80211bcb1df36b4e"},
+    {file = "llama_index-0.8.5.post2.tar.gz", hash = "sha256:bb9f27e9a151b0d5e7f2bc49856a226bcfe3d92378e4792aa4178ddcf7c013ab"},
 ]
 
 [package.dependencies]
 beautifulsoup4 = "*"
 dataclasses-json = "*"
 fsspec = ">=2023.5.0"
-langchain = ">=0.0.218"
+langchain = ">=0.0.262,<=0.0.266"
 nest-asyncio = "*"
 numpy = "*"
 openai = ">=0.26.4"
@@ -1222,8 +1222,8 @@ pandas = "*"
 sqlalchemy = ">=2.0.15"
 tenacity = ">=8.2.0,<9.0.0"
 tiktoken = "*"
-typing-extensions = "4.5.0"
-typing-inspect = "0.8.0"
+typing-extensions = ">=4.5.0"
+typing-inspect = ">=0.8.0"
 urllib3 = "<2"
 
 [[package]]
@@ -3334,4 +3334,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "f3bf65d0f514219768d2611f7e773097945ae4af2f01679f69e4fa27aa158306"
+content-hash = "6e5438bd75bbac5e67cfc5653783d05b41078d3c1754ee618685bb9e426f33a8"

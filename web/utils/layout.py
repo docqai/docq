@@ -1,6 +1,5 @@
 """Layout components for the web app."""
 
-
 from typing import List, Tuple
 
 import streamlit as st
@@ -8,6 +7,7 @@ from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SystemSettingsKey
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
 from st_pages import hide_pages
+from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
@@ -30,6 +30,7 @@ from .handlers import (
     handle_delete_document,
     handle_delete_space_group,
     handle_delete_user_group,
+    handle_get_gravatar_url,
     handle_list_documents,
     handle_login,
     handle_logout,
@@ -51,6 +52,77 @@ from .handlers import (
 )
 from .sessions import get_auth_session, get_chat_session
 
+_chat_ui_script = """
+<script>
+    parent = window.parent.document || window.document
+
+    const activeTheme = localStorage.getItem('stActiveTheme-/Ask_Shared_Documents-v1') || localStorage.getItem('stActiveTheme-/-v1')
+    const theme = JSON.parse(activeTheme)
+    const spaceSelector = parent.getElementsByClassName('streamlit-expander')[0]
+    const spaceSelectorPresent = spaceSelector && spaceSelector.parentNode && spaceSelector.parentNode.parentNode
+
+    /* Space Selector. */
+
+    const resizeSelector = (spaceSelector) => {
+        if (spaceSelectorPresent && spaceSelector) {
+            const _parent = spaceSelector.parentNode.parentNode
+            const _container = spaceSelector.parentNode
+            const parentWidth = _parent.offsetWidth
+            _container.setAttribute('style', `width: ${parentWidth}px;`)
+        }
+    };
+
+    const formatSpaceSelector = (theme = null) => {
+        resizeSelector(spaceSelector)
+
+        // Set background color to the space selector based on active theme.
+        if (theme && theme === 'Light' && spaceSelector) {
+            spaceSelector.setAttribute('style', 'background-color: #fff;');
+        } else if (theme && theme === 'Dark' && spaceSelector) {
+            spaceSelector.setAttribute('style', 'background-color: #1f1f1f;');
+        }
+    }
+
+    formatSpaceSelector(theme.name)
+
+    /* Gravatar */
+    const all = parent.querySelectorAll('[alt="user avatar"]')
+
+    // Open users gravatar profile in new tab.
+    all.forEach((el) => {
+        el.addEventListener('click', () => {
+            const email = el.getAttribute('src').split('?')[0].split('/').slice(-1)[0]
+            if (email) {
+                window.open(`https://www.gravatar.com/${email}`, '_blank')
+            } else {
+                window.open('https://www.gravatar.com/', '_blank')
+            }
+    })})
+
+    // Update space selector theme automatically on theme change
+    window.onstorage = (e) => {
+        if (e.key === 'stActiveTheme-/Ask_Shared_Documents-v1' || e.key === 'stActiveTheme-/-v1') {
+            const activeTheme = localStorage.getItem('stActiveTheme-/Ask_Shared_Documents-v1') || localStorage.getItem('stActiveTheme-/-v1')
+            const theme = JSON.parse(activeTheme)
+            formatSpaceSelector(theme.name)
+        }
+    }
+
+    // Format Logout button and listen for resize event.
+    if (spaceSelectorPresent) {
+      const logoutBtn = parent.querySelectorAll('button[kind="secondary"]')[0]
+      logoutBtn.setAttribute('style', 'margin-top: 1rem !important;');
+      const resizeObserver = new ResizeObserver(() => resizeSelector(spaceSelector))
+      resizeObserver.observe(spaceSelector.parentNode.parentNode)
+    }
+
+</script>
+"""
+
+def chat_ui_script() -> None:
+    """A javascript snippet that runs on the chat UI."""
+    st.write("<style> iframe {min-height: 0; height: 0}</style>", unsafe_allow_html=True)
+    html(_chat_ui_script)
 
 def production_layout() -> None:
     """Layout for the production environment."""
@@ -267,44 +339,79 @@ def list_space_groups_ui(name_match: str = None) -> None:
 
 def _chat_message(message_: str, is_user: bool) -> None:
     if is_user:
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar=handle_get_gravatar_url()):
             st.write(message_)
     else:
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant",
+            avatar="https://github.com/docqai/docq/blob/main/docs/assets/logo.jpg?raw=true"):
             st.markdown(message_, unsafe_allow_html=True)
+
+def _personal_ask_style() -> None:
+    """Custom style for personal ask."""
+    st.write(
+    """
+    <style>
+        [data-testid="stExpander"] {
+            z-index: 1000;
+            position: fixed;
+            top: 46px;
+        }
+
+        [data-testid="stExpander"] .row-widget.stMultiSelect label {
+            display: none !important;
+        }
+
+    </style>
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 def chat_ui(feature: FeatureKey) -> None:
     """Chat UI layout."""
     prepare_for_chat(feature)
     # Style for formatting sources list.
-    st.write("""
-                 <style>
-                  [data-testid="stMarkdownContainer"] h6 {
-                      padding: 0px !important;
-                    }
-                  [data-testid="stMarkdownContainer"] h5 {
-                      padding: 1rem 0 0 0 !important;
-                    }
-                  [data-testid="stMarkdownContainer"] blockquote {
-                      margin-top: 0.5rem !important;
-                    }
-                 </style>
-                 """,
-        unsafe_allow_html=True
+    st.write(
+    """<style>
+            [data-testid="stMarkdownContainer"] h6 {
+                padding: 0px !important;
+            }
+
+            [data-testid="stMarkdownContainer"] h5 {
+                padding: 1rem 0 0 0 !important;
+            }
+
+            [data-testid="stMarkdownContainer"] blockquote {
+                margin-top: 0.5rem !important;
+            }
+
+            [alt="user avatar"], [alt="assistant avatar"] {
+                border-radius: 8px;
+                width: 2.5rem !important;
+                height: 2.5rem !important;
+                cursor: pointer;
+            }
+
+            [alt="assistant avatar"] {
+                border-radius: 0;
+            }
+
+        </style>
+    """, unsafe_allow_html=True
     )
     with st.container():
         if feature.type_ == FeatureType.ASK_SHARED:
-            spaces = list_shared_spaces()
-            st.multiselect(
-                "Including these shared spaces:",
-                options=spaces,
-                default=spaces,
-                format_func=lambda x: x[1],
-                key=f"chat_shared_spaces_{feature.value()}",
-            )
-            st.checkbox("Including your documents", value=True, key="chat_personal_space")
-            st.divider()
+            _personal_ask_style()
+            with st.expander("Including these shared spaces:"):
+                spaces = list_shared_spaces()
+                st.multiselect(
+                    "Including these shared spaces:",
+                    options=spaces,
+                    default=spaces,
+                    format_func=lambda x: x[1],
+                    key=f"chat_shared_spaces_{feature.value()}",
+                )
+                st.checkbox("Including your documents", value=True, key="chat_personal_space")
         if st.button("Load chat history earlier"):
             query_chat_history(feature)
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
@@ -314,8 +421,8 @@ def chat_ui(feature: FeatureKey) -> None:
                 day = format_datetime(time)
                 st.markdown(f"#### {day}")
             _chat_message(text, is_user)
+        chat_ui_script()
 
-    # st.divider()
     st.chat_input(
         "Type your question here",
         key=f"chat_input_{feature.value()}",
