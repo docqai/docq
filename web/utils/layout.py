@@ -1,5 +1,6 @@
 """Layout components for the web app."""
 
+import logging
 from typing import List, Tuple
 
 import streamlit as st
@@ -21,6 +22,7 @@ from .handlers import (
     get_space_data_source_choice_by_type,
     get_system_settings,
     handle_chat_input,
+    handle_create_new_chat,
     handle_create_space,
     handle_create_space_group,
     handle_create_user,
@@ -118,10 +120,12 @@ _chat_ui_script = """
 </script>
 """
 
+
 def chat_ui_script() -> None:
     """A javascript snippet that runs on the chat UI."""
     st.write("<style> iframe {min-height: 0; height: 0}</style>", unsafe_allow_html=True)
     html(_chat_ui_script)
+
 
 def production_layout() -> None:
     """Layout for the production environment."""
@@ -341,14 +345,16 @@ def _chat_message(message_: str, is_user: bool) -> None:
         with st.chat_message("user", avatar=handle_get_gravatar_url()):
             st.write(message_)
     else:
-        with st.chat_message("assistant",
-            avatar="https://github.com/docqai/docq/blob/main/docs/assets/logo.jpg?raw=true"):
+        with st.chat_message(
+            "assistant", avatar="https://github.com/docqai/docq/blob/main/docs/assets/logo.jpg?raw=true"
+        ):
             st.markdown(message_, unsafe_allow_html=True)
+
 
 def _personal_ask_style() -> None:
     """Custom style for personal ask."""
     st.write(
-    """
+        """
     <style>
         [data-testid="stExpander"] {
             z-index: 1000;
@@ -371,7 +377,7 @@ def chat_ui(feature: FeatureKey) -> None:
     prepare_for_chat(feature)
     # Style for formatting sources list.
     st.write(
-    """<style>
+        """<style>
             [data-testid="stMarkdownContainer"] h6 {
                 padding: 0px !important;
             }
@@ -396,7 +402,8 @@ def chat_ui(feature: FeatureKey) -> None:
             }
 
         </style>
-    """, unsafe_allow_html=True
+    """,
+        unsafe_allow_html=True,
     )
     with st.container():
         if feature.type_ == FeatureType.ASK_SHARED:
@@ -413,13 +420,17 @@ def chat_ui(feature: FeatureKey) -> None:
                 st.checkbox("Including your documents", value=True, key="chat_personal_space")
         if st.button("Load chat history earlier"):
             query_chat_history(feature)
+        if st.button("New chat"):
+            handle_create_new_chat(feature)
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
         st.markdown(f"#### {day}")
-        for _, text, is_user, time in get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY):
-            if format_datetime(time) != day:
-                day = format_datetime(time)
+
+        for x in get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY):
+            # x = (id, text, is_user, time, thread_id)
+            if format_datetime(x[3]) != day:
+                day = format_datetime(x[3])
                 st.markdown(f"#### {day}")
-            _chat_message(text, is_user)
+            _chat_message(x[1], x[2])
         chat_ui_script()
 
     st.chat_input(
