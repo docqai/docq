@@ -575,7 +575,7 @@ def _render_view_space_details_with_container(
     return container
 
 
-def _edit_space_details_form(space_data: Tuple, data_source: Tuple) -> None:
+def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> None:
     id_, name, summary, archived, ds_type, ds_configs, _, _ = space_data
     with st.form(key=f"update_space_details_{id_}"):
         st.text_input("Name", value=name, key=f"update_space_details_{id_}_name")
@@ -597,7 +597,7 @@ def _render_edit_space_details(space_data: Tuple, data_source: Tuple) -> None:
     id_, *_ = space_data
 
     if st.button("Edit", key=f"update_space_{id_}_button"):
-        _edit_space_details_form(space_data, data_source)
+        _render_edit_space_details_form(space_data, data_source)
 
 
 def _manage_space_permissions_form(space_data: Tuple) -> None:
@@ -680,7 +680,7 @@ def _editor_view(q_param: str) -> None:
         with tab_spaces:
             show_space_details_ui(space)
         with tab_edit:
-            _edit_space_details_form(s, ds)
+            _render_edit_space_details_form(s, ds)
         with tab_permissions:
             _manage_space_permissions_form(s)
 
