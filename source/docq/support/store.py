@@ -24,6 +24,7 @@ class _SqliteFilename(Enum):
 
 
 HISTORY_TABLE_NAME = "history_{feature}"
+HISTORY_THREAD_TABLE_NAME = "history_thread_{feature}"
 
 
 def _get_path(store: _StoreSubdir, type_: SpaceType, subtype: str = None, filename: str = None) -> str:
@@ -71,3 +72,9 @@ def get_history_table_name(type_: FeatureType) -> str:
     """Get the history table name for a feature."""
     # Note that because it's used for database table name, `lower()` is used to ensure it's all lowercase.
     return HISTORY_TABLE_NAME.format(feature=type_.name.lower())
+
+
+def get_history_thread_table_name(type_: FeatureType) -> str:
+    """Get the history table name for a feature."""
+    # Note that because it's used for database table name, `lower()` is used to ensure it's all lowercase.
+    return HISTORY_THREAD_TABLE_NAME.format(feature=type_.name.lower())
