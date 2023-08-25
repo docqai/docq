@@ -1,6 +1,5 @@
 """Layout components for the web app."""
 
-import logging
 from typing import List, Tuple
 
 import streamlit as st
@@ -418,10 +417,15 @@ def chat_ui(feature: FeatureKey) -> None:
                     key=f"chat_shared_spaces_{feature.value()}",
                 )
                 st.checkbox("Including your documents", value=True, key="chat_personal_space")
-        if st.button("Load chat history earlier"):
-            query_chat_history(feature)
-        if st.button("New chat"):
-            handle_create_new_chat(feature)
+
+        load_history, create_new_chat = st.columns([3, 1])
+        with load_history:
+            if st.button("Load chat history earlier"):
+                query_chat_history(feature)
+        with create_new_chat:
+            if st.button("New chat"):
+                handle_create_new_chat(feature)
+
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
         st.markdown(f"#### {day}")
 
