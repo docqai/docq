@@ -29,9 +29,9 @@ def init_session_cache() -> None:
     if AUTH_SESSION_SECRET_KEY is None:
         log.fatal("Failed to initialize session cache: COOKIE_SECRET_KEY not set")
         raise ValueError("COOKIE_SECRET_KEY must be set")
-    if len(AUTH_SESSION_SECRET_KEY) < 64:
+    if len(AUTH_SESSION_SECRET_KEY) < 32:
         log.fatal("Failed to initialize session cache: COOKIE_SECRET_KEY must be 64 or more characters")
-        raise ValueError("COOKIE_SECRET_KEY must be 64 or more characters")
+        raise ValueError("COOKIE_SECRET_KEY must be 32 or more characters")
 
 def _set_cookie(cookie: str) -> None:
     """Set client cookie for authentication."""
