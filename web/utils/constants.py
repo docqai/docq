@@ -34,6 +34,7 @@ class SessionKeyNameForChat(Enum):
 
     CUTOFF = "cutoff"
     HISTORY = "history"
+    THREAD = "thread"
 
 
 NUMBER_OF_MSGS_TO_LOAD = 10
