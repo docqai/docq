@@ -1,8 +1,10 @@
 """Handlers for the web app."""
 
 import asyncio
+import hashlib
 import logging as log
 import math
+import random
 from datetime import datetime
 from typing import Any, List, Tuple
 
@@ -32,6 +34,7 @@ from .constants import (
 from .sessions import (
     get_authenticated_user_id,
     get_chat_session,
+    get_username,
     set_auth_session,
     set_chat_session,
     set_settings_session,
@@ -39,6 +42,7 @@ from .sessions import (
 
 
 def handle_login(username: str, password: str) -> bool:
+    """Handle login."""
     result = manage_users.authenticate(username, password)
     log.info("Login result: %s", result)
     if result:
@@ -47,6 +51,7 @@ def handle_login(username: str, password: str) -> bool:
                 SessionKeyNameForAuth.ID.name: result[0],
                 SessionKeyNameForAuth.NAME.name: result[1],
                 SessionKeyNameForAuth.ADMIN.name: result[2],
+                SessionKeyNameForAuth.USERNAME.name: result[3],
             }
         )
         set_settings_session(
@@ -153,7 +158,8 @@ def list_space_groups(name_match: str = None) -> List[Tuple]:
 
 def query_chat_history(feature: domain.FeatureKey) -> None:
     curr_cutoff = get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF)
-    history = run_queries.history(curr_cutoff, NUMBER_OF_MSGS_TO_LOAD, feature)
+    thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
+    history = run_queries.history(curr_cutoff, NUMBER_OF_MSGS_TO_LOAD, feature, thread_id)
     set_chat_session(
         history + get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY),
         feature.type_,
@@ -179,7 +185,10 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
         if feature.type_ == config.FeatureType.ASK_SHARED
         else None
     )
-    result = run_queries.query(req, feature, space, spaces)
+
+    thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
+
+    result = run_queries.query(req, feature, thread_id, space, spaces)
 
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 
@@ -347,8 +356,22 @@ def get_max_number_of_documents(type_: config.SpaceType):
             return math.inf
 
 
+def _create_new_thread(feature: domain.FeatureKey) -> int:
+    rnd = str(random.randint(1, 1000000))
+    # TODO: add code to generate a topic name and update the DB after the first question is asked.
+    topic = f"New thread {rnd}"
+    thread_id = run_queries.create_history_thread(topic, feature)
+    return thread_id
+
+
 def prepare_for_chat(feature: domain.FeatureKey) -> None:
-    """Prepare the session for chat."""
+    """Prepare the session for chat. Load latest thread_id, cutoff, and history."""
+    thread_id = 0
+    if SessionKeyNameForChat.THREAD.name not in get_chat_session(feature.type_):
+        thread = run_queries.get_latest_thread(feature)
+        thread_id = thread[0] if thread else _create_new_thread(feature)
+        set_chat_session(thread_id, feature.type_, SessionKeyNameForChat.THREAD)
+
     if SessionKeyNameForChat.CUTOFF.name not in get_chat_session(feature.type_):
         set_chat_session(datetime.now(), feature.type_, SessionKeyNameForChat.CUTOFF)
 
@@ -359,7 +382,29 @@ def prepare_for_chat(feature: domain.FeatureKey) -> None:
         query_chat_history(feature)
         if not get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY):
             set_chat_session(
-                [("0", "Hi there! This is Docq, ask me anything.", False, datetime.now())],
+                [("0", "Hi there! This is Docq, ask me anything.", False, datetime.now(), thread_id)],
                 feature.type_,
                 SessionKeyNameForChat.HISTORY,
             )
+
+
+def handle_create_new_chat(feature: domain.FeatureKey) -> None:
+    """Create a new chat session. Create a new thread_id and force reset session state."""
+    thread_id = _create_new_thread(feature)
+    set_chat_session(thread_id, feature.type_, SessionKeyNameForChat.THREAD)
+    set_chat_session(datetime.now(), feature.type_, SessionKeyNameForChat.CUTOFF)
+    set_chat_session(
+        [("0", "Hi there! This is Docq, ask me anything.", False, datetime.now(), thread_id)],
+        feature.type_,
+        SessionKeyNameForChat.HISTORY,
+    )
+
+
+def handle_get_gravatar_url() -> str:
+    """Get Gravatar URL for the specified email."""
+    email = get_username()
+    if email is None:
+        email = "example@example.com"
+    size, default, rating = 200, "identicon", "g"
+    email_hash = hashlib.md5(email.lower().encode("utf-8")).hexdigest()  # noqa: S324
+    return f"https://www.gravatar.com/avatar/{email_hash}?s={size}&d={default}&r={rating}"

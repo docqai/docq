@@ -19,6 +19,7 @@ class SessionKeyNameForAuth(Enum):
     ID = "id"
     NAME = "name"
     ADMIN = "admin"
+    USERNAME = "username"
 
 
 class SessionKeyNameForSettings(Enum):
@@ -33,6 +34,7 @@ class SessionKeyNameForChat(Enum):
 
     CUTOFF = "cutoff"
     HISTORY = "history"
+    THREAD = "thread"
 
 
 NUMBER_OF_MSGS_TO_LOAD = 10

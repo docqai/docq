@@ -103,7 +103,7 @@ def authenticate(username: str, password: str) -> Tuple[int, str, bool]:
             log.debug("User found: %s", selected)
             (id_, saved_password, fullname, is_admin) = selected
             try:
-                result = (id_, fullname, is_admin) if PH.verify(saved_password, password) else None
+                result = (id_, fullname, is_admin, username) if PH.verify(saved_password, password) else None
             except VerificationError as e:
                 log.warning("Failing to authenticate user: %s for [%s]", username, e)
                 return None
