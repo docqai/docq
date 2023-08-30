@@ -608,7 +608,7 @@ def _render_edit_space_details(space_data: Tuple, data_source: Tuple) -> None:
         _render_edit_space_details_form(space_data, data_source)
 
 
-def _manage_space_permissions_form(space_data: Tuple) -> None:
+def _render_manage_space_permissions_form(space_data: Tuple) -> None:
     id_, *_ = space_data
     permissions = get_shared_space_permissions(id_)
 
@@ -639,7 +639,7 @@ def _render_manage_space_permissions(space_data: Tuple) -> None:
     id_, *_ = space_data
 
     if st.button("Permissions", key=f"manage_space_permissions_{id_}_button"):
-        _manage_space_permissions_form(space_data)
+        _render_manage_space_permissions_form(space_data)
 
 
 def list_spaces_ui(admin_access: bool = False) -> None:
@@ -690,7 +690,7 @@ def _editor_view(q_param: str) -> None:
         with tab_edit:
             _render_edit_space_details_form(s, ds)
         with tab_permissions:
-            _manage_space_permissions_form(s)
+            _render_manage_space_permissions_form(s)
 
 
 def admin_docs_ui(q_param: str = None) -> None:
