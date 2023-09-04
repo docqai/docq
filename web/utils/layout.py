@@ -56,11 +56,16 @@ from .sessions import get_auth_session, get_chat_session
 _chat_ui_script = """
 <script>
     parent = window.parent.document || window.document
-
+    const [themeKey, themeKey1] = ['stActiveTheme-/Ask_Shared_Documents-v1', 'stActiveTheme-/-v1']
     const activeTheme = localStorage.getItem('stActiveTheme-/Ask_Shared_Documents-v1') || localStorage.getItem('stActiveTheme-/-v1')
     const theme = JSON.parse(activeTheme)
     const spaceSelector = parent.getElementsByClassName('streamlit-expander')[0]
     const spaceSelectorPresent = spaceSelector && spaceSelector.parentNode && spaceSelector.parentNode.parentNode
+
+    const setTheme = (theme) => {
+        localStorage.setItem(themeKey, JSON.stringify(theme))
+        localStorage.setItem(themeKey1, JSON.stringify(theme))
+    }
 
     /* Space Selector. */
 
@@ -84,8 +89,10 @@ _chat_ui_script = """
         } else if (spaceSelector) {
             // Default to browsers theme preference if no theme is set.
             if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                setTheme({name: 'Dark'})
                 spaceSelector.setAttribute('style', 'background-color: #1f1f1f;');
             } else {
+                setTheme({name: 'Light'})
                 spaceSelector.setAttribute('style', 'background-color: #fff;');
             }
         }
