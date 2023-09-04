@@ -81,10 +81,17 @@ _chat_ui_script = """
             spaceSelector.setAttribute('style', 'background-color: #fff;');
         } else if (theme && theme === 'Dark' && spaceSelector) {
             spaceSelector.setAttribute('style', 'background-color: #1f1f1f;');
+        } else if (spaceSelector) {
+            // Default to browsers theme preference if no theme is set.
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                spaceSelector.setAttribute('style', 'background-color: #1f1f1f;');
+            } else {
+                spaceSelector.setAttribute('style', 'background-color: #fff;');
+            }
         }
     }
 
-    formatSpaceSelector(theme.name)
+    formatSpaceSelector(theme?.name)
 
     /* Gravatar */
     const all = parent.querySelectorAll('[alt="user avatar"]')
