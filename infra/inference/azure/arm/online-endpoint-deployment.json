@@ -1,0 +1,107 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspaceName": {
+      "type": "string",
+      "defaultValue": "docq-workspace",
+      "metadata": {
+        "description": "Specifies the name of the Azure Machine Learning Workspace which will contain this compute."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus"
+    },
+    "appInsightsEnabled": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "onlineEndpointName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Specifies the name of the Azure Machine Learning online endpoint which will be deployed."
+      }
+    },
+    "onlineDeploymentName": {
+      "defaultValue": "blue",
+      "type": "string",
+      "metadata": {
+        "description": "Specifies the name of the Azure Machine Learning online endpoint which will be deployed."
+      }
+    },
+    "onlineEndpointDescription": {
+      "defaultValue": "Online endpoint deployment created for Docq.AI",
+      "type": "string"
+    },
+    "onlineDeploymentTags": {
+      "defaultValue": {
+        "app": "docq"
+      },
+      "type": "object"
+    },
+    "model": {
+      "type": "string",
+      "defaultValue": "azureml://registries/azureml-meta/models/Llama-2-7b-chat/versions/8"
+    },
+    "endpointComputeType": {
+      "type": "string",
+      "defaultValue": "Managed",
+      "allowedValues": [
+        "Managed",
+        "Kubernetes",
+        "AzureMLCompute"
+      ]
+    },
+    "skuName": {
+      "type": "string",
+      "defaultValue": "Standard_NC12s_v3",
+      "metadata": {
+        "description": "The name of the SKU. Ex - Standard_F4s_v2 or Standard_NC12s_v3. See SKU list https://learn.microsoft.com/en-us/azure/machine-learning/reference-managed-online-endpoints-vm-sku-list?view=azureml-api-2"
+      }
+    },
+    "skuCapacity": {
+      "type": "int",
+      "defaultValue": 1,
+      "metadata": {
+        "description": "If the SKU supports scale out/in then the capacity integer should be included. If scale out/in is not possible for the resource this may be omitted."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.MachineLearningServices/workspaces/onlineEndpoints/deployments",
+      "apiVersion": "2022-12-01-preview",
+      "name": "[concat(parameters('workspaceName'), '/', parameters('onlineEndpointName'),'/', parameters('onlineDeploymentName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('onlineDeploymentTags')]",
+      "sku": {
+        "name": "Standard_NC12s_v3",
+        "capacity": 1,
+        "tier": "Standard",
+        "size": "NC12s_v3"
+      },
+      "properties": {
+        "requestSettings": {
+          "requestTimeout": "PT90S",
+          "maxConcurrentRequestsPerInstance": 1,
+          "maxQueueWait": "PT1S"
+        },
+        "livenessProbe": {
+          "initialDelay": "PT600S",
+          "period": "PT10S",
+          "timeout": "PT2S",
+          "failureThreshold": 30,
+          "successThreshold": 1
+        },
+        "appInsightsEnabled": "[parameters('appInsightsEnabled')]",
+        "description": "[parameters('onlineEndpointDescription')]",
+        "egressPublicNetworkAccess": "Enabled",
+        "model": "[parameters('model')]",
+        "properties": {},
+        "endpointComputeType": "[parameters('endpointComputeType')]"
+      }
+    }
+  ]
+}
