@@ -1,6 +1,6 @@
 """Llama Index `LLM` class implementation for LLMs hosted using Azure ML Online Endpoints."""
 
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Callable, Dict, Optional, Sequence
 
 from llama_index.callbacks import CallbackManager
 from llama_index.constants import DEFAULT_NUM_OUTPUTS
@@ -15,10 +15,9 @@ from llama_index.llms.base import (
     llm_completion_callback,
 )
 from llama_index.llms.custom import CustomLLM
-from llama_index.llms.generic_utils import chat_to_completion_decorator
-from llama_index.llms.openai_utils import (
-    from_openai_message_dict,
-    to_openai_message_dicts,
+from llama_index.llms.generic_utils import completion_response_to_chat_response
+from llama_index.llms.generic_utils import (
+    messages_to_prompt as generic_messages_to_prompt,
 )
 
 
@@ -31,34 +30,38 @@ class AzureML(CustomLLM):
         api_key: str,
         model: str = "llama-13b-chat",
         temperature: float = 0.1,
+        max_new_tokens: int = 200,
         max_length: int = 200,
-        max_tokens: int = 200,
         top_p: float = 0.9,
         do_sample: bool = True,
+        model_deployment_name: Optional[str] = None,
         additional_kwargs: Optional[Dict[str, Any]] = None,
+        messages_to_prompt: Optional[Callable] = None,
         callback_manager: Optional[CallbackManager] = None,
     ) -> None:
-        # try:
-        #     from llamaapi import LlamaAPI as Client
-        # except ImportError as e:
-        #     raise ImportError("llama_api not installed." "Please install it with `pip install llamaapi`.") from e
-
-        # self._client = Client(api_key)
+        """Initialize the LLM."""
+        self._client = AzureMLOnlineEndpoint(
+            endpoint_url=endpoint_url, api_key=api_key, model_deployment_name=model_deployment_name
+        )  # Client(api_key)
         self._model = model
         self._temperature = temperature
-        self._max_tokens = max_tokens
+        self._max_new_tokens = max_new_tokens
+        self._max_length = max_length
+        self._top_p = top_p
+        self._do_sample = do_sample
         self._additional_kwargs = additional_kwargs or {}
         self.callback_manager = callback_manager or CallbackManager([])
+        self._messages_to_prompt = messages_to_prompt or generic_messages_to_prompt
 
     @property
     def _model_kwargs(self) -> Dict[str, Any]:
         base_kwargs = {
             "model": self._model,
             "temperature": self._temperature,
-            "max_length": self._max_tokens,
+            "max_length": self._max_new_tokens,
             "top_p": self._top_p,
             "do_sample": self._do_sample,
-            "max_new_tokens": self._max_tokens,
+            "max_new_tokens": self._max_new_tokens,
         }
         model_kwargs = {
             **base_kwargs,
@@ -68,6 +71,7 @@ class AzureML(CustomLLM):
 
     @property
     def metadata(self) -> LLMMetadata:
+        """Get the metadata for the LLM."""
         return LLMMetadata(
             context_window=4096,
             num_output=DEFAULT_NUM_OUTPUTS,
@@ -78,38 +82,61 @@ class AzureML(CustomLLM):
 
     @llm_chat_callback()
     def chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> ChatResponse:
-        message_dicts = to_openai_message_dicts(messages)
-        json_dict = {
-            "messages": message_dicts,
-            **self._model_kwargs,
-            **kwargs,
-        }
-        response = self._client.run(json_dict).json()
-        message_dict = response["choices"][0]["message"]
-        message = from_openai_message_dict(message_dict)
-
-        return ChatResponse(message=message, raw=response)
+        """Chat with the LLM."""
+        prompt = self._messages_to_prompt(messages)
+        completion_response = self.complete(prompt, **kwargs)
+        return completion_response_to_chat_response(completion_response)
 
     @llm_completion_callback()
     def complete(self, prompt: str, **kwargs: Any) -> CompletionResponse:
-        complete_fn = chat_to_completion_decorator(self.chat)
-        return complete_fn(prompt, **kwargs)
+        """Complete the prompt with the LLM."""
+        # self._generate_kwargs.update({"stream": False})
+
+        input_json_dict = {
+            "input_data": {
+                "input_string": prompt,
+                "parameters": {
+                    **self._model_kwargs,
+                    **kwargs,
+                },
+            }
+        }
+        response = self._client.run(input_json_dict)
+
+        return CompletionResponse(text=response["output"], raw=response)
 
     @llm_completion_callback()
     def stream_complete(self, prompt: str, **kwargs: Any) -> CompletionResponseGen:
+        """Stream completion of the prompt with the LLM."""
         raise NotImplementedError("stream_complete is not supported for LlamaAPI")
 
     @llm_chat_callback()
     def stream_chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> ChatResponseGen:
+        """Stream chat with the LLM."""
         raise NotImplementedError("stream_chat is not supported for LlamaAPI")
 
 
 class AzureMLOnlineEndpoint:
-    """Client for Azure ML Online Endpoint."""
+    """Web API Client for interacting with an model(s) hosted by an Azure ML Online Endpoint."""
 
-    def __init__(self, endpoint_url: str, api_key: str, allow_self_signed_https: bool = False) -> None:
+    def __init__(
+        self,
+        endpoint_url: str,
+        api_key: str,
+        model_deployment_name: Optional[str] = None,
+        allow_self_signed_https: Optional[bool] = False,
+    ) -> None:
+        """Initialize the client.
+
+        Args:
+            endpoint_url (str): The AzureML Online endpoint URL.
+            api_key (str): The API key. Primary/secondary key or AMLToken can be used.
+            allow_self_signed_https (bool, optional): Whether to allow self-signed certificates. Defaults to `False`.
+            model_deployment_name (str, optional): The model deployment name. Used to override server-side deployment routing rules. Defaults to `None`.
+        """
         self._endpoint_url = endpoint_url
         self._api_key = api_key
+        self._model_deployment_name = model_deployment_name
         self._allow_self_signed_https(allow_self_signed_https)
 
     def _allow_self_signed_https(self, allowed: bool) -> None:
@@ -126,35 +153,38 @@ class AzureMLOnlineEndpoint:
         if allowed and not os.environ.get("PYTHONHTTPSVERIFY", "") and getattr(ssl, "_create_unverified_context", None):
             ssl._create_default_https_context = ssl._create_unverified_context
 
-    def run(self, input: str) -> str:
-        """Run the model on the input."""
+    def run(self, input_data: dict[str, any]) -> str:
+        """Run the model on the input.
+
+        Args:
+            input_data (str): The prompt input data. Format is dependent on what the model expects. See the Azure ML Studio Model registry for examples.
+
+        Returns:
+            str: Model response data.
+        """
         import json
         import urllib.request
 
         # _allow_self_signed_https(false) # this line is needed if you use self-signed certificate in your scoring service.
 
-        # Request data goes here
-        # The example below assumes JSON formatting which may be updated
-        # depending on the format your endpoint expects.
-        # More information can be found here:
-        # https://docs.microsoft.com/azure/machine-learning/how-to-deploy-advanced-entry-script
-        data = {}
+        body = str.encode(json.dumps(input_data))
 
-        body = str.encode(json.dumps(data))
+        url = self._endpoint_url  # "https://docq-endpoint.eastus.inference.ml.azure.com/score"
 
-        url = "https://docq-endpoint.eastus.inference.ml.azure.com/score"
-        # Replace this with the primary/secondary key or AMLToken for the endpoint
-        api_key = ""
+        api_key = self._api_key
         if not api_key:
-            raise Exception("A key should be provided to invoke the endpoint")
+            raise Exception(
+                "Missing API key. One should be provided to invoke the endpoint. Primary/secondary key or AMLToken can be used."
+            )
 
-        # The azureml-model-deployment header will force the request to go to a specific deployment.
-        # Remove this header to have the request observe the endpoint traffic rules
         headers = {
             "Content-Type": "application/json",
             "Authorization": ("Bearer " + api_key),
-            "azureml-model-deployment": "llama2-7b-chat-8",
         }
+        # The azureml-model-deployment header will force the request to go to a specific deployment.
+        # When None, requests observe the endpoint traffic rules
+        if self._model_deployment_name is not None:
+            headers["azureml-model-deployment"] = self._model_deployment_name
 
         req = urllib.request.Request(url, body, headers)
 
@@ -166,6 +196,6 @@ class AzureMLOnlineEndpoint:
         except urllib.error.HTTPError as error:
             print("The request failed with status code: " + str(error.code))
 
-            # Print the headers - they include the requert ID and the timestamp, which are useful for debugging the failure
+            # Print the headers - they include the request ID and the timestamp, which are useful for debugging the failure
             print(error.info())
             print(error.read().decode("utf8", "ignore"))
