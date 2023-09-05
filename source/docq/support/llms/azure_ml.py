@@ -38,12 +38,12 @@ class AzureML(CustomLLM):
         additional_kwargs: Optional[Dict[str, Any]] = None,
         callback_manager: Optional[CallbackManager] = None,
     ) -> None:
-        try:
-            from llamaapi import LlamaAPI as Client
-        except ImportError as e:
-            raise ImportError("llama_api not installed." "Please install it with `pip install llamaapi`.") from e
+        # try:
+        #     from llamaapi import LlamaAPI as Client
+        # except ImportError as e:
+        #     raise ImportError("llama_api not installed." "Please install it with `pip install llamaapi`.") from e
 
-        self._client = Client(api_key)
+        # self._client = Client(api_key)
         self._model = model
         self._temperature = temperature
         self._max_tokens = max_tokens
@@ -56,6 +56,9 @@ class AzureML(CustomLLM):
             "model": self._model,
             "temperature": self._temperature,
             "max_length": self._max_tokens,
+            "top_p": self._top_p,
+            "do_sample": self._do_sample,
+            "max_new_tokens": self._max_tokens,
         }
         model_kwargs = {
             **base_kwargs,
@@ -100,6 +103,15 @@ class AzureML(CustomLLM):
     def stream_chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> ChatResponseGen:
         raise NotImplementedError("stream_chat is not supported for LlamaAPI")
 
+
+class AzureMLOnlineEndpoint:
+    """Client for Azure ML Online Endpoint."""
+
+    def __init__(self, endpoint_url: str, api_key: str, allow_self_signed_https: bool = False) -> None:
+        self._endpoint_url = endpoint_url
+        self._api_key = api_key
+        self._allow_self_signed_https(allow_self_signed_https)
+
     def _allow_self_signed_https(self, allowed: bool) -> None:
         """Bypass the server certificate verification on client side if using self-signed certificate in your scoring service aka Azure Online endpoint.
 
@@ -114,7 +126,8 @@ class AzureML(CustomLLM):
         if allowed and not os.environ.get("PYTHONHTTPSVERIFY", "") and getattr(ssl, "_create_unverified_context", None):
             ssl._create_default_https_context = ssl._create_unverified_context
 
-    def _azureml_request(self, input: str) -> None:
+    def run(self, input: str) -> str:
+        """Run the model on the input."""
         import json
         import urllib.request
 
