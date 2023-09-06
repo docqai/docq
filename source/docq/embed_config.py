@@ -5,23 +5,18 @@ from st_pages import hide_pages
 
 hide_sidebar_style = """
 <style>
-/*
-[data-testid="stSidebar"], [data-testid="stHeader"]{
-    display: none !important;
-}*/
+    header [data-testid="collapsedControl"] {
+        display: none !important;
+    }
 
-[data-testid="collapsedControl"]{
-    display: none !important;
-}
+    .block-container {
+        padding-top: 1rem !important;
+    }
 
-.block-container {
-    padding-top: 1rem !important;
-}
-
-.stChatFloatingInputContainer {
-    padding-bottom: 3rem !important;
-}
-</style>
+    .stChatFloatingInputContainer {
+        padding-bottom: 3rem !important;
+    }
+    </style>
 """
 
 def _web_embed_config() -> None:

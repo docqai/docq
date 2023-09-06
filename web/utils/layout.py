@@ -7,7 +7,7 @@ import streamlit as st
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SpaceType, SystemSettingsKey
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
-from docq.embed_config import root_embed_config
+from docq.embed_config import root_embed_config, web_embed_config
 from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
@@ -238,7 +238,7 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
     else:
         if show_login_form:
             __login_form()
-        else :
+        else:
             handle_public_session()
         return False
 
@@ -253,6 +253,17 @@ def feature_enabled(feature: FeatureKey) -> bool:
         st.stop()
         return False
     return True
+
+
+def public_space_enabled(feature: FeatureKey) -> None:
+    """Check if public space is ready."""
+    feature_enabled(feature)
+    spaces = list_public_spaces()
+    if not spaces:
+        st.error("This feature is not ready.")
+        st.info("Please contact your administrator to configure this feature.")
+        st.stop()
+    web_embed_config()
 
 
 def create_user_ui() -> None:
@@ -427,7 +438,7 @@ def chat_ui(feature: FeatureKey) -> None:
         unsafe_allow_html=True,
     )
     with st.container():
-        if "no_auth" in st.session_state:
+        if "no_auth_public_session" in st.session_state and feature.type_ == FeatureType.ASK_SHARED:
             st.session_state[f"chat_shared_spaces_{feature.value()}"] = list_public_spaces()
             st.session_state["chat_personal_space"] = False
 

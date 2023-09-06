@@ -420,6 +420,7 @@ def handle_public_session() -> None:
     """Handle public session."""
     session_id = st.experimental_get_query_params().get("id", [None])[0]
     if session_id:
+        st.session_state["no_auth_public_session"] = True
         set_auth_session(
             {
                 SessionKeyNameForAuth.ID.name: session_id,
