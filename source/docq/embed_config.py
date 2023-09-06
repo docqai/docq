@@ -2,6 +2,7 @@
 
 import streamlit as st
 from st_pages import hide_pages
+from streamlit.components.v1 import html
 
 hide_sidebar_style = """
 <style>

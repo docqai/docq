@@ -19,8 +19,8 @@ class FeatureType(Enum):
 
     ASK_PERSONAL = "Ask Your Documents"
     ASK_SHARED = "Ask Shared Documents"
+    ASK_PUBLIC = "Public Space"
     CHAT_PRIVATE = "General Chat"
-    PUBLIC_SPACE = "Public Space"
 
 
 class LogType(Enum):

@@ -6,11 +6,11 @@ from docq.domain import FeatureKey
 from docq.embed_config import web_embed_config
 from utils.layout import chat_ui, feature_enabled
 
-feature_enabled(FeatureType.PUBLIC_SPACE) #type: ignore
+feature_enabled(FeatureType.ASK_PUBLIC)
 
 
 web_embed_config()
 
-feature = FeatureKey(FeatureType.PUBLIC_SPACE, 1)
+feature = FeatureKey(FeatureType.ASK_PUBLIC, 1)
 
 chat_ui(feature)

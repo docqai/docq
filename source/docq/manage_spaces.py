@@ -199,7 +199,6 @@ def create_shared_space(name: str, summary: str, datasource_type: str, datasourc
 
 def list_shared_spaces(user_id: int = None) -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
     """List all shared spaces."""
-
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
@@ -207,6 +206,24 @@ def list_shared_spaces(user_id: int = None) -> list[tuple[int, str, str, bool, s
             "SELECT id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM spaces ORDER BY name"
         )
         rows = cursor.fetchall()
+        return [(row[0], row[1], row[2], bool(row[3]), row[4], json.loads(row[5]), row[6], row[7]) for row in rows]
+
+
+def list_public_spaces() -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
+    """List all public spaces."""
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(
+            """
+            SELECT id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at
+            FROM spaces
+            LEFT JOIN space_access sa on spaces.id = sa.space_id
+            WHERE sa.access_type = 'PUBLIC' ORDER BY name
+            """
+        )
+        rows = cursor.fetchall()
+        print(f"\x1b[31m Debug Publics spaces{rows}\x1b[0m")
         return [(row[0], row[1], row[2], bool(row[3]), row[4], json.loads(row[5]), row[6], row[7]) for row in rows]
 
 

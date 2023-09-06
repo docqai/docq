@@ -1,6 +1,7 @@
 """Layout components for the web app."""
 
 import logging
+from contextlib import suppress
 from typing import List, Tuple
 
 import streamlit as st
@@ -44,6 +45,7 @@ from .handlers import (
     handle_update_user,
     handle_update_user_group,
     handle_upload_file,
+    list_public_spaces,
     list_shared_spaces,
     list_space_data_source_choices,
     list_space_groups,
@@ -248,6 +250,12 @@ def feature_enabled(feature: FeatureKey) -> bool:
         st.info("Please contact your administrator to enable this feature.")
         st.stop()
         return False
+    if feature == FeatureType.ASK_PUBLIC:
+        spaces = list_public_spaces()
+        if len(spaces) < 1:
+            st.error("This feature is not ready.")
+            st.info("Please contact your administrator to setup this feature.")
+            st.stop()
     return True
 
 
@@ -436,6 +444,9 @@ def chat_ui(feature: FeatureKey) -> None:
                 )
                 st.checkbox("Including your documents", value=True, key="chat_personal_space")
 
+        elif feature.type_ == FeatureType.ASK_PUBLIC:
+            st.session_state[f"chat_public_spaces_{feature.value()}"] = list_public_spaces()
+
         load_history, create_new_chat = st.columns([3, 1])
         with load_history:
             if st.button("Load chat history earlier"):
@@ -480,6 +491,10 @@ def _render_document_upload(space: SpaceKey, documents: List) -> None:
 
 def documents_ui(space: SpaceKey) -> None:
     """Displays the UI for managing documents in a space."""
+    permisssion = get_shared_space_permissions(space.id_)
+    if permisssion.get(SpaceAccessType.PUBLIC, False):
+        st.warning("This is a public space, Do not add any sensitive information.")
+
     documents: List[DocumentListItem] = handle_list_documents(space)
     (ds_type, _) = get_space_data_source(space)
 
@@ -713,7 +728,8 @@ def admin_docs_ui(q_param: str = None) -> None:
     spaces = list_shared_spaces()
 
     def _on_change() -> None:
-        del st.session_state["admin_docs_active_space"]
+        with suppress(KeyError):
+            del st.session_state["admin_docs_active_space"]
 
     try: # Get the space id from the query param with prefence to the newly created space.
         _sid = int(st.experimental_get_query_params()[q_param][0]) if q_param in st.experimental_get_query_params() else None

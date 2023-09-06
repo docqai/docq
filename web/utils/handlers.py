@@ -169,11 +169,13 @@ def query_chat_history(feature: domain.FeatureKey) -> None:
 
 
 def handle_chat_input(feature: domain.FeatureKey) -> None:
+    """Handle chat input."""
     req = st.session_state[f"chat_input_{feature.value()}"]
 
     space = (
         None
-        if feature.type_ == config.FeatureType.ASK_SHARED and not st.session_state["chat_personal_space"]
+        if feature.type_ == config.FeatureType.ASK_PUBLIC
+        or feature.type_ == config.FeatureType.ASK_SHARED and not st.session_state["chat_personal_space"]
         else domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_)
     )
 
@@ -242,6 +244,11 @@ def get_shared_space(id_: int) -> tuple[int, str, str, bool, str, dict, datetime
 def list_shared_spaces():
     user_id = get_authenticated_user_id()
     return manage_spaces.list_shared_spaces(user_id)
+
+
+def list_public_spaces() -> list[tuple]:
+    """List public spaces."""
+    return manage_spaces.list_public_spaces()
 
 
 def handle_archive_space(id_: int):
