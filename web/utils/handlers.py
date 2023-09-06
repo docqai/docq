@@ -174,8 +174,7 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
 
     space = (
         None
-        if feature.type_ == config.FeatureType.ASK_PUBLIC
-        or feature.type_ == config.FeatureType.ASK_SHARED and not st.session_state["chat_personal_space"]
+        if feature.type_ == config.FeatureType.ASK_SHARED and not st.session_state["chat_personal_space"]
         else domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_)
     )
 
@@ -415,3 +414,25 @@ def handle_get_gravatar_url() -> str:
     size, default, rating = 200, "identicon", "g"
     email_hash = hashlib.md5(email.lower().encode("utf-8")).hexdigest()  # noqa: S324
     return f"https://www.gravatar.com/avatar/{email_hash}?s={size}&d={default}&r={rating}"
+
+
+def handle_public_session() -> None:
+    """Handle public session."""
+    session_id = st.experimental_get_query_params().get("id", [None])[0]
+    if session_id:
+        set_auth_session(
+            {
+                SessionKeyNameForAuth.ID.name: session_id,
+                SessionKeyNameForAuth.NAME.name: "Public",
+                SessionKeyNameForAuth.ADMIN.name: False,
+                SessionKeyNameForAuth.USERNAME.name: "public",
+            }
+        )
+        set_settings_session(
+            {
+                SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_system_settings(),
+                SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(None),
+            }
+        )
+        log.info(st.session_state["_docq"])
+    return None

@@ -2,20 +2,20 @@
 
 import streamlit as st
 from st_pages import hide_pages
-from streamlit.components.v1 import html
 
 hide_sidebar_style = """
 <style>
+/*
 [data-testid="stSidebar"], [data-testid="stHeader"]{
     display: none !important;
-}
+}*/
 
 [data-testid="collapsedControl"]{
     display: none !important;
 }
 
 .block-container {
-    padding-top: 0rem !important;
+    padding-top: 1rem !important;
 }
 
 .stChatFloatingInputContainer {

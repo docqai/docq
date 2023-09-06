@@ -1,7 +1,6 @@
 """Layout components for the web app."""
 
 import logging
-from contextlib import suppress
 from typing import List, Tuple
 
 import streamlit as st
@@ -38,6 +37,7 @@ from .handlers import (
     handle_login,
     handle_logout,
     handle_manage_space_permissions,
+    handle_public_session,
     handle_reindex_space,
     handle_update_space_details,
     handle_update_space_group,
@@ -238,6 +238,8 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
     else:
         if show_login_form:
             __login_form()
+        else :
+            handle_public_session()
         return False
 
 
@@ -250,12 +252,6 @@ def feature_enabled(feature: FeatureKey) -> bool:
         st.info("Please contact your administrator to enable this feature.")
         st.stop()
         return False
-    if feature == FeatureType.ASK_PUBLIC:
-        spaces = list_public_spaces()
-        if len(spaces) < 1:
-            st.error("This feature is not ready.")
-            st.info("Please contact your administrator to setup this feature.")
-            st.stop()
     return True
 
 
@@ -416,9 +412,9 @@ def chat_ui(feature: FeatureKey) -> None:
             }
 
             [alt="user avatar"], [alt="assistant avatar"] {
-                border-radius: 8px;
-                width: 2.5rem !important;
-                height: 2.5rem !important;
+                border-radius: 6px;
+                width: 2rem !important;
+                height: 2rem !important;
                 cursor: pointer;
             }
 
@@ -431,7 +427,11 @@ def chat_ui(feature: FeatureKey) -> None:
         unsafe_allow_html=True,
     )
     with st.container():
-        if feature.type_ == FeatureType.ASK_SHARED:
+        if "no_auth" in st.session_state:
+            st.session_state[f"chat_shared_spaces_{feature.value()}"] = list_public_spaces()
+            st.session_state["chat_personal_space"] = False
+
+        elif feature.type_ == FeatureType.ASK_SHARED:
             _personal_ask_style()
             with st.expander("Including these shared spaces:"):
                 spaces = list_shared_spaces()
@@ -443,9 +443,6 @@ def chat_ui(feature: FeatureKey) -> None:
                     key=f"chat_shared_spaces_{feature.value()}",
                 )
                 st.checkbox("Including your documents", value=True, key="chat_personal_space")
-
-        elif feature.type_ == FeatureType.ASK_PUBLIC:
-            st.session_state[f"chat_public_spaces_{feature.value()}"] = list_public_spaces()
 
         load_history, create_new_chat = st.columns([3, 1])
         with load_history:
@@ -728,7 +725,7 @@ def admin_docs_ui(q_param: str = None) -> None:
     spaces = list_shared_spaces()
 
     def _on_change() -> None:
-        with suppress(KeyError):
+        if "admin_docs_active_space" in st.session_state:
             del st.session_state["admin_docs_active_space"]
 
     try: # Get the space id from the query param with prefence to the newly created space.
