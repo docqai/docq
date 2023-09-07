@@ -223,7 +223,6 @@ def list_public_spaces() -> list[tuple[int, str, str, bool, str, dict, datetime,
             """
         )
         rows = cursor.fetchall()
-        print(f"\x1b[31m Debug Publics spaces{rows}\x1b[0m")
         return [(row[0], row[1], row[2], bool(row[3]), row[4], json.loads(row[5]), row[6], row[7]) for row in rows]
 
 
