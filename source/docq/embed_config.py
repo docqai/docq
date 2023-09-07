@@ -5,7 +5,11 @@ from st_pages import hide_pages
 
 hide_sidebar_style = """
 <style>
-    header [data-testid="collapsedControl"] {
+    [data-testid="collapsedControl"] {
+        display: none !important;
+    }
+
+    section[data-testid="stSidebar"] {
         display: none !important;
     }
 
@@ -16,6 +20,11 @@ hide_sidebar_style = """
     .stChatFloatingInputContainer {
         padding-bottom: 3rem !important;
     }
+
+    div.element-container:has(.stAlert) {
+        padding-top: 2rem !important;
+    }
+
     </style>
 """
 
