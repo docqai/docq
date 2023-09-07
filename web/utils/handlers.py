@@ -436,4 +436,7 @@ def handle_public_session() -> None:
             }
         )
         log.info(st.session_state["_docq"])
+    else:
+        st.error("Error loading public session.")
+        st.stop()
     return None

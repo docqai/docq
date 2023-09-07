@@ -257,13 +257,13 @@ def feature_enabled(feature: FeatureKey) -> bool:
 
 def public_space_enabled(feature: FeatureKey) -> None:
     """Check if public space is ready."""
+    web_embed_config()
     feature_enabled(feature)
     spaces = list_public_spaces()
-    if not spaces:
+    if not spaces: # Stop the app if there are no public spaces.
         st.error("This feature is not ready.")
         st.info("Please contact your administrator to configure this feature.")
         st.stop()
-    web_embed_config()
 
 
 def create_user_ui() -> None:
