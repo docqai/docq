@@ -139,7 +139,7 @@ _chat_ui_script = """
 def chat_ui_script() -> None:
     """A javascript snippet that runs on the chat UI."""
     st.write("<style> iframe {min-height: 0; height: 0}</style>", unsafe_allow_html=True)
-    html(_chat_ui_script)
+    html(_chat_ui_script, width=0, height=0)
 
 
 def production_layout() -> None:
