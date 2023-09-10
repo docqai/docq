@@ -109,9 +109,10 @@ def list_public_space_group_members(group_id: int) -> list[tuple[int, str, str, 
         rows = cursor.execute(
             """
             SELECT s.id, s.name, s.summary, s.archived, s.datasource_type, s.datasource_configs, s.created_at, s.updated_at
-            FROM spaces s, space_group_members c
-            LEFT JOIN space_access sa on s.id = sa.space_id
-            WHERE sa.access_type = 'PUBLIC'
+            FROM spaces s
+            JOIN space_group_members c
+            LEFT JOIN space_access sa ON s.id = sa.space_id
+            AND sa.access_type = 'PUBLIC'
             WHERE c.group_id = ? AND c.space_id = s.id
             ORDER BY name
             """,
