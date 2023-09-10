@@ -12,7 +12,7 @@ from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 
-from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
+from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat, SessionKeyNameForPublic
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
     get_enabled_features,
@@ -45,7 +45,7 @@ from .handlers import (
     handle_update_user,
     handle_update_user_group,
     handle_upload_file,
-    list_public_spaces,
+    list_public_space_group_members,
     list_shared_spaces,
     list_space_data_source_choices,
     list_space_groups,
@@ -54,7 +54,7 @@ from .handlers import (
     prepare_for_chat,
     query_chat_history,
 )
-from .sessions import get_auth_session, get_chat_session
+from .sessions import get_auth_session, get_chat_session, get_public_session
 
 _chat_ui_script = """
 <script>
@@ -259,8 +259,12 @@ def public_space_enabled(feature: FeatureKey) -> None:
     """Check if public space is ready."""
     web_embed_config()
     feature_enabled(feature)
-    spaces = list_public_spaces()
-    if not spaces: # Stop the app if there are no public spaces.
+    group_id = get_public_session(SessionKeyNameForPublic.GROUP)
+    session_id = get_public_session(SessionKeyNameForPublic.SESSION)
+    feature_is_ready, spaces = (group_id != -1 or session_id != -1), None
+    if feature_is_ready:
+        spaces = list_public_space_group_members()
+    if not feature_is_ready or not spaces: # Stop the app if there are no public spaces.
         st.error("This feature is not ready.")
         st.info("Please contact your administrator to configure this feature.")
         st.stop()
@@ -438,11 +442,7 @@ def chat_ui(feature: FeatureKey) -> None:
         unsafe_allow_html=True,
     )
     with st.container():
-        if "no_auth_public_session" in st.session_state and feature.type_ == FeatureType.ASK_SHARED:
-            st.session_state[f"chat_shared_spaces_{feature.value()}"] = list_public_spaces()
-            st.session_state["chat_personal_space"] = False
-
-        elif feature.type_ == FeatureType.ASK_SHARED:
+        if feature.type_ == FeatureType.ASK_SHARED:
             _personal_ask_style()
             with st.expander("Including these shared spaces:"):
                 spaces = list_shared_spaces()

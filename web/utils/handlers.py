@@ -6,7 +6,7 @@ import logging as log
 import math
 import random
 from datetime import datetime
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 
 import streamlit as st
 from docq import (
@@ -29,14 +29,17 @@ from .constants import (
     NUMBER_OF_MSGS_TO_LOAD,
     SessionKeyNameForAuth,
     SessionKeyNameForChat,
+    SessionKeyNameForPublic,
     SessionKeyNameForSettings,
 )
 from .sessions import (
     get_authenticated_user_id,
     get_chat_session,
+    get_public_session,
     get_username,
     set_auth_session,
     set_chat_session,
+    set_public_session,
     set_settings_session,
 )
 
@@ -168,24 +171,43 @@ def query_chat_history(feature: domain.FeatureKey) -> None:
     set_chat_session(history[0][3] if history else curr_cutoff, feature.type_, SessionKeyNameForChat.CUTOFF)
 
 
+def list_public_space_group_members() -> list[tuple]:
+    """List public spaces in a space group."""
+    group_id = get_public_session(SessionKeyNameForPublic.GROUP)
+    return manage_space_groups.list_public_space_group_members(group_id)
+
+
+def _get_chat_spaces(feature: domain.FeatureKey) -> tuple[Optional[SpaceKey], List[SpaceKey]]:
+    """Get chat spaces."""
+    personal_space_key = domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_)
+
+    if feature.type_ == config.FeatureType.ASK_PERSONAL:
+        return personal_space_key, []
+
+    elif feature.type_ == config.FeatureType.ASK_SHARED:
+        return (
+            None if not st.session_state["chat_personal_space"] else personal_space_key,
+            [
+                domain.SpaceKey(config.SpaceType.SHARED, s_[0])
+                for s_ in st.session_state[f"chat_shared_spaces_{feature.value()}"]
+            ],
+        )
+
+    elif feature.type_ == config.FeatureType.ASK_PUBLIC:
+        return (
+            None,
+            [domain.SpaceKey(config.SpaceType.PUBLIC, s_[0]) for s_ in list_public_space_group_members()],
+        )
+
+    else:
+        return None, []
+
+
 def handle_chat_input(feature: domain.FeatureKey) -> None:
     """Handle chat input."""
     req = st.session_state[f"chat_input_{feature.value()}"]
 
-    space = (
-        None
-        if feature.type_ == config.FeatureType.ASK_SHARED and not st.session_state["chat_personal_space"]
-        else domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_)
-    )
-
-    spaces = (
-        [
-            domain.SpaceKey(config.SpaceType.SHARED, s_[0])
-            for s_ in st.session_state[f"chat_shared_spaces_{feature.value()}"]
-        ]
-        if feature.type_ == config.FeatureType.ASK_SHARED
-        else None
-    )
+    space, spaces = _get_chat_spaces(feature)
 
     thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
 
@@ -416,27 +438,42 @@ def handle_get_gravatar_url() -> str:
     return f"https://www.gravatar.com/avatar/{email_hash}?s={size}&d={default}&r={rating}"
 
 
+def _get_query_param_configs() -> tuple[str, int]:
+    """Get public configs."""
+    session_id = st.experimental_get_query_params().get("session", [None])[0]
+    group_id = st.experimental_get_query_params().get("group", ["default"])[0]
+    if session_id is None:
+        session_id = -1
+    if group_id == "default":
+        group_id = 1
+    try:
+        group_id = int(group_id)
+    except ValueError:
+        group_id = -1
+    return session_id, group_id
+
+
 def handle_public_session() -> None:
     """Handle public session."""
-    session_id = st.experimental_get_query_params().get("id", [None])[0]
-    if session_id:
-        st.session_state["no_auth_public_session"] = True
-        set_auth_session(
-            {
-                SessionKeyNameForAuth.ID.name: session_id,
-                SessionKeyNameForAuth.NAME.name: "Public",
-                SessionKeyNameForAuth.ADMIN.name: False,
-                SessionKeyNameForAuth.USERNAME.name: "public",
-            }
-        )
-        set_settings_session(
-            {
-                SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_system_settings(),
-                SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(None),
-            }
-        )
-        log.info(st.session_state["_docq"])
-    else:
-        st.error("Error loading public session.")
-        st.stop()
-    return None
+    session_id, space_group_id = _get_query_param_configs()
+    set_auth_session(
+        {
+            SessionKeyNameForAuth.ID.name: session_id,
+            SessionKeyNameForAuth.NAME.name: "Public",
+            SessionKeyNameForAuth.ADMIN.name: False,
+            SessionKeyNameForAuth.USERNAME.name: "public",
+        }
+    )
+    set_settings_session(
+        {
+            SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_system_settings(),
+            SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(None),
+        }
+    )
+    set_public_session(
+        {
+            SessionKeyNameForPublic.SESSION.name: session_id,
+            SessionKeyNameForPublic.GROUP.name: space_group_id,
+        }
+    )
+    log.info(st.session_state["_docq"])

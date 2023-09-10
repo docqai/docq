@@ -5,7 +5,7 @@ import os
 from enum import Enum
 
 from ..config import ENV_VAR_DOCQ_DATA, FeatureType, SpaceType
-from ..domain import SpaceKey
+from ..domain import FeatureKey, SpaceKey
 
 
 class _StoreSubdir(Enum):
@@ -58,9 +58,13 @@ def get_index_dir(space: SpaceKey) -> str:
     return _get_path(_StoreSubdir.INDEX, space.type_, str(space.id_))
 
 
-def get_sqlite_usage_file(id_: int) -> str:
+def get_sqlite_usage_file(feature: FeatureKey) -> str:
     """Get the SQLite file for storing usage related data."""
-    return _get_path(_StoreSubdir.SQLITE, SpaceType.PERSONAL, str(id_), filename=_SqliteFilename.USAGE.value)
+    return _get_path(
+        _StoreSubdir.SQLITE, SpaceType.PUBLIC
+        if feature.type_ == FeatureType.ASK_PUBLIC else SpaceType.PERSONAL,
+        str(feature.id_), filename=_SqliteFilename.USAGE.value
+    )
 
 
 def get_sqlite_system_file() -> str:

@@ -43,7 +43,7 @@ def _save_messages(data: list[tuple[str, bool, datetime, int]], feature: Feature
     tablename = get_history_table_name(feature.type_)
     thread_tablename = get_history_thread_table_name(feature.type_)
     with closing(
-        sqlite3.connect(get_sqlite_usage_file(feature.id_), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_usage_file(feature), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             SQL_CREATE_MESSAGE_TABLE.format(
@@ -69,7 +69,7 @@ def _retrieve_messages(
 
     rows = None
     with closing(
-        sqlite3.connect(get_sqlite_usage_file(feature.id_), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_usage_file(feature), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_THREAD_TABLE.format(table=thread_tablename))
         cursor.execute(SQL_CREATE_MESSAGE_TABLE.format(table=tablename, thread_table=thread_tablename))
@@ -96,7 +96,7 @@ def create_history_thread(topic: str, feature: FeatureKey) -> int:
     """Create a new thread for the history i.e a new chat session."""
     tablename = get_history_thread_table_name(feature.type_)
     with closing(
-        sqlite3.connect(get_sqlite_usage_file(feature.id_), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_usage_file(feature), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             SQL_CREATE_THREAD_TABLE.format(
@@ -123,7 +123,7 @@ def get_latest_thread(feature: FeatureKey) -> tuple[int, str, int] | None:
     tablename = get_history_thread_table_name(feature.type_)
     rows = None
     with closing(
-        sqlite3.connect(get_sqlite_usage_file(feature.id_), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_usage_file(feature), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             SQL_CREATE_THREAD_TABLE.format(
