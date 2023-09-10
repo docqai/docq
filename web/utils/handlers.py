@@ -6,7 +6,7 @@ import logging as log
 import math
 import random
 from datetime import datetime
-from typing import Any, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 import streamlit as st
 from docq import (
@@ -23,6 +23,7 @@ from docq import (
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
+from docq.support.auth_utils import auth_result, session_logout
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -44,10 +45,8 @@ from .sessions import (
 )
 
 
-def handle_login(username: str, password: str) -> bool:
-    """Handle login."""
-    result = manage_users.authenticate(username, password)
-    log.info("Login result: %s", result)
+def _set_session_config(result: tuple | None = None) -> bool:
+    """Authenticate automatically."""
     if result:
         set_auth_session(
             {
@@ -69,7 +68,28 @@ def handle_login(username: str, password: str) -> bool:
         return False
 
 
+def handle_auto_login(auth_layout: Callable) -> Callable:
+    """Authenticate automatically."""
+    def wrapper(*args: tuple, **kwargs: dict) -> Any:  # noqa: ANN401
+        """Auth wrapper."""
+        results = auth_result()
+        if results:
+            _set_session_config(results)
+            return auth_layout(*args, **kwargs)
+        return auth_layout(*args, **kwargs)
+    return wrapper
+
+
+def handle_login(username: str | None = None, password: str | None = None) -> bool:
+    """Handle login."""
+    result = manage_users.authenticate(username, password)
+    log.info("Login result: %s", result)
+    return _set_session_config(result)
+
+
 def handle_logout() -> None:
+    """Handle logout."""
+    session_logout()
     set_auth_session()
 
 

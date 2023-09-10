@@ -13,6 +13,8 @@ from . import manage_documents as mdocuments
 from . import manage_settings as msettings
 from .config import SpaceType
 from .domain import SpaceKey
+from .manage_documents import reindex
+from .support.auth_utils import cache_auth
 from .support.store import get_sqlite_system_file
 
 SQL_CREATE_USERS_TABLE = """
@@ -80,7 +82,7 @@ def _init_user_data(user_id: int) -> None:
 def _reindex_user_docs(user_id: int) -> None:
     mdocuments.reindex(SpaceKey(SpaceType.PERSONAL, user_id))
 
-
+@cache_auth
 def authenticate(username: str, password: str) -> Tuple[int, str, bool]:
     """Authenticate a user.
 

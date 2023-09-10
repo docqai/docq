@@ -22,6 +22,7 @@ from .handlers import (
     get_space_data_source,
     get_space_data_source_choice_by_type,
     get_system_settings,
+    handle_auto_login,
     handle_chat_input,
     handle_create_new_chat,
     handle_create_space,
@@ -220,6 +221,7 @@ def public_access() -> None:
     root_embed_config()
 
 
+@handle_auto_login
 def auth_required(show_login_form: bool = True, requiring_admin: bool = False, show_logout_button: bool = True) -> bool:
     """Decide layout based on current user's access."""
     auth = get_auth_session()
