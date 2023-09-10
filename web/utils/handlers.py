@@ -267,11 +267,6 @@ def list_shared_spaces():
     return manage_spaces.list_shared_spaces(user_id)
 
 
-def list_public_spaces() -> list[tuple]:
-    """List public spaces."""
-    return manage_spaces.list_public_spaces()
-
-
 def handle_archive_space(id_: int):
     manage_spaces.archive_space(id_)
 
