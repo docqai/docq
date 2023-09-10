@@ -4,8 +4,6 @@ LOCATION="${2:-"westeurope"}"
 
 RESOURCE_GROUP="${3:-${NAME}-rg-${LOCATION}}"
 
-
-
 read -p "This will delete all resources in resource group '${RESOURCE_GROUP}'. Are you sure? [y/n]" confirm
 
 if [ $confirm = "y" ] || [ $confirm = "Y" ] 

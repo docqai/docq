@@ -1,24 +1,39 @@
 # Infra-as-Code setup for Docq.AI hosting
 
+- `app` folder - IaC for hosting the Docq.AI app on various cloud providers.
+- `inference` folder - IaC for hosting ML models used by the Docq app for inference.
+
+## Install Azure CLI
+
+- Install core Azure CLI `brew install azure-cli`
+- Install Azure ML CLI v2 (remove v1 if exists, then install v2)
+
+  ```terminal
+  az extension remove --name ml
+
+  az extension add --name ml --yes
+  ```
+
 ## Azure ARM Templates
 
 These docs are mainly for contributing and developing the various deployment methods available in the `/infra` folder. We recommend users start with installation instruction layed out in the user guide in the main docs site. But feel free if you want to get your hands dirty.
 
-The ARM template in `/infra/azure/arm` powers the whizard based one-click deploy method described in the main docs.
+The ARM template in `/infra/azure/arm` powers the wizard based one-click deploy method described in the main docs.
 
 ### Deploy and destroy scripts
 
-There two scripts combine several azure CLI commands to for convinience.
+There two scripts combine several azure CLI commands to for convenience.
 
-Running `./deploy.sh` is the easiest way to test when interating on the template.
+Running `./deploy.sh` is the easiest way to test when iterating on the template.
 
 - `./deploy.sh <NAME> <LOCATION> <RESOURCE_GROUP>` - args are optional. creates a resource group and deploys the ARM template based on several defaults. Inspect the script to discover the defaults and available parameters. Params can be overridden by passing argument values in order
-- `./destroy.sh <NAME> <LOCATION> <RESOURCE_GROUP>` - args are optional. Destroys the resource group and all resources within. Handles purging all Congnitive Services in the resource group that are deleted.
+- `./destroy.sh <NAME> <LOCATION> <RESOURCE_GROUP>` - args are optional. Destroys the resource group and all resources within. Handles purging all Cognitive Services in the resource group that are deleted.
 
 ### Useful CLI commands
 
 If using the scripts above you shouldn't need these but occasionally you they might help when troubleshooting.
 
+- authenticate `az login`
 - Create resource group CLI - `az group create --name docq-rg-westeurope --location westeurope`
 - Deploy template CLI - `az deployment group create --resource-group docq-rg-westeurope --name docq1 --template-file appservice.json`
 - Delete resources in resource group - `az group delete --name docq-rg-westeurope`
@@ -30,19 +45,19 @@ If using the scripts above you shouldn't need these but occasionally you they mi
 
 See the `models` tab in Azure AI Studio <https://oai.azure.com/portal> for models available to the specific Azure account along with version numbers"
 
-See API ref for detials on avail options <https://learn.microsoft.com/en-us/rest/api/cognitiveservices/azureopenaistable/deployments/create>
+See API ref for details on avail options <https://learn.microsoft.com/en-us/rest/api/cognitiveservices/azureopenaistable/deployments/create>
 
 Explanation about models <https://learn.microsoft.com/en-gb/azure/cognitive-services/openai/concepts/models>
 
 ### Testing the template
 
-- Run `./deploy.sh` to test the template deploys all resources sucessfully.
+- Run `./deploy.sh` to test the template deploys all resources successfully.
 - Navigate to the app URL for this instance. Verify the app is working as expect.
 - Test template deployment method aka one-click deploy. This is important as some times what works when deploying from the CLI doesn't work in template deployment.
   - push the template change to your branch (origin) such that it's publicly available.
   - Copy the 'raw' URL for the template file: Navigate to the file on Github.com. Click on the 'raw' button on the top right area.
   - URL encode the github raw URL.
-  - Trigger Azure template deployment by navigaiting to `https://portal.azure.com/#create/Microsoft.Template/uri/<encoded Github raw URL to the template file on your branch>`
+  - Trigger Azure template deployment by navigating to `https://portal.azure.com/#create/Microsoft.Template/uri/<encoded Github raw URL to the template file on your branch>`
   Example: The URL on main <https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fdocqai%2Fdocq%2Fmain%2Finfra%2Fazure%2Farm%2Fappservice.json>
 
 ## AWS
