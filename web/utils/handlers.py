@@ -216,7 +216,7 @@ def _get_chat_spaces(feature: domain.FeatureKey) -> tuple[Optional[SpaceKey], Li
     elif feature.type_ == config.FeatureType.ASK_PUBLIC:
         return (
             None,
-            [domain.SpaceKey(config.SpaceType.PUBLIC, s_[0]) for s_ in list_public_space_group_members()],
+            [domain.SpaceKey(config.SpaceType.SHARED, s_[0]) for s_ in list_public_space_group_members()],
         )
 
     else:
@@ -471,20 +471,8 @@ def _get_query_param_configs() -> tuple[str, int]:
 def handle_public_session() -> None:
     """Handle public session."""
     session_id, space_group_id = _get_query_param_configs()
-    set_auth_session(
-        {
-            SessionKeyNameForAuth.ID.name: session_id,
-            SessionKeyNameForAuth.NAME.name: "Public",
-            SessionKeyNameForAuth.ADMIN.name: False,
-            SessionKeyNameForAuth.USERNAME.name: "public",
-        }
-    )
-    set_settings_session(
-        {
-            SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_system_settings(),
-            SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(None),
-        }
-    )
+    result = (None, "Public", False, "public")
+    _set_session_config(result)
     set_public_session(
         {
             SessionKeyNameForPublic.SESSION.name: session_id,

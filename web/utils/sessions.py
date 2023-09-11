@@ -4,7 +4,6 @@ from typing import Any
 
 import streamlit as st
 from docq import config
-from docq.support.auth_utils import auth_result
 
 from .constants import (
     SESSION_KEY_NAME_DOCQ,
@@ -107,3 +106,8 @@ def set_public_session(val: dict = None, key: SessionKeyNameForPublic = None) ->
 def get_public_session(key: SessionKeyNameForPublic = None) -> int | None:
     """Get the public session value."""
     return _get_session_value(SessionKeySubName.PUBLIC, key.name if key is not None else None)
+
+
+def get_public_session_id() -> str | None:
+    """Get the public session id."""
+    return _get_session_value(SessionKeySubName.PUBLIC, SessionKeyNameForPublic.SESSION.name)
