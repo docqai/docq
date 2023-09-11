@@ -259,9 +259,9 @@ def public_space_enabled(feature: FeatureKey) -> None:
     """Check if public space is ready."""
     web_embed_config()
     feature_enabled(feature)
-    group_id = get_public_session(SessionKeyNameForPublic.GROUP)
+    space_group_id = get_public_session(SessionKeyNameForPublic.SPACE_GROUP_ID)
     session_id = get_public_session(SessionKeyNameForPublic.SESSION)
-    feature_is_ready, spaces = (group_id != -1 or session_id != -1), None
+    feature_is_ready, spaces = (space_group_id != -1 or session_id != -1), None
     if feature_is_ready:
         spaces = list_public_space_group_members()
     if not feature_is_ready or not spaces: # Stop the app if there are no public spaces.

@@ -173,7 +173,7 @@ def query_chat_history(feature: domain.FeatureKey) -> None:
 
 def list_public_space_group_members() -> list[tuple]:
     """List public spaces in a space group."""
-    group_id = get_public_session(SessionKeyNameForPublic.GROUP)
+    group_id = get_public_session(SessionKeyNameForPublic.SPACE_GROUP_ID)
     return manage_space_groups.list_public_space_group_members(group_id)
 
 
@@ -435,17 +435,17 @@ def handle_get_gravatar_url() -> str:
 
 def _get_query_param_configs() -> tuple[str, int]:
     """Get public configs."""
-    session_id = st.experimental_get_query_params().get("session", [None])[0]
-    group_id = st.experimental_get_query_params().get("group", ["default"])[0]
+    session_id = st.experimental_get_query_params().get("session_id", [None])[0]
+    space_group_id = st.experimental_get_query_params().get("space_group_id", ["default"])[0]
     if session_id is None:
         session_id = -1
-    if group_id == "default":
-        group_id = 1
+    if space_group_id == "default":
+        space_group_id = 1
     try:
-        group_id = int(group_id)
+        space_group_id = int(space_group_id)
     except ValueError:
-        group_id = -1
-    return session_id, group_id
+        space_group_id = -1
+    return session_id, space_group_id
 
 
 def handle_public_session() -> None:
@@ -468,7 +468,7 @@ def handle_public_session() -> None:
     set_public_session(
         {
             SessionKeyNameForPublic.SESSION.name: session_id,
-            SessionKeyNameForPublic.GROUP.name: space_group_id,
+            SessionKeyNameForPublic.SPACE_GROUP_ID.name: space_group_id,
         }
     )
     log.info(st.session_state["_docq"])

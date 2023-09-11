@@ -42,7 +42,7 @@ class SessionKeyNameForPublic(Enum):
     """Third-level names for session keys in public."""
 
     SESSION = "session"
-    GROUP = "group"
+    SPACE_GROUP_ID = "group"
 
 
 NUMBER_OF_MSGS_TO_LOAD = 10
