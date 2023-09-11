@@ -45,7 +45,19 @@ from .sessions import (
 )
 
 
-def _set_session_config(result: tuple | None = None) -> bool:
+def handle_auto_login(auth_layout: Callable) -> Callable:
+    """Authenticate automatically."""
+    def wrapper(*args: tuple, **kwargs: dict) -> Any:  # noqa: ANN401
+        """Auth wrapper."""
+        results = auth_result()
+        if results:
+            _set_session_config(results)
+            return auth_layout(*args, **kwargs)
+        return auth_layout(*args, **kwargs)
+    return wrapper
+
+
+def _set_session_config(result: tuple = None) -> bool:
     """Authenticate automatically."""
     if result:
         set_auth_session(
@@ -66,18 +78,6 @@ def _set_session_config(result: tuple | None = None) -> bool:
         return True
     else:
         return False
-
-
-def handle_auto_login(auth_layout: Callable) -> Callable:
-    """Authenticate automatically."""
-    def wrapper(*args: tuple, **kwargs: dict) -> Any:  # noqa: ANN401
-        """Auth wrapper."""
-        results = auth_result()
-        if results:
-            _set_session_config(results)
-            return auth_layout(*args, **kwargs)
-        return auth_layout(*args, **kwargs)
-    return wrapper
 
 
 def handle_login(username: str | None = None, password: str | None = None) -> bool:
