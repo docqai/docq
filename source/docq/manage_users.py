@@ -81,6 +81,7 @@ def _init_user_data(user_id: int) -> None:
 def _reindex_user_docs(user_id: int) -> None:
     mdocuments.reindex(SpaceKey(SpaceType.PERSONAL, user_id))
 
+
 @cache_auth
 def authenticate(username: str, password: str) -> Tuple[int, str, bool]:
     """Authenticate a user.
