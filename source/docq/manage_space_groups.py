@@ -112,12 +112,13 @@ def list_public_space_group_members(group_id: int) -> list[tuple[int, str, str, 
             FROM spaces s
             JOIN space_group_members c
             LEFT JOIN space_access sa ON s.id = sa.space_id
-            AND sa.access_type = 'PUBLIC'
             WHERE c.group_id = ? AND c.space_id = s.id
+            AND sa.access_type = 'PUBLIC'
             ORDER BY name
             """,
             (group_id,),
         ).fetchall()
+        print(f"\x1b[31mDebub list_public_space_group_members: {rows}\x1b[0m")
         return [(row[0], row[1], row[2], bool(row[3]), row[4], json.loads(row[5]), row[6], row[7]) for row in rows]
 
 
