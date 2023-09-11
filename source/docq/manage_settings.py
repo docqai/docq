@@ -32,12 +32,12 @@ def _init(user_id: int = None) -> None:
         connection.commit()
 
 
-def _get_sqlite_file(user_id: int | None = None) -> str:
+def _get_sqlite_file(user_id: int = None) -> str:
     """Get the sqlite file for the given user."""
     return get_sqlite_usage_file(FeatureKey(FeatureType.ASK_PERSONAL, user_id)) if user_id else get_sqlite_system_file()
 
 
-def _get_settings(user_id: int | None = None) -> dict:
+def _get_settings(user_id: int = None) -> dict:
     log.debug("Getting settings for user %s", str(user_id))
     with closing(
         # sqlite3.connect(_get_sqlite_file(user_id), detect_types=sqlite3.PARSE_DECLTYPES)

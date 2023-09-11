@@ -1,7 +1,7 @@
 import logging
 
 from . import manage_settings, manage_space_groups, manage_spaces, manage_user_groups, manage_users
-from .support import store
+from .support import auth_utils, store
 
 
 def _config_logging():
@@ -16,5 +16,6 @@ def init():
     manage_spaces._init()
     manage_users._init()
     manage_users._init_admin_if_necessary()
+    auth_utils.init_session_cache()
     store._init()
     logging.info("Docq initialized")

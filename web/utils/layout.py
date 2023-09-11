@@ -142,7 +142,7 @@ _chat_ui_script = """
 def chat_ui_script() -> None:
     """A javascript snippet that runs on the chat UI."""
     st.write("<style> iframe {min-height: 0; height: 0}</style>", unsafe_allow_html=True)
-    html(_chat_ui_script)
+    html(_chat_ui_script, width=0, height=0)
 
 
 def production_layout() -> None:
@@ -392,7 +392,7 @@ def _chat_message(message_: str, is_user: bool) -> None:
 def _personal_ask_style() -> None:
     """Custom style for personal ask."""
     st.write(
-        """
+    """
     <style>
         [data-testid="stExpander"] {
             z-index: 1000;
