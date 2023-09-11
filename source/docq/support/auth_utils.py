@@ -198,7 +198,6 @@ def auth_result() -> Optional[tuple]:
     """Get cached auth result."""
     try:
         if not _auto_login_enabled():
-            print("\x1b[31mAuto login is not enabled.\x1b[0m")
             return None
 
         session_id = _get_session_id()
