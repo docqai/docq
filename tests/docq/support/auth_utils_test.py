@@ -4,8 +4,10 @@ from secrets import token_hex
 from typing import Self
 from unittest.mock import Mock, patch
 
+from docq.config import FeatureType
 from docq.support import auth_utils
 from docq.support.auth_utils import (
+    _auto_login_enabled,
     _clear_cookie,
     _create_hmac,
     _decrypt_auth,
@@ -93,21 +95,29 @@ class TestAuthUtils(unittest.TestCase):
         assert auth == decrypted_auth
 
     @patch("docq.support.auth_utils._get_session_id")
-    def test_cache_auth(self: Self, mock_get_session_id: Mock) -> None:
+    @patch("docq.support.auth_utils._auto_login_enabled")
+    def test_cache_auth(
+        self: Self,
+        mock_auto_login_enabled: Mock,
+        mock_get_session_id: Mock
+        ) -> None:
         """Test cache auth."""
         mock_func = Mock(return_value=("9999", "user", 1))
         session_id = generate_session_id()
         mock_get_session_id.return_value = session_id
+        mock_auto_login_enabled.return_value = True
         cache_auth(mock_func)()
         assert session_id in cached_sessions
         assert mock_func.call_count == 1
 
+    @patch("docq.support.auth_utils._auto_login_enabled")
     @patch("docq.support.auth_utils._get_session_id")
-    def test_auth_result(self: Self, mock_get_session_id: Mock) -> None:
+    def test_auth_result(self: Self, mock_get_session_id: Mock, mock_auto_login_enabled: Mock) -> None:
         """Test auth result."""
         mock_func = Mock(return_value=("9999", "user", 1))
         session_id = generate_session_id()
         mock_get_session_id.return_value = session_id
+        mock_auto_login_enabled.return_value = True
         cache_auth(mock_func)()
         result = auth_result()
         assert result == ("9999", "user", 1)
@@ -122,3 +132,11 @@ class TestAuthUtils(unittest.TestCase):
         session_logout()
         assert session_id not in cached_sessions
         assert session_id not in session_data
+
+    @patch("docq.support.auth_utils.get_system_settings")
+    def test_auto_login_enabled(self: Self, mock_get_system_settings: Mock) -> None:
+        """Test auto login enabled."""
+        mock_get_system_settings.return_value = [FeatureType.AUTO_LOGIN.name]
+        result = _auto_login_enabled()
+        assert mock_get_system_settings.call_count == 1
+        assert result, "Auto login should be enabled"

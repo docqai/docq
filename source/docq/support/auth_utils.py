@@ -13,7 +13,8 @@ from cryptography.fernet import Fernet
 from streamlit.components.v1 import html
 from streamlit.web.server.websocket_headers import _get_websocket_headers
 
-from ..config import COOKIE_NAME, ENV_VAR_COOKIE_SECRET_KEY
+from ..config import COOKIE_NAME, ENV_VAR_COOKIE_SECRET_KEY, FeatureType
+from ..manage_settings import SystemSettingsKey, get_system_settings
 
 EXPIRY_HOURS = 4
 CACHE_CONFIG = (1024 * 1, 60 * 60 * EXPIRY_HOURS)
@@ -40,7 +41,8 @@ def _set_cookie(cookie: str) -> None:
         expiry = datetime.now() + timedelta(hours=EXPIRY_HOURS)
         html(f"""
         <script>
-            document.cookie = "{COOKIE_NAME}={cookie}; expires={expiry.strftime('%a, %d %b %Y %H:%M:%S GMT')}; path=/;";
+            const secure = location.protocol === "https:" ? " secure;" : "";
+            document.cookie = "{COOKIE_NAME}={cookie}; expires={expiry.strftime('%a, %d %b %Y %H:%M:%S GMT')}; path=/;" + secure;
         </script>
         """, width=0, height=0)
     except Exception as e:
@@ -80,6 +82,7 @@ def _create_hmac( msg: str) -> str:
         msg.encode(),
         hashlib.sha256
     ).hexdigest()
+
 
 def _verify_hmac(msg: str, digest: str) -> bool:
     """Verify credibility of HMAC hash."""
@@ -153,12 +156,26 @@ def _update_auth_expiry(session_id: str) -> None:
         log.error("Failed to update auth expiry: %s", e)
 
 
+def _auto_login_enabled() -> bool:
+    """Check if auto login feature is enabled."""
+    try:
+        return FeatureType.AUTO_LOGIN.name in get_system_settings(SystemSettingsKey.ENABLED_FEATURES)
+    except Exception as e:
+        log.error("Failed to check if auto login is enabled: %s", e)
+        return False
+
+
 def cache_auth(auth: Callable) -> Callable:
     """Cache the auth session value to remember credentials on page reload."""
 
     def wrapper(*args: tuple, **kwargs: dict) -> tuple:  # noqa: ANN401
         """Auth wrapper."""
         try:
+            if not _auto_login_enabled():
+                session_data.clear()
+                cached_sessions.clear()
+                return auth(*args, **kwargs)
+
             session_id = _get_session_id()
             if not session_id:
                 session_id = generate_session_id()
@@ -180,6 +197,10 @@ def cache_auth(auth: Callable) -> Callable:
 def auth_result() -> Optional[tuple]:
     """Get cached auth result."""
     try:
+        if not _auto_login_enabled():
+            print("\x1b[31mAuto login is not enabled.\x1b[0m")
+            return None
+
         session_id = _get_session_id()
         if session_id:
             auth_ = cached_sessions[session_id]
