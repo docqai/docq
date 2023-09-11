@@ -6,7 +6,8 @@ import sqlite3
 from contextlib import closing
 from typing import Any
 
-from .config import SystemSettingsKey, UserSettingsKey
+from .config import FeatureType, SystemSettingsKey, UserSettingsKey
+from .domain import FeatureKey
 from .support.store import get_sqlite_system_file, get_sqlite_usage_file
 
 SQL_CREATE_SETTINGS_TABLE = """
@@ -33,7 +34,7 @@ def _init(user_id: int = None) -> None:
 
 def _get_sqlite_file(user_id: int = None) -> str:
     """Get the sqlite file for the given user."""
-    return get_sqlite_usage_file(user_id) if user_id else get_sqlite_system_file()
+    return get_sqlite_usage_file(FeatureKey(FeatureType.ASK_PERSONAL, user_id)) if user_id else get_sqlite_system_file()
 
 
 def _get_settings(user_id: int = None) -> dict:

@@ -4,7 +4,7 @@ from typing import TypeVar
 
 import pytest
 from docq.config import FeatureType, SpaceType
-from docq.domain import SpaceKey
+from docq.domain import FeatureKey, SpaceKey
 from docq.support.store import (
     get_history_table_name,
     get_index_dir,
@@ -62,7 +62,7 @@ class TestGetPath:
         ],
     )
     def test_get_sqlite_usage_file(self: Self, id_: int, expected: str):
-        assert get_sqlite_usage_file(id_) == expected
+        assert get_sqlite_usage_file(FeatureKey(FeatureType.ASK_PERSONAL, id_)) == expected
 
     def test_get_sqlite_system_file(self: Self):
         assert get_sqlite_system_file() == DATA_DIR + "/sqlite/SHARED/system.db"
