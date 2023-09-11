@@ -1,5 +1,6 @@
 """Functions to manage space groups."""
 
+import json
 import logging as log
 import sqlite3
 from contextlib import closing
@@ -89,6 +90,35 @@ def create_space_group(name: str, summary: str = None) -> bool:
         )
         connection.commit()
         return True
+
+
+
+def list_public_space_group_members(group_id: int) -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
+    """List all public spaces in a space group.
+
+    Args:
+        group_id (int): The space group id.
+
+    Returns:
+        list[tuple[int, str, str, bool, str, dict, datetime, datetime]]: The list of public spaces from a given group.
+    """
+    log.debug("Listing public space group members: %d", group_id)
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        rows = cursor.execute(
+            """
+            SELECT s.id, s.name, s.summary, s.archived, s.datasource_type, s.datasource_configs, s.created_at, s.updated_at
+            FROM spaces s
+            JOIN space_group_members c
+            LEFT JOIN space_access sa ON s.id = sa.space_id
+            WHERE c.group_id = ? AND c.space_id = s.id
+            AND sa.access_type = 'PUBLIC'
+            ORDER BY name
+            """,
+            (group_id,),
+        ).fetchall()
+        return [(row[0], row[1], row[2], bool(row[3]), row[4], json.loads(row[5]), row[6], row[7]) for row in rows]
 
 
 def update_space_group(id_: int, members: List[int], name: str = None, summary: str = None) -> bool:
