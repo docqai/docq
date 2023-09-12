@@ -42,7 +42,7 @@ def _set_cookie(cookie: str) -> None:
         html(f"""
         <script>
             const secure = location.protocol === "https:" ? " secure;" : "";
-            document.cookie = "{COOKIE_NAME}={cookie}; expires={expiry.strftime('%a, %d %b %Y %H:%M:%S GMT')}; path=/;" + secure;
+            document.cookie = "{COOKIE_NAME}={cookie}; expires={expiry.strftime('%a, %d %b %Y %H:%M:%S GMT')}; path=/; SameSite=Lax" + secure;
         </script>
         """, width=0, height=0)
     except Exception as e:
