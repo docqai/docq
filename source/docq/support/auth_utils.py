@@ -159,7 +159,10 @@ def _update_auth_expiry(session_id: str) -> None:
 def _auto_login_enabled() -> bool:
     """Check if auto login feature is enabled."""
     try:
-        return FeatureType.AUTO_LOGIN.name in get_system_settings(SystemSettingsKey.ENABLED_FEATURES)
+        system_settings = get_system_settings(SystemSettingsKey.ENABLED_FEATURES)
+        if system_settings: # Only enable feature when explicitly enabled (dafault to Disabled)
+            return FeatureType.AUTO_LOGIN.name in system_settings
+        return False
     except Exception as e:
         log.error("Failed to check if auto login is enabled: %s", e)
         return False
