@@ -16,7 +16,6 @@ show_pages(
         Page("web/personal_chat.py", "General_Chat"),
         Page("web/personal_ask.py", "Ask_Your_Documents"),
         Page("web/personal_docs.py", "Manage_Your_Documents"),
-        Page("web/embed.py", "widget", "🔗"),
         Section("Shared_Spaces", icon="💼"),
         Page("web/shared_ask.py", "Ask_Shared_Documents"),
         Page("web/shared_spaces.py", "List_Shared_Spaces"),
