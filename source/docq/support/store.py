@@ -82,12 +82,14 @@ def get_index_dir(space: SpaceKey) -> str:
 
 def get_sqlite_usage_file(id_: int) -> str:
     """Get the SQLite file for storing usage related data."""
-    return _get_path(_StoreSubdir.SQLITE, SpaceType.PERSONAL, str(id_), filename=_SqliteFilename.USAGE.value)
+    return _get_path(
+        store=_StoreSubdir.SQLITE, type_=SpaceType.PERSONAL, subtype=str(id_), filename=_SqliteFilename.USAGE.value
+    )
 
 
 def get_sqlite_system_file() -> str:
     """Get the SQLite file for storing space related data."""
-    return _get_path(_StoreSubdir.SQLITE, SpaceType.SHARED, filename=_SqliteFilename.SYSTEM.value)
+    return _get_path(store=_StoreSubdir.SQLITE, type_=SpaceType.SHARED, filename=_SqliteFilename.SYSTEM.value)
 
 
 def get_history_table_name(type_: FeatureType) -> str:
