@@ -11,6 +11,7 @@ from .support.store import get_sqlite_system_file
 SQL_CREATE_SPACE_GROUPS_TABLE = """
 CREATE TABLE IF NOT EXISTS space_groups (
     id INTEGER PRIMARY KEY,
+    org_id INTEGER NOT NULL,
     name TEXT UNIQUE,
     summary TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -39,10 +40,13 @@ def _init() -> None:
         connection.commit()
 
 
-def list_space_groups(name_match: str = None) -> List[Tuple[int, str, List[Tuple[int, str]], datetime, datetime]]:
+def list_space_groups(
+    org_id: int, name_match: str = None
+) -> List[Tuple[int, int, str, List[Tuple[int, str]], datetime, datetime]]:
     """List space groups.
 
     Args:
+        org_id (int): The org id.
         name_match (str, optional): The space group name match. Defaults to None.
 
     Returns:
@@ -53,8 +57,11 @@ def list_space_groups(name_match: str = None) -> List[Tuple[int, str, List[Tuple
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         space_groups = cursor.execute(
-            "SELECT id, name, summary, created_at, updated_at FROM space_groups WHERE name LIKE ?",
-            (f"%{name_match}%" if name_match else "%",),
+            "SELECT id, org_id, name, summary, created_at, updated_at FROM space_groups WHERE org_id = ? AND name LIKE ?",
+            (
+                org_id,
+                f"%{name_match}%" if name_match else "%",
+            ),
         ).fetchall()
 
         members = cursor.execute(
@@ -63,13 +70,16 @@ def list_space_groups(name_match: str = None) -> List[Tuple[int, str, List[Tuple
             )
         ).fetchall()
 
-        return [(x[0], x[1], x[2], [(y[1], y[2]) for y in members if y[0] == x[0]], x[3], x[4]) for x in space_groups]
+        return [
+            (x[0], x[1], x[2], x[3], [(y[1], y[2]) for y in members if y[0] == x[0]], x[4], x[5]) for x in space_groups
+        ]
 
 
-def create_space_group(name: str, summary: str = None) -> bool:
+def create_space_group(org_id: int, name: str, summary: str = None) -> bool:
     """Create a space group.
 
     Args:
+        org_id (int): The org id.
         name (str): The space group name.
         summary (str, optional): The space group summary. Defaults to None.
 
@@ -81,8 +91,9 @@ def create_space_group(name: str, summary: str = None) -> bool:
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
-            "INSERT INTO space_groups (name, summary) VALUES (?, ?)",
+            "INSERT INTO space_groups (org_id, name, summary) VALUES (?, ?, ?)",
             (
+                org_id,
                 name,
                 summary,
             ),
@@ -91,11 +102,12 @@ def create_space_group(name: str, summary: str = None) -> bool:
         return True
 
 
-def update_space_group(id_: int, members: List[int], name: str = None, summary: str = None) -> bool:
+def update_space_group(id_: int, org_id: int, members: List[int], name: str = None, summary: str = None) -> bool:
     """Update a group.
 
     Args:
         id_ (int): The group id.
+        org_id (int): The org id.
         members (List[int]): The list of space ids.
         name (str, optional): The group name. Defaults to None.
         summary (str, optional): The group summary. Defaults to None.
@@ -118,8 +130,9 @@ def update_space_group(id_: int, members: List[int], name: str = None, summary: 
         query += ", summary = ?"
         params.append(summary)
 
-    query += " WHERE id = ?"
+    query += " WHERE id = ? AND org_id = ?"
     params.append(id_)
+    params.append(org_id)
 
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
@@ -133,11 +146,12 @@ def update_space_group(id_: int, members: List[int], name: str = None, summary: 
         return True
 
 
-def delete_space_group(id_: int) -> bool:
-    """Delete an space group.
+def delete_space_group(id_: int, org_id: int) -> bool:
+    """Delete a space group.
 
     Args:
         id_ (int): The space group id.
+        org_id (int): The org id.
 
     Returns:
         bool: True if the space group is deleted, False otherwise.
@@ -147,6 +161,6 @@ def delete_space_group(id_: int) -> bool:
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute("DELETE FROM space_group_members WHERE group_id = ?", (id_,))
-        cursor.execute("DELETE FROM space_groups WHERE id = ?", (id_,))
+        cursor.execute("DELETE FROM space_groups WHERE id = ? AND org_id = ?", (id_, org_id))
         connection.commit()
         return True

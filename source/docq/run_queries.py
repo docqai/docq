@@ -142,7 +142,13 @@ def query(
     input_: str, feature: FeatureKey, thread_id: int, space: SpaceKey = None, spaces: list[SpaceKey] = None
 ) -> list[int]:
     """Run the query again documents in the space(s) using a LLM."""
-    log.debug("Query: %s for %s with p-space %s and s-spaces %s", input_, feature, space, spaces)
+    log.debug(
+        "Query: '%s' for feature: '%s' with personal-space: '%s' and shared-spaces: '%s'",
+        input_,
+        feature,
+        space,
+        spaces,
+    )
     data = [(input_, True, datetime.now(), thread_id)]
     is_chat = feature.type_ == FeatureType.CHAT_PRIVATE
 

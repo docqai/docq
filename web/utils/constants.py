@@ -18,8 +18,10 @@ class SessionKeyNameForAuth(Enum):
 
     ID = "id"
     NAME = "name"
-    ADMIN = "admin"
+    SUPER_ADMIN = "super_admin"
     USERNAME = "username"
+    SELECTED_ORG_ID = "selected_org_id"
+    SELECTED_ORG_ADMIN = "selected_org_admin"
 
 
 class SessionKeyNameForSettings(Enum):

@@ -37,12 +37,14 @@ class SpaceKey:
 
     type_: SpaceType
     id_: int
+    org_id: int
+    """The organisation ID that owns the space."""
 
     def __str__(self) -> str:
-        return _join_properties(_SEPARATOR_FOR_STR, self.type_.name, self.id_)
+        return _join_properties(_SEPARATOR_FOR_STR, self.type_.name, self.org_id, self.id_)
 
     def value(self) -> str:
-        return _join_properties(_SEPARATOR_FOR_VALUE, self.type_.name, self.id_)
+        return _join_properties(_SEPARATOR_FOR_VALUE, self.type_.name, self.org_id, self.id_)
 
 
 @dataclass

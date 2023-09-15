@@ -13,6 +13,7 @@ from docq import (
     config,
     domain,
     manage_documents,
+    manage_organisations,
     manage_settings,
     manage_space_groups,
     manage_spaces,
@@ -30,52 +31,75 @@ from .constants import (
     SessionKeyNameForAuth,
     SessionKeyNameForChat,
     SessionKeyNameForSettings,
+    SessionKeySubName,
 )
 from .sessions import (
+    _init_session_state,
+    get_auth_session,
     get_authenticated_user_id,
     get_chat_session,
+    get_selected_org_id,
     get_username,
+    reset_session_state,
     set_auth_session,
     set_chat_session,
+    set_if_current_user_is_selected_org_admin,
+    set_selected_org_id,
     set_settings_session,
 )
 
 
 def handle_login(username: str, password: str) -> bool:
     """Handle login."""
+    reset_session_state()
     result = manage_users.authenticate(username, password)
     log.info("Login result: %s", result)
     if result:
+        current_user_id = result[0]
+        member_orgs = manage_organisations.list_organisations(
+            user_id=current_user_id
+        )  # we can't use handle_list_orgs() here
+        default_org_id = member_orgs[0][0]
+        selected_org_admin = current_user_id in [x[0] for x in member_orgs[0][2]]
+        log.info("Member orgs: %s", member_orgs)
         set_auth_session(
             {
-                SessionKeyNameForAuth.ID.name: result[0],
+                SessionKeyNameForAuth.ID.name: current_user_id,
                 SessionKeyNameForAuth.NAME.name: result[1],
-                SessionKeyNameForAuth.ADMIN.name: result[2],
+                SessionKeyNameForAuth.SUPER_ADMIN.name: result[2],
                 SessionKeyNameForAuth.USERNAME.name: result[3],
+                SessionKeyNameForAuth.SELECTED_ORG_ID.name: default_org_id,  # default to the first org in the list for now.
+                SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name: selected_org_admin,
             }
         )
         set_settings_session(
             {
-                SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_system_settings(),
-                SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(result[0]),
+                SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_organisation_settings(org_id=default_org_id),
+                SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(
+                    org_id=default_org_id, user_id=current_user_id
+                ),
             }
         )
         log.info(st.session_state["_docq"])
+        log.debug("auth session: %s", get_auth_session())
         return True
     else:
         return False
 
 
 def handle_logout() -> None:
-    set_auth_session()
+    reset_session_state()
 
 
 def handle_create_user() -> int:
+    current_org_id = get_selected_org_id()
     result = manage_users.create_user(
         st.session_state["create_user_username"],
         st.session_state["create_user_password"],
         st.session_state["create_user_fullname"],
-        st.session_state["create_user_admin"],
+        False,
+        False,
+        current_org_id,
     )
     log.info("Create user with id: %s", result)
     return result
@@ -87,7 +111,8 @@ def handle_update_user(id_: int) -> bool:
         st.session_state[f"update_user_{id_}_username"],
         st.session_state[f"update_user_{id_}_password"],
         st.session_state[f"update_user_{id_}_fullname"],
-        st.session_state[f"update_user_{id_}_admin"],
+        st.session_state[f"update_user_{id_}_super_admin"],
+        False,
         st.session_state[f"update_user_{id_}_archived"],
     )
     log.info("Update user result: %s", result)
@@ -95,13 +120,31 @@ def handle_update_user(id_: int) -> bool:
 
 
 def list_users(name_match: str = None) -> list[tuple]:
+    """Get a list of all users across all orgs.This should only be used with admin users and to add users to orgs.
+
+    Args:
+        name_match (str, optional): The name to match. Defaults to None.
+
+    Returns:
+        List[Tuple[int, str, str, str, bool, bool, datetime, datetime]]: The list of users [user id, username, fullname, super_admin, archived, created_at, updated_at].
+    """
     return manage_users.list_users(name_match)
 
 
+def list_users_by_current_org(username_match: str = None) -> list[tuple]:
+    """Get a list of all users that are a member of an org.
+
+    Args:
+        org_id (int): The org id.
+        username_match (str, optional): The name to match. Defaults to None.
+    """
+    org_id = get_selected_org_id()
+    return manage_users.list_users_by_org(org_id=org_id, username_match=username_match)
+
+
 def handle_create_user_group() -> int:
-    result = manage_user_groups.create_user_group(
-        st.session_state["create_user_group_name"],
-    )
+    org_id = get_selected_org_id()
+    result = manage_user_groups.create_user_group(st.session_state["create_user_group_name"], org_id)
     log.info("Create user group result: %s", result)
     return result
 
@@ -117,17 +160,65 @@ def handle_update_user_group(id_: int) -> bool:
 
 
 def handle_delete_user_group(id_: int) -> bool:
-    result = manage_user_groups.delete_user_group(id_)
+    org_id = get_selected_org_id()
+    result = manage_user_groups.delete_user_group(id_, org_id)
     log.info("Update user group result: %s", result)
     return result
 
 
 def list_user_groups(name_match: str = None) -> List[Tuple]:
-    return manage_user_groups.list_user_groups(name_match)
+    org_id = get_selected_org_id()
+    return manage_user_groups.list_user_groups(org_id, name_match)
+
+
+def handle_create_org() -> bool:
+    """Create a new organization."""
+    current_user_id = get_authenticated_user_id()
+    name = st.session_state["create_org_name"]
+    result = manage_organisations.create_organisation(name, current_user_id)
+
+    log.info("Create org result: %s", result)
+    return result
+
+
+def handle_update_org(org_id: int) -> bool:
+    """Update an existing organization."""
+    name = st.session_state[f"update_org_{org_id}_name"]
+    result = manage_organisations.update_organisation(org_id, name)
+    manage_organisations.update_organisation_members(
+        org_id, [x[0] for x in st.session_state[f"update_org_{org_id}_members"]]
+    )
+    log.info("Update org result: %s", result)
+    return result
+
+
+def handle_archive_org(id_: int) -> bool:
+    """Archive an existing organization."""
+    result = manage_organisations.archive_organisation(id_)
+    log.info("Archive org result: %s", result)
+    return result
+
+
+def handle_list_orgs(name_match: str = None) -> List[Tuple]:
+    """List all organizations.
+
+    Returns:
+         List[Tuple[int, str, List[Tuple[int, str]], datetime, datetime]]: The list of orgs [org_id, org_name, [user id, users fullname] created_at, updated_at].
+    """
+    current_user_id = get_authenticated_user_id()
+    return manage_organisations.list_organisations(name_match=name_match, user_id=current_user_id)
+
+
+def handle_org_selection_change(org_id: int) -> None:
+    """Handle org selection change."""
+    set_selected_org_id(org_id)
+    set_if_current_user_is_selected_org_admin(org_id)
 
 
 def handle_create_space_group() -> int:
+    org_id = get_selected_org_id()
     result = manage_space_groups.create_space_group(
+        org_id,
         st.session_state["create_space_group_name"],
         st.session_state["create_space_group_summary"],
     )
@@ -136,8 +227,10 @@ def handle_create_space_group() -> int:
 
 
 def handle_update_space_group(id_: int) -> bool:
+    org_id = get_selected_org_id()
     result = manage_space_groups.update_space_group(
         id_,
+        org_id,
         [x[0] for x in st.session_state[f"update_space_group_{id_}_members"]],
         st.session_state[f"update_space_group_{id_}_name"],
         st.session_state[f"update_space_group_{id_}_summary"],
@@ -147,13 +240,15 @@ def handle_update_space_group(id_: int) -> bool:
 
 
 def handle_delete_space_group(id_: int) -> bool:
-    result = manage_space_groups.delete_space_group(id_)
+    org_id = get_selected_org_id()
+    result = manage_space_groups.delete_space_group(id_, org_id)
     log.info("Update space group result: %s", result)
     return result
 
 
 def list_space_groups(name_match: str = None) -> List[Tuple]:
-    return manage_space_groups.list_space_groups(name_match)
+    org_id = get_selected_org_id()
+    return manage_space_groups.list_space_groups(org_id, name_match)
 
 
 def query_chat_history(feature: domain.FeatureKey) -> None:
@@ -170,16 +265,16 @@ def query_chat_history(feature: domain.FeatureKey) -> None:
 
 def handle_chat_input(feature: domain.FeatureKey) -> None:
     req = st.session_state[f"chat_input_{feature.value()}"]
-
+    select_org_id = get_selected_org_id()
     space = (
         None
         if feature.type_ == config.FeatureType.ASK_SHARED and not st.session_state["chat_personal_space"]
-        else domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_)
+        else domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_, select_org_id)
     )
 
     spaces = (
         [
-            domain.SpaceKey(config.SpaceType.SHARED, s_[0])
+            domain.SpaceKey(config.SpaceType.SHARED, s_[0], select_org_id)
             for s_ in st.session_state[f"chat_shared_spaces_{feature.value()}"]
         ]
         if feature.type_ == config.FeatureType.ASK_SHARED
@@ -235,13 +330,15 @@ def handle_change_temperature(type_: config.SpaceType):
     manage_settings.change_settings(type_.name, temperature=st.session_state[f"temperature_{type_.name}"])
 
 
-def get_shared_space(id_: int) -> tuple[int, str, str, bool, str, dict, datetime, datetime]:
-    return manage_spaces.get_shared_space(id_)
+def get_shared_space(id_: int) -> tuple[int, int, str, str, bool, str, dict, datetime, datetime]:
+    org_id = get_selected_org_id()
+    return manage_spaces.get_shared_space(id_, org_id)
 
 
 def list_shared_spaces():
     user_id = get_authenticated_user_id()
-    return manage_spaces.list_shared_spaces(user_id)
+    org_id = get_selected_org_id()
+    return manage_spaces.list_shared_spaces(org_id, user_id)
 
 
 def handle_archive_space(id_: int):
@@ -249,7 +346,8 @@ def handle_archive_space(id_: int):
 
 
 def get_shared_space_permissions(id_: int) -> dict[SpaceAccessType, Any]:
-    permissions = manage_spaces.get_shared_space_permissions(id_)
+    org_id = get_selected_org_id()
+    permissions = manage_spaces.get_shared_space_permissions(id_, org_id)
     results = {
         SpaceAccessType.PUBLIC: any(p.type_ == SpaceAccessType.PUBLIC for p in permissions),
         SpaceAccessType.USER: [
@@ -272,8 +370,10 @@ def _prepare_space_data_source(prefix: str) -> Tuple[str, dict]:
 
 def handle_update_space_details(id_: int) -> bool:
     ds_type, ds_configs = _prepare_space_data_source(f"update_space_details_{id_}_")
+    org_id = get_selected_org_id()
     result = manage_spaces.update_shared_space(
         id_,
+        org_id,
         st.session_state[f"update_space_details_{id_}_name"],
         st.session_state[f"update_space_details_{id_}_summary"],
         st.session_state[f"update_space_details_{id_}_archived"],
@@ -299,9 +399,9 @@ def handle_manage_space_permissions(id_: int) -> bool:
 
 def handle_create_space() -> SpaceKey:
     ds_type, ds_configs = _prepare_space_data_source("create_space_")
-
+    org_id = get_selected_org_id()
     space = manage_spaces.create_shared_space(
-        st.session_state["create_space_name"], st.session_state["create_space_summary"], ds_type, ds_configs
+        org_id, st.session_state["create_space_name"], st.session_state["create_space_summary"], ds_type, ds_configs
     )
     return space
 
@@ -331,20 +431,26 @@ def get_space_data_source_choice_by_type(type_: str) -> Tuple[str, str, List[dom
 
 
 def get_system_settings() -> dict:
-    return manage_settings.get_system_settings()
+    current_org_id = get_selected_org_id()
+    return manage_settings.get_organisation_settings(org_id=current_org_id)
 
 
 def get_enabled_features() -> list[domain.FeatureKey]:
-    return manage_settings.get_system_settings(config.SystemSettingsKey.ENABLED_FEATURES)
+    current_org_id = get_selected_org_id()
+    return manage_settings.get_organisation_settings(
+        org_id=current_org_id, key=config.SystemSettingsKey.ENABLED_FEATURES
+    )
 
 
 def handle_update_system_settings() -> None:
-    manage_settings.update_system_settings(
+    current_org_id = get_selected_org_id()
+    manage_settings.update_organisation_settings(
         {
             config.SystemSettingsKey.ENABLED_FEATURES.name: [
                 f.name for f in st.session_state[f"system_settings_{config.SystemSettingsKey.ENABLED_FEATURES.name}"]
             ],
-        }
+        },
+        org_id=current_org_id,
     )
 
 
@@ -367,6 +473,7 @@ def _create_new_thread(feature: domain.FeatureKey) -> int:
 def prepare_for_chat(feature: domain.FeatureKey) -> None:
     """Prepare the session for chat. Load latest thread_id, cutoff, and history."""
     thread_id = 0
+    log.debug("prepare_for_chat(): %s", get_chat_session(feature.type_))
     if SessionKeyNameForChat.THREAD.name not in get_chat_session(feature.type_):
         thread = run_queries.get_latest_thread(feature)
         thread_id = thread[0] if thread else _create_new_thread(feature)

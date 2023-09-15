@@ -17,7 +17,7 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
 
     def test_get_document_list(self) -> None:
         """Test the get_document_list method."""
-        space = SpaceKey(SpaceType.PERSONAL, 123)
+        space = SpaceKey(SpaceType.PERSONAL, 123, 345)
         configs = {}
 
         with patch("os.scandir") as mock_scandir, patch("docq.data_source.manual_upload.get_upload_dir"), patch(
@@ -46,7 +46,7 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
 
     def test_load(self) -> None:
         """Test the load method including the metadata fields."""
-        space = SpaceKey(SpaceType.PERSONAL, 123)
+        space = SpaceKey(SpaceType.PERSONAL, 123, 345)
         configs = {}
 
         with patch("docq.data_source.manual_upload.get_upload_dir") as mock_get_upload_dir:

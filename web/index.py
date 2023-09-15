@@ -3,11 +3,15 @@
 import streamlit as st
 from docq import setup
 from st_pages import Page, Section, add_page_title, show_pages
-from utils.layout import production_layout, public_access
+from utils.layout import org_selection_ui, production_layout, public_access
 
 setup.init()
 
+
 production_layout()
+
+with st.sidebar:
+    org_selection_ui()
 
 show_pages(
     [
@@ -25,6 +29,7 @@ show_pages(
         Page("web/admin_space_groups.py", "Admin_Space_Groups"),
         Page("web/admin_users.py", "Admin_Users"),
         Page("web/admin_user_groups.py", "Admin_User_Groups"),
+        Page("web/admin_orgs.py", "Admin_Orgs"),
         Page("web/admin_logs.py", "Admin_Logs"),
     ]
 )
@@ -32,6 +37,7 @@ show_pages(
 public_access()
 
 add_page_title()
+
 
 st.subheader("Welcome to Docq - Private & Secure AI Knowledge Insight")
 

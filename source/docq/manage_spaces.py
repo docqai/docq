@@ -9,8 +9,7 @@ from typing import List
 
 from llama_index import Document, GPTVectorStoreIndex
 
-from docq.access_control.main import SpaceAccessor, SpaceAccessType
-
+from .access_control.main import SpaceAccessor, SpaceAccessType
 from .config import SpaceType
 from .data_source.list import SpaceDataSources
 from .domain import DocumentListItem, SpaceKey
@@ -20,13 +19,15 @@ from .support.store import get_index_dir, get_sqlite_system_file
 SQL_CREATE_SPACES_TABLE = """
 CREATE TABLE IF NOT EXISTS spaces (
     id INTEGER PRIMARY KEY,
+    org_id INTEGER NOT NULL,
     name TEXT UNIQUE,
     summary TEXT,
     archived BOOL DEFAULT 0,
     datasource_type TEXT,
     datasource_configs TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (org_id) REFERENCES orgs (id)
 )
 """
 
@@ -110,27 +111,32 @@ def get_space_data_source(space: SpaceKey) -> tuple[str, dict]:
         ds_type = "MANUAL_UPLOAD"
         ds_configs = {}
     else:
-        (id_, name, summary, archived, ds_type, ds_configs, created_at, updated_at) = get_shared_space(space.id_)
+        (id_, org_id, name, summary, archived, ds_type, ds_configs, created_at, updated_at) = get_shared_space(
+            space.id_, space.org_id
+        )
 
     return ds_type, ds_configs
 
 
-def get_shared_space(id_: int) -> tuple[int, str, str, bool, str, dict, datetime, datetime]:
+def get_shared_space(id_: int, org_id: int) -> tuple[int, int, str, str, bool, str, dict, datetime, datetime]:
     """Get a shared space."""
     log.debug("get_shared_space(): Getting space with id=%d", id_)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
-            "SELECT id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM spaces WHERE id = ?",
-            (id_,),
+            "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM spaces WHERE id = ? AND org_id = ?",
+            (id_, org_id),
         )
         row = cursor.fetchone()
-        return (row[0], row[1], row[2], bool(row[3]), row[4], json.loads(row[5]), row[6], row[7])
+        return (
+            (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8]) if row else None
+        )
 
 
 def update_shared_space(
     id_: int,
+    org_id: int,
     name: str = None,
     summary: str = None,
     archived: bool = False,
@@ -157,8 +163,8 @@ def update_shared_space(
     query += ", archived = ?"
     params += (archived,)
 
-    query += " WHERE id = ?"
-    params += (id_,)
+    query += " WHERE id = ? AND org_id = ?"
+    params += (id_, org_id)
 
     log.debug("Updating space %d with query: %s | Params: %s", id_, query, params)
 
@@ -171,9 +177,12 @@ def update_shared_space(
         return True
 
 
-def create_shared_space(name: str, summary: str, datasource_type: str, datasource_configs: dict) -> SpaceKey:
+def create_shared_space(
+    org_id: int, name: str, summary: str, datasource_type: str, datasource_configs: dict
+) -> SpaceKey:
     """Create a shared space."""
     params = (
+        org_id,
         name,
         summary,
         datasource_type,
@@ -185,40 +194,48 @@ def create_shared_space(name: str, summary: str, datasource_type: str, datasourc
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
-            "INSERT INTO spaces (name, summary, datasource_type, datasource_configs) VALUES (?, ?, ?, ?)", params
+            "INSERT INTO spaces (org_id, name, summary, datasource_type, datasource_configs) VALUES (?, ?, ?, ?, ?)",
+            params,
         )
         rowid = cursor.lastrowid
         connection.commit()
         log.debug("Created space with rowid: %d", rowid)
-        space = SpaceKey(SpaceType.SHARED, rowid)
+        space = SpaceKey(SpaceType.SHARED, rowid, org_id)
 
     reindex(space)
 
     return space
 
 
-def list_shared_spaces(user_id: int = None) -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
+def list_shared_spaces(
+    org_id: int, user_id: int = None
+) -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
     """List all shared spaces."""
-
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
-            "SELECT id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM spaces ORDER BY name"
+            "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM spaces WHERE org_id = ? ORDER BY name",
+            (org_id,),
         )
         rows = cursor.fetchall()
-        return [(row[0], row[1], row[2], bool(row[3]), row[4], json.loads(row[5]), row[6], row[7]) for row in rows]
+        return [
+            (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8]) for row in rows
+        ]
 
 
-def get_shared_space_permissions(id_: int) -> List[SpaceAccessor]:
+def get_shared_space_permissions(id_: int, org_id: int) -> List[SpaceAccessor]:
     """Get the permissions for a shared space."""
     log.debug("get_shared_space_permissions(): Getting permissions for space with id=%d", id_)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
-            "SELECT sa.access_type, u.id as user_id, u.username as user_name, g.id as group_id, g.name as group_name FROM space_access sa LEFT JOIN users u on sa.accessor_id = u.id LEFT JOIN user_groups g on sa.accessor_id = g.id WHERE sa.space_id = ?",
-            (id_,),
+            "SELECT sa.access_type, u.id as user_id, u.username as user_name, g.id as group_id, g.name as group_name FROM spaces s LEFT JOIN space_access sa ON s.id = sa.space_id AND sa.space_id = ? AND s.org_id = ? LEFT JOIN users u ON sa.accessor_id = u.id LEFT JOIN user_groups g on sa.accessor_id = g.id",
+            (
+                id_,
+                org_id,
+            ),
         )
         rows = cursor.fetchall()
         results = []

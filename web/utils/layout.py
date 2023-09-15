@@ -1,12 +1,13 @@
 """Layout components for the web app."""
 
-import logging
+import logging as log
 from typing import List, Tuple
 
 import streamlit as st
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SpaceType, SystemSettingsKey
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
+from docq.manage_users import list_users_by_org
 from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
@@ -21,8 +22,10 @@ from .handlers import (
     get_space_data_source,
     get_space_data_source_choice_by_type,
     get_system_settings,
+    handle_archive_org,
     handle_chat_input,
     handle_create_new_chat,
+    handle_create_org,
     handle_create_space,
     handle_create_space_group,
     handle_create_user,
@@ -33,10 +36,13 @@ from .handlers import (
     handle_delete_user_group,
     handle_get_gravatar_url,
     handle_list_documents,
+    handle_list_orgs,
     handle_login,
     handle_logout,
     handle_manage_space_permissions,
+    handle_org_selection_change,
     handle_reindex_space,
+    handle_update_org,
     handle_update_space_details,
     handle_update_space_group,
     handle_update_system_settings,
@@ -48,10 +54,18 @@ from .handlers import (
     list_space_groups,
     list_user_groups,
     list_users,
+    list_users_by_current_org,
     prepare_for_chat,
     query_chat_history,
 )
-from .sessions import get_auth_session, get_chat_session
+from .sessions import (
+    get_auth_session,
+    get_authenticated_user_id,
+    get_chat_session,
+    get_selected_org_id,
+    is_current_user_super_admin,
+    set_selected_org_id,
+)
 
 _chat_ui_script = """
 <script>
@@ -223,7 +237,7 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
         if show_logout_button:
             __logout_button()
 
-        if not auth.get(SessionKeyNameForAuth.ADMIN.name, False):
+        if not auth.get(SessionKeyNameForAuth.SUPER_ADMIN.name, False):
             __no_admin_menu()
             if requiring_admin:
                 __not_authorised()
@@ -254,30 +268,34 @@ def create_user_ui() -> None:
         st.text_input("Username", value="", key="create_user_username")
         st.text_input("Password", value="", key="create_user_password", type="password")
         st.text_input("Full Name", value="", key="create_user_fullname")
-        st.checkbox("Is Admin", value=False, key="create_user_admin")
         st.form_submit_button("Create User", on_click=handle_create_user)
 
 
 def list_users_ui(username_match: str = None) -> None:
     """List all users."""
-    users = list_users(username_match)
+    users = list_users_by_current_org(username_match)
+    edit_super_admin_disabled = not is_current_user_super_admin()
+
     if users:
-        for id_, username, fullname, admin, archived, created_at, updated_at in users:
-            is_admin = bool(admin)
-            is_archived = bool(archived)
-            is_current_user = id_ == get_auth_session()[SessionKeyNameForAuth.ID.name]
+        for id_, org_id, username, fullname, super_admin, org_admin, archived, created_at, updated_at in users:
+            is_current_user = id_ == get_authenticated_user_id()
             with st.expander(
-                f"{'~~' if is_archived else ''}{username} ({fullname}){'~~' if is_archived else ''} {'(You)' if is_current_user else ''}"
+                f"{'~~' if archived else ''}{username} ({fullname}){'~~' if archived else ''} {'(You)' if is_current_user else ''}"
             ):
-                st.markdown(f"ID: **{id_}** | Admin: **{is_admin}**")
+                st.markdown(f"ID: **{id_}** | Is Super Admin: **{bool(super_admin)}**")
                 st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
                 if st.button("Edit", key=f"update_user_{id_}_button"):
                     with st.form(key=f"update_user_{id_}"):
                         st.text_input("Username", value=username, key=f"update_user_{id_}_username")
                         st.text_input("Password", type="password", key=f"update_user_{id_}_password")
                         st.text_input("Full Name", value=fullname, key=f"update_user_{id_}_fullname")
-                        st.checkbox("Is Admin", value=is_admin, key=f"update_user_{id_}_admin")
-                        st.checkbox("Is Archived", value=is_archived, key=f"update_user_{id_}_archived")
+                        st.checkbox(
+                            "Is Super Admin",
+                            value=super_admin,
+                            key=f"update_user_{id_}_super_admin",
+                            disabled=edit_super_admin_disabled,
+                        )
+                        st.checkbox("Is Archived", value=archived, key=f"update_user_{id_}_archived")
                         st.form_submit_button("Save", on_click=handle_update_user, args=(id_,))
 
 
@@ -303,7 +321,7 @@ def list_user_groups_ui(name_match: str = None) -> None:
                             st.text_input("Name", value=name, key=f"update_user_group_{id_}_name")
                             st.multiselect(
                                 "Members",
-                                options=[(x[0], x[2]) for x in list_users()],
+                                options=[(x[0], x[3]) for x in list_users_by_current_org()],
                                 default=members,
                                 key=f"update_user_group_{id_}_members",
                                 format_func=lambda x: x[1],
@@ -314,6 +332,47 @@ def list_user_groups_ui(name_match: str = None) -> None:
                         with st.form(key=f"delete_user_group_{id_}"):
                             st.warning("Are you sure you want to delete this group?")
                             st.form_submit_button("Confirm", on_click=handle_delete_user_group, args=(id_,))
+
+
+def create_org_ui() -> None:
+    """Create a new organization."""
+    with st.expander("### + New Organization"), st.form(key="create_org"):
+        st.text_input("Name", value="", key="create_org_name")
+        st.form_submit_button("Create Organization", on_click=handle_create_org)
+
+
+def list_orgs_ui(name_match: str = None) -> None:
+    """List all organizations."""
+    orgs = handle_list_orgs(name_match=name_match)
+    current_user_id = get_authenticated_user_id()
+    if orgs:
+        for org_id, name, members, created_at, updated_at in orgs:
+            with st.expander(f"{name}"):
+                st.write(f"ID: **{org_id}**")
+                st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
+                edit_col, archive_col = st.columns(2)
+                edit_button_disabled = True
+                # only enable edit button if current user is an org admin
+                log.debug("list_orgs_ui() org_id: %s, members: %s", org_id, members)
+                edit_button_disabled = not (any([x[0] == current_user_id and bool(x[2]) is True for x in members]))
+
+                with edit_col:
+                    if st.button("Edit", key=f"update_org_{org_id}_button", disabled=edit_button_disabled):
+                        with st.form(key=f"update_org_{org_id}"):
+                            st.text_input("Name", value=name, key=f"update_org_{org_id}_name")
+                            st.multiselect(
+                                "Members",
+                                options=[(x[0], x[2]) for x in list_users()],
+                                default=[(x[0], x[1]) for x in members],
+                                key=f"update_org_{org_id}_members",
+                                format_func=lambda x: x[1],
+                            )
+                            st.form_submit_button("Save", on_click=handle_update_org, args=(org_id,))
+                with archive_col:
+                    if st.button("Archive", key=f"archive_org_{org_id}_button"):
+                        with st.form(key=f"archive_org_{org_id}"):
+                            st.warning("Are you sure you want to archive this organization?")
+                            st.form_submit_button("Confirm", on_click=handle_archive_org, args=(org_id,))
 
 
 def create_space_group_ui() -> None:
@@ -328,9 +387,10 @@ def list_space_groups_ui(name_match: str = None) -> None:
     """List all space groups."""
     groups = list_space_groups(name_match)
     if groups:
-        for id_, name, summary, members, created_at, updated_at in groups:
+        for id_, org_id, name, summary, members, created_at, updated_at in groups:
             with st.expander(f"{name} ({len(members)} spaces)"):
                 st.write(f"ID: **{id_}**")
+                st.write(f"Org ID: **{org_id}**")
                 st.write(f"Summary: _{summary}_")
                 st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
                 edit_col, delete_col = st.columns(2)
@@ -341,7 +401,7 @@ def list_space_groups_ui(name_match: str = None) -> None:
                             st.text_input("Summary", value=summary, key=f"update_space_group_{id_}_summary")
                             st.multiselect(
                                 "Spaces",
-                                options=[(x[0], x[1]) for x in list_shared_spaces()],
+                                options=[(x[0], x[2]) for x in list_shared_spaces()],
                                 default=members,
                                 key=f"update_space_group_{id_}_members",
                                 format_func=lambda x: x[1],
@@ -351,7 +411,7 @@ def list_space_groups_ui(name_match: str = None) -> None:
                     if st.button("Delete", key=f"delete_space_group_{id_}_button"):
                         with st.form(key=f"delete_space_group_{id_}"):
                             st.warning("Are you sure you want to delete this group?")
-                            st.form_submit_button("Confirm", on_click=handle_delete_space_group, args=(id_,))
+                            st.form_submit_button("Confirm", on_click=handle_delete_space_group, args=(id_))
 
 
 def _chat_message(message_: str, is_user: bool) -> None:
@@ -428,7 +488,7 @@ def chat_ui(feature: FeatureKey) -> None:
                     "Including these shared spaces:",
                     options=spaces,
                     default=spaces,
-                    format_func=lambda x: x[1],
+                    format_func=lambda x: x[2],
                     key=f"chat_shared_spaces_{feature.value()}",
                 )
                 st.checkbox("Including your documents", value=True, key="chat_personal_space")
@@ -582,34 +642,41 @@ def create_space_ui(expanded: bool = False) -> None:
 def _render_view_space_details_with_container(
     space_data: Tuple, data_source: Tuple, use_expander: bool = False
 ) -> DeltaGenerator:
-    id_, name, summary, archived, ds_type, ds_configs, created_at, updated_at = space_data
-    container = st.expander(format_archived(name, archived)) if use_expander else st.container()
-    with container:
-        if not use_expander:
-            st.write(format_archived(name, archived))
-        st.write(f"ID: **{id_}**")
-        st.write(f"Summary: _{summary}_")
-        st.write(f"Type: **{data_source[1]}**")
-        st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
-    return container
+    id_, org_id, name, summary, archived, ds_type, ds_configs, created_at, updated_at = space_data
+    has_view_perm = org_id == get_selected_org_id()
+
+    if has_view_perm:
+        container = st.expander(format_archived(name, archived)) if use_expander else st.container()
+        with container:
+            if not use_expander:
+                st.write(format_archived(name, archived))
+            st.write(f"ID: **{id_}**")
+            st.write(f"Org ID: **{org_id}**")
+            st.write(f"Summary: _{summary}_")
+            st.write(f"Type: **{data_source[1]}**")
+            st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
+        return container
 
 
 def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> None:
-    id_, name, summary, archived, ds_type, ds_configs, _, _ = space_data
-    with st.form(key=f"update_space_details_{id_}"):
-        st.text_input("Name", value=name, key=f"update_space_details_{id_}_name")
-        st.text_input("Summary", value=summary, key=f"update_space_details_{id_}_summary")
-        st.checkbox("Is Archived", value=archived, key=f"update_space_details_{id_}_archived")
-        st.selectbox(
-            "Data Source",
-            options=[data_source],
-            index=0,
-            key=f"update_space_details_{id_}_ds_type",
-            disabled=True,
-            format_func=lambda x: x[1],
-        )
-        _render_space_data_source_config_input_fields(data_source, f"update_space_details_{id_}_", ds_configs)
-        st.form_submit_button("Save", on_click=handle_update_space_details, args=(id_,))
+    id_, org_id, name, summary, archived, ds_type, ds_configs, _, _ = space_data
+    has_edit_perm = org_id == get_selected_org_id()
+
+    if has_edit_perm:
+        with st.form(key=f"update_space_details_{id_}"):
+            st.text_input("Name", value=name, key=f"update_space_details_{id_}_name")
+            st.text_input("Summary", value=summary, key=f"update_space_details_{id_}_summary")
+            st.checkbox("Is Archived", value=archived, key=f"update_space_details_{id_}_archived")
+            st.selectbox(
+                "Data Source",
+                options=[data_source],
+                index=0,
+                key=f"update_space_details_{id_}_ds_type",
+                disabled=True,
+                format_func=lambda x: x[1],
+            )
+            _render_space_data_source_config_input_fields(data_source, f"update_space_details_{id_}_", ds_configs)
+            st.form_submit_button("Save", on_click=handle_update_space_details, args=(id_,))
 
 
 def _render_edit_space_details(space_data: Tuple, data_source: Tuple) -> None:
@@ -620,30 +687,33 @@ def _render_edit_space_details(space_data: Tuple, data_source: Tuple) -> None:
 
 
 def _render_manage_space_permissions_form(space_data: Tuple) -> None:
-    id_, *_ = space_data
-    permissions = get_shared_space_permissions(id_)
+    id_, org_id, *_ = space_data
+    has_edit_perm = org_id == get_selected_org_id()
 
-    with st.form(key=f"manage_space_permissions_{id_}"):
-        st.checkbox(
-            "Public Access",
-            value=permissions[SpaceAccessType.PUBLIC],
-            key=f"manage_space_permissions_{id_}_{SpaceAccessType.PUBLIC.name}",
-        )
-        st.multiselect(
-            "Users",
-            options=[(u[0], u[1]) for u in list_users()],
-            default=permissions[SpaceAccessType.USER],
-            key=f"manage_space_permissions_{id_}_{SpaceAccessType.USER.name}",
-            format_func=lambda x: x[1],
-        )
-        st.multiselect(
-            "Groups",
-            options=[(g[0], g[1]) for g in list_user_groups()],
-            default=permissions[SpaceAccessType.GROUP],
-            key=f"manage_space_permissions_{id_}_{SpaceAccessType.GROUP.name}",
-            format_func=lambda x: x[1],
-        )
-        st.form_submit_button("Save", on_click=handle_manage_space_permissions, args=(id_,))
+    if has_edit_perm:
+        permissions = get_shared_space_permissions(id_)
+
+        with st.form(key=f"manage_space_permissions_{id_}"):
+            st.checkbox(
+                "Public Access",
+                value=permissions[SpaceAccessType.PUBLIC],
+                key=f"manage_space_permissions_{id_}_{SpaceAccessType.PUBLIC.name}",
+            )
+            st.multiselect(
+                "Users",
+                options=[(u[0], u[1]) for u in list_users()],
+                default=permissions[SpaceAccessType.USER],
+                key=f"manage_space_permissions_{id_}_{SpaceAccessType.USER.name}",
+                format_func=lambda x: x[1],
+            )
+            st.multiselect(
+                "Groups",
+                options=[(g[0], g[1]) for g in list_user_groups()],
+                default=permissions[SpaceAccessType.GROUP],
+                key=f"manage_space_permissions_{id_}_{SpaceAccessType.GROUP.name}",
+                format_func=lambda x: x[1],
+            )
+            st.form_submit_button("Save", on_click=handle_manage_space_permissions, args=(id_,))
 
 
 def _render_manage_space_permissions(space_data: Tuple) -> None:
@@ -660,7 +730,7 @@ def list_spaces_ui(admin_access: bool = False) -> None:
         for s in spaces:
             if s[3] and not admin_access:
                 continue
-            ds = get_space_data_source_choice_by_type(s[4])
+            ds = get_space_data_source_choice_by_type(s[5])
             container = _render_view_space_details_with_container(s, ds, True)
             if admin_access:
                 with container:
@@ -670,12 +740,14 @@ def list_spaces_ui(admin_access: bool = False) -> None:
                         _render_edit_space_details(s, ds)
                     with col_permissions:
                         _render_manage_space_permissions(s)
+    else:
+        st.info("No spaces have been created yet. Please speak to your admin.")
 
 
 def show_space_details_ui(space: SpaceKey) -> None:
     """Show details of a space."""
     s = get_shared_space(space.id_)
-    ds = get_space_data_source_choice_by_type(s[4])
+    ds = get_space_data_source_choice_by_type(s[5])
     _render_view_space_details_with_container(s, ds)
 
 
@@ -686,50 +758,73 @@ def list_logs_ui(type_: LogType) -> None:
 
 def _editor_view(q_param: str) -> None:
     if q_param in st.experimental_get_query_params():
-        space = SpaceKey(SpaceType.SHARED, int(st.experimental_get_query_params()[q_param][0]))
+        org_id = get_selected_org_id()
+        space = SpaceKey(SpaceType.SHARED, int(st.experimental_get_query_params()[q_param][0]), org_id)
         s = get_shared_space(space.id_)
-        ds = get_space_data_source_choice_by_type(s[4])
+        if s:
+            ds = get_space_data_source_choice_by_type(s[5])
+            tab_spaces, tab_docs, tab_edit, tab_permissions = st.tabs(
+                ["Space Details", "Manage Documents", "Edit Space", "Permissions"]
+            )
 
-        tab_spaces, tab_docs, tab_edit, tab_permissions = st.tabs(
-            ["Space Details", "Manage Documents", "Edit Space", "Permissions"]
-        )
-
-        with tab_docs:
-            documents_ui(space)
-        with tab_spaces:
-            show_space_details_ui(space)
-        with tab_edit:
-            _render_edit_space_details_form(s, ds)
-        with tab_permissions:
-            _render_manage_space_permissions_form(s)
+            with tab_docs:
+                documents_ui(space)
+            with tab_spaces:
+                show_space_details_ui(space)
+            with tab_edit:
+                _render_edit_space_details_form(s, ds)
+            with tab_permissions:
+                _render_manage_space_permissions_form(s)
 
 
 def admin_docs_ui(q_param: str = None) -> None:
     """Manage Documents UI."""
-    st.subheader("Select a space from below:")
     spaces = list_shared_spaces()
+    if spaces:
+        st.subheader("Select a space from below:")
 
-    def _on_change() -> None:
-        del st.session_state["admin_docs_active_space"]
+        def _on_change() -> None:
+            del st.session_state["admin_docs_active_space"]
 
-    try: # Get the space id from the query param with prefence to the newly created space.
-        _sid = int(st.experimental_get_query_params()[q_param][0]) if q_param in st.experimental_get_query_params() else None
-    except ValueError:
-        _sid = None
-    new_space = st.session_state.get("admin_docs_active_space", _sid)
-    default_sid = next(
-        (i for i, s in enumerate(spaces) if s[0] == new_space), None
-    )
+        try:  # Get the space id from the query param with prefence to the newly created space.
+            _sid = (
+                int(st.experimental_get_query_params()[q_param][0])
+                if q_param in st.experimental_get_query_params()
+                else None
+            )
+        except ValueError:
+            _sid = None
+        new_space = st.session_state.get("admin_docs_active_space", _sid)
+        default_sid = next((i for i, s in enumerate(spaces) if s[0] == new_space), None)
 
-    selected = st.selectbox(
-        "Spaces",
-        spaces,
-        format_func=lambda x: x[1],
-        on_change=_on_change,
-        label_visibility="collapsed",
-        index=default_sid if default_sid else 0,
-    )
+        selected = st.selectbox(
+            "Spaces",
+            spaces,
+            format_func=lambda x: x[2],
+            on_change=_on_change,
+            label_visibility="collapsed",
+            index=default_sid if default_sid else 0,
+        )
 
-    if selected:
-        st.experimental_set_query_params(**{q_param: selected[0]})
-    _editor_view(q_param)
+        if selected:
+            st.experimental_set_query_params(**{q_param: selected[0]})
+        _editor_view(q_param)
+
+
+def org_selection_ui() -> None:
+    """Render organisation selection UI."""
+    try:
+        current_org_id = get_selected_org_id()
+    except KeyError:
+        current_org_id = None
+    if current_org_id:
+        st.write("Organisation:")
+        selected = st.selectbox(
+            "Select your org",
+            handle_list_orgs(),
+            format_func=lambda x: x[1],
+            label_visibility="collapsed",
+            index=next((i for i, s in enumerate(handle_list_orgs()) if s[0] == current_org_id), None),
+        )
+        if selected:
+            handle_org_selection_change(selected[0])

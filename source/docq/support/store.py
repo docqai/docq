@@ -28,6 +28,7 @@ HISTORY_THREAD_TABLE_NAME = "history_thread_{feature}"
 
 
 def _get_path(store: _StoreSubdir, type_: SpaceType, subtype: str = None, filename: str = None) -> str:
+    log.debug("_get_path() - store: %s, type_: %s, subtype: %s, filename: %s", store, type_, subtype, filename)
     dir_ = (
         os.path.join(os.environ[ENV_VAR_DOCQ_DATA], store.value, type_.name, subtype)
         if subtype
@@ -45,27 +46,50 @@ def _get_path(store: _StoreSubdir, type_: SpaceType, subtype: str = None, filena
 
 def get_upload_dir(space: SpaceKey) -> str:
     """Get the upload directory for a space."""
-    return _get_path(_StoreSubdir.UPLOAD, space.type_, str(space.id_))
+    return (
+        _get_path(store=_StoreSubdir.UPLOAD, type_=space.type_, subtype=str(space.id_))
+        if space.type_ == SpaceType.PERSONAL
+        else _get_path(
+            store=_StoreSubdir.UPLOAD, type_=space.type_, subtype=os.path.join(str(space.org_id), str(space.id_))
+        )
+    )
 
 
 def get_upload_file(space: SpaceKey, filename: str) -> str:
     """Get the uploaded file for a space."""
-    return _get_path(_StoreSubdir.UPLOAD, space.type_, str(space.id_), filename)
+    return (
+        _get_path(store=_StoreSubdir.UPLOAD, type_=space.type_, subtype=str(space.id_), filename=filename)
+        if space.type_ == SpaceType.PERSONAL
+        else _get_path(
+            store=_StoreSubdir.UPLOAD,
+            type_=space.type_,
+            subtype=os.path.join(str(space.org_id), str(space.id_)),
+            filename=filename,
+        )
+    )
 
 
 def get_index_dir(space: SpaceKey) -> str:
     """Get the index directory for a space."""
-    return _get_path(_StoreSubdir.INDEX, space.type_, str(space.id_))
+    return (
+        _get_path(store=_StoreSubdir.INDEX, type_=space.type_, subtype=str(space.id_))
+        if space.type_ == SpaceType.PERSONAL
+        else _get_path(
+            store=_StoreSubdir.INDEX, type_=space.type_, subtype=os.path.join(str(space.org_id), str(space.id_))
+        )
+    )
 
 
 def get_sqlite_usage_file(id_: int) -> str:
     """Get the SQLite file for storing usage related data."""
-    return _get_path(_StoreSubdir.SQLITE, SpaceType.PERSONAL, str(id_), filename=_SqliteFilename.USAGE.value)
+    return _get_path(
+        store=_StoreSubdir.SQLITE, type_=SpaceType.PERSONAL, subtype=str(id_), filename=_SqliteFilename.USAGE.value
+    )
 
 
 def get_sqlite_system_file() -> str:
     """Get the SQLite file for storing space related data."""
-    return _get_path(_StoreSubdir.SQLITE, SpaceType.SHARED, filename=_SqliteFilename.SYSTEM.value)
+    return _get_path(store=_StoreSubdir.SQLITE, type_=SpaceType.SHARED, filename=_SqliteFilename.SYSTEM.value)
 
 
 def get_history_table_name(type_: FeatureType) -> str:
