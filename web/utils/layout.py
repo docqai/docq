@@ -486,7 +486,7 @@ def chat_ui(feature: FeatureKey) -> None:
                     "Including these shared spaces:",
                     options=spaces,
                     default=spaces,
-                    format_func=lambda x: x[1],
+                    format_func=lambda x: x[2],
                     key=f"chat_shared_spaces_{feature.value()}",
                 )
                 st.checkbox("Including your documents", value=True, key="chat_personal_space")
