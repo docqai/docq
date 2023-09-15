@@ -76,7 +76,7 @@ def _init_admin_if_necessary() -> bool:
                 (DEFAULT_ADMIN_ID, DEFAULT_ADMIN_USERNAME, password, DEFAULT_ADMIN_FULLNAME, 1),
             )
             connection.commit()
-            add_organisation_member(manage_organisations.DEFAULT_ORG_ID, DEFAULT_ADMIN_ID)
+            add_organisation_member(manage_organisations.DEFAULT_ORG_ID, DEFAULT_ADMIN_ID, True)
             created = True
 
     # Reindex the user's space for the first time

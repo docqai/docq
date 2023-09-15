@@ -352,6 +352,7 @@ def list_orgs_ui(name_match: str = None) -> None:
                 edit_col, archive_col = st.columns(2)
                 edit_button_disabled = True
                 # only enable edit button if current user is an org admin
+                log.debug("list_orgs_ui() org_id: %s, members: %s", org_id, members)
                 edit_button_disabled = not (any([x[0] == current_user_id and bool(x[2]) is True for x in members]))
 
                 with edit_col:
