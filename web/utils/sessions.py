@@ -25,6 +25,11 @@ def _init_session_state() -> None:
             st.session_state[SESSION_KEY_NAME_DOCQ][SessionKeySubName.CHAT.name][n.name] = {}
 
 
+def reset_session_state() -> None:
+    """Reset the session state. This must be called for user login and logout."""
+    st.session_state[SESSION_KEY_NAME_DOCQ] = {}
+
+
 def _get_session_value(name: SessionKeySubName, key_: str = None, subkey_: str = None) -> Any | None:
     _init_session_state()
     val = st.session_state[SESSION_KEY_NAME_DOCQ][name.name]

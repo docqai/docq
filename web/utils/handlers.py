@@ -34,11 +34,13 @@ from .constants import (
     SessionKeySubName,
 )
 from .sessions import (
+    _init_session_state,
     get_auth_session,
     get_authenticated_user_id,
     get_chat_session,
     get_selected_org_id,
     get_username,
+    reset_session_state,
     set_auth_session,
     set_chat_session,
     set_if_current_user_is_selected_org_admin,
@@ -49,6 +51,7 @@ from .sessions import (
 
 def handle_login(username: str, password: str) -> bool:
     """Handle login."""
+    reset_session_state()
     result = manage_users.authenticate(username, password)
     log.info("Login result: %s", result)
     if result:
@@ -85,7 +88,7 @@ def handle_login(username: str, password: str) -> bool:
 
 
 def handle_logout() -> None:
-    set_auth_session()
+    reset_session_state()
 
 
 def handle_create_user() -> int:
@@ -470,6 +473,7 @@ def _create_new_thread(feature: domain.FeatureKey) -> int:
 def prepare_for_chat(feature: domain.FeatureKey) -> None:
     """Prepare the session for chat. Load latest thread_id, cutoff, and history."""
     thread_id = 0
+    log.debug("prepare_for_chat(): %s", get_chat_session(feature.type_))
     if SessionKeyNameForChat.THREAD.name not in get_chat_session(feature.type_):
         thread = run_queries.get_latest_thread(feature)
         thread_id = thread[0] if thread else _create_new_thread(feature)
