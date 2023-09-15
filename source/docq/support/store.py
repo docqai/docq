@@ -28,6 +28,7 @@ HISTORY_THREAD_TABLE_NAME = "history_thread_{feature}"
 
 
 def _get_path(store: _StoreSubdir, type_: SpaceType, subtype: str = None, filename: str = None) -> str:
+    log.debug("_get_path() - store: %s, type_: %s, subtype: %s, filename: %s", store, type_, subtype, filename)
     dir_ = (
         os.path.join(os.environ[ENV_VAR_DOCQ_DATA], store.value, type_.name, subtype)
         if subtype
@@ -46,20 +47,37 @@ def _get_path(store: _StoreSubdir, type_: SpaceType, subtype: str = None, filena
 def get_upload_dir(space: SpaceKey) -> str:
     """Get the upload directory for a space."""
     return (
-        _get_path(_StoreSubdir.UPLOAD, space.type_, str(space.id_))
+        _get_path(store=_StoreSubdir.UPLOAD, type_=space.type_, subtype=str(space.id_))
         if space.type_ == SpaceType.PERSONAL
-        else _get_path(_StoreSubdir.UPLOAD, space.type_, str(space.org_id), str(space.id_))
+        else _get_path(
+            store=_StoreSubdir.UPLOAD, type_=space.type_, subtype=os.path.join(str(space.org_id), str(space.id_))
+        )
     )
 
 
 def get_upload_file(space: SpaceKey, filename: str) -> str:
     """Get the uploaded file for a space."""
-    return _get_path(get_upload_dir(space), filename)
+    return (
+        _get_path(store=_StoreSubdir.UPLOAD, type_=space.type_, subtype=str(space.id_), filename=filename)
+        if space.type_ == SpaceType.PERSONAL
+        else _get_path(
+            store=_StoreSubdir.UPLOAD,
+            type_=space.type_,
+            subtype=os.path.join(str(space.org_id), str(space.id_)),
+            filename=filename,
+        )
+    )
 
 
 def get_index_dir(space: SpaceKey) -> str:
     """Get the index directory for a space."""
-    return _get_path(_StoreSubdir.INDEX, str(space.org_id), space.type_, str(space.id_))
+    return (
+        _get_path(store=_StoreSubdir.INDEX, type_=space.type_, subtype=str(space.id_))
+        if space.type_ == SpaceType.PERSONAL
+        else _get_path(
+            store=_StoreSubdir.INDEX, type_=space.type_, subtype=os.path.join(str(space.org_id), str(space.id_))
+        )
+    )
 
 
 def get_sqlite_usage_file(id_: int) -> str:

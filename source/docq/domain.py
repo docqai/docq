@@ -38,6 +38,7 @@ class SpaceKey:
     type_: SpaceType
     id_: int
     org_id: int
+    """The organisation ID that owns the space."""
 
     def __str__(self) -> str:
         return _join_properties(_SEPARATOR_FOR_STR, self.type_.name, self.org_id, self.id_)
