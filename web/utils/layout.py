@@ -274,7 +274,8 @@ def create_user_ui() -> None:
 def list_users_ui(username_match: str = None) -> None:
     """List all users."""
     users = list_users_by_current_org(username_match)
-    current_user_is_super_admin = is_current_user_super_admin()
+    edit_super_admin_disabled = not is_current_user_super_admin()
+
     if users:
         for id_, org_id, username, fullname, super_admin, org_admin, archived, created_at, updated_at in users:
             is_current_user = id_ == get_authenticated_user_id()
@@ -292,7 +293,7 @@ def list_users_ui(username_match: str = None) -> None:
                             "Is Super Admin",
                             value=super_admin,
                             key=f"update_user_{id_}_super_admin",
-                            disabled=current_user_is_super_admin,
+                            disabled=edit_super_admin_disabled,
                         )
                         st.checkbox("Is Archived", value=archived, key=f"update_user_{id_}_archived")
                         st.form_submit_button("Save", on_click=handle_update_user, args=(id_,))

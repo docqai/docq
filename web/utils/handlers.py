@@ -108,8 +108,8 @@ def handle_update_user(id_: int) -> bool:
         st.session_state[f"update_user_{id_}_username"],
         st.session_state[f"update_user_{id_}_password"],
         st.session_state[f"update_user_{id_}_fullname"],
+        st.session_state[f"update_user_{id_}_super_admin"],
         False,
-        st.session_state[f"update_user_{id_}_admin"],
         st.session_state[f"update_user_{id_}_archived"],
     )
     log.info("Update user result: %s", result)
