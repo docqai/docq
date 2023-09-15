@@ -295,7 +295,10 @@ def create_user(username: str, password: str, fullname: str = None, is_admin: bo
 
     # Reindex the user's space for the first time
     if rowid:
-        _reindex_user_docs(rowid)
+        try:
+            _reindex_user_docs(user_id=rowid, org_id=org_id)
+        except Exception as e:
+            log.error("Error reindexing user docs: %s", e)
 
     return rowid
 

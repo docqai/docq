@@ -726,6 +726,8 @@ def list_spaces_ui(admin_access: bool = False) -> None:
                         _render_edit_space_details(s, ds)
                     with col_permissions:
                         _render_manage_space_permissions(s)
+    else:
+        st.info("No spaces have been created yet. Please speak to your admin.")
 
 
 def show_space_details_ui(space: SpaceKey) -> None:
@@ -797,16 +799,18 @@ def admin_docs_ui(q_param: str = None) -> None:
 
 def org_selection_ui() -> None:
     """Render organisation selection UI."""
-    current_org_id = get_selected_org_id()
-    st.write("Organisation:")
-    selected = st.selectbox(
-        "Select your org",
-        handle_list_orgs(),
-        format_func=lambda x: x[1],
-        label_visibility="collapsed",
-        index=next((i for i, s in enumerate(handle_list_orgs()) if s[0] == current_org_id), None),
-    )
-    if selected:
-        set_selected_org_id(selected[0])
-
-    # st.write('You selected:', option)
+    try:
+        current_org_id = get_selected_org_id()
+    except KeyError:
+        current_org_id = None
+    if current_org_id:
+        st.write("Organisation:")
+        selected = st.selectbox(
+            "Select your org",
+            handle_list_orgs(),
+            format_func=lambda x: x[1],
+            label_visibility="collapsed",
+            index=next((i for i, s in enumerate(handle_list_orgs()) if s[0] == current_org_id), None),
+        )
+        if selected:
+            set_selected_org_id(selected[0])

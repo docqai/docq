@@ -49,6 +49,7 @@ def handle_login(username: str, password: str) -> bool:
     log.info("Login result: %s", result)
     if result:
         member_orgs = manage_orgs.list_orgs()
+        default_org_id = member_orgs[0][0]
         log.info("Member orgs: %s", member_orgs)
         set_auth_session(
             {
@@ -56,13 +57,15 @@ def handle_login(username: str, password: str) -> bool:
                 SessionKeyNameForAuth.NAME.name: result[1],
                 SessionKeyNameForAuth.ADMIN.name: result[2],
                 SessionKeyNameForAuth.USERNAME.name: result[3],
-                SessionKeyNameForAuth.ORG_ID.name: member_orgs[0][0],  # default to the first org in the list for now.
+                SessionKeyNameForAuth.ORG_ID.name: default_org_id,  # default to the first org in the list for now.
             }
         )
         set_settings_session(
             {
-                SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_system_settings(),
-                SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(result[0]),
+                SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_org_system_settings(org_id=default_org_id),
+                SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(
+                    org_id=default_org_id, user_id=result[0]
+                ),
             }
         )
         log.info(st.session_state["_docq"])
@@ -76,11 +79,13 @@ def handle_logout() -> None:
 
 
 def handle_create_user() -> int:
+    current_org_id = get_selected_org_id()
     result = manage_users.create_user(
         st.session_state["create_user_username"],
         st.session_state["create_user_password"],
         st.session_state["create_user_fullname"],
         st.session_state["create_user_admin"],
+        current_org_id,
     )
     log.info("Create user with id: %s", result)
     return result
@@ -396,20 +401,24 @@ def get_space_data_source_choice_by_type(type_: str) -> Tuple[str, str, List[dom
 
 
 def get_system_settings() -> dict:
-    return manage_settings.get_system_settings()
+    current_org_id = get_selected_org_id()
+    return manage_settings.get_org_system_settings(org_id=current_org_id)
 
 
 def get_enabled_features() -> list[domain.FeatureKey]:
-    return manage_settings.get_system_settings(config.SystemSettingsKey.ENABLED_FEATURES)
+    current_org_id = get_selected_org_id()
+    return manage_settings.get_org_system_settings(org_id=current_org_id, key=config.SystemSettingsKey.ENABLED_FEATURES)
 
 
 def handle_update_system_settings() -> None:
+    current_org_id = get_selected_org_id()
     manage_settings.update_system_settings(
         {
             config.SystemSettingsKey.ENABLED_FEATURES.name: [
                 f.name for f in st.session_state[f"system_settings_{config.SystemSettingsKey.ENABLED_FEATURES.name}"]
             ],
-        }
+        },
+        org_id=current_org_id,
     )
 
 

@@ -7,7 +7,11 @@ from utils.layout import org_selection_ui, production_layout, public_access
 
 setup.init()
 
+
 production_layout()
+
+with st.sidebar:
+    org_selection_ui()
 
 show_pages(
     [
@@ -34,7 +38,6 @@ public_access()
 
 add_page_title()
 
-org_selection_ui()
 
 st.subheader("Welcome to Docq - Private & Secure AI Knowledge Insight")
 
