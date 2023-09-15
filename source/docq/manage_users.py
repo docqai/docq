@@ -64,7 +64,7 @@ def _init_admin_if_necessary() -> bool:
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        (count,) = cursor.execute("SELECT COUNT(*) FROM users WHERE super_admin = ?", (True,)).fetchone()
+        (count,) = cursor.execute("SELECT COUNT(*) FROM users WHERE super_admin = ?", (1,)).fetchone()
         if int(count) > 0:
             log.debug("%d super_admin user found, skipping...", count)
             return False
@@ -73,7 +73,7 @@ def _init_admin_if_necessary() -> bool:
             password = PH.hash(DEFAULT_ADMIN_PASSWORD)
             cursor.execute(
                 "INSERT INTO users (id, username, password, fullname, super_admin) VALUES (?, ?, ?, ?, ?)",
-                (DEFAULT_ADMIN_ID, DEFAULT_ADMIN_USERNAME, password, DEFAULT_ADMIN_FULLNAME, True),
+                (DEFAULT_ADMIN_ID, DEFAULT_ADMIN_USERNAME, password, DEFAULT_ADMIN_FULLNAME, 1),
             )
             connection.commit()
             add_organisation_member(manage_organisations.DEFAULT_ORG_ID, DEFAULT_ADMIN_ID)

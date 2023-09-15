@@ -266,7 +266,7 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
     space = (
         None
         if feature.type_ == config.FeatureType.ASK_SHARED and not st.session_state["chat_personal_space"]
-        else domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_)
+        else domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_, get_selected_org_id())
     )
 
     spaces = (

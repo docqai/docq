@@ -41,7 +41,7 @@ def _init_default_org_if_necessary() -> bool:
     ) as connection, closing(connection.cursor()) as cursor:
         (count,) = cursor.execute("SELECT COUNT(*) FROM orgs WHERE id = ?", (DEFAULT_ORG_ID,)).fetchone()
         if int(count) > 0:
-            log.debug("Default org found, skipping creation...", count)
+            log.debug("Default org found, skipping creation...")
             return False
         else:
             log.info("No default org found, creating one with default values...")
