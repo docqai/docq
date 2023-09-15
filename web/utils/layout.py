@@ -313,7 +313,7 @@ def list_user_groups_ui(name_match: str = None) -> None:
                             st.text_input("Name", value=name, key=f"update_user_group_{id_}_name")
                             st.multiselect(
                                 "Members",
-                                options=[(x[0], x[2]) for x in list_users()],
+                                options=[(x[0], x[3]) for x in list_users_by_current_org()],
                                 default=members,
                                 key=f"update_user_group_{id_}_members",
                                 format_func=lambda x: x[1],

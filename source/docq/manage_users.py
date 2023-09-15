@@ -157,7 +157,7 @@ def list_users_by_org(
     Returns:
         List[Tuple[int, int, str, str, str, bool, bool, datetime, datetime]]: The list of users [user_id, org_id, username, fullname, is admin, is archived, created, updated].
     """
-    log.debug("Listing users: %s", username_match)
+    log.debug("Listing users for org id: %s that username_match: %s", org_id, username_match)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
