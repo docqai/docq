@@ -45,17 +45,21 @@ def _get_path(store: _StoreSubdir, type_: SpaceType, subtype: str = None, filena
 
 def get_upload_dir(space: SpaceKey) -> str:
     """Get the upload directory for a space."""
-    return _get_path(_StoreSubdir.UPLOAD, space.type_, str(space.id_))
+    return (
+        _get_path(_StoreSubdir.UPLOAD, space.type_, str(space.id_))
+        if space.type_ == SpaceType.PERSONAL
+        else _get_path(_StoreSubdir.UPLOAD, space.type_, str(space.org_id), str(space.id_))
+    )
 
 
 def get_upload_file(space: SpaceKey, filename: str) -> str:
     """Get the uploaded file for a space."""
-    return _get_path(_StoreSubdir.UPLOAD, space.type_, str(space.id_), filename)
+    return _get_path(get_upload_dir(space), filename)
 
 
 def get_index_dir(space: SpaceKey) -> str:
     """Get the index directory for a space."""
-    return _get_path(_StoreSubdir.INDEX, space.type_, str(space.id_))
+    return _get_path(_StoreSubdir.INDEX, str(space.org_id), space.type_, str(space.id_))
 
 
 def get_sqlite_usage_file(id_: int) -> str:

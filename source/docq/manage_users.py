@@ -70,7 +70,7 @@ def _init_admin_if_necessary() -> bool:
 
     # Reindex the user's space for the first time
     if created:
-        _reindex_user_docs(DEFAULT_ADMIN_ID)
+        _reindex_user_docs(DEFAULT_ADMIN_ID, manage_orgs.DEFAULT_ORG_ID)
 
     return created
 
@@ -80,8 +80,8 @@ def _init_user_data(user_id: int) -> None:
     log.info("Initialised user data for user: %d", user_id)
 
 
-def _reindex_user_docs(user_id: int) -> None:
-    mdocuments.reindex(SpaceKey(SpaceType.PERSONAL, user_id))
+def _reindex_user_docs(user_id: int, org_id: int) -> None:
+    mdocuments.reindex(SpaceKey(SpaceType.PERSONAL, user_id, org_id))
 
 
 def authenticate(username: str, password: str) -> Tuple[int, str, bool, str]:
@@ -142,6 +142,31 @@ def list_users(username_match: str = None) -> List[Tuple[int, str, str, bool, bo
         return cursor.execute(
             "SELECT id, username, fullname, admin, archived, created_at, updated_at FROM users WHERE username LIKE ?",
             (f"%{username_match}%" if username_match else "%",),
+        ).fetchall()
+
+
+def list_users_by_org(
+    org_id: int, username_match: str = None
+) -> List[Tuple[int, int, str, str, bool, bool, datetime, datetime]]:
+    """List users that are a member of an org.
+
+    Args:
+        username_match (str, optional): The username match. Defaults to None.
+        org_id (int): The org id.
+
+    Returns:
+        List[Tuple[int, int, str, str, str, bool, bool, datetime, datetime]]: The list of users [user_id, org_id, username, fullname, is admin, is archived, created, updated].
+    """
+    log.debug("Listing users: %s", username_match)
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        return cursor.execute(
+            "SELECT u.id, om.org_id, u.username, u.fullname, u.admin, u.archived, u.created_at, u.updated_at FROM org_members om LEFT JOIN users u ON om.org_id = ? AND om.user_id = u.id WHERE username LIKE ?",
+            (
+                org_id,
+                f"%{username_match}%" if username_match else "%",
+            ),
         ).fetchall()
 
 
@@ -223,7 +248,7 @@ def update_user(
         return True
 
 
-def create_user(username: str, password: str, fullname: str = None, is_admin: bool = False) -> int:
+def create_user(username: str, password: str, fullname: str = None, is_admin: bool = False, org_id: int = None) -> int:
     """Create a user.
 
     Args:
@@ -231,6 +256,7 @@ def create_user(username: str, password: str, fullname: str = None, is_admin: bo
         password (str): The password.
         fullname (str, optional): The full name. Defaults to ''.
         is_admin (bool, optional): Whether the user is an admin. Defaults to False.
+        org_id (int, optional): The org id to add the user to. Defaults to None.
 
     Returns:
         bool: True if the user is created, False otherwise.
@@ -242,17 +268,30 @@ def create_user(username: str, password: str, fullname: str = None, is_admin: bo
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(
-            "INSERT INTO users (username, password, fullname, admin) VALUES (?, ?, ?, ?)",
-            (
-                username,
-                hashed_password,
-                fullname,
-                is_admin,
-            ),
-        )
-        rowid = cursor.lastrowid
-        connection.commit()
+        try:
+            cursor.execute("BEGIN TRANSACTION")
+            cursor.execute(
+                "INSERT INTO users (username, password, fullname, admin) VALUES (?, ?, ?, ?)",
+                (
+                    username,
+                    hashed_password,
+                    fullname,
+                    is_admin,
+                ),
+            )
+            rowid = cursor.lastrowid
+
+            if org_id:
+                log.info("Adding user %s to org %s", rowid, org_id)
+                cursor.execute(
+                    "INSERT INTO org_members (org_id, user_id) VALUES (?, ?)",
+                    (org_id, rowid),
+                )
+            connection.commit()
+            log.info("Created user %s", rowid)
+        except Exception as e:
+            connection.rollback()
+            log.error("Error creating user: %s", e)
 
     # Reindex the user's space for the first time
     if rowid:

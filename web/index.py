@@ -3,7 +3,7 @@
 import streamlit as st
 from docq import setup
 from st_pages import Page, Section, add_page_title, show_pages
-from utils.layout import production_layout, public_access
+from utils.layout import org_selection_ui, production_layout, public_access
 
 setup.init()
 
@@ -33,6 +33,8 @@ show_pages(
 public_access()
 
 add_page_title()
+
+org_selection_ui()
 
 st.subheader("Welcome to Docq - Private & Secure AI Knowledge Insight")
 

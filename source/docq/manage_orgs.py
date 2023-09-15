@@ -117,25 +117,76 @@ def add_org_member(org_id: int, user_id: int) -> bool:
         return True
 
 
-def create_org(name: str) -> bool:
+def update_org_members(org_id: int, user_ids: List[int]) -> bool:
+    """Update org members.
+
+    Args:
+        org_id (int): The org id.
+        user_ids (List[int]): The user ids.
+
+    Returns:
+        bool: True if the org members are updated, False otherwise.
+    """
+    log.debug("Updating org members for org_id: %s", org_id)
+    success = False
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        try:
+            cursor.execute("BEGIN TRANSACTION")
+            cursor.execute(
+                "DELETE FROM org_members WHERE org_id = ?",
+                (org_id,),
+            )
+            cursor.executemany(
+                "INSERT INTO org_members (org_id, user_id) VALUES (?, ?)", [(org_id, x) for x in user_ids]
+            )
+            connection.commit()
+            success = True
+        except Exception as e:
+            success = False
+            connection.rollback()
+            log.error("Error updating org members, rolled back: %s", e)
+
+    return success
+
+
+def create_org(name: str, creating_user_id: int) -> bool:
     """Create an org.
 
     Args:
         name (str): The org name.
+        creating_user_id (int): The user id of the user creating the org.
 
     Returns:
         bool: True if the org is created, False otherwise.
     """
+    success = False
     log.debug("Creating org: %s", name)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(
-            "INSERT INTO orgs (name) VALUES (?)",
-            (name,),
-        )
-        connection.commit()
-        return True
+        try:
+            cursor.execute("BEGIN TRANSACTION")
+            cursor.execute(
+                "INSERT INTO orgs (name) VALUES (?)",
+                (name,),
+            )
+            org_id = cursor.lastrowid
+            cursor.execute(
+                "INSERT INTO org_members (org_id, user_id) VALUES (?, ?)",
+                (org_id, creating_user_id),
+            )
+            connection.commit()
+            success = True
+            log.info("Created organization %s with member %s", org_id, creating_user_id)
+        except Exception as e:
+            # Rollback transaction on error
+            success = False
+            connection.rollback()
+            log.error("Error creating organization with member, rolled back: %s", e)
+
+        return success
 
 
 def update_org(id_: int, name: str = None) -> bool:

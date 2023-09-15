@@ -100,7 +100,23 @@ def handle_update_user(id_: int) -> bool:
 
 
 def list_users(name_match: str = None) -> list[tuple]:
+    """Get a list of all users across all orgs.This should only be used with admin users and to add users to orgs.
+
+    Args:
+        name_match (str, optional): The name to match. Defaults to None.
+    """
     return manage_users.list_users(name_match)
+
+
+def list_users_by_current_org(name_match: str = None) -> list[tuple]:
+    """Get a list of all users that are a member of an org.
+
+    Args:
+        org_id (int): The org id.
+        name_match (str, optional): The name to match. Defaults to None.
+    """
+    org_id = get_selected_org_id()
+    return manage_users.list_users_by_org(org_id, name_match)
 
 
 def handle_create_user_group() -> int:
@@ -134,16 +150,19 @@ def list_user_groups(name_match: str = None) -> List[Tuple]:
 
 def handle_create_org() -> bool:
     """Create a new organization."""
+    current_user_id = get_authenticated_user_id()
     name = st.session_state["create_org_name"]
-    result = manage_orgs.create_org(name)
+    result = manage_orgs.create_org(name, current_user_id)
+
     log.info("Create org result: %s", result)
     return result
 
 
-def handle_update_org(id_: int) -> bool:
+def handle_update_org(org_id: int) -> bool:
     """Update an existing organization."""
-    name = st.session_state[f"update_org_{id_}_name"]
-    result = manage_orgs.update_org(id_, name)
+    name = st.session_state[f"update_org_{org_id}_name"]
+    result = manage_orgs.update_org(org_id, name)
+    manage_orgs.update_org_members(org_id, [x[0] for x in st.session_state[f"update_org_{org_id}_members"]])
     log.info("Update org result: %s", result)
     return result
 
@@ -162,7 +181,9 @@ def handle_list_orgs(name_match: str = None) -> List[Tuple]:
 
 
 def handle_create_space_group() -> int:
+    org_id = get_selected_org_id()
     result = manage_space_groups.create_space_group(
+        org_id,
         st.session_state["create_space_group_name"],
         st.session_state["create_space_group_summary"],
     )
@@ -171,8 +192,10 @@ def handle_create_space_group() -> int:
 
 
 def handle_update_space_group(id_: int) -> bool:
+    org_id = get_selected_org_id()
     result = manage_space_groups.update_space_group(
         id_,
+        org_id,
         [x[0] for x in st.session_state[f"update_space_group_{id_}_members"]],
         st.session_state[f"update_space_group_{id_}_name"],
         st.session_state[f"update_space_group_{id_}_summary"],
@@ -182,13 +205,15 @@ def handle_update_space_group(id_: int) -> bool:
 
 
 def handle_delete_space_group(id_: int) -> bool:
-    result = manage_space_groups.delete_space_group(id_)
+    org_id = get_selected_org_id()
+    result = manage_space_groups.delete_space_group(id_, org_id)
     log.info("Update space group result: %s", result)
     return result
 
 
 def list_space_groups(name_match: str = None) -> List[Tuple]:
-    return manage_space_groups.list_space_groups(name_match)
+    org_id = get_selected_org_id()
+    return manage_space_groups.list_space_groups(org_id, name_match)
 
 
 def query_chat_history(feature: domain.FeatureKey) -> None:
@@ -270,13 +295,15 @@ def handle_change_temperature(type_: config.SpaceType):
     manage_settings.change_settings(type_.name, temperature=st.session_state[f"temperature_{type_.name}"])
 
 
-def get_shared_space(id_: int) -> tuple[int, str, str, bool, str, dict, datetime, datetime]:
-    return manage_spaces.get_shared_space(id_)
+def get_shared_space(id_: int) -> tuple[int, int, str, str, bool, str, dict, datetime, datetime]:
+    org_id = get_selected_org_id()
+    return manage_spaces.get_shared_space(id_, org_id)
 
 
 def list_shared_spaces():
     user_id = get_authenticated_user_id()
-    return manage_spaces.list_shared_spaces(user_id)
+    org_id = get_selected_org_id()
+    return manage_spaces.list_shared_spaces(org_id, user_id)
 
 
 def handle_archive_space(id_: int):
@@ -284,7 +311,8 @@ def handle_archive_space(id_: int):
 
 
 def get_shared_space_permissions(id_: int) -> dict[SpaceAccessType, Any]:
-    permissions = manage_spaces.get_shared_space_permissions(id_)
+    org_id = get_selected_org_id()
+    permissions = manage_spaces.get_shared_space_permissions(id_, org_id)
     results = {
         SpaceAccessType.PUBLIC: any(p.type_ == SpaceAccessType.PUBLIC for p in permissions),
         SpaceAccessType.USER: [
@@ -307,8 +335,10 @@ def _prepare_space_data_source(prefix: str) -> Tuple[str, dict]:
 
 def handle_update_space_details(id_: int) -> bool:
     ds_type, ds_configs = _prepare_space_data_source(f"update_space_details_{id_}_")
+    org_id = get_selected_org_id()
     result = manage_spaces.update_shared_space(
         id_,
+        org_id,
         st.session_state[f"update_space_details_{id_}_name"],
         st.session_state[f"update_space_details_{id_}_summary"],
         st.session_state[f"update_space_details_{id_}_archived"],
@@ -334,9 +364,9 @@ def handle_manage_space_permissions(id_: int) -> bool:
 
 def handle_create_space() -> SpaceKey:
     ds_type, ds_configs = _prepare_space_data_source("create_space_")
-
+    org_id = get_selected_org_id()
     space = manage_spaces.create_shared_space(
-        st.session_state["create_space_name"], st.session_state["create_space_summary"], ds_type, ds_configs
+        org_id, st.session_state["create_space_name"], st.session_state["create_space_summary"], ds_type, ds_configs
     )
     return space
 
