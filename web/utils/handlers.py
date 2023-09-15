@@ -262,16 +262,16 @@ def query_chat_history(feature: domain.FeatureKey) -> None:
 
 def handle_chat_input(feature: domain.FeatureKey) -> None:
     req = st.session_state[f"chat_input_{feature.value()}"]
-
+    select_org_id = get_selected_org_id()
     space = (
         None
         if feature.type_ == config.FeatureType.ASK_SHARED and not st.session_state["chat_personal_space"]
-        else domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_, get_selected_org_id())
+        else domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_, select_org_id)
     )
 
     spaces = (
         [
-            domain.SpaceKey(config.SpaceType.SHARED, s_[0])
+            domain.SpaceKey(config.SpaceType.SHARED, s_[0], select_org_id)
             for s_ in st.session_state[f"chat_shared_spaces_{feature.value()}"]
         ]
         if feature.type_ == config.FeatureType.ASK_SHARED
