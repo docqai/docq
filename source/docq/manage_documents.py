@@ -124,7 +124,7 @@ def format_document_sources(source_nodes: list[NodeWithScore]) -> str:
     """Format document sources."""
     file_sources = {}
     web_sources = {}
-
+    log.debug("format_document_sources() Source node count: %s", len(source_nodes))
     for source_node in source_nodes:
         metadata = source_node.node.metadata
         if metadata:
