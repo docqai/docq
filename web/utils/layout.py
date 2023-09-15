@@ -1,12 +1,13 @@
 """Layout components for the web app."""
 
-import logging
+import logging as log
 from typing import List, Tuple
 
 import streamlit as st
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SpaceType, SystemSettingsKey
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
+from docq.manage_users import list_users_by_org
 from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
@@ -39,6 +40,7 @@ from .handlers import (
     handle_login,
     handle_logout,
     handle_manage_space_permissions,
+    handle_org_selection_change,
     handle_reindex_space,
     handle_update_org,
     handle_update_space_details,
@@ -58,8 +60,10 @@ from .handlers import (
 )
 from .sessions import (
     get_auth_session,
+    get_authenticated_user_id,
     get_chat_session,
     get_selected_org_id,
+    is_current_user_super_admin,
     set_selected_org_id,
 )
 
@@ -233,7 +237,7 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
         if show_logout_button:
             __logout_button()
 
-        if not auth.get(SessionKeyNameForAuth.ADMIN.name, False):
+        if not auth.get(SessionKeyNameForAuth.SUPER_ADMIN.name, False):
             __no_admin_menu()
             if requiring_admin:
                 __not_authorised()
@@ -264,30 +268,33 @@ def create_user_ui() -> None:
         st.text_input("Username", value="", key="create_user_username")
         st.text_input("Password", value="", key="create_user_password", type="password")
         st.text_input("Full Name", value="", key="create_user_fullname")
-        st.checkbox("Is Admin", value=False, key="create_user_admin")
         st.form_submit_button("Create User", on_click=handle_create_user)
 
 
 def list_users_ui(username_match: str = None) -> None:
     """List all users."""
     users = list_users_by_current_org(username_match)
+    current_user_is_super_admin = is_current_user_super_admin()
     if users:
-        for id_, org_id, username, fullname, admin, archived, created_at, updated_at in users:
-            is_admin = bool(admin)
-            is_archived = bool(archived)
-            is_current_user = id_ == get_auth_session()[SessionKeyNameForAuth.ID.name]
+        for id_, org_id, username, fullname, super_admin, org_admin, archived, created_at, updated_at in users:
+            is_current_user = id_ == get_authenticated_user_id()
             with st.expander(
-                f"{'~~' if is_archived else ''}{username} ({fullname}){'~~' if is_archived else ''} {'(You)' if is_current_user else ''}"
+                f"{'~~' if archived else ''}{username} ({fullname}){'~~' if archived else ''} {'(You)' if is_current_user else ''}"
             ):
-                st.markdown(f"ID: **{id_}** | Org ID: **{org_id}** | Admin: **{is_admin}**")
+                st.markdown(f"ID: **{id_}** | Is Super Admin: **{bool(super_admin)}**")
                 st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
                 if st.button("Edit", key=f"update_user_{id_}_button"):
                     with st.form(key=f"update_user_{id_}"):
                         st.text_input("Username", value=username, key=f"update_user_{id_}_username")
                         st.text_input("Password", type="password", key=f"update_user_{id_}_password")
                         st.text_input("Full Name", value=fullname, key=f"update_user_{id_}_fullname")
-                        st.checkbox("Is Admin", value=is_admin, key=f"update_user_{id_}_admin")
-                        st.checkbox("Is Archived", value=is_archived, key=f"update_user_{id_}_archived")
+                        st.checkbox(
+                            "Is Super Admin",
+                            value=super_admin,
+                            key=f"update_user_{id_}_super_admin",
+                            disabled=current_user_is_super_admin,
+                        )
+                        st.checkbox("Is Archived", value=archived, key=f"update_user_{id_}_archived")
                         st.form_submit_button("Save", on_click=handle_update_user, args=(id_,))
 
 
@@ -336,20 +343,25 @@ def create_org_ui() -> None:
 def list_orgs_ui(name_match: str = None) -> None:
     """List all organizations."""
     orgs = handle_list_orgs(name_match=name_match)
+    current_user_id = get_authenticated_user_id()
     if orgs:
         for org_id, name, members, created_at, updated_at in orgs:
             with st.expander(f"{name}"):
                 st.write(f"ID: **{org_id}**")
                 st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
                 edit_col, archive_col = st.columns(2)
+                edit_button_disabled = True
+                # only enable edit button if current user is an org admin
+                edit_button_disabled = not (any([x[0] == current_user_id and bool(x[2]) is True for x in members]))
+
                 with edit_col:
-                    if st.button("Edit", key=f"update_org_{org_id}_button"):
+                    if st.button("Edit", key=f"update_org_{org_id}_button", disabled=edit_button_disabled):
                         with st.form(key=f"update_org_{org_id}"):
                             st.text_input("Name", value=name, key=f"update_org_{org_id}_name")
                             st.multiselect(
                                 "Members",
                                 options=[(x[0], x[2]) for x in list_users()],
-                                default=members,
+                                default=[(x[0], x[1]) for x in members],
                                 key=f"update_org_{org_id}_members",
                                 format_func=lambda x: x[1],
                             )
@@ -813,4 +825,4 @@ def org_selection_ui() -> None:
             index=next((i for i, s in enumerate(handle_list_orgs()) if s[0] == current_org_id), None),
         )
         if selected:
-            set_selected_org_id(selected[0])
+            handle_org_selection_change(selected[0])

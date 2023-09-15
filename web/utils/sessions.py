@@ -3,7 +3,7 @@
 from typing import Any
 
 import streamlit as st
-from docq import config
+from docq import config, manage_users
 
 from .constants import (
     SESSION_KEY_NAME_DOCQ,
@@ -72,6 +72,25 @@ def get_auth_session() -> dict:
     return _get_session_value(SessionKeySubName.AUTH)
 
 
+def is_current_user_super_admin() -> bool:
+    """Get the auth session value for SUPER_ADMIN."""
+    return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.SUPER_ADMIN.name)
+
+
+def is_current_user_selected_org_admin() -> bool:
+    """Get the auth session value for SELECTED_ORG_ADMIN."""
+    return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name)
+
+
+def set_if_current_user_is_selected_org_admin(selected_org_id: int) -> None:
+    """Check if the current user is org_admin of the selected org. Then set SELECTED_ORG_ADMIN session to True or False."""
+    is_org_admin = False
+    current_user_id = get_authenticated_user_id()
+    org_admins = manage_users.list_users_by_org(org_id=selected_org_id, org_admin_match=True)
+    is_org_admin = current_user_id in [x[0] for x in org_admins]
+    _set_session_value(is_org_admin, SessionKeySubName.AUTH, SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name)
+
+
 def set_auth_session(val: dict = None) -> None:
     """Set the auth session value."""
     _set_session_value(val, SessionKeySubName.AUTH)
@@ -84,12 +103,12 @@ def get_authenticated_user_id() -> int | None:
 
 def get_selected_org_id() -> int | None:
     """Get the selected org_id context."""
-    return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.ORG_ID.name)
+    return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.SELECTED_ORG_ID.name)
 
 
 def set_selected_org_id(org_id: int) -> None:
     """Set the selected org_id context."""
-    _set_session_value(org_id, SessionKeySubName.AUTH, SessionKeyNameForAuth.ORG_ID.name)
+    _set_session_value(org_id, SessionKeySubName.AUTH, SessionKeyNameForAuth.SELECTED_ORG_ID.name)
 
 
 def get_username() -> str | None:

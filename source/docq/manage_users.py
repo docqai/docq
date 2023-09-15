@@ -9,9 +9,8 @@ from typing import List, Tuple
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
 
-from docq import manage_organisations
-
 from . import manage_documents as mdocuments
+from . import manage_organisations
 from . import manage_settings as msettings
 from .config import SpaceType
 from .domain import SpaceKey
@@ -23,10 +22,21 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT UNIQUE,
     password TEXT,
     fullname TEXT,
-    admin BOOL default 0,
+    super_admin BOOL default 0,
     archived BOOL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+"""
+
+SQL_CREATE_ORG_MEMBERS_TABLE = """
+CREATE TABLE IF NOT EXISTS org_members (
+    org_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    org_admin BOOL DEFAULT 0,
+    FOREIGN KEY (org_id) REFERENCES orgs (id),
+    FOREIGN KEY (user_id) REFERENCES users (id),
+    PRIMARY KEY (org_id, user_id)
 )
 """
 
@@ -45,6 +55,7 @@ def _init() -> None:
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_USERS_TABLE)
+        cursor.execute(SQL_CREATE_ORG_MEMBERS_TABLE)
         connection.commit()
 
 
@@ -53,19 +64,19 @@ def _init_admin_if_necessary() -> bool:
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        (count,) = cursor.execute("SELECT COUNT(*) FROM users WHERE admin = ?", (True,)).fetchone()
+        (count,) = cursor.execute("SELECT COUNT(*) FROM users WHERE super_admin = ?", (True,)).fetchone()
         if int(count) > 0:
-            log.debug("%d admin user found, skipping...", count)
+            log.debug("%d super_admin user found, skipping...", count)
             return False
         else:
-            log.info("No admin user found, creating one with default values...")
+            log.info("No super_admin user found, creating one with default values...")
             password = PH.hash(DEFAULT_ADMIN_PASSWORD)
             cursor.execute(
-                "INSERT INTO users (id, username, password, fullname, admin) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO users (id, username, password, fullname, super_admin) VALUES (?, ?, ?, ?, ?)",
                 (DEFAULT_ADMIN_ID, DEFAULT_ADMIN_USERNAME, password, DEFAULT_ADMIN_FULLNAME, True),
             )
             connection.commit()
-            manage_organisations.add_organisation_member(manage_organisations.DEFAULT_ORG_ID, DEFAULT_ADMIN_ID)
+            add_organisation_member(manage_organisations.DEFAULT_ORG_ID, DEFAULT_ADMIN_ID)
             created = True
 
     # Reindex the user's space for the first time
@@ -92,21 +103,21 @@ def authenticate(username: str, password: str) -> Tuple[int, str, bool, str]:
         password (str): The password.
 
     Returns:
-        tuple[int, str, bool, str]: The [user's id, fullname, admin status, username] if authenticated, `None` otherwise.
+        tuple[int, str, bool, str]: The [user's id, fullname, super_admin status, username] if authenticated, `None` otherwise.
     """
     log.debug("Authenticating user: %s", username)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         selected = cursor.execute(
-            "SELECT id, password, fullname, admin FROM users WHERE username = ? AND archived = 0",
+            "SELECT id, password, fullname, super_admin FROM users WHERE username = ? AND archived = 0",
             (username,),
         ).fetchone()
         if selected:
             log.debug("User found: %s", selected)
-            (id_, saved_password, fullname, is_admin) = selected
+            (id_, saved_password, fullname, super_admin) = selected
             try:
-                result = (id_, fullname, is_admin, username) if PH.verify(saved_password, password) else None
+                result = (id_, fullname, super_admin, username) if PH.verify(saved_password, password) else None
             except VerificationError as e:
                 log.warning("Failing to authenticate user: %s for [%s]", username, e)
                 return None
@@ -133,41 +144,49 @@ def list_users(username_match: str = None) -> List[Tuple[int, str, str, bool, bo
         username_match (str, optional): The username match. Defaults to None.
 
     Returns:
-        List[Tuple[int, str, str, str, bool, bool, datetime, datetime]]: The list of users.
+        List[Tuple[int, str, str, str, bool, bool, datetime, datetime]]: The list of users [user id, username, fullname, super_admin, archived, created_at, updated_at].
     """
     log.debug("Listing users: %s", username_match)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         return cursor.execute(
-            "SELECT id, username, fullname, admin, archived, created_at, updated_at FROM users WHERE username LIKE ?",
+            "SELECT id, username, fullname, super_admin, archived, created_at, updated_at FROM users WHERE username LIKE ?",
             (f"%{username_match}%" if username_match else "%",),
         ).fetchall()
 
 
 def list_users_by_org(
-    org_id: int, username_match: str = None
-) -> List[Tuple[int, int, str, str, bool, bool, datetime, datetime]]:
+    org_id: int, username_match: str = None, org_admin_match: bool = None
+) -> List[Tuple[int, int, str, str, bool, bool, bool, datetime, datetime]]:
     """List users that are a member of an org.
 
     Args:
         username_match (str, optional): The username match. Defaults to None.
         org_id (int): The org id.
+        org_admin_match (bool, optional): Whether the user is an org admin. Defaults to None.
 
     Returns:
-        List[Tuple[int, int, str, str, str, bool, bool, datetime, datetime]]: The list of users [user_id, org_id, username, fullname, is admin, is archived, created, updated].
+        List[Tuple[int, int, str, str, str, bool, bool, bool, datetime, datetime]]: The list of users [user_id, org_id, username, fullname, is super_admin, is org_admin, is archived, created, updated].
     """
     log.debug("Listing users for org id: %s that username_match: %s", org_id, username_match)
+
+    query = "SELECT u.id, om.org_id, u.username, u.fullname, u.super_admin, om.org_admin, u.archived, u.created_at, u.updated_at FROM org_members om LEFT JOIN users u ON om.org_id = ? AND om.user_id = u.id WHERE username LIKE ?"
+    params = [
+        org_id,
+        f"%{username_match}%" if username_match else "%",
+    ]
+
+    if org_admin_match is not None:
+        query += " AND om.org_admin = ?"
+        params.append(
+            org_admin_match,
+        )
+
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        return cursor.execute(
-            "SELECT u.id, om.org_id, u.username, u.fullname, u.admin, u.archived, u.created_at, u.updated_at FROM org_members om LEFT JOIN users u ON om.org_id = ? AND om.user_id = u.id WHERE username LIKE ?",
-            (
-                org_id,
-                f"%{username_match}%" if username_match else "%",
-            ),
-        ).fetchall()
+        return cursor.execute(query, tuple(params)).fetchall()
 
 
 def list_selected_users(ids_: List[int]) -> List[Tuple[int, str, str, bool, bool, datetime, datetime]]:
@@ -184,7 +203,7 @@ def list_selected_users(ids_: List[int]) -> List[Tuple[int, str, str, bool, bool
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         return cursor.execute(
-            "SELECT id, username, fullname, admin, archived, created_at, updated_at FROM users WHERE id IN ({})".format(  # noqa: S608
+            "SELECT id, username, fullname, super_admin, archived, created_at, updated_at FROM users WHERE id IN ({})".format(  # noqa: S608
                 ",".join([str(id_) for id_ in ids_])
             )
         ).fetchall()
@@ -195,8 +214,9 @@ def update_user(
     username: str = None,
     password: str = None,
     fullname: str = None,
-    is_admin: bool = False,
-    is_archived: bool = False,
+    super_admin: bool = False,
+    org_admin: bool = False,
+    archived: bool = False,
 ) -> bool:
     """Update a user.
 
@@ -205,8 +225,9 @@ def update_user(
         username (str, optional): The username. Defaults to None.
         password (str, optional): The password. Defaults to None.
         fullname (str, optional): The full name. Defaults to None.
-        is_admin (bool, optional): Whether the user is an admin. Defaults to None.
-        is_archived (bool, optional): Whether the user is archived. Defaults to None.
+        super_admin (bool, optional): Whether the user is an super_admin. Defaults to None.
+        org_admin (bool, optional): Whether the user is an org_admin. Defaults to None.
+        archived (bool, optional): Whether the user is archived. Defaults to None.
 
     Returns:
         bool: True if the user is updated, False otherwise.
@@ -229,11 +250,11 @@ def update_user(
         query += ", fullname = ?"
         params.append(fullname)
 
-    query += ", admin = ?"
-    params.append(is_admin)
+    query += ", super_admin = ?"
+    params.append(super_admin)
 
     query += ", archived = ?"
-    params.append(is_archived)
+    params.append(archived)
 
     query += " WHERE id = ?"
     params.append(id_)
@@ -248,14 +269,22 @@ def update_user(
         return True
 
 
-def create_user(username: str, password: str, fullname: str = None, is_admin: bool = False, org_id: int = None) -> int:
+def create_user(
+    username: str,
+    password: str,
+    fullname: str = None,
+    super_admin: bool = False,
+    org_admin: bool = False,
+    org_id: int = None,
+) -> int:
     """Create a user.
 
     Args:
         username (str): The username.
         password (str): The password.
         fullname (str, optional): The full name. Defaults to ''.
-        is_admin (bool, optional): Whether the user is an admin. Defaults to False.
+        super_admin (bool, optional): Whether the user is a super admin, all the god powers at a system level. Defaults to False.
+        org_admin (bool, optional): Whether the user is an org level admin. Defaults to False.
         org_id (int, optional): The org id to add the user to. Defaults to None.
 
     Returns:
@@ -271,12 +300,12 @@ def create_user(username: str, password: str, fullname: str = None, is_admin: bo
         try:
             cursor.execute("BEGIN TRANSACTION")
             cursor.execute(
-                "INSERT INTO users (username, password, fullname, admin) VALUES (?, ?, ?, ?)",
+                "INSERT INTO users (username, password, fullname, super_admin) VALUES (?, ?, ?, ?)",
                 (
                     username,
                     hashed_password,
                     fullname,
-                    is_admin,
+                    super_admin,
                 ),
             )
             rowid = cursor.lastrowid
@@ -284,8 +313,8 @@ def create_user(username: str, password: str, fullname: str = None, is_admin: bo
             if org_id:
                 log.info("Adding user %s to org %s", rowid, org_id)
                 cursor.execute(
-                    "INSERT INTO org_members (org_id, user_id) VALUES (?, ?)",
-                    (org_id, rowid),
+                    "INSERT INTO org_members (org_id, user_id, org_admin) VALUES (?, ?, ?)",
+                    (org_id, rowid, org_admin),
                 )
             connection.commit()
             log.info("Created user %s", rowid)
@@ -352,3 +381,52 @@ def archive_user(id_: int) -> bool:
         )
         connection.commit()
         return True
+
+
+def add_organisation_member(org_id: int, user_id: int, org_admin: bool = False) -> bool:
+    """Add a user to an org as a member."""
+    log.debug("Adding user: %s to org: %s", user_id, org_id)
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(
+            "INSERT INTO org_members (org_id, user_id, org_admin) VALUES (?, ?, ?)",
+            (org_id, user_id, org_admin),
+        )
+        connection.commit()
+        return True
+
+
+def update_organisation_members(org_id: int, users: List[Tuple[int, bool]]) -> bool:
+    """Update org members.
+
+    Args:
+        org_id (int): The org id.
+        users (List[Tuple[int, bool]]): The list fo users [user id, org_admin].
+
+    Returns:
+        bool: True if the org members are updated, False otherwise.
+    """
+    log.debug("Updating org members for org_id: %s", org_id)
+    success = False
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        try:
+            cursor.execute("BEGIN TRANSACTION")
+            cursor.execute(
+                "DELETE FROM org_members WHERE org_id = ?",
+                (org_id,),
+            )
+            cursor.executemany(
+                "INSERT INTO org_members (org_id, user_id, org_admin) VALUES (?, ?, ?)",
+                [(org_id, x[0], x[1]) for x in users],
+            )
+            connection.commit()
+            success = True
+        except Exception as e:
+            success = False
+            connection.rollback()
+            log.error("Error updating org members, rolled back: %s", e)
+
+    return success

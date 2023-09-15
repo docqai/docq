@@ -1,9 +1,14 @@
 """Initialize Docq."""
 import logging
 
-from docq import manage_organisations
-
-from . import manage_settings, manage_space_groups, manage_spaces, manage_user_groups, manage_users
+from . import (
+    manage_organisations,
+    manage_settings,
+    manage_space_groups,
+    manage_spaces,
+    manage_user_groups,
+    manage_users,
+)
 
 
 def _config_logging() -> None:

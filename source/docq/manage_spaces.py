@@ -9,8 +9,7 @@ from typing import List
 
 from llama_index import Document, GPTVectorStoreIndex
 
-from docq.access_control.main import SpaceAccessor, SpaceAccessType
-
+from .access_control.main import SpaceAccessor, SpaceAccessType
 from .config import SpaceType
 from .data_source.list import SpaceDataSources
 from .domain import DocumentListItem, SpaceKey

@@ -31,14 +31,18 @@ from .constants import (
     SessionKeyNameForAuth,
     SessionKeyNameForChat,
     SessionKeyNameForSettings,
+    SessionKeySubName,
 )
 from .sessions import (
+    get_auth_session,
     get_authenticated_user_id,
     get_chat_session,
     get_selected_org_id,
     get_username,
     set_auth_session,
     set_chat_session,
+    set_if_current_user_is_selected_org_admin,
+    set_selected_org_id,
     set_settings_session,
 )
 
@@ -48,27 +52,33 @@ def handle_login(username: str, password: str) -> bool:
     result = manage_users.authenticate(username, password)
     log.info("Login result: %s", result)
     if result:
-        member_orgs = manage_organisations.list_organisations()
+        current_user_id = result[0]
+        member_orgs = manage_organisations.list_organisations(
+            user_id=current_user_id
+        )  # we can't use handle_list_orgs() here
         default_org_id = member_orgs[0][0]
+        selected_org_admin = current_user_id in [x[0] for x in member_orgs[0][2]]
         log.info("Member orgs: %s", member_orgs)
         set_auth_session(
             {
-                SessionKeyNameForAuth.ID.name: result[0],
+                SessionKeyNameForAuth.ID.name: current_user_id,
                 SessionKeyNameForAuth.NAME.name: result[1],
-                SessionKeyNameForAuth.ADMIN.name: result[2],
+                SessionKeyNameForAuth.SUPER_ADMIN.name: result[2],
                 SessionKeyNameForAuth.USERNAME.name: result[3],
-                SessionKeyNameForAuth.ORG_ID.name: default_org_id,  # default to the first org in the list for now.
+                SessionKeyNameForAuth.SELECTED_ORG_ID.name: default_org_id,  # default to the first org in the list for now.
+                SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name: selected_org_admin,
             }
         )
         set_settings_session(
             {
                 SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_organisation_settings(org_id=default_org_id),
                 SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(
-                    org_id=default_org_id, user_id=result[0]
+                    org_id=default_org_id, user_id=current_user_id
                 ),
             }
         )
         log.info(st.session_state["_docq"])
+        log.debug("auth session: %s", get_auth_session())
         return True
     else:
         return False
@@ -84,6 +94,7 @@ def handle_create_user() -> int:
         st.session_state["create_user_username"],
         st.session_state["create_user_password"],
         st.session_state["create_user_fullname"],
+        False,
         st.session_state["create_user_admin"],
         current_org_id,
     )
@@ -97,6 +108,7 @@ def handle_update_user(id_: int) -> bool:
         st.session_state[f"update_user_{id_}_username"],
         st.session_state[f"update_user_{id_}_password"],
         st.session_state[f"update_user_{id_}_fullname"],
+        False,
         st.session_state[f"update_user_{id_}_admin"],
         st.session_state[f"update_user_{id_}_archived"],
     )
@@ -109,19 +121,22 @@ def list_users(name_match: str = None) -> list[tuple]:
 
     Args:
         name_match (str, optional): The name to match. Defaults to None.
+
+    Returns:
+        List[Tuple[int, str, str, str, bool, bool, datetime, datetime]]: The list of users [user id, username, fullname, super_admin, archived, created_at, updated_at].
     """
     return manage_users.list_users(name_match)
 
 
-def list_users_by_current_org(name_match: str = None) -> list[tuple]:
+def list_users_by_current_org(username_match: str = None) -> list[tuple]:
     """Get a list of all users that are a member of an org.
 
     Args:
         org_id (int): The org id.
-        name_match (str, optional): The name to match. Defaults to None.
+        username_match (str, optional): The name to match. Defaults to None.
     """
     org_id = get_selected_org_id()
-    return manage_users.list_users_by_org(org_id, name_match)
+    return manage_users.list_users_by_org(org_id=org_id, username_match=username_match)
 
 
 def handle_create_user_group() -> int:
@@ -182,9 +197,19 @@ def handle_archive_org(id_: int) -> bool:
 
 
 def handle_list_orgs(name_match: str = None) -> List[Tuple]:
-    """List all organizations."""
+    """List all organizations.
+
+    Returns:
+         List[Tuple[int, str, List[Tuple[int, str]], datetime, datetime]]: The list of orgs [org_id, org_name, [user id, users fullname] created_at, updated_at].
+    """
     current_user_id = get_authenticated_user_id()
     return manage_organisations.list_organisations(name_match=name_match, user_id=current_user_id)
+
+
+def handle_org_selection_change(org_id: int) -> None:
+    """Handle org selection change."""
+    set_selected_org_id(org_id)
+    set_if_current_user_is_selected_org_admin(org_id)
 
 
 def handle_create_space_group() -> int:
