@@ -20,7 +20,7 @@ def test_reindex():
             Document(doc_id="testid", text="test", metadata={"source_uri": "https://example.com}"})
         ]
 
-        arg_space_key = SpaceKey(SpaceType.PERSONAL, 1234)
+        arg_space_key = SpaceKey(SpaceType.PERSONAL, 1234, 4567)
 
         reindex(arg_space_key)
 

@@ -9,7 +9,7 @@ from typing import List, Tuple
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
 
-from docq import manage_orgs
+from docq import manage_organisations
 
 from . import manage_documents as mdocuments
 from . import manage_settings as msettings
@@ -65,12 +65,12 @@ def _init_admin_if_necessary() -> bool:
                 (DEFAULT_ADMIN_ID, DEFAULT_ADMIN_USERNAME, password, DEFAULT_ADMIN_FULLNAME, True),
             )
             connection.commit()
-            manage_orgs.add_org_member(manage_orgs.DEFAULT_ORG_ID, DEFAULT_ADMIN_ID)
+            manage_organisations.add_organisation_member(manage_organisations.DEFAULT_ORG_ID, DEFAULT_ADMIN_ID)
             created = True
 
     # Reindex the user's space for the first time
     if created:
-        _reindex_user_docs(DEFAULT_ADMIN_ID, manage_orgs.DEFAULT_ORG_ID)
+        _reindex_user_docs(DEFAULT_ADMIN_ID, manage_organisations.DEFAULT_ORG_ID)
 
     return created
 

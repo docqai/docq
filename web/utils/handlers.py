@@ -13,7 +13,7 @@ from docq import (
     config,
     domain,
     manage_documents,
-    manage_orgs,
+    manage_organisations,
     manage_settings,
     manage_space_groups,
     manage_spaces,
@@ -48,7 +48,7 @@ def handle_login(username: str, password: str) -> bool:
     result = manage_users.authenticate(username, password)
     log.info("Login result: %s", result)
     if result:
-        member_orgs = manage_orgs.list_orgs()
+        member_orgs = manage_organisations.list_organisations()
         default_org_id = member_orgs[0][0]
         log.info("Member orgs: %s", member_orgs)
         set_auth_session(
@@ -62,7 +62,7 @@ def handle_login(username: str, password: str) -> bool:
         )
         set_settings_session(
             {
-                SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_org_system_settings(org_id=default_org_id),
+                SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_organisation_settings(org_id=default_org_id),
                 SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(
                     org_id=default_org_id, user_id=result[0]
                 ),
@@ -157,7 +157,7 @@ def handle_create_org() -> bool:
     """Create a new organization."""
     current_user_id = get_authenticated_user_id()
     name = st.session_state["create_org_name"]
-    result = manage_orgs.create_org(name, current_user_id)
+    result = manage_organisations.create_organisation(name, current_user_id)
 
     log.info("Create org result: %s", result)
     return result
@@ -166,15 +166,17 @@ def handle_create_org() -> bool:
 def handle_update_org(org_id: int) -> bool:
     """Update an existing organization."""
     name = st.session_state[f"update_org_{org_id}_name"]
-    result = manage_orgs.update_org(org_id, name)
-    manage_orgs.update_org_members(org_id, [x[0] for x in st.session_state[f"update_org_{org_id}_members"]])
+    result = manage_organisations.update_organisation(org_id, name)
+    manage_organisations.update_organisation_members(
+        org_id, [x[0] for x in st.session_state[f"update_org_{org_id}_members"]]
+    )
     log.info("Update org result: %s", result)
     return result
 
 
 def handle_archive_org(id_: int) -> bool:
     """Archive an existing organization."""
-    result = manage_orgs.archive_org(id_)
+    result = manage_organisations.archive_organisation(id_)
     log.info("Archive org result: %s", result)
     return result
 
@@ -182,7 +184,7 @@ def handle_archive_org(id_: int) -> bool:
 def handle_list_orgs(name_match: str = None) -> List[Tuple]:
     """List all organizations."""
     current_user_id = get_authenticated_user_id()
-    return manage_orgs.list_orgs(name_match=name_match, user_id=current_user_id)
+    return manage_organisations.list_organisations(name_match=name_match, user_id=current_user_id)
 
 
 def handle_create_space_group() -> int:
@@ -402,17 +404,19 @@ def get_space_data_source_choice_by_type(type_: str) -> Tuple[str, str, List[dom
 
 def get_system_settings() -> dict:
     current_org_id = get_selected_org_id()
-    return manage_settings.get_org_system_settings(org_id=current_org_id)
+    return manage_settings.get_organisation_settings(org_id=current_org_id)
 
 
 def get_enabled_features() -> list[domain.FeatureKey]:
     current_org_id = get_selected_org_id()
-    return manage_settings.get_org_system_settings(org_id=current_org_id, key=config.SystemSettingsKey.ENABLED_FEATURES)
+    return manage_settings.get_organisation_settings(
+        org_id=current_org_id, key=config.SystemSettingsKey.ENABLED_FEATURES
+    )
 
 
 def handle_update_system_settings() -> None:
     current_org_id = get_selected_org_id()
-    manage_settings.update_system_settings(
+    manage_settings.update_organisation_settings(
         {
             config.SystemSettingsKey.ENABLED_FEATURES.name: [
                 f.name for f in st.session_state[f"system_settings_{config.SystemSettingsKey.ENABLED_FEATURES.name}"]

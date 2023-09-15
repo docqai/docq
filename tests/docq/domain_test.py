@@ -4,14 +4,14 @@ from docq.domain import FeatureKey, SpaceKey
 
 
 @pytest.mark.parametrize(
-    ("type_", "id_", "expected_str", "expected_value"),
+    ("type_", "id_", "org_id", "expected_str", "expected_value"),
     [
-        (SpaceType.PERSONAL, 1234, "PERSONAL:1234", "PERSONAL_1234"),
-        (SpaceType.SHARED, 9999, "SHARED:9999", "SHARED_9999"),
+        (SpaceType.PERSONAL, 1234, 6789, "PERSONAL:6789:1234", "PERSONAL_6789_1234"),
+        (SpaceType.SHARED, 9999, 6789, "SHARED:6789:9999", "SHARED_6789_9999"),
     ],
 )
-def test_space_key(type_, id_, expected_str, expected_value):
-    key = SpaceKey(type_, id_)
+def test_space_key(type_, id_, org_id, expected_str, expected_value):
+    key = SpaceKey(type_, id_, org_id)
     assert str(key) == expected_str
     assert key.value() == expected_value
 

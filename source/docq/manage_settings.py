@@ -73,7 +73,7 @@ def _update_settings(settings: dict, org_id: int, user_id: int = None) -> bool:
         return True
 
 
-def get_org_system_settings(org_id: int, key: SystemSettingsKey = None) -> Any | None:
+def get_organisation_settings(org_id: int, key: SystemSettingsKey = None) -> Any | None:
     """Get the system settings. Applies to all users in an org."""
     return _get_settings(org_id=org_id) if key is None else _get_settings(org_id=org_id).get(key.name)
 
@@ -87,7 +87,7 @@ def get_user_settings(org_id: int, user_id: int, key: UserSettingsKey = None) ->
     )
 
 
-def update_system_settings(settings: dict, org_id: int) -> bool:
+def update_organisation_settings(settings: dict, org_id: int) -> bool:
     """Update the system settings. Applies to all users in an org."""
     return _update_settings(org_id=org_id, settings=settings)
 

@@ -69,7 +69,7 @@ def list_user_groups(
         ).fetchall()
 
         members = cursor.execute(
-            "SELECT m.group_id, u.id, u.fullname from user_group_members m, users u WHERE m.group_id IN ({}) AND m.user_id = u.id".format(  # noqa: S608
+            "SELECT m.group_id, u.id, u.fullname FROM user_group_members m, users u WHERE m.group_id IN ({}) AND m.user_id = u.id".format(  # noqa: S608
                 ",".join([str(x[0]) for x in user_groups])
             )
         ).fetchall()

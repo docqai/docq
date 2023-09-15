@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS org_members (
 )
 """
 
+# organisations
 
 DEFAULT_ORG_ID = 1000
 DEFAULT_ORG_NAME = "Docq Org"
@@ -65,7 +66,7 @@ def _init_default_org_if_necessary() -> bool:
     return created
 
 
-def list_orgs(
+def list_organisations(
     name_match: str = None, user_id: int = None
 ) -> List[Tuple[int, str, List[Tuple[int, str]], datetime, datetime]]:
     """List orgs.
@@ -103,7 +104,7 @@ def list_orgs(
         # return orgs
 
 
-def add_org_member(org_id: int, user_id: int) -> bool:
+def add_organisation_member(org_id: int, user_id: int) -> bool:
     """Add a user to an org as a member."""
     log.debug("Adding user: %s to org: %s", user_id, org_id)
     with closing(
@@ -117,7 +118,7 @@ def add_org_member(org_id: int, user_id: int) -> bool:
         return True
 
 
-def update_org_members(org_id: int, user_ids: List[int]) -> bool:
+def update_organisation_members(org_id: int, user_ids: List[int]) -> bool:
     """Update org members.
 
     Args:
@@ -151,7 +152,7 @@ def update_org_members(org_id: int, user_ids: List[int]) -> bool:
     return success
 
 
-def create_org(name: str, creating_user_id: int) -> bool:
+def create_organisation(name: str, creating_user_id: int) -> bool:
     """Create an org.
 
     Args:
@@ -189,7 +190,7 @@ def create_org(name: str, creating_user_id: int) -> bool:
         return success
 
 
-def update_org(id_: int, name: str = None) -> bool:
+def update_organisation(id_: int, name: str = None) -> bool:
     """Update a group.
 
     Args:
@@ -220,7 +221,7 @@ def update_org(id_: int, name: str = None) -> bool:
         return True
 
 
-def archive_org(id_: int) -> bool:
+def archive_organisation(id_: int) -> bool:
     """Archive a org.
 
     Args:
