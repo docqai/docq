@@ -13,6 +13,7 @@ from docq import (
     config,
     domain,
     manage_documents,
+    manage_orgs,
     manage_settings,
     manage_space_groups,
     manage_spaces,
@@ -34,6 +35,7 @@ from .constants import (
 from .sessions import (
     get_authenticated_user_id,
     get_chat_session,
+    get_selected_org_id,
     get_username,
     set_auth_session,
     set_chat_session,
@@ -46,12 +48,15 @@ def handle_login(username: str, password: str) -> bool:
     result = manage_users.authenticate(username, password)
     log.info("Login result: %s", result)
     if result:
+        member_orgs = manage_orgs.list_orgs()
+        log.info("Member orgs: %s", member_orgs)
         set_auth_session(
             {
                 SessionKeyNameForAuth.ID.name: result[0],
                 SessionKeyNameForAuth.NAME.name: result[1],
                 SessionKeyNameForAuth.ADMIN.name: result[2],
                 SessionKeyNameForAuth.USERNAME.name: result[3],
+                SessionKeyNameForAuth.ORG_ID.name: member_orgs[0][0],  # default to the first org in the list for now.
             }
         )
         set_settings_session(
@@ -99,9 +104,8 @@ def list_users(name_match: str = None) -> list[tuple]:
 
 
 def handle_create_user_group() -> int:
-    result = manage_user_groups.create_user_group(
-        st.session_state["create_user_group_name"],
-    )
+    org_id = get_selected_org_id()
+    result = manage_user_groups.create_user_group(st.session_state["create_user_group_name"], org_id)
     log.info("Create user group result: %s", result)
     return result
 
@@ -117,13 +121,44 @@ def handle_update_user_group(id_: int) -> bool:
 
 
 def handle_delete_user_group(id_: int) -> bool:
-    result = manage_user_groups.delete_user_group(id_)
+    org_id = get_selected_org_id()
+    result = manage_user_groups.delete_user_group(id_, org_id)
     log.info("Update user group result: %s", result)
     return result
 
 
 def list_user_groups(name_match: str = None) -> List[Tuple]:
-    return manage_user_groups.list_user_groups(name_match)
+    org_id = get_selected_org_id()
+    return manage_user_groups.list_user_groups(org_id, name_match)
+
+
+def handle_create_org() -> bool:
+    """Create a new organization."""
+    name = st.session_state["create_org_name"]
+    result = manage_orgs.create_org(name)
+    log.info("Create org result: %s", result)
+    return result
+
+
+def handle_update_org(id_: int) -> bool:
+    """Update an existing organization."""
+    name = st.session_state[f"update_org_{id_}_name"]
+    result = manage_orgs.update_org(id_, name)
+    log.info("Update org result: %s", result)
+    return result
+
+
+def handle_archive_org(id_: int) -> bool:
+    """Archive an existing organization."""
+    result = manage_orgs.archive_org(id_)
+    log.info("Archive org result: %s", result)
+    return result
+
+
+def handle_list_orgs(name_match: str = None) -> List[Tuple]:
+    """List all organizations."""
+    current_user_id = get_authenticated_user_id()
+    return manage_orgs.list_orgs(name_match=name_match, user_id=current_user_id)
 
 
 def handle_create_space_group() -> int:

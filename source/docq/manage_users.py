@@ -9,6 +9,8 @@ from typing import List, Tuple
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
 
+from docq import manage_orgs
+
 from . import manage_documents as mdocuments
 from . import manage_settings as msettings
 from .config import SpaceType
@@ -63,6 +65,7 @@ def _init_admin_if_necessary() -> bool:
                 (DEFAULT_ADMIN_ID, DEFAULT_ADMIN_USERNAME, password, DEFAULT_ADMIN_FULLNAME, True),
             )
             connection.commit()
+            manage_orgs.add_org_member(manage_orgs.DEFAULT_ORG_ID, DEFAULT_ADMIN_ID)
             created = True
 
     # Reindex the user's space for the first time
@@ -81,7 +84,7 @@ def _reindex_user_docs(user_id: int) -> None:
     mdocuments.reindex(SpaceKey(SpaceType.PERSONAL, user_id))
 
 
-def authenticate(username: str, password: str) -> Tuple[int, str, bool]:
+def authenticate(username: str, password: str) -> Tuple[int, str, bool, str]:
     """Authenticate a user.
 
     Args:
@@ -89,7 +92,7 @@ def authenticate(username: str, password: str) -> Tuple[int, str, bool]:
         password (str): The password.
 
     Returns:
-        tuple[id, str, bool]: The user's id, fullname and admin status if authenticated, None otherwise.
+        tuple[int, str, bool, str]: The [user's id, fullname, admin status, username] if authenticated, `None` otherwise.
     """
     log.debug("Authenticating user: %s", username)
     with closing(

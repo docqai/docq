@@ -2,6 +2,7 @@
 
 import logging
 from typing import List, Tuple
+from docq.manage_orgs import list_orgs
 
 import streamlit as st
 from docq.access_control.main import SpaceAccessType
@@ -21,8 +22,10 @@ from .handlers import (
     get_space_data_source,
     get_space_data_source_choice_by_type,
     get_system_settings,
+    handle_archive_org,
     handle_chat_input,
     handle_create_new_chat,
+    handle_create_org,
     handle_create_space,
     handle_create_space_group,
     handle_create_user,
@@ -33,10 +36,12 @@ from .handlers import (
     handle_delete_user_group,
     handle_get_gravatar_url,
     handle_list_documents,
+    handle_list_orgs,
     handle_login,
     handle_logout,
     handle_manage_space_permissions,
     handle_reindex_space,
+    handle_update_org,
     handle_update_space_details,
     handle_update_space_group,
     handle_update_system_settings,
@@ -51,7 +56,7 @@ from .handlers import (
     prepare_for_chat,
     query_chat_history,
 )
-from .sessions import get_auth_session, get_chat_session
+from .sessions import get_auth_session, get_authenticated_user_id, get_chat_session, get_selected_org_id
 
 _chat_ui_script = """
 <script>
@@ -314,6 +319,41 @@ def list_user_groups_ui(name_match: str = None) -> None:
                         with st.form(key=f"delete_user_group_{id_}"):
                             st.warning("Are you sure you want to delete this group?")
                             st.form_submit_button("Confirm", on_click=handle_delete_user_group, args=(id_,))
+
+
+def create_org_ui() -> None:
+    """Create a new organization."""
+    with st.expander("### + New Organization"), st.form(key="create_org"):
+        st.text_input("Name", value="", key="create_org_name")
+        st.form_submit_button("Create Organization", on_click=handle_create_org)
+
+
+def list_orgs_ui(name_match: str = None) -> None:
+    """List all organizations."""
+    orgs = handle_list_orgs(name_match=name_match)
+    if orgs:
+        for org_id, name, members, created_at, updated_at in orgs:
+            with st.expander(f"{name}"):
+                st.write(f"ID: **{org_id}**")
+                st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
+                edit_col, archive_col = st.columns(2)
+                with edit_col:
+                    if st.button("Edit", key=f"update_org_{org_id}_button"):
+                        with st.form(key=f"update_org_{org_id}"):
+                            st.text_input("Name", value=name, key=f"update_org_{org_id}_name")
+                            st.multiselect(
+                                "Members",
+                                options=[(x[0], x[2]) for x in list_users()],
+                                default=members,
+                                key=f"update_user_group_{org_id}_members",
+                                format_func=lambda x: x[1],
+                            )
+                            st.form_submit_button("Save", on_click=handle_update_org, args=(org_id,))
+                with archive_col:
+                    if st.button("Archive", key=f"archive_org_{org_id}_button"):
+                        with st.form(key=f"archive_org_{org_id}"):
+                            st.warning("Are you sure you want to archive this organization?")
+                            st.form_submit_button("Confirm", on_click=handle_archive_org, args=(org_id,))
 
 
 def create_space_group_ui() -> None:
@@ -712,14 +752,16 @@ def admin_docs_ui(q_param: str = None) -> None:
     def _on_change() -> None:
         del st.session_state["admin_docs_active_space"]
 
-    try: # Get the space id from the query param with prefence to the newly created space.
-        _sid = int(st.experimental_get_query_params()[q_param][0]) if q_param in st.experimental_get_query_params() else None
+    try:  # Get the space id from the query param with prefence to the newly created space.
+        _sid = (
+            int(st.experimental_get_query_params()[q_param][0])
+            if q_param in st.experimental_get_query_params()
+            else None
+        )
     except ValueError:
         _sid = None
     new_space = st.session_state.get("admin_docs_active_space", _sid)
-    default_sid = next(
-        (i for i, s in enumerate(spaces) if s[0] == new_space), None
-    )
+    default_sid = next((i for i, s in enumerate(spaces) if s[0] == new_space), None)
 
     selected = st.selectbox(
         "Spaces",

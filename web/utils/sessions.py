@@ -82,6 +82,11 @@ def get_authenticated_user_id() -> int | None:
     return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.ID.name)
 
 
+def get_selected_org_id() -> int | None:
+    """Get the selected org_id context."""
+    return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.ORG_ID.name)
+
+
 def get_username() -> str | None:
     """Get the authenticated user name."""
     return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.USERNAME.name)

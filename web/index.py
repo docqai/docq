@@ -25,6 +25,7 @@ show_pages(
         Page("web/admin_space_groups.py", "Admin_Space_Groups"),
         Page("web/admin_users.py", "Admin_Users"),
         Page("web/admin_user_groups.py", "Admin_User_Groups"),
+        Page("web/admin_orgs.py", "Admin_Orgs"),
         Page("web/admin_logs.py", "Admin_Logs"),
     ]
 )
