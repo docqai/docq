@@ -12,6 +12,7 @@ class SpaceType(Enum):
 
     PERSONAL = "personal"
     SHARED = "shared"
+    PUBLIC = "public"
 
 
 class FeatureType(Enum):
