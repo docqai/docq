@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "docq"
-version = "0.0.3"
+version = "0.1.0"
 description = "Docq"
 authors = ["Docq.AI Team <support@docq.ai>"]
 maintainers = ["Docq.AI Team <support@docq.ai>"]
@@ -8,9 +8,7 @@ license = "AGPL-3.0-or-later"
 repository = "https://github.com/docqai/docq"
 documentation = "https://github.com/docqai/docq/tree/main/docs/api/"
 readme = "README.md"
-packages = [
-    { include = "docq", from = "source" },
-]
+packages = [{ include = "docq", from = "source" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -25,7 +23,7 @@ llama-index = "0.8.27"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.18.1"
-black = {version = "^22.3.0", allow-prereleases = true}
+black = { version = "^22.3.0", allow-prereleases = true }
 xdoctest = "^1.0.0"
 poethepoet = "^0.16.4"
 ruff = "^0.0.253"
@@ -100,9 +98,7 @@ addopts = """
 --cov-report html:docs/cov-report \
 --doctest-modules \
 --cov-config=pyproject.toml"""
-testpaths = [
-    "tests",
-]
+testpaths = ["tests"]
 python_files = ["*_test.py"]
 python_functions = ["test_*"]
 render_collapsed = true
@@ -117,8 +113,8 @@ exclude_lines = [
     "raise AssertionError",
     "raise NotImplementedError",
     "if 0:",
-    "if __name__ == .__main__.:"
-    ]
+    "if __name__ == .__main__.:",
+]
 
 [tool.poe.tasks]
 install = "poetry install --only main"
@@ -133,9 +129,7 @@ doc-html = "mkdocs build --site-dir ./_site"
 
 [tool.poe.tasks.run]
 cmd = "streamlit run web/index.py --server.port $port --browser.gatherUsageStats false"
-args = [
-    { name = "port", default = 8501, type = "integer" },
-]
+args = [{ name = "port", default = 8501, type = "integer" }]
 
 [tool.poe.tasks.docker-build]
 cmd = """
@@ -147,7 +141,7 @@ docker build
 -t docq:$target-$build_tag ."""
 help = "Build a docker image to test the project in an isolated environment"
 args = [
-    { name = "test", default = false, type = "boolean"}, 
+    { name = "test", default = false, type = "boolean" },
     { name = "build-tag", default = "3.11-slim-buster" },
     { name = "build-platform", default = "linux/amd64" },
     { name = "target", default = "prod" },
