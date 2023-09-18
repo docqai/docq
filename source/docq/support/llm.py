@@ -14,6 +14,7 @@ from llama_index import (
     load_index_from_storage,
 )
 from llama_index.chat_engine import SimpleChatEngine
+from llama_index.chat_engine.types import ChatMode
 from llama_index.indices.composability import ComposableGraph
 from llama_index.node_parser import SimpleNodeParser
 from llama_index.node_parser.extractors import (
@@ -133,7 +134,9 @@ def run_chat(input_: str, history: str) -> BaseMessage:
 
 def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[SpaceKey] = None) -> Response:
     """Ask questions against existing index(es) with history."""
+    log.debug("exec: runs_ask()")
     if spaces is not None and len(spaces) > 0:
+        log.debug("runs_ask(): spaces count: %s", len(spaces))
         # With additional spaces likely to be combining a number of shared spaces.
         indices = []
         summaries = []
@@ -173,12 +176,19 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
                 e,
             )
     else:
+        log.debug("runs_ask(): space None or zero. Assuming personal ASK.")
         # No additional spaces i.e. likely to be against a user's documents in their personal space.
         if space is None:
+            log.debug("runs_ask(): space is None. executing run_chat(), not ASK.")
             output = run_chat(input_, history)
         else:
             index = _load_index_from_storage(space)
-            engine = index.as_chat_engine(verbose=True, similarity_top_k=3, vector_store_query_mode="default")
+            engine = index.as_chat_engine(
+                verbose=True,
+                similarity_top_k=3,
+                vector_store_query_mode="default",
+                chat_mode=ChatMode.CONDENSE_QUESTION,
+            )
             output = engine.chat(input_)
             log.debug("(Ask %s w/o shared spaces) Q: %s, A: %s", space, input_, output)
 

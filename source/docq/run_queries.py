@@ -159,7 +159,7 @@ def query(
     is_chat = feature.type_ == FeatureType.CHAT_PRIVATE
 
     history = _retrieve_last_n_history(feature, thread_id)
-
+    log.debug("is_chat: %s", is_chat)
     try:
         response = run_chat(input_, history) if is_chat else run_ask(input_, history, space, spaces)
         log.debug("Response: %s", response)
