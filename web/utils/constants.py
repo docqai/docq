@@ -11,6 +11,7 @@ class SessionKeySubName(Enum):
     CHAT = "chat"
     AUTH = "auth"
     SETTINGS = "settings"
+    PUBLIC = "public"
 
 
 class SessionKeyNameForAuth(Enum):
@@ -37,6 +38,13 @@ class SessionKeyNameForChat(Enum):
     CUTOFF = "cutoff"
     HISTORY = "history"
     THREAD = "thread"
+
+
+class SessionKeyNameForPublic(Enum):
+    """Third-level names for session keys in public."""
+
+    SESSION = "session"
+    SPACE_GROUP_ID = "space_group_id"
 
 
 NUMBER_OF_MSGS_TO_LOAD = 10
