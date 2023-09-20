@@ -20,6 +20,7 @@ class FeatureType(Enum):
 
     ASK_PERSONAL = "Ask Your Documents"
     ASK_SHARED = "Ask Shared Documents"
+    ASK_PUBLIC = "Ask Public Documents"
     CHAT_PRIVATE = "General Chat"
 
 
