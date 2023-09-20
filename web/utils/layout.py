@@ -7,12 +7,13 @@ import streamlit as st
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SpaceType, SystemSettingsKey
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
+from docq.embed_config import root_embed_config, web_embed_config
 from docq.manage_users import list_users_by_org
 from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 
-from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
+from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat, SessionKeyNameForPublic
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
     get_enabled_features,
@@ -41,6 +42,7 @@ from .handlers import (
     handle_logout,
     handle_manage_space_permissions,
     handle_org_selection_change,
+    handle_public_session,
     handle_reindex_space,
     handle_update_org,
     handle_update_space_details,
@@ -49,6 +51,7 @@ from .handlers import (
     handle_update_user,
     handle_update_user_group,
     handle_upload_file,
+    list_public_spaces,
     list_shared_spaces,
     list_space_data_source_choices,
     list_space_groups,
@@ -62,6 +65,7 @@ from .sessions import (
     get_auth_session,
     get_authenticated_user_id,
     get_chat_session,
+    get_public_session,
     get_selected_org_id,
     is_current_user_super_admin,
     set_selected_org_id,
@@ -228,11 +232,13 @@ def public_access() -> None:
     """Menu options for public access."""
     # __no_staff_menu()
     __no_admin_menu()
+    root_embed_config()
 
 
 def auth_required(show_login_form: bool = True, requiring_admin: bool = False, show_logout_button: bool = True) -> bool:
     """Decide layout based on current user's access."""
     auth = get_auth_session()
+    root_embed_config()
     if auth:
         if show_logout_button:
             __logout_button()
@@ -247,6 +253,8 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
     else:
         if show_login_form:
             __login_form()
+        else:
+            handle_public_session()
         return False
 
 
@@ -260,6 +268,21 @@ def feature_enabled(feature: FeatureKey) -> bool:
         st.stop()
         return False
     return True
+
+
+def public_space_enabled(feature: FeatureKey) -> None:
+    """Check if public space is ready."""
+    web_embed_config()
+    feature_enabled(feature)
+    space_group_id = get_public_session(SessionKeyNameForPublic.SPACE_GROUP_ID)
+    session_id = get_public_session(SessionKeyNameForPublic.SESSION)
+    feature_is_ready, spaces = (space_group_id != -1 or session_id != -1), None
+    if feature_is_ready:
+        spaces = list_public_spaces()
+    if not feature_is_ready or not spaces: # Stop the app if there are no public spaces.
+        st.error("This feature is not ready.")
+        st.info("Please contact your administrator to configure this feature.")
+        st.stop()
 
 
 def create_user_ui() -> None:
@@ -465,9 +488,9 @@ def chat_ui(feature: FeatureKey) -> None:
             }
 
             [alt="user avatar"], [alt="assistant avatar"] {
-                border-radius: 8px;
-                width: 2.5rem !important;
-                height: 2.5rem !important;
+                border-radius: 6px;
+                width: 2rem !important;
+                height: 2rem !important;
                 cursor: pointer;
             }
 
@@ -537,6 +560,10 @@ def _render_document_upload(space: SpaceKey, documents: List) -> None:
 
 def documents_ui(space: SpaceKey) -> None:
     """Displays the UI for managing documents in a space."""
+    permisssion = get_shared_space_permissions(space.id_)
+    if permisssion.get(SpaceAccessType.PUBLIC, False):
+        st.warning("This is a public space, Do not add any sensitive information.")
+
     documents: List[DocumentListItem] = handle_list_documents(space)
     (ds_type, _) = get_space_data_source(space)
 
