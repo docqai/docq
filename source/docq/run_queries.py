@@ -9,7 +9,12 @@ from .config import FeatureType
 from .domain import FeatureKey, SpaceKey
 from .manage_documents import format_document_sources
 from .support.llm import query_error, run_ask, run_chat
-from .support.store import get_history_table_name, get_history_thread_table_name, get_sqlite_usage_file
+from .support.store import (
+    get_history_table_name,
+    get_history_thread_table_name,
+    get_public_sqlite_usage_file,
+    get_sqlite_usage_file,
+)
 
 SQL_CREATE_THREAD_TABLE = """
 CREATE TABLE IF NOT EXISTS {table} (
@@ -42,8 +47,9 @@ def _save_messages(data: list[tuple[str, bool, datetime, int]], feature: Feature
     rows = []
     tablename = get_history_table_name(feature.type_)
     thread_tablename = get_history_thread_table_name(feature.type_)
+    usage_file = get_sqlite_usage_file(feature.id_) if feature.type_ != FeatureType.ASK_PUBLIC else get_public_sqlite_usage_file(feature.id_)
     with closing(
-        sqlite3.connect(get_sqlite_usage_file(feature.id_), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(usage_file, detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             SQL_CREATE_MESSAGE_TABLE.format(
@@ -66,10 +72,10 @@ def _retrieve_messages(
 ) -> list[tuple[int, str, bool, datetime, int]]:
     tablename = get_history_table_name(feature.type_)
     thread_tablename = get_history_thread_table_name(feature.type_)
-
+    usage_file = get_sqlite_usage_file(feature.id_) if feature.type_ != FeatureType.ASK_PUBLIC else get_public_sqlite_usage_file(feature.id_)
     rows = None
     with closing(
-        sqlite3.connect(get_sqlite_usage_file(feature.id_), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(usage_file, detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_THREAD_TABLE.format(table=thread_tablename))
         cursor.execute(SQL_CREATE_MESSAGE_TABLE.format(table=tablename, thread_table=thread_tablename))
