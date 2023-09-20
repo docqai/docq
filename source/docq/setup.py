@@ -9,6 +9,7 @@ from . import (
     manage_user_groups,
     manage_users,
 )
+from .support import store
 
 
 def _config_logging() -> None:
@@ -25,6 +26,7 @@ def init() -> None:
     manage_settings._init()
     manage_spaces._init()
     manage_users._init()
+    store._init()
     manage_organisations._init_default_org_if_necessary()
     manage_users._init_admin_if_necessary()
     logging.info("Docq initialized")
