@@ -7,7 +7,6 @@ import streamlit as st
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SpaceType, SystemSettingsKey
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
-from docq.embed_config import root_embed_config, web_embed_config
 from docq.manage_users import list_users_by_org
 from st_pages import hide_pages
 from streamlit.components.v1 import html
@@ -199,6 +198,34 @@ def __no_admin_menu() -> None:
         ]
     )
 
+def __embed_page_config() -> None:
+    st.markdown(
+        """
+        <style>
+            [data-testid="collapsedControl"] {
+                display: none !important;
+            }
+            section[data-testid="stSidebar"] {
+                display: none !important;
+            }
+            .block-container {
+                padding-top: 1rem !important;
+            }
+            .stChatFloatingInputContainer {
+                padding-bottom: 3rem !important;
+            }
+            div.element-container:has(.stAlert) {
+                padding-top: 2rem !important;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def __hide_embed_page() -> None:
+    hide_pages(["widget"])
+
 
 def __login_form() -> None:
     __no_admin_menu()
@@ -233,13 +260,13 @@ def public_access() -> None:
     """Menu options for public access."""
     # __no_staff_menu()
     __no_admin_menu()
-    root_embed_config()
+    __hide_embed_page()
 
 
 def auth_required(show_login_form: bool = True, requiring_admin: bool = False, show_logout_button: bool = True) -> bool:
     """Decide layout based on current user's access."""
     auth = get_auth_session()
-    root_embed_config()
+    __hide_embed_page()
     if auth:
         if show_logout_button:
             __logout_button()
@@ -273,7 +300,7 @@ def feature_enabled(feature: FeatureKey) -> bool:
 
 def public_space_enabled(feature: FeatureKey) -> None:
     """Check if public space is ready."""
-    web_embed_config()
+    __embed_page_config()
     feature_enabled(feature)
     space_group_id = get_public_space_group_id()
     session_id = get_public_session_id()
