@@ -617,3 +617,13 @@ def handle_public_session() -> None:
             space_group_id=space_group_id,
             public_session_id=session_id,
         )
+    else: # if no query params are provided, set space_group_id and public_session_id to -1 to disable ASK_PUBLIC feature
+        _set_session_state_configs(
+            user_id=None,
+            selected_org_id=None,
+            name=None,
+            username=None,
+            anonymous=True,
+            space_group_id=-1,
+            public_session_id=-1,
+        )
