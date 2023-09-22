@@ -236,10 +236,10 @@ def list_public_spaces(space_group_id: int) -> list[tuple[int, str, str, bool, s
             JOIN space_group_members c
             LEFT JOIN space_access sa ON s.id = sa.space_id
             WHERE c.group_id = ? AND c.space_id = s.id
-            AND sa.access_type = 'PUBLIC'
+            AND sa.access_type = ?
             ORDER BY name
             """,
-            (space_group_id,),
+            (space_group_id, SpaceAccessType.PUBLIC.name),
         )
         rows = cursor.fetchall()
         return [
