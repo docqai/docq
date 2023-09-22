@@ -30,7 +30,6 @@ from .constants import (
     NUMBER_OF_MSGS_TO_LOAD,
     SessionKeyNameForAuth,
     SessionKeyNameForChat,
-    SessionKeyNameForPublic,
     SessionKeyNameForSettings,
     SessionKeySubName,
 )
@@ -39,50 +38,62 @@ from .sessions import (
     get_auth_session,
     get_authenticated_user_id,
     get_chat_session,
-    get_public_session,
+    get_public_space_group_id,
     get_selected_org_id,
     get_username,
     reset_session_state,
     set_auth_session,
     set_chat_session,
     set_if_current_user_is_selected_org_admin,
-    set_public_session,
     set_selected_org_id,
     set_settings_session,
 )
 
 
-def _set_session_state_configs(results: tuple, org_id: int = None) -> None:
+def _set_session_state_configs(user_id: int, org_id: str, username: str, name: str = None, anonymous: bool = False, super_admin: bool = False, org_admin: bool = False, space_group_id: int = None, public_session_id: str = None ) -> None:
     """Set the session state for the configs.
 
     Args:
-        results (tuple): The config tuple (user_id, name, super_admin, username, selected_org_id, selected_org_admin).
-        org_id (int, optional): The org id. Defaults to None.
+        user_id (int): The user id.
+        org_id (str): The org id.
+        name (str): The name.
+        username (str): The username.
+        anonymous (bool): Whether the user is anonymous defaults to False.
+        super_admin (bool, optional): Whether the user is a super admin. Defaults to False.
+        org_admin (bool, optional): Whether the user is an org admin. Defaults to False.
+        space_group_id (int, optional): The space group id. Defaults to None, required for anonymous/public sessions.
+        public_session_id (str, optional): The public session id. Defaults to None, required for anonymous/public sessions.
 
     Returns:
         None
     """
-    current_user_id = results[0]
-    member_orgs = manage_organisations.list_organisations(
-        user_id=current_user_id
-    )  # we can't use handle_list_orgs() here
-    default_org_id = org_id if org_id else member_orgs[0][0]
-    selected_org_admin = current_user_id in [x[0] for x in member_orgs[0][2]]
-    set_auth_session(
-        {
-            SessionKeyNameForAuth.ID.name: current_user_id,
-            SessionKeyNameForAuth.NAME.name: results[1],
-            SessionKeyNameForAuth.SUPER_ADMIN.name: results[2],
-            SessionKeyNameForAuth.USERNAME.name: results[3],
-            SessionKeyNameForAuth.SELECTED_ORG_ID.name: default_org_id,  # default to the first org in the list for now.
-            SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name: selected_org_admin,
-        }
-    )
+    if anonymous:
+        set_auth_session(
+            {
+                SessionKeyNameForAuth.USERNAME.name: username,
+                SessionKeyNameForAuth.SELECTED_ORG_ID.name: org_id,
+                SessionKeyNameForAuth.PUBLIC_SESSION_ID.name: public_session_id,
+                SessionKeyNameForAuth.PUBLIC_SPACE_GROUP_ID.name: space_group_id,
+                SessionKeyNameForAuth.ANONYMOUS.name: anonymous,
+            }
+        )
+    else:
+        set_auth_session(
+            {
+                SessionKeyNameForAuth.ID.name: user_id,
+                SessionKeyNameForAuth.NAME.name: name,
+                SessionKeyNameForAuth.SUPER_ADMIN.name: super_admin,
+                SessionKeyNameForAuth.USERNAME.name: username,
+                SessionKeyNameForAuth.SELECTED_ORG_ID.name: org_id,
+                SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name: org_admin,
+                SessionKeyNameForAuth.ANONYMOUS.name: anonymous,
+            }
+        )
     set_settings_session(
         {
-            SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_organisation_settings(org_id=default_org_id),
+            SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_organisation_settings(org_id=org_id),
             SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(
-                org_id=default_org_id, user_id=current_user_id
+                org_id=org_id, user_id=user_id
             ),
         }
     )
@@ -92,9 +103,22 @@ def handle_login(username: str, password: str) -> bool:
     """Handle login."""
     reset_session_state()
     result = manage_users.authenticate(username, password)
+    current_user_id = result[0]
+    member_orgs = manage_organisations.list_organisations(
+        user_id=current_user_id
+    )  # we can't use handle_list_orgs() here
+    default_org_id = member_orgs[0][0]
+    selected_org_admin = current_user_id in [x[0] for x in member_orgs[0][2]]
     log.info("Login result: %s", result)
     if result:
-        _set_session_state_configs(result)
+        _set_session_state_configs(
+            user_id=current_user_id,
+            org_id=default_org_id,
+            name=result[1],
+            username=username,
+            super_admin=result[2],
+            org_admin=selected_org_admin,
+        )
         log.info(st.session_state["_docq"])
         log.debug("auth session: %s", get_auth_session())
         return True
@@ -188,8 +212,8 @@ def list_user_groups(name_match: str = None) -> List[Tuple]:
 
 def list_public_spaces() -> List[Tuple]:
     """List public spaces in a space group."""
-    group_id = get_public_session(SessionKeyNameForPublic.SPACE_GROUP_ID)
-    return manage_spaces.list_public_spaces(group_id)
+    space_group_id = get_public_space_group_id()
+    return manage_spaces.list_public_spaces(space_group_id)
 
 
 def handle_create_org() -> bool:
@@ -573,11 +597,13 @@ def handle_public_session() -> None:
     space_group_id = get_query_param("param2")
 
     reset_session_state()
-    result = (None, "Public", False, "Public")
-    _set_session_state_configs(result, org_id)
-    set_public_session(
-        {
-            SessionKeyNameForPublic.SESSION.name: session_id,
-            SessionKeyNameForPublic.SPACE_GROUP_ID.name: space_group_id,
-        }
-    )
+    if org_id and session_id and space_group_id:
+        _set_session_state_configs(
+            user_id=None,
+            org_id=org_id,
+            name="Anonymous",
+            username=f"anonymous_{session_id}",
+            anonymous=True,
+            space_group_id=space_group_id,
+            public_session_id=session_id,
+        )

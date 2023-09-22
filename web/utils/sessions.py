@@ -9,7 +9,6 @@ from .constants import (
     SESSION_KEY_NAME_DOCQ,
     SessionKeyNameForAuth,
     SessionKeyNameForChat,
-    SessionKeyNameForPublic,
     SessionKeyNameForSettings,
     SessionKeySubName,
 )
@@ -132,16 +131,11 @@ def set_settings_session(val: dict = None, key: SessionKeyNameForSettings = None
     _set_session_value(val, SessionKeySubName.SETTINGS, key.name if key is not None else None)
 
 
-def set_public_session(val: dict = None, key: SessionKeyNameForPublic = None) -> None:
-    """Set the public session value."""
-    _set_session_value(val, SessionKeySubName.PUBLIC, key.name if key is not None else None)
-
-
-def get_public_session(key: SessionKeyNameForPublic = None) -> dict | None:
+def get_public_space_group_id() -> dict | None:
     """Get the public session value."""
-    return _get_session_value(SessionKeySubName.PUBLIC, key.name if key is not None else None)
+    return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.PUBLIC_SPACE_GROUP_ID.name)
 
 
-def get_active_public_session() -> str | None:
+def get_public_session_id() -> str | None:
     """Get the public session id."""
-    return _get_session_value(SessionKeySubName.PUBLIC, SessionKeyNameForPublic.SESSION.name)
+    return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.PUBLIC_SESSION_ID.name)

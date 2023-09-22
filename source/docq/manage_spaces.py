@@ -224,7 +224,7 @@ def list_shared_spaces(
         ]
 
 
-def list_public_spaces(s_group_id: int) -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
+def list_public_spaces(space_group_id: int) -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
     """List all public spaces from a given space group."""
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
@@ -239,7 +239,7 @@ def list_public_spaces(s_group_id: int) -> list[tuple[int, str, str, bool, str, 
             AND sa.access_type = 'PUBLIC'
             ORDER BY name
             """,
-            (s_group_id,),
+            (space_group_id,),
         )
         rows = cursor.fetchall()
         return [

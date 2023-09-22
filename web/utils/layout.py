@@ -13,7 +13,7 @@ from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 
-from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat, SessionKeyNameForPublic
+from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
     get_enabled_features,
@@ -65,7 +65,8 @@ from .sessions import (
     get_auth_session,
     get_authenticated_user_id,
     get_chat_session,
-    get_public_session,
+    get_public_session_id,
+    get_public_space_group_id,
     get_selected_org_id,
     is_current_user_super_admin,
     set_selected_org_id,
@@ -274,8 +275,8 @@ def public_space_enabled(feature: FeatureKey) -> None:
     """Check if public space is ready."""
     web_embed_config()
     feature_enabled(feature)
-    space_group_id = get_public_session(SessionKeyNameForPublic.SPACE_GROUP_ID)
-    session_id = get_public_session(SessionKeyNameForPublic.SESSION)
+    space_group_id = get_public_space_group_id()
+    session_id = get_public_session_id()
     feature_is_ready, spaces = (space_group_id != -1 or session_id != -1), None
     if feature_is_ready:
         spaces = list_public_spaces()
