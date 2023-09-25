@@ -223,7 +223,8 @@ def __embed_page_config() -> None:
     )
 
 
-def __hide_embed_page() -> None:
+def __always_hidden_pages() -> None:
+    """These pages are always hidden whether the user is an admin or not."""
     hide_pages(["widget"])
 
 
@@ -260,13 +261,13 @@ def public_access() -> None:
     """Menu options for public access."""
     # __no_staff_menu()
     __no_admin_menu()
-    __hide_embed_page()
+    __always_hidden_pages()
 
 
 def auth_required(show_login_form: bool = True, requiring_admin: bool = False, show_logout_button: bool = True) -> bool:
     """Decide layout based on current user's access."""
     auth = get_auth_session()
-    __hide_embed_page()
+    __always_hidden_pages()
     if auth:
         if show_logout_button:
             __logout_button()
@@ -278,12 +279,15 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
                 return False
 
         return True
-    else:
-        if show_login_form:
-            __login_form()
-        else:
-            handle_public_session()
-        return False
+    if show_login_form:
+        __login_form()
+    return False
+
+
+
+def public_session_setup() -> None:
+    """Initialize session state for the public pages."""
+    handle_public_session()
 
 
 def feature_enabled(feature: FeatureKey) -> bool:
