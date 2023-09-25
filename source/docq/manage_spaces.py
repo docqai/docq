@@ -224,6 +224,29 @@ def list_shared_spaces(
         ]
 
 
+def list_public_spaces(space_group_id: int) -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
+    """List all public spaces from a given space group."""
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(
+            """
+            SELECT s.id, s.org_id, s.name, s.summary, s.archived, s.datasource_type, s.datasource_configs, s.created_at, s.updated_at
+            FROM spaces s
+            JOIN space_group_members c
+            LEFT JOIN space_access sa ON s.id = sa.space_id
+            WHERE c.group_id = ? AND c.space_id = s.id
+            AND sa.access_type = ?
+            ORDER BY name
+            """,
+            (space_group_id, SpaceAccessType.PUBLIC.name),
+        )
+        rows = cursor.fetchall()
+        return [
+            (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8]) for row in rows
+        ]
+
+
 def get_shared_space_permissions(id_: int, org_id: int) -> List[SpaceAccessor]:
     """Get the permissions for a shared space."""
     log.debug("get_shared_space_permissions(): Getting permissions for space with id=%d", id_)

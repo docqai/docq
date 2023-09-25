@@ -23,6 +23,7 @@ show_pages(
         Section("Shared_Spaces", icon="💼"),
         Page("web/shared_ask.py", "Ask_Shared_Documents"),
         Page("web/shared_spaces.py", "List_Shared_Spaces"),
+        Page("web/embed.py", "widget"),
         Section("Admin", icon="💂"),
         Page("web/admin_settings.py", "Admin_Settings"),
         Page("web/admin_spaces.py", "Admin_Spaces"),

@@ -22,6 +22,9 @@ class SessionKeyNameForAuth(Enum):
     USERNAME = "username"
     SELECTED_ORG_ID = "selected_org_id"
     SELECTED_ORG_ADMIN = "selected_org_admin"
+    PUBLIC_SESSION_ID = "public_session_id"
+    PUBLIC_SPACE_GROUP_ID = "public_space_group_id"
+    ANONYMOUS = "anonymous"
 
 
 class SessionKeyNameForSettings(Enum):

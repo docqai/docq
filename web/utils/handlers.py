@@ -6,7 +6,7 @@ import logging as log
 import math
 import random
 from datetime import datetime
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 
 import streamlit as st
 from docq import (
@@ -38,6 +38,7 @@ from .sessions import (
     get_auth_session,
     get_authenticated_user_id,
     get_chat_session,
+    get_public_space_group_id,
     get_selected_org_id,
     get_username,
     reset_session_state,
@@ -49,36 +50,84 @@ from .sessions import (
 )
 
 
+def _set_session_state_configs(
+    user_id: int,
+    selected_org_id: int,
+    name: str,
+    username: str,
+    anonymous: bool = False,
+    super_admin: bool = False,
+    selected_org_admin: bool = False,
+    space_group_id: Optional[int] = None,
+    public_session_id: Optional[str] = None ) -> None:
+    """Set the session state for the configs.
+
+    Args:
+        user_id (int): The user id.
+        selected_org_id (str): The currently selected org id.
+        name (str): The name.
+        username (str): The username.
+        anonymous (bool): Whether the user is anonymous defaults to False.
+        super_admin (bool, optional): Whether the user is a super admin. Defaults to False.
+        selected_org_admin (bool, optional): Whether the user is an org admin. Defaults to False.
+        space_group_id (int, optional): The space group id. Defaults to None, required for anonymous/public sessions.
+        public_session_id (str, optional): The public session id. Defaults to None, required for anonymous/public sessions.
+
+    Returns:
+        None
+    """
+    if anonymous:
+        set_auth_session(
+            {
+                SessionKeyNameForAuth.NAME.name: name,
+                SessionKeyNameForAuth.USERNAME.name: username,
+                SessionKeyNameForAuth.SELECTED_ORG_ID.name: selected_org_id,
+                SessionKeyNameForAuth.PUBLIC_SESSION_ID.name: public_session_id,
+                SessionKeyNameForAuth.PUBLIC_SPACE_GROUP_ID.name: space_group_id,
+                SessionKeyNameForAuth.ANONYMOUS.name: anonymous,
+            }
+        )
+    else:
+        set_auth_session(
+            {
+                SessionKeyNameForAuth.ID.name: user_id,
+                SessionKeyNameForAuth.NAME.name: name,
+                SessionKeyNameForAuth.SUPER_ADMIN.name: super_admin,
+                SessionKeyNameForAuth.USERNAME.name: username,
+                SessionKeyNameForAuth.SELECTED_ORG_ID.name: selected_org_id,
+                SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name: selected_org_admin,
+                SessionKeyNameForAuth.ANONYMOUS.name: anonymous,
+            }
+        )
+    set_settings_session(
+        {
+            SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_organisation_settings(org_id=selected_org_id),
+            SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(
+                org_id=selected_org_id, user_id=user_id
+            ),
+        }
+    )
+
+
 def handle_login(username: str, password: str) -> bool:
     """Handle login."""
     reset_session_state()
     result = manage_users.authenticate(username, password)
+    current_user_id = result[0]
+    member_orgs = manage_organisations.list_organisations(
+        user_id=current_user_id
+    )  # we can't use handle_list_orgs() here
+    default_org_id = member_orgs[0][0]
+    selected_org_admin = current_user_id in [x[0] for x in member_orgs[0][2]]
     log.info("Login result: %s", result)
     if result:
-        current_user_id = result[0]
-        member_orgs = manage_organisations.list_organisations(
-            user_id=current_user_id
-        )  # we can't use handle_list_orgs() here
-        default_org_id = member_orgs[0][0]
-        selected_org_admin = current_user_id in [x[0] for x in member_orgs[0][2]]
-        log.info("Member orgs: %s", member_orgs)
-        set_auth_session(
-            {
-                SessionKeyNameForAuth.ID.name: current_user_id,
-                SessionKeyNameForAuth.NAME.name: result[1],
-                SessionKeyNameForAuth.SUPER_ADMIN.name: result[2],
-                SessionKeyNameForAuth.USERNAME.name: result[3],
-                SessionKeyNameForAuth.SELECTED_ORG_ID.name: default_org_id,  # default to the first org in the list for now.
-                SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name: selected_org_admin,
-            }
-        )
-        set_settings_session(
-            {
-                SessionKeyNameForSettings.SYSTEM.name: manage_settings.get_organisation_settings(org_id=default_org_id),
-                SessionKeyNameForSettings.USER.name: manage_settings.get_user_settings(
-                    org_id=default_org_id, user_id=current_user_id
-                ),
-            }
+        _set_session_state_configs(
+            user_id=current_user_id,
+            selected_org_id=default_org_id,
+            name=result[1],
+            username=username,
+            super_admin=result[2],
+            selected_org_admin=selected_org_admin,
         )
         log.info(st.session_state["_docq"])
         log.debug("auth session: %s", get_auth_session())
@@ -169,6 +218,12 @@ def handle_delete_user_group(id_: int) -> bool:
 def list_user_groups(name_match: str = None) -> List[Tuple]:
     org_id = get_selected_org_id()
     return manage_user_groups.list_user_groups(org_id, name_match)
+
+
+def list_public_spaces() -> List[Tuple]:
+    """List public spaces in a space group."""
+    space_group_id = get_public_space_group_id()
+    return manage_spaces.list_public_spaces(space_group_id)
 
 
 def handle_create_org() -> bool:
@@ -263,23 +318,38 @@ def query_chat_history(feature: domain.FeatureKey) -> None:
     set_chat_session(history[0][3] if history else curr_cutoff, feature.type_, SessionKeyNameForChat.CUTOFF)
 
 
-def handle_chat_input(feature: domain.FeatureKey) -> None:
-    req = st.session_state[f"chat_input_{feature.value()}"]
+def _get_chat_spaces(feature: domain.FeatureKey) -> tuple[Optional[SpaceKey], List[SpaceKey]]:
+    """Get chat spaces."""
     select_org_id = get_selected_org_id()
-    space = (
-        None
-        if feature.type_ == config.FeatureType.ASK_SHARED and not st.session_state["chat_personal_space"]
-        else domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_, select_org_id)
-    )
 
-    spaces = (
-        [
+    personal_space = domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_, select_org_id)
+
+    if feature.type_ == config.FeatureType.ASK_SHARED:
+        if not st.session_state["chat_personal_space"]:
+            personal_space = None
+        shared_spaces = [
             domain.SpaceKey(config.SpaceType.SHARED, s_[0], select_org_id)
             for s_ in st.session_state[f"chat_shared_spaces_{feature.value()}"]
         ]
-        if feature.type_ == config.FeatureType.ASK_SHARED
-        else None
-    )
+        return personal_space, shared_spaces
+
+    if feature.type_ == config.FeatureType.ASK_PUBLIC:
+        personal_space = None
+        shared_spaces = [
+            domain.SpaceKey(config.SpaceType.SHARED, s_[0], select_org_id)
+            for s_ in list_public_spaces()
+        ]
+        return personal_space, shared_spaces
+
+    shared_spaces = None
+    return personal_space, shared_spaces
+
+
+def handle_chat_input(feature: domain.FeatureKey) -> None:
+    """Handle chat input."""
+    req = st.session_state[f"chat_input_{feature.value()}"]
+
+    space, spaces = _get_chat_spaces(feature)
 
     thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
 
@@ -515,3 +585,45 @@ def handle_get_gravatar_url() -> str:
     size, default, rating = 200, "identicon", "g"
     email_hash = hashlib.md5(email.lower().encode("utf-8")).hexdigest()  # noqa: S324
     return f"https://www.gravatar.com/avatar/{email_hash}?s={size}&d={default}&r={rating}"
+
+
+def get_query_param(key: str, type_: type = int) -> Any | None:
+    """Get query param and cast to type."""
+    param = st.experimental_get_query_params().get(key, [None])[0]
+    if param is None:
+        return None
+    if param == "default":
+        return 1
+    try:
+        return type_(param)
+    except ValueError:
+        return None
+
+
+def handle_public_session() -> None:
+    """Handle public session."""
+    session_id = get_query_param("session_id", str)
+    org_id = get_query_param("param1")
+    space_group_id = get_query_param("param2")
+
+    reset_session_state()
+    if org_id and session_id and space_group_id:
+        _set_session_state_configs(
+            user_id=None,
+            selected_org_id=org_id,
+            name=f"Anonymous {session_id}",
+            username=f"anonymous_{session_id}",
+            anonymous=True,
+            space_group_id=space_group_id,
+            public_session_id=session_id,
+        )
+    else: # if no query params are provided, set space_group_id and public_session_id to -1 to disable ASK_PUBLIC feature
+        _set_session_state_configs(
+            user_id=None,
+            selected_org_id=None,
+            name=None,
+            username=None,
+            anonymous=True,
+            space_group_id=-1,
+            public_session_id=-1,
+        )

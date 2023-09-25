@@ -129,3 +129,13 @@ def get_settings_session(key: SessionKeyNameForSettings = None) -> dict | None:
 def set_settings_session(val: dict = None, key: SessionKeyNameForSettings = None) -> None:
     """Set the settings session value."""
     _set_session_value(val, SessionKeySubName.SETTINGS, key.name if key is not None else None)
+
+
+def get_public_space_group_id() -> dict | None:
+    """Get the public session value."""
+    return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.PUBLIC_SPACE_GROUP_ID.name)
+
+
+def get_public_session_id() -> str | None:
+    """Get the public session id."""
+    return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.PUBLIC_SESSION_ID.name)
