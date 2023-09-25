@@ -279,9 +279,10 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
                 return False
 
         return True
-    if show_login_form:
-        __login_form()
-    return False
+    else:
+        if show_login_form:
+            __login_form()
+        return False
 
 
 
