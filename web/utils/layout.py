@@ -11,6 +11,7 @@ from docq.manage_users import list_users_by_org
 from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
+from docq import setup
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
@@ -878,3 +879,14 @@ def org_selection_ui() -> None:
         )
         if selected:
             handle_org_selection_change(selected[0])
+
+
+
+def load_setup_ui() -> None:
+    """UI to run setup and prevent showing errors to the user."""
+    try:
+        setup.init()
+    except Exception as e:
+        st.error("Error while setting up the app please refer to logs for more details.")
+        log.exception("Error while setting up the app: %s", e)
+        st.stop()
