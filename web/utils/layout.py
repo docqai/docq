@@ -4,6 +4,7 @@ import logging as log
 from typing import List, Tuple
 
 import streamlit as st
+from docq import setup
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SpaceType, SystemSettingsKey
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
@@ -11,7 +12,6 @@ from docq.manage_users import list_users_by_org
 from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
-from docq import setup
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
@@ -887,6 +887,6 @@ def load_setup_ui() -> None:
     try:
         setup.init()
     except Exception as e:
-        st.error("Error while setting up the app please refer to logs for more details.")
+        st.error("Docq encountered an error while initializing please refer to logs for more details.")
         log.exception("Error while setting up the app: %s", e)
         st.stop()
