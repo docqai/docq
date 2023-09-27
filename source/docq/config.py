@@ -5,6 +5,8 @@ from enum import Enum
 ENV_VAR_DOCQ_DATA = "DOCQ_DATA"
 ENV_VAR_DOCQ_DEMO = "DOCQ_DEMO"
 ENV_VAR_OPENAI_API_KEY = "OPENAI_API_KEY"
+ENV_VAR_COOKIE_SECRET_KEY = "COOKIE_SECRET_KEY"
+COOKIE_NAME = "docqai/_docq"
 
 
 class SpaceType(Enum):
@@ -22,6 +24,7 @@ class FeatureType(Enum):
     ASK_SHARED = "Ask Shared Documents"
     ASK_PUBLIC = "Ask Public Documents"
     CHAT_PRIVATE = "General Chat"
+    AUTO_LOGIN = "Auto Login"
 
 
 class LogType(Enum):
