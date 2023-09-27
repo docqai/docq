@@ -691,13 +691,7 @@ def create_space_ui(expanded: bool = False) -> None:
         if ds:
             _render_space_data_source_config_input_fields(ds, "create_space_")
         if st.button("Create Space"):
-            space = handle_create_space()
-            alert: DeltaGenerator = st.session_state["admin_docs_alert"]
-            if isinstance(space, SpaceKey) and alert:
-                alert.success(f"Successfully created space with ID: {space.id_}")
-                st.session_state["admin_docs_active_space"] = space.id_
-            elif alert:
-                alert.error(f"Failed to create space. Error: {space}")
+            handle_create_space()
 
 
 def _render_view_space_details_with_container(
@@ -844,9 +838,6 @@ def admin_docs_ui(q_param: str = None) -> None:
     if spaces:
         st.subheader("Select a space from below:")
 
-        def _on_change() -> None:
-            del st.session_state["admin_docs_active_space"]
-
         try:  # Get the space id from the query param with prefence to the newly created space.
             _sid = (
                 int(st.experimental_get_query_params()[q_param][0])
@@ -855,14 +846,12 @@ def admin_docs_ui(q_param: str = None) -> None:
             )
         except ValueError:
             _sid = None
-        new_space = st.session_state.get("admin_docs_active_space", _sid)
-        default_sid = next((i for i, s in enumerate(spaces) if s[0] == new_space), None)
+        default_sid = next((i for i, s in enumerate(spaces) if s[0] == _sid), None)
 
         selected = st.selectbox(
             "Spaces",
             spaces,
             format_func=lambda x: x[2],
-            on_change=_on_change,
             label_visibility="collapsed",
             index=default_sid if default_sid else 0,
         )
