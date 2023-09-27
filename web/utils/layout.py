@@ -23,7 +23,6 @@ from .handlers import (
     get_space_data_source_choice_by_type,
     get_system_settings,
     handle_archive_org,
-    handle_auto_login,
     handle_chat_input,
     handle_create_new_chat,
     handle_create_org,
@@ -44,6 +43,7 @@ from .handlers import (
     handle_org_selection_change,
     handle_public_session,
     handle_reindex_space,
+    handle_set_cached_session_configs,
     handle_update_org,
     handle_update_space_details,
     handle_update_space_group,
@@ -265,9 +265,9 @@ def public_access() -> None:
     __always_hidden_pages()
 
 
-@handle_auto_login
 def auth_required(show_login_form: bool = True, requiring_admin: bool = False, show_logout_button: bool = True) -> bool:
     """Decide layout based on current user's access."""
+    handle_set_cached_session_configs()
     auth = get_auth_session()
     __always_hidden_pages()
     if auth:
@@ -285,7 +285,6 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
         if show_login_form:
             __login_form()
         return False
-
 
 
 def public_session_setup() -> None:

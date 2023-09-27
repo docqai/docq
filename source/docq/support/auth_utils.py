@@ -6,7 +6,7 @@ import logging as log
 import os
 from datetime import datetime, timedelta
 from secrets import token_hex
-from typing import Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 from cachetools import TTLCache
 from cryptography.fernet import Fernet
@@ -30,9 +30,9 @@ def init_session_cache() -> None:
     if AUTH_SESSION_SECRET_KEY is None:
         log.fatal("Failed to initialize session cache: COOKIE_SECRET_KEY not set")
         raise ValueError("COOKIE_SECRET_KEY must be set")
-    if len(AUTH_SESSION_SECRET_KEY) < 16:
-        log.fatal("Failed to initialize session cache: COOKIE_SECRET_KEY must be 16 or more characters")
-        raise ValueError("COOKIE_SECRET_KEY must be 16 or more characters")
+    if len(AUTH_SESSION_SECRET_KEY) < 32:
+        log.fatal("Failed to initialize session cache: COOKIE_SECRET_KEY must be 32 or more characters")
+        raise ValueError("COOKIE_SECRET_KEY must be 32 or more characters")
 
 
 def _set_cookie(cookie: str) -> None:
@@ -169,28 +169,26 @@ def _auto_login_enabled(org_id: int) -> bool:
         return False
 
 
-def cache_session_state(set_configs: Callable) -> Callable:
-    """Cache the auth session value to remember credentials on page reload."""
+def cache_session_state_configs(*args: tuple, **kwargs: dict[str, Any]) -> None:
+    """Caches the session state configs for auth.
 
-    def wrapper(*args: tuple, **kwargs: dict) -> tuple:
-        """Auth wrapper."""
-        try:
-            if "anonymous" in kwargs and kwargs["anonymous"]:
-                return set_configs(*args, **kwargs)
+    This will cache any arguments and keyword arguments passed to it and can be retrived
+    by calling the get_auth_configs function:
+    >>> docq.support.auth_utils.get_auth_configs()
 
-            session_id = _get_session_id()
-            if not session_id:
-                session_id = generate_session_id()
-                _set_session_id(session_id)
-            if session_id:
-                set_configs(*args, **kwargs)
-                cached_sessions[session_id] = _encrypt_auth(*args, **kwargs)
-                _update_auth_expiry(session_id)
-        except Exception as e:
-            log.error("Error caching auth session state: %s", e)
-            return None
-
-    return wrapper
+    Args:
+        args: Arguments to be passed to the auth function.
+        kwargs: Keyword arguments to be passed to the auth function.
+    """
+    try:
+        session_id = _get_session_id()
+        if not session_id:
+            session_id = generate_session_id()
+        _set_session_id(session_id)
+        cached_sessions[session_id] = _encrypt_auth(*args, **kwargs)
+        _update_auth_expiry(session_id)
+    except Exception as e:
+        log.error("Error caching auth session state: %s", e)
 
 
 def get_auth_configs() -> Optional[tuple[tuple, dict]]:

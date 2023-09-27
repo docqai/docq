@@ -6,7 +6,7 @@ import logging as log
 import math
 import random
 from datetime import datetime
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import streamlit as st
 from docq import (
@@ -24,7 +24,7 @@ from docq import (
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
-from docq.support.auth_utils import cache_session_state, get_auth_configs, session_logout
+from docq.support.auth_utils import cache_session_state_configs, get_auth_configs, session_logout
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -51,7 +51,6 @@ from .sessions import (
 )
 
 
-@cache_session_state
 def _set_session_state_configs(
     user_id: int,
     selected_org_id: int,
@@ -90,6 +89,14 @@ def _set_session_state_configs(
             }
         )
     else:
+        cache_session_state_configs(
+            user_id=user_id,
+            selected_org_id=selected_org_id,
+            name=name,
+            username=username,
+            super_admin=super_admin,
+            selected_org_admin=selected_org_admin,
+        )
         set_auth_session(
             {
                 SessionKeyNameForAuth.ID.name: user_id,
@@ -138,16 +145,12 @@ def handle_login(username: str, password: str) -> bool:
         return False
 
 
-def handle_auto_login(auth_layout: Callable) -> Callable:
-    """Authenticate automatically without UI interaction."""
-    def _auth_wrapper(*args: tuple, **kwargs: dict) -> tuple:
-        auth_configs = get_auth_configs()
-        if auth_configs and len(auth_configs) == 2:
-            _args, _kwargs = auth_configs
-            _set_session_state_configs(*_args, **_kwargs)
-            return auth_layout(*args, **kwargs)
-        return auth_layout(*args, **kwargs)
-    return _auth_wrapper
+def handle_set_cached_session_configs() -> None:
+    """Set cached auth configs."""
+    auth_configs = get_auth_configs()
+    if auth_configs and len(auth_configs) == 2:
+        _args, _kwargs = auth_configs
+        _set_session_state_configs(*_args, **_kwargs)
 
 
 def handle_logout() -> None:
