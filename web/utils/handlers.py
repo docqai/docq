@@ -6,7 +6,7 @@ import logging as log
 import math
 import random
 from datetime import datetime
-from typing import Any, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 import streamlit as st
 from docq import (
@@ -24,6 +24,7 @@ from docq import (
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
+from docq.support.auth_utils import cache_session_state, get_auth_configs, session_logout
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -50,6 +51,7 @@ from .sessions import (
 )
 
 
+@cache_session_state
 def _set_session_state_configs(
     user_id: int,
     selected_org_id: int,
@@ -136,8 +138,22 @@ def handle_login(username: str, password: str) -> bool:
         return False
 
 
+def handle_auto_login(auth_layout: Callable) -> Callable:
+    """Authenticate automatically without UI interaction."""
+    def _auth_wrapper(*args: tuple, **kwargs: dict) -> tuple:
+        auth_configs = get_auth_configs()
+        if auth_configs and len(auth_configs) == 2:
+            _args, _kwargs = auth_configs
+            _set_session_state_configs(*_args, **_kwargs)
+            return auth_layout(*args, **kwargs)
+        return auth_layout(*args, **kwargs)
+    return _auth_wrapper
+
+
 def handle_logout() -> None:
+    """Handle logout."""
     reset_session_state()
+    session_logout()
 
 
 def handle_create_user() -> int:
