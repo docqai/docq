@@ -2,17 +2,17 @@
 
 import logging as log
 from typing import List, Tuple
-from docq.support.auth_utils import (
-    get_cache_auth_session,
-    reset_cache_and_cookie_auth_session,
-    verify_cookie_hmac_session_id,
-)
 
 import streamlit as st
 from docq import setup
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SpaceType, SystemSettingsKey
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
+from docq.support.auth_utils import (
+    get_cache_auth_session,
+    reset_cache_and_cookie_auth_session,
+    verify_cookie_hmac_session_id,
+)
 from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
@@ -20,7 +20,6 @@ from streamlit.delta_generator import DeltaGenerator
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
-    _auto_login_feature_enabled,
     _set_session_state_configs,
     get_enabled_features,
     get_max_number_of_documents,
