@@ -104,13 +104,14 @@ def generate_hmac_session_id(length: int = 32) -> str:
     id_ = token_hex(length // 2)
     hmac_ = _create_hmac(id_)
     session_data[hmac_] = id_
+    log.debug("Generated new hmac session id: %s", hmac_)
     return hmac_
 
 
 def _set_cookie_session_id(hmac_session_id: str) -> None:
     """Set the encrypted session_id in the cookie."""
     _set_cookie(hmac_session_id)
-    log.debug("Set cookie - hmac session id: %s", hmac_session_id)
+    log.debug("_set_cookie_session_id() - hmac session id: %s", hmac_session_id)
 
 
 def _get_cookie_session_id() -> str | None:
@@ -139,12 +140,11 @@ def verify_cookie_hmac_session_id() -> str | None:
         log.debug("No session id in cookie found")
     elif hmac_session_id not in cached_sessions:
         log.debug(
-            "verify_cookie_hmac_session_id(): HMAC Session ID not found in cache. Session expired or was explicitly removed: %s",
-            hmac_session_id,
+            "verify_cookie_hmac_session_id(): HMAC Session ID not found in cache. Session expired or was explicitly removed: %s"
         )
         hmac_session_id = None
     elif hmac_session_id not in session_data or not _verify_hmac(session_data[hmac_session_id], hmac_session_id):
-        log.warning("verify_cookie_hmac_session_id(): HMAC Session ID failed verification: %s", hmac_session_id)
+        log.warning("verify_cookie_hmac_session_id(): HMAC Session ID failed verification: %s")
         hmac_session_id = None
     return hmac_session_id
 
@@ -190,7 +190,7 @@ def set_cache_auth_session(val: dict) -> None:
     """
     try:
         hmac_session_id = _get_cookie_session_id()
-        if not hmac_session_id:
+        if hmac_session_id is None:
             hmac_session_id = generate_hmac_session_id()
         _set_cookie_session_id(hmac_session_id)
         cached_sessions[hmac_session_id] = _encrypt(val)
