@@ -13,12 +13,12 @@ from cryptography.fernet import Fernet
 from streamlit.components.v1 import html
 from streamlit.web.server.websocket_headers import _get_websocket_headers
 
-from ..config import COOKIE_NAME, ENV_VAR_COOKIE_SECRET_KEY
+from ..config import COOKIE_NAME, ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY
 
 EXPIRY_HOURS = 4
 CACHE_CONFIG = (1024 * 1, 60 * 60 * EXPIRY_HOURS)
 AUTH_KEY = Fernet.generate_key()
-AUTH_SESSION_SECRET_KEY: str = os.environ.get(ENV_VAR_COOKIE_SECRET_KEY)
+AUTH_SESSION_SECRET_KEY: str = os.environ.get(ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY)
 
 # Chase of session data keyed by session id
 cached_sessions: TTLCache[str, bytes] = TTLCache(*CACHE_CONFIG)
@@ -33,11 +33,11 @@ session_data: TTLCache[str, str] = TTLCache(*CACHE_CONFIG)
 def init_session_cache() -> None:
     """Initialize session cache."""
     if AUTH_SESSION_SECRET_KEY is None:
-        log.fatal("Failed to initialize session cache: COOKIE_SECRET_KEY not set")
-        raise ValueError("COOKIE_SECRET_KEY must be set")
+        log.fatal("Failed to initialize session cache: DOCQ_COOKIE_HMAC_SECRET_KEY not set")
+        raise ValueError("DOCQ_COOKIE_HMAC_SECRET_KEY must be set")
     if len(AUTH_SESSION_SECRET_KEY) < 32:
-        log.fatal("Failed to initialize session cache: COOKIE_SECRET_KEY must be 32 or more characters")
-        raise ValueError("COOKIE_SECRET_KEY must be 32 or more characters")
+        log.fatal("Failed to initialize session cache: DOCQ_COOKIE_HMAC_SECRET_KEY must be 32 or more characters")
+        raise ValueError("DOCQ_COOKIE_HMAC_SECRET_KEY must be 32 or more characters")
 
 
 def _set_cookie(cookie: str) -> None:
