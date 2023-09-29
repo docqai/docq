@@ -23,7 +23,7 @@ from docq.support.auth_utils import (
     get_cache_auth_session,
     session_data,
     reset_cache_and_cookie_auth_session,
-    COOKIE_NAME,
+    SESSION_COOKIE_NAME,
 )
 
 
@@ -43,7 +43,7 @@ class TestAuthUtils(unittest.TestCase):
     @patch("docq.support.auth_utils.html")
     def test_clear_cookie(self: Self, mock_html: Mock) -> None:
         """Test clear cookie."""
-        _clear_cookie(COOKIE_NAME)
+        _clear_cookie(SESSION_COOKIE_NAME)
         mock_html.assert_called_once()
 
     @patch("docq.support.auth_utils._get_websocket_headers")

@@ -13,7 +13,7 @@ from cryptography.fernet import Fernet
 from streamlit.components.v1 import html
 from streamlit.web.server.websocket_headers import _get_websocket_headers
 
-from ..config import COOKIE_NAME, ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY
+from ..config import SESSION_COOKIE_NAME, ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY
 
 EXPIRY_HOURS = 4
 CACHE_CONFIG = (1024 * 1, 60 * 60 * EXPIRY_HOURS)
@@ -48,7 +48,7 @@ def _set_cookie(cookie: str) -> None:
             f"""
         <script>
             const secure = location.protocol === "https:" ? " secure;" : "";
-            document.cookie = "{COOKIE_NAME}={cookie}; expires={expiry.strftime('%a, %d %b %Y %H:%M:%S GMT')}; path=/; SameSite=Secure;" + secure;
+            document.cookie = "{SESSION_COOKIE_NAME}={cookie}; expires={expiry.strftime('%a, %d %b %Y %H:%M:%S GMT')}; path=/; SameSite=Secure;" + secure;
         </script>
         """,
             width=0,
@@ -119,7 +119,7 @@ def _get_cookie_session_id() -> str | None:
         hmac_session_id = None
         cookies = _get_cookies()
         if cookies is not None:
-            hmac_session_id = cookies.get(COOKIE_NAME)
+            hmac_session_id = cookies.get(SESSION_COOKIE_NAME)
         return hmac_session_id
     except Exception as e:
         log.error("Failed to get session id: %s", e)
@@ -229,6 +229,6 @@ def reset_cache_and_cookie_auth_session() -> None:
     """Clear all the data used to remember user session (auth session cache and session cookie). This must be called at login and cookie."""
     try:
         remove_cache_auth_session()
-        _clear_cookie(COOKIE_NAME)
+        _clear_cookie(SESSION_COOKIE_NAME)
     except Exception as e:
         log.error("Failed to clear session data caches (hmac, session data, and session cookie ): %s", e)
