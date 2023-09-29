@@ -128,11 +128,3 @@ class TestAuthUtils(unittest.TestCase):
         reset_cache_and_cookie_auth_session()
         assert session_id not in cached_sessions, "Cached session should be deleted on logout"
         assert session_id not in session_data, "Session data should be deleted on logout"
-
-    @patch("docq.support.auth_utils.get_organisation_settings")
-    def test_auto_login_enabled(self: Self, mock_get_system_settings: Mock) -> None:
-        """Test auto login enabled."""
-        mock_get_system_settings.return_value = [FeatureType.AUTO_LOGIN.name]
-        result = _auto_login_enabled(9999)
-        assert mock_get_system_settings.call_count == 1
-        assert result, "Auto login should be enabled"

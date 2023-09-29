@@ -24,7 +24,6 @@ class FeatureType(Enum):
     ASK_SHARED = "Ask Shared Documents"
     ASK_PUBLIC = "Ask Public Documents"
     CHAT_PRIVATE = "General Chat"
-    AUTO_LOGIN = "Auto Login"
 
 
 class LogType(Enum):

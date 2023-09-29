@@ -151,32 +151,11 @@ def handle_login(username: str, password: str) -> bool:
         return False
 
 
-# def handle_set_cached_session_configs() -> None:
-#     """Set cached auth configs."""
-#     auth_configs = get_cache_auth_session()
-#     if auth_configs and len(auth_configs) == 2:
-#         _args, _kwargs = auth_configs
-#         _set_session_state_configs(*_args, **_kwargs)
-
-
 def handle_logout() -> None:
     """Handle logout."""
     reset_session_state()
     reset_cache_and_cookie_auth_session()
     log.info("Logout")
-
-
-def _auto_login_feature_enabled() -> bool:
-    """Check if auto login feature is enabled."""
-    feature_enabled = False  # Only enable feature when explicitly enabled (default to Disabled)
-    try:
-        enabled_features = get_enabled_features()
-        if enabled_features:
-            feature_enabled = config.FeatureType.AUTO_LOGIN.name in enabled_features
-        return feature_enabled
-    except Exception as e:
-        log.error("Failed to check if auto login is enabled: %s", e)
-        return False
 
 
 def handle_create_user() -> int:
