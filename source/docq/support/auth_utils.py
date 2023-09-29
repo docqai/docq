@@ -110,6 +110,7 @@ def generate_hmac_session_id(length: int = 32) -> str:
 def _set_cookie_session_id(hmac_session_id: str) -> None:
     """Set the encrypted session_id in the cookie."""
     _set_cookie(hmac_session_id)
+    log.debug("Set cookie - hmac session id: %s", hmac_session_id)
 
 
 def _get_cookie_session_id() -> str | None:
@@ -191,7 +192,7 @@ def set_cache_auth_session(val: dict) -> None:
         hmac_session_id = _get_cookie_session_id()
         if not hmac_session_id:
             hmac_session_id = generate_hmac_session_id()
-            _set_cookie_session_id(hmac_session_id)
+        _set_cookie_session_id(hmac_session_id)
         cached_sessions[hmac_session_id] = _encrypt(val)
         _reset_expiry_cache_auth_session(hmac_session_id)
     except Exception as e:
