@@ -59,11 +59,11 @@ def _get_settings(org_id: int, user_id: int = None) -> dict:
 
 
 def _update_settings(settings: dict, org_id: int, user_id: int = None) -> bool:
-    log.debug("Updating settings for user %d", user_id)
     with closing(
         sqlite3.connect(_get_sqlite_file(user_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         user_id = user_id or USER_ID_AS_SYSTEM
+        log.debug("Updating settings for user %d", user_id)
         cursor.executemany(
             "INSERT OR REPLACE INTO settings (user_id, org_id, key, val) VALUES (?, ?, ?, ?)",
             [(user_id, org_id, key, json.dumps(val)) for key, val in settings.items()],
