@@ -8,7 +8,11 @@ from docq import setup
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SpaceType, SystemSettingsKey
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
-from docq.manage_users import list_users_by_org
+from docq.support.auth_utils import (
+    get_cache_auth_session,
+    reset_cache_and_cookie_auth_session,
+    verify_cookie_hmac_session_id,
+)
 from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
@@ -16,6 +20,7 @@ from streamlit.delta_generator import DeltaGenerator
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
+    _set_session_state_configs,
     get_enabled_features,
     get_max_number_of_documents,
     get_shared_space,
@@ -44,7 +49,6 @@ from .handlers import (
     handle_org_selection_change,
     handle_public_session,
     handle_reindex_space,
-    handle_set_cached_session_configs,
     handle_update_org,
     handle_update_space_details,
     handle_update_space_group,
@@ -70,7 +74,8 @@ from .sessions import (
     get_public_space_group_id,
     get_selected_org_id,
     is_current_user_super_admin,
-    set_selected_org_id,
+    reset_session_state,
+    session_state_exists,
 )
 
 _chat_ui_script = """
@@ -200,6 +205,7 @@ def __no_admin_menu() -> None:
         ]
     )
 
+
 def __embed_page_config() -> None:
     st.markdown(
         """
@@ -239,7 +245,7 @@ def __login_form() -> None:
         if handle_login(username, password):
             st.experimental_rerun()
         else:
-            st.error("Invalid username or password.")
+            st.error("The Username and Password you entered doesn't match what we have.")
             st.stop()
     else:
         st.stop()
@@ -268,10 +274,33 @@ def public_access() -> None:
 
 def auth_required(show_login_form: bool = True, requiring_admin: bool = False, show_logout_button: bool = True) -> bool:
     """Decide layout based on current user's access."""
-    handle_set_cached_session_configs()
-    auth = get_auth_session()
+    log.debug("auth_required() called")
+    auth = None
     __always_hidden_pages()
+
+    session_state_existed = session_state_exists()
+    log.debug("auth_required(): session_state_existed: %s", session_state_existed)
+    if session_state_existed:
+        auth = get_auth_session()
+    elif verify_cookie_hmac_session_id() is not None:
+        # there's a valid auth session token. Let's get session state from cache.
+        auth = get_cache_auth_session()
+        log.debug("auth_required(): Got auth session state from cache: %s", auth)
+
     if auth:
+        log.debug("auth_required(): Valid auth session found: %s", auth)
+        if not session_state_existed:
+            # the user probably refreshed the page resetting Streamlit session state because it's bound to a browser session connection.
+            _set_session_state_configs(
+                user_id=auth[SessionKeyNameForAuth.ID.name],
+                selected_org_id=auth[SessionKeyNameForAuth.SELECTED_ORG_ID.name],
+                name=auth[SessionKeyNameForAuth.NAME.name],
+                username=auth[SessionKeyNameForAuth.USERNAME.name],
+                anonymous=False,
+                super_admin=auth[SessionKeyNameForAuth.SUPER_ADMIN.name],
+                selected_org_admin=auth[SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name],
+            )
+
         if show_logout_button:
             __logout_button()
 
@@ -283,6 +312,9 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
 
         return True
     else:
+        log.debug("auth_required(): No valid auth session found. User needs to re-authenticate.")
+        reset_session_state()
+        reset_cache_and_cookie_auth_session()
         if show_login_form:
             __login_form()
         return False
@@ -314,7 +346,7 @@ def public_space_enabled(feature: FeatureKey) -> None:
     feature_is_ready, spaces = (space_group_id != -1 or session_id != -1), None
     if feature_is_ready:
         spaces = list_public_spaces()
-    if not feature_is_ready or not spaces: # Stop the app if there are no public spaces.
+    if not feature_is_ready or not spaces:  # Stop the app if there are no public spaces.
         st.error("This feature is not ready.")
         st.info("Please contact your administrator to configure this feature.")
         st.stop()
@@ -881,12 +913,11 @@ def org_selection_ui() -> None:
             handle_org_selection_change(selected[0])
 
 
-
-def load_setup_ui() -> None:
+def init_with_pretty_error_ui() -> None:
     """UI to run setup and prevent showing errors to the user."""
     try:
         setup.init()
     except Exception as e:
-        st.error("Docq encountered an error while initializing please refer to logs for more details.")
-        log.exception("Error while setting up the app: %s", e)
+        st.error("Something went wrong starting Docq.")
+        log.fatal("Error: setup.init() failed with %s", e)
         st.stop()

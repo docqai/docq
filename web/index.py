@@ -2,9 +2,9 @@
 
 import streamlit as st
 from st_pages import Page, Section, add_page_title, show_pages
-from utils.layout import load_setup_ui, org_selection_ui, production_layout, public_access
+from utils.layout import init_with_pretty_error_ui, org_selection_ui, production_layout, public_access
 
-load_setup_ui()
+init_with_pretty_error_ui()
 
 
 production_layout()

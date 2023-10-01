@@ -1,9 +1,11 @@
 """Session utilities."""
 
+import logging
 from typing import Any
 
 import streamlit as st
 from docq import config, manage_users
+from docq.support.auth_utils import set_cache_auth_session
 
 from .constants import (
     SESSION_KEY_NAME_DOCQ,
@@ -25,9 +27,15 @@ def _init_session_state() -> None:
             st.session_state[SESSION_KEY_NAME_DOCQ][SessionKeySubName.CHAT.name][n.name] = {}
 
 
+def session_state_exists() -> bool:
+    """Check if any session state exists."""
+    return SESSION_KEY_NAME_DOCQ in st.session_state
+
+
 def reset_session_state() -> None:
     """Reset the session state. This must be called for user login and logout."""
     st.session_state[SESSION_KEY_NAME_DOCQ] = {}
+    logging.debug("called reset_session_state()")
 
 
 def _get_session_value(name: SessionKeySubName, key_: str = None, subkey_: str = None) -> Any | None:
@@ -72,6 +80,14 @@ def set_chat_session(val: Any | None, type_: config.FeatureType = None, key_: Se
     )
 
 
+def set_auth_session(val: dict = None, cache: bool = False) -> None:
+    """Set the auth session value."""
+    _set_session_value(val, SessionKeySubName.AUTH)
+    if cache:
+        # this persists the auth session across browser session in Streamlit i.e. when the user hits refresh.
+        set_cache_auth_session(val)
+
+
 def get_auth_session() -> dict:
     """Get the auth session value."""
     return _get_session_value(SessionKeySubName.AUTH)
@@ -94,11 +110,6 @@ def set_if_current_user_is_selected_org_admin(selected_org_id: int) -> None:
     org_admins = manage_users.list_users_by_org(org_id=selected_org_id, org_admin_match=True)
     is_org_admin = current_user_id in [x[0] for x in org_admins]
     _set_session_value(is_org_admin, SessionKeySubName.AUTH, SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name)
-
-
-def set_auth_session(val: dict = None) -> None:
-    """Set the auth session value."""
-    _set_session_value(val, SessionKeySubName.AUTH)
 
 
 def get_authenticated_user_id() -> int | None:
