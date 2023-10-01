@@ -16,11 +16,11 @@ from docq.support.auth_utils import (
     _set_cookie,
     _set_cookie_session_id,
     _verify_hmac,
-    cached_sessions,
+    cached_session_data,
     generate_hmac_session_id,
     get_cache_auth_session,
     reset_cache_and_cookie_auth_session,
-    session_data,
+    cached_session_ids,
     set_cache_auth_session,
 )
 
@@ -81,7 +81,7 @@ class TestAuthUtils(unittest.TestCase):
     def test_get_cookie_session_id(self: Self, mock_get_cookies: Mock) -> None:
         """Test get session id."""
         session_id = generate_hmac_session_id()
-        cached_sessions[session_id] = _encrypt(("9999", "user", 1))
+        cached_session_data[session_id] = _encrypt(("9999", "user", 1))
         mock_get_cookies.return_value = {SESSION_COOKIE_NAME: session_id}
         result = _get_cookie_session_id()
         assert result == session_id
@@ -100,7 +100,7 @@ class TestAuthUtils(unittest.TestCase):
         session_id = generate_hmac_session_id()
         mock_get_cookie_session_id.return_value = session_id
         set_cache_auth_session(payload)
-        assert session_id in cached_sessions
+        assert session_id in cached_session_data
 
     @patch("docq.support.auth_utils._get_cookie_session_id")
     def test_auth_result(
@@ -120,9 +120,9 @@ class TestAuthUtils(unittest.TestCase):
     def test_session_logout(self: Self, mock_get_cookie_session_id: Mock) -> None:
         """Test session logout."""
         session_id = generate_hmac_session_id()
-        cached_sessions[session_id] = _encrypt(("9999", "user", 1))
-        session_data[session_id] = session_id
+        cached_session_data[session_id] = _encrypt(("9999", "user", 1))
+        cached_session_ids[session_id] = session_id
         mock_get_cookie_session_id.return_value = session_id
         reset_cache_and_cookie_auth_session()
-        assert session_id not in cached_sessions, "Cached session should be deleted on logout"
-        assert session_id not in session_data, "Session data should be deleted on logout"
+        assert session_id not in cached_session_data, "Cached session should be deleted on logout"
+        assert session_id not in cached_session_ids, "Session data should be deleted on logout"

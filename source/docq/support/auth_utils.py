@@ -13,18 +13,19 @@ from cryptography.fernet import Fernet
 from streamlit.components.v1 import html
 from streamlit.web.server.websocket_headers import _get_websocket_headers
 
-from ..config import SESSION_COOKIE_NAME, ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY
+from ..config import ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY, SESSION_COOKIE_NAME
 
 EXPIRY_HOURS = 4
-CACHE_CONFIG = (1024 * 1, 60 * 60 * EXPIRY_HOURS)
+TTL = 60 * 60 * EXPIRY_HOURS
+CACHE_CONFIG = (1024 * 1, TTL)
 AUTH_KEY = Fernet.generate_key()
 AUTH_SESSION_SECRET_KEY: str = os.environ.get(ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY)
 
-# Chase of session data keyed by session id
-cached_sessions: TTLCache[str, bytes] = TTLCache(*CACHE_CONFIG)
+# Cache of session data keyed by hmac hash (hmac of session id)
+cached_session_data: TTLCache[str, bytes] = TTLCache(*CACHE_CONFIG)
 
-# Cache of session id's keyed by hmac hash
-session_data: TTLCache[str, str] = TTLCache(*CACHE_CONFIG)
+# Cache of session id's keyed by hmac hash (hmac of session id)
+cached_session_ids: TTLCache[str, str] = TTLCache(*CACHE_CONFIG)
 
 
 # TODO: the code that handles the cookie should move to the web side. session state tracking is in the backend but not a public API as it's just cross cutting.
@@ -103,7 +104,7 @@ def generate_hmac_session_id(length: int = 32) -> str:
     """Generate a secure (HMAC) and unique session_id then track in session cache."""
     id_ = token_hex(length // 2)
     hmac_ = _create_hmac(id_)
-    session_data[hmac_] = id_
+    cached_session_ids[hmac_] = id_
     log.debug("Generated new hmac session id: %s", hmac_)
     return hmac_
 
@@ -136,15 +137,18 @@ def verify_cookie_hmac_session_id() -> str | None:
     """
     hmac_session_id = None
     hmac_session_id = _get_cookie_session_id()
+
     if hmac_session_id is None:
-        log.debug("No session id in cookie found")
-    elif hmac_session_id not in cached_sessions:
-        log.debug(
-            "verify_cookie_hmac_session_id(): HMAC Session ID not found in cache. Session expired or was explicitly removed: %s"
+        log.debug("verify_cookie_hmac_session_id(): No session id (auth token) cookie found.")
+    elif hmac_session_id not in cached_session_ids:
+        log.warning(
+            "verify_cookie_hmac_session_id(): item with key=hmac_session_id `cached_session_ids`. The auth session either expired or explicitly removed."
         )
+        log.debug("cached session ids : %s", cached_session_ids.keys())
+        log.debug("cached session data: %s", cached_session_data.keys())
         hmac_session_id = None
-    elif hmac_session_id not in session_data or not _verify_hmac(session_data[hmac_session_id], hmac_session_id):
-        log.warning("verify_cookie_hmac_session_id(): HMAC Session ID failed verification: %s")
+    elif not _verify_hmac(cached_session_ids[hmac_session_id], hmac_session_id):
+        log.warning("verify_cookie_hmac_session_id(): HMAC Session ID failed verification.")
         hmac_session_id = None
     return hmac_session_id
 
@@ -172,11 +176,11 @@ def _decrypt(encrypted_payload: bytes) -> dict:
         return None
 
 
-def _reset_expiry_cache_auth_session(session_id: str) -> None:
+def _reset_expiry_cache_auth_session(hmac_session_id: str) -> None:
     """Update the auth expiry time."""
     try:
-        cached_sessions[session_id] = cached_sessions[session_id]
-        session_data[session_id] = session_data[session_id]
+        cached_session_data[hmac_session_id] = cached_session_data[hmac_session_id]
+        cached_session_ids[hmac_session_id] = cached_session_ids[hmac_session_id]
         # _set_cookie_session_id(session_id)
     except Exception as e:
         log.error("Failed to update auth expiry: %s", e)
@@ -190,10 +194,16 @@ def set_cache_auth_session(val: dict) -> None:
     """
     try:
         hmac_session_id = _get_cookie_session_id()
-        if hmac_session_id is None:
+        log.debug("set_cache_auth_session() - hmac session id: %s", hmac_session_id)
+
+        if hmac_session_id is None or hmac_session_id not in cached_session_ids:
+            log.debug(
+                "set_cache_auth_session() - Valid session id (auth token) not found. session_data: %s",
+                cached_session_ids.keys(),
+            )
             hmac_session_id = generate_hmac_session_id()
-        _set_cookie_session_id(hmac_session_id)
-        cached_sessions[hmac_session_id] = _encrypt(val)
+            _set_cookie_session_id(hmac_session_id)
+        cached_session_data[hmac_session_id] = _encrypt(val)
         _reset_expiry_cache_auth_session(hmac_session_id)
     except Exception as e:
         log.error("Error caching auth session: %s", e)
@@ -204,8 +214,8 @@ def get_cache_auth_session() -> dict | None:
     try:
         decrypted_auth_session_data = None
         hmac_session_id = _get_cookie_session_id()
-        if hmac_session_id in cached_sessions:
-            encrypted_auth_session_data = cached_sessions[hmac_session_id]
+        if hmac_session_id in cached_session_data:
+            encrypted_auth_session_data = cached_session_data[hmac_session_id]
             decrypted_auth_session_data = _decrypt(encrypted_auth_session_data)
         return decrypted_auth_session_data
     except Exception as e:
@@ -217,10 +227,12 @@ def remove_cache_auth_session() -> None:
     """Remove the cached session state for the current session. The current session is identified by a session_id in a particular browsersession cookie."""
     try:
         hmac_session_id = _get_cookie_session_id()
-        if hmac_session_id in cached_sessions:
-            del cached_sessions[hmac_session_id]
-        if hmac_session_id in session_data:
-            del session_data[hmac_session_id]
+        if hmac_session_id in cached_session_data:
+            del cached_session_data[hmac_session_id]
+            log.debug("Removed from cached_session: %s", hmac_session_id)
+        if hmac_session_id in cached_session_ids:
+            del cached_session_ids[hmac_session_id]
+            log.debug("Removed from session_data: %s", hmac_session_id)
     except Exception as e:
         log.error("Failed to remove auth session from cache: %s", e)
 
