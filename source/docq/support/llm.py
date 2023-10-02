@@ -2,8 +2,8 @@
 
 import logging as log
 import os
-from docq.model_selection.main import LLM_MODELS, ModelVendors, get_selected_model
 
+from docq.model_selection.main import ModelVendors, get_selected_model
 from langchain.chat_models import AzureChatOpenAI, ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.schema import BaseMessage
@@ -19,7 +19,6 @@ from llama_index import (
 )
 from llama_index.chat_engine import SimpleChatEngine
 from llama_index.chat_engine.types import ChatMode
-from llama_index.embeddings.openai import OpenAIEmbeddingModelType
 from llama_index.indices.composability import ComposableGraph
 from llama_index.node_parser import SimpleNodeParser
 from llama_index.node_parser.extractors import (
@@ -80,10 +79,18 @@ def _get_chat_model() -> ChatOpenAI:
                 temperature=selected_model["CHAT"].temperature,
                 model=selected_model["CHAT"].model_name,
                 deployment_name=selected_model["CHAT"].model_deployment_name,
+                openai_api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE"),
+                openai_api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1"),
+                openai_api_type="azure",
+                openai_api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION"),
             )
             log.info("Chat model: using Azure OpenAI")
         elif selected_model["CHAT"].model_vendor == ModelVendors.OPENAI:
-            model = ChatOpenAI(temperature=selected_model["CHAT"].temperature, model=selected_model["CHAT"].model_name)
+            model = ChatOpenAI(
+                temperature=selected_model["CHAT"].temperature,
+                model=selected_model["CHAT"].model_name,
+                openai_api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
+            )
             log.info("Chat model: using OpenAI.")
         return model
 
@@ -94,13 +101,21 @@ def _get_embed_model() -> LangchainEmbedding:
         if selected_model["EMBED"].model_vendor == ModelVendors.AZURE_OPENAI:
             embedding_llm = LangchainEmbedding(
                 OpenAIEmbeddings(
-                    model=selected_model["EMBED"].model_name, deployment=selected_model["EMBED"].model_deployment_name
+                    model=selected_model["EMBED"].model_name,
+                    deployment=selected_model["EMBED"].model_deployment_name,
+                    openai_api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE"),
+                    openai_api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1"),
+                    openai_api_type="azure",
+                    openai_api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION"),
                 ),
                 embed_batch_size=1,
             )
         elif selected_model["EMBED"].model_vendor == ModelVendors.OPENAI:
             embedding_llm = LangchainEmbedding(
-                OpenAIEmbeddings(model=selected_model["EMBED"].model_name),
+                OpenAIEmbeddings(
+                    model=selected_model["EMBED"].model_name,
+                    openai_api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
+                ),
                 embed_batch_size=1,
             )
         else:
