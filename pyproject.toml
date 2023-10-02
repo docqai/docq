@@ -123,7 +123,8 @@ exclude_lines = [
 [tool.poe.tasks]
 install = "poetry install --only main"
 install-dev = "poetry install"
-test = "pytest"
+test = "pytest tests/unit"
+test-integration = "pytest tests/integration"
 pre-commit = "pre-commit run --all-files"
 lint-ruff = "ruff check **/*.py --fix"
 lint-black = "black **/*.py"
