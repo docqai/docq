@@ -24,6 +24,7 @@ from docq import (
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
+from docq.support.auth_utils import get_cache_auth_session, reset_cache_and_cookie_auth_session, set_cache_auth_session
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -40,6 +41,7 @@ from .sessions import (
     get_chat_session,
     get_public_space_group_id,
     get_selected_org_id,
+    get_settings_session,
     get_username,
     reset_session_state,
     set_auth_session,
@@ -59,7 +61,8 @@ def _set_session_state_configs(
     super_admin: bool = False,
     selected_org_admin: bool = False,
     space_group_id: Optional[int] = None,
-    public_session_id: Optional[str] = None ) -> None:
+    public_session_id: Optional[str] = None,
+) -> None:
     """Set the session state for the configs.
 
     Args:
@@ -85,9 +88,18 @@ def _set_session_state_configs(
                 SessionKeyNameForAuth.PUBLIC_SESSION_ID.name: public_session_id,
                 SessionKeyNameForAuth.PUBLIC_SPACE_GROUP_ID.name: space_group_id,
                 SessionKeyNameForAuth.ANONYMOUS.name: anonymous,
-            }
+            },
+            True,
         )
     else:
+        # cache_session_state_configs(
+        #     user_id=user_id,
+        #     selected_org_id=selected_org_id,
+        #     name=name,
+        #     username=username,
+        #     super_admin=super_admin,
+        #     selected_org_admin=selected_org_admin,
+        # )
         set_auth_session(
             {
                 SessionKeyNameForAuth.ID.name: user_id,
@@ -97,7 +109,8 @@ def _set_session_state_configs(
                 SessionKeyNameForAuth.SELECTED_ORG_ID.name: selected_org_id,
                 SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name: selected_org_admin,
                 SessionKeyNameForAuth.ANONYMOUS.name: anonymous,
-            }
+            },
+            True,
         )
     set_settings_session(
         {
@@ -112,15 +125,17 @@ def _set_session_state_configs(
 def handle_login(username: str, password: str) -> bool:
     """Handle login."""
     reset_session_state()
+    reset_cache_and_cookie_auth_session()
     result = manage_users.authenticate(username, password)
-    current_user_id = result[0]
-    member_orgs = manage_organisations.list_organisations(
-        user_id=current_user_id
-    )  # we can't use handle_list_orgs() here
-    default_org_id = member_orgs[0][0]
-    selected_org_admin = current_user_id in [x[0] for x in member_orgs[0][2]]
-    log.info("Login result: %s", result)
+
     if result:
+        current_user_id = result[0]
+        member_orgs = manage_organisations.list_organisations(
+            user_id=current_user_id
+        )  # we can't use handle_list_orgs() here
+        default_org_id = member_orgs[0][0]
+        selected_org_admin = current_user_id in [x[0] for x in member_orgs[0][2]]
+        log.info("Login result: %s", result)
         _set_session_state_configs(
             user_id=current_user_id,
             selected_org_id=default_org_id,
@@ -137,7 +152,10 @@ def handle_login(username: str, password: str) -> bool:
 
 
 def handle_logout() -> None:
+    """Handle logout."""
     reset_session_state()
+    reset_cache_and_cookie_auth_session()
+    log.info("Logout")
 
 
 def handle_create_user() -> int:
@@ -335,10 +353,7 @@ def _get_chat_spaces(feature: domain.FeatureKey) -> tuple[Optional[SpaceKey], Li
 
     if feature.type_ == config.FeatureType.ASK_PUBLIC:
         personal_space = None
-        shared_spaces = [
-            domain.SpaceKey(config.SpaceType.SHARED, s_[0], select_org_id)
-            for s_ in list_public_spaces()
-        ]
+        shared_spaces = [domain.SpaceKey(config.SpaceType.SHARED, s_[0], select_org_id) for s_ in list_public_spaces()]
         return personal_space, shared_spaces
 
     shared_spaces = None
@@ -514,6 +529,7 @@ def get_enabled_features() -> list[domain.FeatureKey]:
 
 def handle_update_system_settings() -> None:
     current_org_id = get_selected_org_id()
+
     manage_settings.update_organisation_settings(
         {
             config.SystemSettingsKey.ENABLED_FEATURES.name: [
@@ -521,6 +537,14 @@ def handle_update_system_settings() -> None:
             ],
         },
         org_id=current_org_id,
+    )
+    set_settings_session(
+        {
+            config.SystemSettingsKey.ENABLED_FEATURES.name: [
+                f.name for f in st.session_state[f"system_settings_{config.SystemSettingsKey.ENABLED_FEATURES.name}"]
+            ],
+        },
+        SessionKeyNameForSettings.SYSTEM,
     )
 
 
@@ -617,7 +641,7 @@ def handle_public_session() -> None:
             space_group_id=space_group_id,
             public_session_id=session_id,
         )
-    else: # if no query params are provided, set space_group_id and public_session_id to -1 to disable ASK_PUBLIC feature
+    else:  # if no query params are provided, set space_group_id and public_session_id to -1 to disable ASK_PUBLIC feature
         _set_session_state_configs(
             user_id=None,
             selected_org_id=None,

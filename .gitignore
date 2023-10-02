@@ -176,7 +176,7 @@ cython_debug/
 # Exported from Poetry, used in docker build only
 requirements.txt    
 # Used for file storage in local development only
-.persisted/
+.persisted*/
 # Used for running Streamlit by storing configs and secrets locally
 .streamlit/
 # Used by GitHub Pages local build before uploading to GitHub
