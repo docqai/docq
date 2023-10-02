@@ -15,9 +15,9 @@ from streamlit.web.server.websocket_headers import _get_websocket_headers
 
 from ..config import ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY, SESSION_COOKIE_NAME
 
-EXPIRY_HOURS = 4
-TTL = 60 * 60 * EXPIRY_HOURS
-CACHE_CONFIG = (1024 * 1, TTL)
+TTL_HOURS = 4
+TTL_SEC = 60 * 60 * TTL_HOURS
+CACHE_CONFIG = (1024 * 1, TTL_SEC)
 AUTH_KEY = Fernet.generate_key()
 AUTH_SESSION_SECRET_KEY: str = os.environ.get(ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY)
 
@@ -44,7 +44,7 @@ def init_session_cache() -> None:
 def _set_cookie(cookie: str) -> None:
     """Set client cookie for authentication."""
     try:
-        expiry = datetime.now() + timedelta(hours=EXPIRY_HOURS)
+        expiry = datetime.now() + timedelta(hours=TTL_HOURS)
         html(
             f"""
         <script>
@@ -144,8 +144,8 @@ def verify_cookie_hmac_session_id() -> str | None:
         log.warning(
             "verify_cookie_hmac_session_id(): item with key=hmac_session_id `cached_session_ids`. The auth session either expired or explicitly removed."
         )
-        log.debug("cached session ids : %s", cached_session_ids.keys())
-        log.debug("cached session data: %s", cached_session_data.keys())
+        log.debug("cached session ids : %s", len(cached_session_ids.keys()))
+        log.debug("cached session data: %s", len(cached_session_data.keys()))
         hmac_session_id = None
     elif not _verify_hmac(cached_session_ids[hmac_session_id], hmac_session_id):
         log.warning("verify_cookie_hmac_session_id(): HMAC Session ID failed verification.")
@@ -199,7 +199,7 @@ def set_cache_auth_session(val: dict) -> None:
         if hmac_session_id is None or hmac_session_id not in cached_session_ids:
             log.debug(
                 "set_cache_auth_session() - Valid session id (auth token) not found. session_data: %s",
-                cached_session_ids.keys(),
+                len(cached_session_ids.keys()),
             )
             hmac_session_id = generate_hmac_session_id()
             _set_cookie_session_id(hmac_session_id)
