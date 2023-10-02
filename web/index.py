@@ -9,8 +9,8 @@ init_with_pretty_error_ui()
 
 production_layout()
 
-with st.sidebar:
-    org_selection_ui()
+# with st.sidebar:
+#     org_selection_ui()
 
 show_pages(
     [
@@ -59,4 +59,11 @@ st.markdown(
 """
 )
 
+
 st.markdown("Enjoy [Docq](https://docq.ai)!")
+org_menu_options = [
+    {"label": "Org 1", "value": "org1"},
+    {"label": "Org 2", "value": "org2"},
+    {"label": "Org 3", "value": "org3"},
+    {"label": "Org 4", "value": "org4"},
+]
