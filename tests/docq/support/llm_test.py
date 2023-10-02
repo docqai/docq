@@ -1,4 +1,5 @@
 from unittest.mock import Mock, patch
+from docq.model_selection.main import ModelUsageSettingsCollection
 
 from docq.support.llm import run_chat
 from llama_index import ServiceContext
@@ -15,7 +16,8 @@ def test_run_chat():
         mocked_chat = Mock()
         mocked_engine.chat = mocked_chat
         mocked_chat.return_value = "LLM response"
+        mocked_model_usage_settings_collection = Mock(ModelUsageSettingsCollection)
 
-        response = run_chat("My ask", "My chat history")
+        response = run_chat("My ask", "My chat history", mocked_model_usage_settings_collection)
         mocked_chat.assert_called_once_with("My ask")
         assert response == "LLM response"
