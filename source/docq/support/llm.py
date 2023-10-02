@@ -22,6 +22,7 @@ from llama_index.embeddings import OptimumEmbedding
 from llama_index.indices.composability import ComposableGraph
 from llama_index.node_parser import SimpleNodeParser
 from llama_index.node_parser.extractors import (
+    EntityExtractor,
     KeywordExtractor,
     MetadataExtractor,
     QuestionsAnsweredExtractor,
@@ -179,6 +180,7 @@ def _get_node_parser() -> SimpleNodeParser:
             QuestionsAnsweredExtractor(questions=3),
             SummaryExtractor(summaries=["prev", "self"]),
             KeywordExtractor(keywords=10),
+            EntityExtractor(entities=["prev", "self"]),
             # CustomExtractor()
         ],
     )
