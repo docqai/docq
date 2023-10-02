@@ -1,12 +1,15 @@
 """Functions for utilising LLMs."""
 
 import logging as log
+import os
 
-from langchain.chat_models import ChatOpenAI
+from langchain.chat_models import AzureChatOpenAI, ChatOpenAI
+from langchain.embeddings import OpenAIEmbeddings
 from langchain.schema import BaseMessage
 from llama_index import (
     GPTListIndex,
     GPTVectorStoreIndex,
+    LangchainEmbedding,
     LLMPredictor,
     Response,
     ServiceContext,
@@ -15,6 +18,7 @@ from llama_index import (
 )
 from llama_index.chat_engine import SimpleChatEngine
 from llama_index.chat_engine.types import ChatMode
+from llama_index.embeddings.openai import OpenAIEmbeddingModelType
 from llama_index.indices.composability import ComposableGraph
 from llama_index.node_parser import SimpleNodeParser
 from llama_index.node_parser.extractors import (
@@ -61,13 +65,41 @@ Make sure your response is in the first person context
 ERROR: {error}
 """
 
+# TODO: move to using a data class for llm_model and settings.
+is_azure_openai = os.environ.get("OPENAI_API_TYPE") == "azure"
+is_openai = os.environ.get("OPENAI_API_TYPE") != "azure"
 
 # def _get_model() -> OpenAI:
 #     return OpenAI(temperature=0, model_name="text-davinci-003")
 
 
 def _get_chat_model() -> ChatOpenAI:
-    return ChatOpenAI(temperature=0, model="gpt-3.5-turbo")
+    if is_azure_openai:
+        model = AzureChatOpenAI(
+            engine="gpt-35-turbo", deployment_name="gpt-35-turbo", model="gpt-35-turbo", temperature=0.0
+        )
+        log.debug("Using Azure OpenAI because env `OPENAI_API_TYPE=azure`")
+    else:
+        model = ChatOpenAI(temperature=0, model="gpt-3.5-turbo")
+        log.debug("Defaulting to using OpenAI because env `OPENAI_API_TYPE` is not set")
+    return model
+
+
+def _get_embed_model() -> LangchainEmbedding:
+    if is_azure_openai:  # noqa: SIM114
+        embedding_llm = LangchainEmbedding(
+            OpenAIEmbeddings(model=OpenAIEmbeddingModelType.TEXT_EMBED_ADA_002, deployment="text-embedding-ada-002"),
+            embed_batch_size=1,
+        )
+    elif is_openai:
+        embedding_llm = LangchainEmbedding(
+            OpenAIEmbeddings(model=OpenAIEmbeddingModelType.TEXT_EMBED_ADA_002, deployment="text-embedding-ada-002"),
+            embed_batch_size=1,
+        )
+    else:
+        # defaults
+        embedding_llm = LangchainEmbedding(OpenAIEmbeddings())
+    return embedding_llm
 
 
 def _get_llm_predictor() -> LLMPredictor:
@@ -87,9 +119,16 @@ def _get_service_context() -> ServiceContext:
         "EXPERIMENTS['INCLUDE_EXTRACTED_METADATA']['enabled']: %s", EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]
     )
     if EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]:
-        return ServiceContext.from_defaults(llm_predictor=_get_llm_predictor(), node_parser=_get_node_parser())
+        return ServiceContext.from_defaults(
+            llm_predictor=_get_llm_predictor(),
+            node_parser=_get_node_parser(),
+            embed_model=_get_embed_model(),
+        )
     else:
-        return ServiceContext.from_defaults(llm_predictor=_get_llm_predictor())
+        return ServiceContext.from_defaults(
+            llm_predictor=_get_llm_predictor(),
+            embed_model=_get_embed_model(),
+        )
 
 
 def _get_node_parser() -> SimpleNodeParser:
@@ -113,7 +152,8 @@ def _get_node_parser() -> SimpleNodeParser:
 
 
 def _load_index_from_storage(space: SpaceKey) -> GPTVectorStoreIndex:
-    return load_index_from_storage(storage_context=_get_storage_context(space))
+    # set service context explicitly for multi model compatibility
+    return load_index_from_storage(storage_context=_get_storage_context(space), service_context=_get_service_context())
 
 
 def run_chat(input_: str, history: str) -> BaseMessage:
@@ -145,21 +185,34 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
         for s_ in all_spaces:
             try:
                 index_ = _load_index_from_storage(s_)
-                summary_ = index_.as_query_engine().query(
-                    "What is the summary of all the documents?"
-                )  # note: we might not need to do this any longer because summary is added as node metadata.
-                if summary_ and summary_.response is not None:
-                    indices.append(index_)
-                    summaries.append(summary_.response)
-                else:
-                    log.warning("The summary generated for Space '%s' was empty so skipping from the Graph index.", s_)
-                    continue
+
             except Exception as e:
                 log.warning(
                     "Index for space '%s' failed to load, skipping. Maybe the index isn't created yet. Error message: %s",
                     s_,
                     e,
                 )
+                continue
+
+            try:
+                query_engine = index_.as_query_engine()
+
+                summary_ = query_engine.query(
+                    "What is the summary of all the documents?"
+                )  # note: we might not need to do this any longer because summary is added as node metadata.
+            except Exception as e:
+                log.warning(
+                    "Summary for space '%s' failed to load, skipping. Maybe the index isn't created yet. Error message: %s",
+                    s_,
+                    e,
+                )
+                continue
+
+            if summary_ and summary_.response is not None:
+                indices.append(index_)
+                summaries.append(summary_.response)
+            else:
+                log.warning("The summary generated for Space '%s' was empty so skipping from the Graph index.", s_)
                 continue
 
         log.debug("number summaries: %s", len(summaries))
