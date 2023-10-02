@@ -80,7 +80,7 @@ def _init_local_models() -> None:
     """Initialize local models."""
     for model_collection in LLM_MODEL_COLLECTIONS.values():
         for model_usage_settings in model_collection.model_usage_settings.values():
-            if model_usage_settings.model_vendor == ModelVendor.HUGGINGFACE_OPTIMUM_LOCAL:
+            if model_usage_settings.model_vendor == ModelVendor.HUGGINGFACE_OPTIMUM_BAAI:
                 OptimumEmbedding.create_and_save_optimum_model(
                     model_usage_settings.model_name, get_models_dir(model_usage_settings.model_name)
                 )
@@ -134,7 +134,7 @@ def _get_embed_model(model_settings_collection: ModelUsageSettingsCollection) ->
                 ),
                 embed_batch_size=1,
             )
-        elif embedding_model_settings.model_vendor == ModelVendor.HUGGINGFACE_OPTIMUM_LOCAL:
+        elif embedding_model_settings.model_vendor == ModelVendor.HUGGINGFACE_OPTIMUM_BAAI:
             embedding_llm = OptimumEmbedding(folder_name=get_models_dir(embedding_model_settings.model_name))
         else:
             # defaults

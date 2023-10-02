@@ -16,14 +16,22 @@ from ..manage_settings import get_organisation_settings
 
 
 class ModelVendor(str, Enum):
-    """This usually maps to a hosting provider + service name such as AzureML, Azure OpenAI, OpenAI, AWS SageMaker, or AWS Bedrock."""
+    """Model vendor names.
+
+    Dedicated model providers {model vendor} e.g. OPENAI OR COHERE.
+    Cloud provider hosted models {cloud provider name}_[{service name}_]{model vendor} e.g. AZURE_OPENAI OR AWS_SAGEMAKER_LLAMA OR AWS_BEDROCK_COHERE or AWS_BEDROCK_TITAN.
+    """
 
     OPENAI = "OpenAI"
     AZURE_OPENAI = "Azure OpenAI"
-    AZUREML = "AzureML"
-    AWS_BEDROCK = "AWS Bedrock"
-    AWS_SAGEMAKER = "AWS Sagemaker"
-    HUGGINGFACE_OPTIMUM_LOCAL = "HuggingFace Optimum Local"
+    AZURE_ML_LLAMA = "Azure ML Llama"
+    AWS_BEDROCK_AMAZON = "AWS Bedrock Amazon"
+    AWS_BEDROCK_AI21LABs = "AWS Bedrock AI21labs"
+    AWS_BEDROCK_COHERE = "AWS Bedrock Cohere"
+    AWS_BEDROCK_ANTHROPIC = "AWS Bedrock Anthropic"
+    AWS_BEDROCK_STABILITYAI = "AWS Bedrock StabilityAI"
+    AWS_SAGEMAKER_META = "AWS Sagemaker Meta"
+    HUGGINGFACE_OPTIMUM_BAAI = "HuggingFace Optimum BAAI"
 
 
 class ModelCapability(str, Enum):
@@ -31,6 +39,7 @@ class ModelCapability(str, Enum):
 
     CHAT = "Chat"
     EMBEDDING = "Embedding"
+    INSTRUCTION = "Instruction"
     TRANSLATION = "Translation"
     QUESTION_ANSWER = "Question Answer"
     SUMMARISATION = "Summarisation"
@@ -107,7 +116,7 @@ LLM_MODEL_COLLECTIONS = {
                 model_capability=ModelCapability.CHAT,
             ),
             ModelCapability.EMBEDDING: ModelUsageSettings(
-                model_vendor=ModelVendor.HUGGINGFACE_OPTIMUM_LOCAL,
+                model_vendor=ModelVendor.HUGGINGFACE_OPTIMUM_BAAI,
                 model_name="BAAI/bge-small-en-v1.5",
                 model_capability=ModelCapability.EMBEDDING,
             ),
