@@ -30,7 +30,12 @@ from llama_index.node_parser.extractors import (
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
-from ..model_selection.main import ModelVendor, get_saved_model_settings_collection
+from ..model_selection.main import (
+    ModelCapability,
+    ModelUsageSettingsCollection,
+    ModelVendor,
+    get_saved_model_settings_collection,
+)
 from .store import get_index_dir
 
 # PROMPT_CHAT_SYSTEM = """
@@ -70,39 +75,39 @@ ERROR: {error}
 #     return OpenAI(temperature=0, model_name="text-davinci-003")
 
 
-def _get_chat_model(org_id: int) -> ChatOpenAI:
-    selected_model = get_saved_model_settings_collection(org_id)
-
-    if selected_model and selected_model["CHAT"]:
-        if selected_model["CHAT"].model_vendor == ModelVendor.AZURE_OPENAI:
+def _get_chat_model(model_settings_collection: ModelUsageSettingsCollection) -> ChatOpenAI:
+    if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.CHAT]:
+        chat_model_settings = model_settings_collection.model_usage_settings[ModelCapability.CHAT]
+        if chat_model_settings.model_vendor == ModelVendor.AZURE_OPENAI:
             model = AzureChatOpenAI(
-                temperature=selected_model["CHAT"].temperature,
-                model=selected_model["CHAT"].model_name,
-                deployment_name=selected_model["CHAT"].model_deployment_name,
+                temperature=chat_model_settings.temperature,
+                model=chat_model_settings.model_name,
+                deployment_name=chat_model_settings.model_deployment_name,
                 openai_api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE"),
                 openai_api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1"),
                 openai_api_type="azure",
                 openai_api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION"),
             )
             log.info("Chat model: using Azure OpenAI")
-        elif selected_model["CHAT"].model_vendor == ModelVendor.OPENAI:
+        elif chat_model_settings.model_vendor == ModelVendor.OPENAI:
             model = ChatOpenAI(
-                temperature=selected_model["CHAT"].temperature,
-                model=selected_model["CHAT"].model_name,
+                temperature=chat_model_settings.temperature,
+                model=chat_model_settings.model_name,
                 openai_api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
             )
             log.info("Chat model: using OpenAI.")
         return model
 
 
-def _get_embed_model(org_id: int) -> LangchainEmbedding:
-    selected_model = get_saved_model_settings_collection(org_id)
-    if selected_model and selected_model["EMBED"]:
-        if selected_model["EMBED"].model_vendor == ModelVendor.AZURE_OPENAI:
+def _get_embed_model(model_settings_collection: ModelUsageSettingsCollection) -> LangchainEmbedding:
+    if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]:
+        embedding_model_settings = model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]
+
+        if embedding_model_settings.model_vendor == ModelVendor.AZURE_OPENAI:
             embedding_llm = LangchainEmbedding(
                 OpenAIEmbeddings(
-                    model=selected_model["EMBED"].model_name,
-                    deployment=selected_model["EMBED"].model_deployment_name,
+                    model=embedding_model_settings.model_name,
+                    deployment=embedding_model_settings.model_deployment_name,
                     openai_api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE"),
                     openai_api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1"),
                     openai_api_type="azure",
@@ -110,10 +115,10 @@ def _get_embed_model(org_id: int) -> LangchainEmbedding:
                 ),
                 embed_batch_size=1,
             )
-        elif selected_model["EMBED"].model_vendor == ModelVendor.OPENAI:
+        elif embedding_model_settings.model_vendor == ModelVendor.OPENAI:
             embedding_llm = LangchainEmbedding(
                 OpenAIEmbeddings(
-                    model=selected_model["EMBED"].model_name,
+                    model=embedding_model_settings.model_name,
                     openai_api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
                 ),
                 embed_batch_size=1,
@@ -124,8 +129,8 @@ def _get_embed_model(org_id: int) -> LangchainEmbedding:
     return embedding_llm
 
 
-def _get_llm_predictor(org_id: int) -> LLMPredictor:
-    return LLMPredictor(llm=_get_chat_model(org_id))
+def _get_llm_predictor(model_settings_collection: ModelUsageSettingsCollection) -> LLMPredictor:
+    return LLMPredictor(llm=_get_chat_model(model_settings_collection))
 
 
 def _get_default_storage_context() -> StorageContext:
@@ -136,21 +141,21 @@ def _get_storage_context(space: SpaceKey) -> StorageContext:
     return StorageContext.from_defaults(persist_dir=get_index_dir(space))
 
 
-def _get_service_context(org_id: int) -> ServiceContext:
+def _get_service_context(model_settings_collection: ModelUsageSettingsCollection) -> ServiceContext:
     log.debug(
         "EXPERIMENTS['INCLUDE_EXTRACTED_METADATA']['enabled']: %s", EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]
     )
 
     if EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]:
         return ServiceContext.from_defaults(
-            llm_predictor=_get_llm_predictor(org_id),
+            llm_predictor=_get_llm_predictor(model_settings_collection),
             node_parser=_get_node_parser(),
-            embed_model=_get_embed_model(org_id),
+            embed_model=_get_embed_model(model_settings_collection),
         )
     else:
         return ServiceContext.from_defaults(
-            llm_predictor=_get_llm_predictor(org_id),
-            embed_model=_get_embed_model(org_id),
+            llm_predictor=_get_llm_predictor(model_settings_collection),
+            embed_model=_get_embed_model(model_settings_collection),
         )
 
 
@@ -174,15 +179,17 @@ def _get_node_parser() -> SimpleNodeParser:
     return node_parser
 
 
-def _load_index_from_storage(space: SpaceKey) -> GPTVectorStoreIndex:
+def _load_index_from_storage(
+    space: SpaceKey, model_settings_collection: ModelUsageSettingsCollection
+) -> GPTVectorStoreIndex:
     # set service context explicitly for multi model compatibility
 
     return load_index_from_storage(
-        storage_context=_get_storage_context(space), service_context=_get_service_context(space.org_id)
+        storage_context=_get_storage_context(space), service_context=_get_service_context(model_settings_collection)
     )
 
 
-def run_chat(input_: str, history: str, org_id: int) -> BaseMessage:
+def run_chat(input_: str, history: str, model_settings_collection: ModelUsageSettingsCollection) -> BaseMessage:
     """Chat directly with a LLM with history."""
     # prompt = ChatPromptTemplate.from_messages(
     #     [
@@ -191,14 +198,20 @@ def run_chat(input_: str, history: str, org_id: int) -> BaseMessage:
     #     ]
     # )
     # output = _get_chat_model()(prompt.format_prompt(history=history, input=input_).to_messages())
-    engine = SimpleChatEngine.from_defaults(service_context=_get_service_context(org_id))
+    engine = SimpleChatEngine.from_defaults(service_context=_get_service_context(model_settings_collection))
     output = engine.chat(input_)
 
     log.debug("(Chat) Q: %s, A: %s", input_, output)
     return output
 
 
-def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[SpaceKey] = None) -> Response:
+def run_ask(
+    input_: str,
+    history: str,
+    model_settings_collection: ModelUsageSettingsCollection,
+    space: SpaceKey = None,
+    spaces: list[SpaceKey] = None,
+) -> Response:
     """Ask questions against existing index(es) with history."""
     log.debug("exec: runs_ask()")
     if spaces is not None and len(spaces) > 0:
@@ -210,7 +223,7 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
         all_spaces = spaces + ([space] if space else [])
         for s_ in all_spaces:
             try:
-                index_ = _load_index_from_storage(s_)
+                index_ = _load_index_from_storage(s_, model_settings_collection)
 
             except Exception as e:
                 log.warning(
@@ -244,7 +257,10 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
         log.debug("number summaries: %s", len(summaries))
         try:
             graph = ComposableGraph.from_indices(
-                GPTListIndex, indices, index_summaries=summaries, service_context=_get_service_context()
+                GPTListIndex,
+                indices,
+                index_summaries=summaries,
+                service_context=_get_service_context(model_settings_collection),
             )
             output = graph.as_query_engine().query(PROMPT_QUESTION.format(history=history, input=input_))
 
@@ -261,7 +277,7 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
             log.debug("runs_ask(): space is None. executing run_chat(), not ASK.")
             output = run_chat(input_, history, space.org_id)
         else:
-            index = _load_index_from_storage(space)
+            index = _load_index_from_storage(space, model_settings_collection)
             engine = index.as_chat_engine(
                 verbose=True,
                 similarity_top_k=3,
@@ -279,12 +295,14 @@ def _default_response() -> Response:
     return Response("I don't know.")
 
 
-def query_error(error: Exception) -> Response:
+def query_error(error: Exception, model_settings_collection: ModelUsageSettingsCollection) -> Response:
     """Query for a response to an error message."""
     try:  # Try re-prompting with the AI
         log.exception("Error: %s", error)
         input_ = ERROR_PROMPT.format(error=error)
-        return SimpleChatEngine.from_defaults(service_context=_get_service_context()).chat(input_)
+        return SimpleChatEngine.from_defaults(service_context=_get_service_context(model_settings_collection)).chat(
+            input_
+        )
     except Exception as error:
         log.exception("Error: %s", error)
         return _default_response()

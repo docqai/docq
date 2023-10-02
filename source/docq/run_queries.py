@@ -5,6 +5,8 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime
 
+from docq.model_selection.main import ModelUsageSettingsCollection
+
 from .config import FeatureType
 from .domain import FeatureKey, SpaceKey
 from .manage_documents import format_document_sources
@@ -47,10 +49,14 @@ def _save_messages(data: list[tuple[str, bool, datetime, int]], feature: Feature
     rows = []
     tablename = get_history_table_name(feature.type_)
     thread_tablename = get_history_thread_table_name(feature.type_)
-    usage_file = get_sqlite_usage_file(feature.id_) if feature.type_ != FeatureType.ASK_PUBLIC else get_public_sqlite_usage_file(feature.id_)
-    with closing(
-        sqlite3.connect(usage_file, detect_types=sqlite3.PARSE_DECLTYPES)
-    ) as connection, closing(connection.cursor()) as cursor:
+    usage_file = (
+        get_sqlite_usage_file(feature.id_)
+        if feature.type_ != FeatureType.ASK_PUBLIC
+        else get_public_sqlite_usage_file(feature.id_)
+    )
+    with closing(sqlite3.connect(usage_file, detect_types=sqlite3.PARSE_DECLTYPES)) as connection, closing(
+        connection.cursor()
+    ) as cursor:
         cursor.execute(
             SQL_CREATE_MESSAGE_TABLE.format(
                 table=tablename,
@@ -72,11 +78,15 @@ def _retrieve_messages(
 ) -> list[tuple[int, str, bool, datetime, int]]:
     tablename = get_history_table_name(feature.type_)
     thread_tablename = get_history_thread_table_name(feature.type_)
-    usage_file = get_sqlite_usage_file(feature.id_) if feature.type_ != FeatureType.ASK_PUBLIC else get_public_sqlite_usage_file(feature.id_)
+    usage_file = (
+        get_sqlite_usage_file(feature.id_)
+        if feature.type_ != FeatureType.ASK_PUBLIC
+        else get_public_sqlite_usage_file(feature.id_)
+    )
     rows = None
-    with closing(
-        sqlite3.connect(usage_file, detect_types=sqlite3.PARSE_DECLTYPES)
-    ) as connection, closing(connection.cursor()) as cursor:
+    with closing(sqlite3.connect(usage_file, detect_types=sqlite3.PARSE_DECLTYPES)) as connection, closing(
+        connection.cursor()
+    ) as cursor:
         cursor.execute(SQL_CREATE_THREAD_TABLE.format(table=thread_tablename))
         cursor.execute(SQL_CREATE_MESSAGE_TABLE.format(table=tablename, thread_table=thread_tablename))
         log.debug("Retrieving message params: thread_id=%s, cutoff=%s, size=%s", thread_id, cutoff, size)
@@ -145,7 +155,12 @@ def get_latest_thread(feature: FeatureKey) -> tuple[int, str, int] | None:
 
 
 def query(
-    input_: str, feature: FeatureKey, thread_id: int, space: SpaceKey = None, spaces: list[SpaceKey] = None
+    input_: str,
+    feature: FeatureKey,
+    thread_id: int,
+    model_settings_collection: ModelUsageSettingsCollection,
+    space: SpaceKey = None,
+    spaces: list[SpaceKey] = None,
 ) -> list[int]:
     """Run the query again documents in the space(s) using a LLM."""
     log.debug(
@@ -161,11 +176,15 @@ def query(
     history = _retrieve_last_n_history(feature, thread_id)
     log.debug("is_chat: %s", is_chat)
     try:
-        response = run_chat(input_, history, space.org_id) if is_chat else run_ask(input_, history, space, spaces)
+        response = (
+            run_chat(input_, history, model_settings_collection)
+            if is_chat
+            else run_ask(input_, history, model_settings_collection, space, spaces)
+        )
         log.debug("Response: %s", response)
 
     except Exception as e:
-        response = query_error(e)
+        response = query_error(e, model_settings_collection)
 
     log.debug("thread_id: %s", thread_id)
     data.append(

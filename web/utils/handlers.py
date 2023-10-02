@@ -369,7 +369,9 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
 
     thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
 
-    result = run_queries.query(req, feature, thread_id, space, spaces)
+    saved_model_settings = get_saved_model_settings_collection(get_selected_org_id())
+
+    result = run_queries.query(req, feature, thread_id, saved_model_settings, space, spaces)
 
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 

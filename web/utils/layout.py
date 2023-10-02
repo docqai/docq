@@ -13,7 +13,11 @@ from docq.support.auth_utils import (
     reset_cache_and_cookie_auth_session,
     verify_cookie_hmac_session_id,
 )
-from docq.model_selection.main import list_available_models
+from docq.model_selection.main import (
+    ModelUsageSettingsCollection,
+    get_model_settings_collection,
+    list_available_model_settings_collections,
+)
 from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
@@ -696,7 +700,7 @@ def system_settings_ui() -> None:
             key=f"system_settings_{SystemSettingsKey.ENABLED_FEATURES.name}",
         )
 
-        available_models = list_available_models()
+        available_models = list_available_model_settings_collections()
         log.debug("available models %s", available_models)
         saved_model = settings[SystemSettingsKey.MODEL_COLLECTION.name]
 
@@ -711,7 +715,16 @@ def system_settings_ui() -> None:
             index=selected_model_index,
             key=f"system_settings_default_{SystemSettingsKey.MODEL_COLLECTION.name}",
         )
-        st.write("")
+        selected_model_settings: ModelUsageSettingsCollection = get_model_settings_collection(saved_model)
+
+        with st.expander("Model details"):
+            for key, model_settings in selected_model_settings.model_usage_settings.items():
+                st.write(f"{model_settings.model_capability.value} model: ")
+                st.write(f"- Model Vendor: `{model_settings.model_vendor.value}`")
+                st.write(f"- Model Name: `{model_settings.model_name}`")
+                st.write(f"- Temperature: `{model_settings.temperature}`")
+                st.write(f"- Deployment Name: `{model_settings.model_deployment_name}`")
+                st.divider()
 
         st.form_submit_button(label="Save", on_click=handle_update_system_settings)
 

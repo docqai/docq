@@ -13,6 +13,7 @@ from .access_control.main import SpaceAccessor, SpaceAccessType
 from .config import SpaceType
 from .data_source.list import SpaceDataSources
 from .domain import DocumentListItem, SpaceKey
+from .model_selection.main import ModelUsageSettingsCollection, get_saved_model_settings_collection
 from .support.llm import _get_default_storage_context, _get_service_context
 from .support.store import get_index_dir, get_sqlite_system_file
 
@@ -52,10 +53,14 @@ def _init() -> None:
         connection.commit()
 
 
-def _create_index(documents: List[Document], org_id: int) -> GPTVectorStoreIndex:
+def _create_index(
+    documents: List[Document], model_settings_collection: ModelUsageSettingsCollection
+) -> GPTVectorStoreIndex:
     # Use default storage and service context to initialise index purely for persisting
     return GPTVectorStoreIndex.from_documents(
-        documents, storage_context=_get_default_storage_context(), service_context=_get_service_context(org_id)
+        documents,
+        storage_context=_get_default_storage_context(),
+        service_context=_get_service_context(model_settings_collection),
     )
 
 
@@ -67,11 +72,13 @@ def reindex(space: SpaceKey) -> None:
     """Reindex documents in a space."""
     (ds_type, ds_configs) = get_space_data_source(space)
 
+    saved_model_settings = get_saved_model_settings_collection(space.org_id)
+
     try:
         log.debug("get datasource instance")
         documents = SpaceDataSources[ds_type].value.load(space, ds_configs)
         log.debug("docs to index, %s", len(documents))
-        index = _create_index(documents, space.org_id)
+        index = _create_index(documents, saved_model_settings)
         _persist_index(index, space)
     except Exception as e:
         log.exception("Error indexing space %s: %s", space, e)
