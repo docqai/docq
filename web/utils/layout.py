@@ -697,12 +697,21 @@ def system_settings_ui() -> None:
         )
 
         available_models = list_available_models()
+        log.debug("available models %s", available_models)
+        saved_model = settings[SystemSettingsKey.MODEL_COLLECTION.name]
+
+        log.debug("saved model: %s", saved_model)
+        list_keys = list(available_models.keys())
+        selected_model_index = list_keys.index(saved_model) if saved_model and list_keys.count(saved_model) > 0 else 0
+
         st.selectbox(
             label="Default Model",
-            options=available_models,
-            index=0,
-            key=f"system_settings_default_{SystemSettingsKey.MODEL_VENDOR.name}",
+            options=available_models.items(),
+            format_func=lambda x: x[1],
+            index=selected_model_index,
+            key=f"system_settings_default_{SystemSettingsKey.MODEL_COLLECTION.name}",
         )
+        st.write("")
 
         st.form_submit_button(label="Save", on_click=handle_update_system_settings)
 

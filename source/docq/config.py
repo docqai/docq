@@ -36,8 +36,9 @@ class LogType(Enum):
 class SystemSettingsKey(Enum):
     """System settings keys."""
 
+    # TODO: rename to OrgSettingsKey
     ENABLED_FEATURES = "Enabled Features"
-    MODEL_VENDOR = "Model Vendor"
+    MODEL_COLLECTION = "Model Collection"
 
 
 class UserSettingsKey(Enum):

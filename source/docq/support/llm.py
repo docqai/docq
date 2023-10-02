@@ -30,7 +30,7 @@ from llama_index.node_parser.extractors import (
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
-from ..model_selection.main import ModelVendors, get_selected_model_settings
+from ..model_selection.main import ModelVendor, get_saved_model_settings_collection
 from .store import get_index_dir
 
 # PROMPT_CHAT_SYSTEM = """
@@ -71,10 +71,10 @@ ERROR: {error}
 
 
 def _get_chat_model(org_id: int) -> ChatOpenAI:
-    selected_model = get_selected_model_settings(org_id)
+    selected_model = get_saved_model_settings_collection(org_id)
 
     if selected_model and selected_model["CHAT"]:
-        if selected_model["CHAT"].model_vendor == ModelVendors.AZURE_OPENAI:
+        if selected_model["CHAT"].model_vendor == ModelVendor.AZURE_OPENAI:
             model = AzureChatOpenAI(
                 temperature=selected_model["CHAT"].temperature,
                 model=selected_model["CHAT"].model_name,
@@ -85,7 +85,7 @@ def _get_chat_model(org_id: int) -> ChatOpenAI:
                 openai_api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION"),
             )
             log.info("Chat model: using Azure OpenAI")
-        elif selected_model["CHAT"].model_vendor == ModelVendors.OPENAI:
+        elif selected_model["CHAT"].model_vendor == ModelVendor.OPENAI:
             model = ChatOpenAI(
                 temperature=selected_model["CHAT"].temperature,
                 model=selected_model["CHAT"].model_name,
@@ -96,9 +96,9 @@ def _get_chat_model(org_id: int) -> ChatOpenAI:
 
 
 def _get_embed_model(org_id: int) -> LangchainEmbedding:
-    selected_model = get_selected_model_settings(org_id)
+    selected_model = get_saved_model_settings_collection(org_id)
     if selected_model and selected_model["EMBED"]:
-        if selected_model["EMBED"].model_vendor == ModelVendors.AZURE_OPENAI:
+        if selected_model["EMBED"].model_vendor == ModelVendor.AZURE_OPENAI:
             embedding_llm = LangchainEmbedding(
                 OpenAIEmbeddings(
                     model=selected_model["EMBED"].model_name,
@@ -110,7 +110,7 @@ def _get_embed_model(org_id: int) -> LangchainEmbedding:
                 ),
                 embed_batch_size=1,
             )
-        elif selected_model["EMBED"].model_vendor == ModelVendors.OPENAI:
+        elif selected_model["EMBED"].model_vendor == ModelVendor.OPENAI:
             embedding_llm = LangchainEmbedding(
                 OpenAIEmbeddings(
                     model=selected_model["EMBED"].model_name,

@@ -7,28 +7,29 @@ from typing import List
 
 from ..config import SystemSettingsKey
 from ..manage_settings import get_organisation_settings, update_organisation_settings
+from typing import Dict
 
 
-class ModelVendors(str, Enum):
+class ModelVendor(str, Enum):
     """Model vendors."""
 
-    OPENAI = "openai"
-    AZURE_OPENAI = "azure_openai"
-    AZUREML = "azureml"
-    AWS_BEDROCK = "aws_bedrock"
-    AWS_SAGEMAKER = "aws_sagemaker"
+    OPENAI = "OpenAI"
+    AZURE_OPENAI = "Azure OpenAI"
+    AZUREML = "AzureML"
+    AWS_BEDROCK = "AWS Bedrock"
+    AWS_SAGEMAKER = "AWS Sagemaker"
 
 
 class ModelCapability(str, Enum):
     """Model capability."""
 
-    CHAT = "chat"
-    EMBEDDING = "embedding"
-    TRANSLATION = "translation"
-    QUESTION_ANSWERING = "question_answering"
-    SUMMARIZATION = "summarization"
-    IMAGE = "image"
-    AUDIO = "audio"
+    CHAT = "Chat"
+    EMBEDDING = "Embedding"
+    TRANSLATION = "Translation"
+    QUESTION_ANSWER = "Question Answer"
+    SUMMARISATION = "Summarisation"
+    IMAGE = "Image"
+    AUDIO = "Audio"
 
 
 @dataclass
@@ -56,26 +57,28 @@ class ModelUsageSettings:
 # We potentially need to support multiple versions and configurations for models form a given vendor
 # The top level key uniquely identifies a model configuration
 # At the second level key is the model capability
-LLM_MODELS = {
-    "openai": {
-        "CHAT": ModelUsageSettings(
-            model_vendor=ModelVendors.OPENAI, model_name="gpt-3.5-turbo", model_capability=ModelCapability.CHAT
+LLM_MODEL_COLLECTIONS = {
+    "openai_latest": {
+        "name": "OpenAI Latest",
+        ModelCapability.CHAT: ModelUsageSettings(
+            model_vendor=ModelVendor.OPENAI, model_name="gpt-3.5-turbo", model_capability=ModelCapability.CHAT
         ),
-        "EMBED": ModelUsageSettings(
-            model_vendor=ModelVendors.OPENAI,
+        ModelCapability.EMBEDDING: ModelUsageSettings(
+            model_vendor=ModelVendor.OPENAI,
             model_name="text-embedding-ada-002",
             model_capability=ModelCapability.EMBEDDING,
         ),
     },
-    "azure_openai": {
-        "CHAT": ModelUsageSettings(
-            model_vendor=ModelVendors.AZURE_OPENAI,
+    "azure_openai_latest": {
+        "name": "Azure OpenAI Latest",
+        ModelCapability.CHAT: ModelUsageSettings(
+            model_vendor=ModelVendor.AZURE_OPENAI,
             model_name="gpt-35-turbo",
             model_deployment_name="gpt-35-turbo",
             model_capability=ModelCapability.CHAT,
         ),
-        "EMBED": ModelUsageSettings(
-            model_vendor=ModelVendors.AZURE_OPENAI,
+        ModelCapability.EMBEDDING: ModelUsageSettings(
+            model_vendor=ModelVendor.AZURE_OPENAI,
             model_name="text-embedding-ada-002",
             model_deployment_name="text-embedding-ada-002",
             model_capability=ModelCapability.EMBEDDING,
@@ -88,20 +91,13 @@ LLM_MODELS = {
 # eventually model setting need to be associated with each feature that's interacts with the model
 
 
-def get_selected_model_settings(org_id: int) -> dict:
+def get_saved_model_settings_collection(org_id: int) -> dict:
     """Get the settings for the saved model."""
-    saved_setting = get_organisation_settings(org_id, SystemSettingsKey.MODEL_VENDOR)
+    saved_setting = get_organisation_settings(org_id, SystemSettingsKey.MODEL_COLLECTION)
 
-    return LLM_MODELS[saved_setting] if saved_setting else LLM_MODELS[ModelVendors.AZURE_OPENAI]
-
-
-def set_selected_model(org_id: int, model_vendor: ModelVendors) -> None:
-    """Save the selected model."""
-    update_organisation_settings(SystemSettingsKey.MODEL_VENDOR.name, model_vendor.value, org_id)
-
-    log.debug("Selected Model: %s", model_vendor)
+    return LLM_MODEL_COLLECTIONS[saved_setting] if saved_setting else LLM_MODEL_COLLECTIONS[ModelVendor.AZURE_OPENAI]
 
 
-def list_available_models() -> List[str]:
+def list_available_models() -> dict:
     """List available models."""
-    return list(LLM_MODELS.keys())
+    return {k: v["name"] for k, v in LLM_MODEL_COLLECTIONS.items()}
