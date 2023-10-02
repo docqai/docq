@@ -18,6 +18,7 @@ from llama_index import (
 )
 from llama_index.chat_engine import SimpleChatEngine
 from llama_index.chat_engine.types import ChatMode
+from llama_index.embeddings import OptimumEmbedding
 from llama_index.indices.composability import ComposableGraph
 from llama_index.node_parser import SimpleNodeParser
 from llama_index.node_parser.extractors import (
@@ -31,12 +32,12 @@ from llama_index.node_parser.extractors import (
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
 from ..model_selection.main import (
+    LLM_MODEL_COLLECTIONS,
     ModelCapability,
     ModelUsageSettingsCollection,
     ModelVendor,
-    get_saved_model_settings_collection,
 )
-from .store import get_index_dir
+from .store import get_index_dir, get_models_dir
 
 # PROMPT_CHAT_SYSTEM = """
 # You are an AI assistant helping a human to find information.
@@ -73,6 +74,16 @@ ERROR: {error}
 
 # def _get_model() -> OpenAI:
 #     return OpenAI(temperature=0, model_name="text-davinci-003")
+
+
+def _init_local_models() -> None:
+    """Initialize local models."""
+    for model_collection in LLM_MODEL_COLLECTIONS.values():
+        for model_usage_settings in model_collection.model_usage_settings.values():
+            if model_usage_settings.model_vendor == ModelVendor.HUGGINGFACE_OPTIMUM_LOCAL:
+                OptimumEmbedding.create_and_save_optimum_model(
+                    model_usage_settings.model_name, get_models_dir(model_usage_settings.model_name)
+                )
 
 
 def _get_chat_model(model_settings_collection: ModelUsageSettingsCollection) -> ChatOpenAI:
@@ -123,6 +134,8 @@ def _get_embed_model(model_settings_collection: ModelUsageSettingsCollection) ->
                 ),
                 embed_batch_size=1,
             )
+        elif embedding_model_settings.model_vendor == ModelVendor.HUGGINGFACE_OPTIMUM_LOCAL:
+            embedding_llm = OptimumEmbedding(folder_name=get_models_dir(embedding_model_settings.model_name))
         else:
             # defaults
             embedding_llm = LangchainEmbedding(OpenAIEmbeddings())

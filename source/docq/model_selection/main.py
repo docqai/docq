@@ -1,13 +1,18 @@
-"""Model selection for Docq."""
+"""Model selection and usage settings for Docq.
+
+We potentially need to support multiple versions and configurations for models from a given vendor and also different combinations of models.
+The ModeUsageSettings class is the building block.
+We might have multiple structures to group multiple models together.
+Model collections grouped by vendor and model capability is just one way to structure.
+"""
 
 import logging as log
 from dataclasses import dataclass
 from enum import Enum
-from typing import List
+from typing import Dict
 
 from ..config import SystemSettingsKey
-from ..manage_settings import get_organisation_settings, update_organisation_settings
-from typing import Dict
+from ..manage_settings import get_organisation_settings
 
 
 class ModelVendor(str, Enum):
@@ -18,6 +23,7 @@ class ModelVendor(str, Enum):
     AZUREML = "AzureML"
     AWS_BEDROCK = "AWS Bedrock"
     AWS_SAGEMAKER = "AWS Sagemaker"
+    HUGGINGFACE_OPTIMUM_LOCAL = "HuggingFace Optimum Local"
 
 
 class ModelCapability(str, Enum):
@@ -57,46 +63,6 @@ class ModelUsageSettingsCollection:
     model_usage_settings: Dict[ModelCapability, ModelUsageSettings]
 
 
-# LLM_MODELS = {
-#     "OPENAI_CHAT": (["gpt-3.5-turbo", "gpt-4"], range(0, 2)),
-#     "OPENAI": (["text-davinci-003", "text-davinci-002", "code-davinci-002"], range(0, 2)),
-#     "AZURE_OPENAI_CHAT": (["gpt-3.5-turbo", "gpt-4"], range(0, 2)),
-#     "AZURE_OPENAI": (["text-davinci-003", "text-davinci-002", "code-davinci-002"], range(0, 2)),
-# }
-
-
-# We potentially need to support multiple versions and configurations for models form a given vendor
-# The top level key uniquely identifies a model configuration
-# At the second level key is the model capability
-LLM_MODEL_COLLECTIONS2 = {
-    "openai_latest": {
-        "name": "OpenAI Latest",
-        ModelCapability.CHAT: ModelUsageSettings(
-            model_vendor=ModelVendor.OPENAI, model_name="gpt-3.5-turbo", model_capability=ModelCapability.CHAT
-        ),
-        ModelCapability.EMBEDDING: ModelUsageSettings(
-            model_vendor=ModelVendor.OPENAI,
-            model_name="text-embedding-ada-002",
-            model_capability=ModelCapability.EMBEDDING,
-        ),
-    },
-    "azure_openai_latest": {
-        "name": "Azure OpenAI Latest",
-        ModelCapability.CHAT: ModelUsageSettings(
-            model_vendor=ModelVendor.AZURE_OPENAI,
-            model_name="gpt-35-turbo",
-            model_deployment_name="gpt-35-turbo",
-            model_capability=ModelCapability.CHAT,
-        ),
-        ModelCapability.EMBEDDING: ModelUsageSettings(
-            model_vendor=ModelVendor.AZURE_OPENAI,
-            model_name="text-embedding-ada-002",
-            model_deployment_name="text-embedding-ada-002",
-            model_capability=ModelCapability.EMBEDDING,
-        ),
-    },
-}
-
 LLM_MODEL_COLLECTIONS = {
     "openai_latest": ModelUsageSettingsCollection(
         name="OpenAI Latest",
@@ -126,6 +92,23 @@ LLM_MODEL_COLLECTIONS = {
                 model_vendor=ModelVendor.AZURE_OPENAI,
                 model_name="text-embedding-ada-002",
                 model_deployment_name="text-embedding-ada-002",
+                model_capability=ModelCapability.EMBEDDING,
+            ),
+        },
+    ),
+    "azure_openai_with_local_embedding": ModelUsageSettingsCollection(
+        name="Azure OpenAI wth Local Embedding",
+        key="azure_openai_with_local_embedding",
+        model_usage_settings={
+            ModelCapability.CHAT: ModelUsageSettings(
+                model_vendor=ModelVendor.AZURE_OPENAI,
+                model_name="gpt-35-turbo",
+                model_deployment_name="gpt-35-turbo",
+                model_capability=ModelCapability.CHAT,
+            ),
+            ModelCapability.EMBEDDING: ModelUsageSettings(
+                model_vendor=ModelVendor.HUGGINGFACE_OPTIMUM_LOCAL,
+                model_name="BAAI/bge-small-en-v1.5",
                 model_capability=ModelCapability.EMBEDDING,
             ),
         },

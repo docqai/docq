@@ -9,7 +9,7 @@ from . import (
     manage_user_groups,
     manage_users,
 )
-from .support import auth_utils, store
+from .support import auth_utils, llm, store
 
 
 def _config_logging() -> None:
@@ -30,4 +30,5 @@ def init() -> None:
     manage_organisations._init_default_org_if_necessary()
     manage_users._init_admin_if_necessary()
     auth_utils.init_session_cache()
+    llm._init_local_models()
     logging.info("Docq initialized")
