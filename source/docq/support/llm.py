@@ -2,6 +2,7 @@
 
 import logging as log
 import os
+from docq.model_selection.main import LLM_MODELS, ModelVendors, get_selected_model
 
 from langchain.chat_models import AzureChatOpenAI, ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
@@ -65,40 +66,46 @@ Make sure your response is in the first person context
 ERROR: {error}
 """
 
-# TODO: move to using a data class for llm_model and settings.
-is_azure_openai = os.environ.get("OPENAI_API_TYPE") == "azure"
-is_openai = os.environ.get("OPENAI_API_TYPE") != "azure"
 
 # def _get_model() -> OpenAI:
 #     return OpenAI(temperature=0, model_name="text-davinci-003")
 
 
 def _get_chat_model() -> ChatOpenAI:
-    if is_azure_openai:
-        model = AzureChatOpenAI(
-            engine="gpt-35-turbo", deployment_name="gpt-35-turbo", model="gpt-35-turbo", temperature=0.0
-        )
-        log.debug("Using Azure OpenAI because env `OPENAI_API_TYPE=azure`")
-    else:
-        model = ChatOpenAI(temperature=0, model="gpt-3.5-turbo")
-        log.debug("Defaulting to using OpenAI because env `OPENAI_API_TYPE` is not set")
-    return model
+    selected_model = get_selected_model()
+
+    if selected_model and selected_model["CHAT"]:
+        if selected_model["CHAT"].model_vendor == ModelVendors.AZURE_OPENAI:
+            model = AzureChatOpenAI(
+                temperature=selected_model["CHAT"].temperature,
+                model=selected_model["CHAT"].model_name,
+                deployment_name=selected_model["CHAT"].model_deployment_name,
+            )
+            log.info("Chat model: using Azure OpenAI")
+        elif selected_model["CHAT"].model_vendor == ModelVendors.OPENAI:
+            model = ChatOpenAI(temperature=selected_model["CHAT"].temperature, model=selected_model["CHAT"].model_name)
+            log.info("Chat model: using OpenAI.")
+        return model
 
 
 def _get_embed_model() -> LangchainEmbedding:
-    if is_azure_openai:  # noqa: SIM114
-        embedding_llm = LangchainEmbedding(
-            OpenAIEmbeddings(model=OpenAIEmbeddingModelType.TEXT_EMBED_ADA_002, deployment="text-embedding-ada-002"),
-            embed_batch_size=1,
-        )
-    elif is_openai:
-        embedding_llm = LangchainEmbedding(
-            OpenAIEmbeddings(model=OpenAIEmbeddingModelType.TEXT_EMBED_ADA_002, deployment="text-embedding-ada-002"),
-            embed_batch_size=1,
-        )
-    else:
-        # defaults
-        embedding_llm = LangchainEmbedding(OpenAIEmbeddings())
+    selected_model = get_selected_model()
+    if selected_model and selected_model["EMBED"]:
+        if selected_model["EMBED"].model_vendor == ModelVendors.AZURE_OPENAI:
+            embedding_llm = LangchainEmbedding(
+                OpenAIEmbeddings(
+                    model=selected_model["EMBED"].model_name, deployment=selected_model["EMBED"].model_deployment_name
+                ),
+                embed_batch_size=1,
+            )
+        elif selected_model["EMBED"].model_vendor == ModelVendors.OPENAI:
+            embedding_llm = LangchainEmbedding(
+                OpenAIEmbeddings(model=selected_model["EMBED"].model_name),
+                embed_batch_size=1,
+            )
+        else:
+            # defaults
+            embedding_llm = LangchainEmbedding(OpenAIEmbeddings())
     return embedding_llm
 
 
@@ -118,6 +125,7 @@ def _get_service_context() -> ServiceContext:
     log.debug(
         "EXPERIMENTS['INCLUDE_EXTRACTED_METADATA']['enabled']: %s", EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]
     )
+
     if EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]:
         return ServiceContext.from_defaults(
             llm_predictor=_get_llm_predictor(),
