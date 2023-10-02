@@ -706,16 +706,16 @@ def system_settings_ui() -> None:
 
         log.debug("saved model: %s", saved_model)
         list_keys = list(available_models.keys())
-        selected_model_index = list_keys.index(saved_model) if saved_model and list_keys.count(saved_model) > 0 else 0
+        saved_model_index = list_keys.index(saved_model) if saved_model and list_keys.count(saved_model) > 0 else 0
 
-        st.selectbox(
+        selected_model = st.selectbox(
             label="Default Model",
             options=available_models.items(),
             format_func=lambda x: x[1],
-            index=selected_model_index,
+            index=saved_model_index,
             key=f"system_settings_default_{SystemSettingsKey.MODEL_COLLECTION.name}",
         )
-        selected_model_settings: ModelUsageSettingsCollection = get_model_settings_collection(saved_model)
+        selected_model_settings: ModelUsageSettingsCollection = get_model_settings_collection(selected_model[0])
 
         with st.expander("Model details"):
             for key, model_settings in selected_model_settings.model_usage_settings.items():
@@ -726,7 +726,10 @@ def system_settings_ui() -> None:
                 st.write(f"- Deployment Name: `{model_settings.model_deployment_name}`")
                 st.divider()
 
-        st.form_submit_button(label="Save", on_click=handle_update_system_settings)
+        st.form_submit_button(
+            label="Save",
+            on_click=handle_update_system_settings,
+        )
 
 
 def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: str, configs: dict = None) -> None:
