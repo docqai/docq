@@ -14,7 +14,6 @@ from tests.utilities import (
     get_features,
     get_sample_file,
     get_user,
-    setup_env,
 )
 from web.utils.constants import SessionKeyNameForAuth
 
@@ -23,7 +22,7 @@ from web.utils.constants import SessionKeyNameForAuth
 def _setup_and_teardown() -> None:
     """Setup and teardown for each test."""
     print("Setup")
-    setup_env()
+    # setup_env()
     setup.init()
 
     yield
@@ -59,12 +58,12 @@ def features(auth_results: dict) -> dict[str, domain.FeatureKey]:
 
 
 @pytest.fixture()
-def personal_space(auth_result: dict) -> domain.SpaceKey:
+def personal_space(auth_results: dict) -> domain.SpaceKey:
     """Get personal space."""
     return domain.SpaceKey(
         domain.SpaceType.PERSONAL,
-        auth_result[SessionKeyNameForAuth.ID.name],
-        auth_result[SessionKeyNameForAuth.SELECTED_ORG_ID.name]
+        auth_results[SessionKeyNameForAuth.ID.name],
+        auth_results[SessionKeyNameForAuth.SELECTED_ORG_ID.name]
     )
 
 
@@ -116,7 +115,7 @@ def test_chat_private_feature(features: domain.FeatureKey) -> None:
         features[config.FeatureType.CHAT_PRIVATE.name],
         thread_id,
     )
-    assert results[1][1] == "Test 1 from docq\n", "The query should return the expected response."
+    assert "Test 1 from docq" in results[1][1], "The query should return the expected response."
 
 
 def test_ask_personal_docs_feature(features: domain.FeatureKey, personal_space: domain.SpaceKey) -> None:

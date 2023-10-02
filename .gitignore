@@ -187,3 +187,6 @@ docker.env
 # ignore docs dynamically generated at build time.
 /docs/api
 /docs/tests
+
+# ignore pytest setup file
+pytest-integration.ini

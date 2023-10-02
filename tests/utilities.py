@@ -10,6 +10,7 @@ TEST_FIXTURES = os.environ.get("TEST_FIXTURES_PATH", "tests/integration/fixtures
 DOCQ_DATA_KEY = config.ENV_VAR_DOCQ_DATA
 TEST_FILE_PATH = "misc/test_files/integration_test.pdf"
 TEST_FILE_NAME = "integration_test.pdf"
+TEST_ENV_FILE_PATH = "tests/integration/.env"
 
 
 def get_user() -> dict:
@@ -26,10 +27,21 @@ def get_sample_file() -> bytes:
 
 def setup_env() -> None:
     """Get test env."""
-    with open(f"{TEST_FIXTURES}/env_configs.json", "r") as f:
-        env = json.load(f)
-        for key, value in env.items():
-            os.environ[key] = value
+    if os.path.exists(TEST_ENV_FILE_PATH):
+        with open(TEST_ENV_FILE_PATH, "r") as f:
+            for line in f.readlines():
+                print(f"\x1b[32mDebug env line: {line}\x1b[0m")
+                key, value = line.split("=")
+                print(f"\x1b[32mDebug env setting key: {key}, to value:{value}\x1b[0m")
+                os.environ[key.strip()] = value.strip()
+    # assert os.environ.get(DOCQ_DATA_KEY), f"Environment variable {DOCQ_DATA_KEY} not set."
+    # assert os.environ.get(config.ENV_VAR_OPENAI_API_KEY), f"Environment variable {config.ENV_VAR_OPENAI_API_KEY} not set."
+    # assert os.environ.get(config.ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY), f"Environment variable {config.ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY} not set."
+    # assert "test" in os.environ[DOCQ_DATA_KEY].lower(), f"""
+    # Environment variable {DOCQ_DATA_KEY} should contain 'test' in its value.
+    # e.g. {DOCQ_DATA_KEY}=/path/to/docqai/test/data or {DOCQ_DATA_KEY}=/path/to/test-data
+    # This is to prevent accidental deletion of data in production
+    # """
 
 
 def get_features(user_id: int) -> dict[str, domain.FeatureKey]:
