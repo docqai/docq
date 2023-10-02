@@ -3,7 +3,10 @@
 import logging as log
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional
+from typing import List
+
+from ..config import SystemSettingsKey
+from ..manage_settings import get_organisation_settings, update_organisation_settings
 
 
 class ModelVendors(str, Enum):
@@ -50,6 +53,9 @@ class ModelUsageSettings:
 # }
 
 
+# We potentially need to support multiple versions and configurations for models form a given vendor
+# The top level key uniquely identifies a model configuration
+# At the second level key is the model capability
 LLM_MODELS = {
     "openai": {
         "CHAT": ModelUsageSettings(
@@ -82,18 +88,20 @@ LLM_MODELS = {
 # eventually model setting need to be associated with each feature that's interacts with the model
 
 
-global SELECTED_MODEL
+def get_selected_model_settings(org_id: int) -> dict:
+    """Get the settings for the saved model."""
+    saved_setting = get_organisation_settings(org_id, SystemSettingsKey.MODEL_VENDOR.value)
 
-SELECTED_MODEL = LLM_MODELS[ModelVendors.AZURE_OPENAI]
-
-
-def get_selected_model() -> dict:
-    """Get the selected model."""
-    return SELECTED_MODEL
+    return LLM_MODELS[saved_setting] if saved_setting else LLM_MODELS[ModelVendors.AZURE_OPENAI]
 
 
-def set_selected_model(model_vendor: ModelVendors) -> None:
-    """Set the selected model."""
-    # NOTE: this to be replaced with DB persistance
-    SELECTED_MODEL = LLM_MODELS[model_vendor]  # noqa: N806
-    log.debug("SELECTED_MODEL: %s", SELECTED_MODEL)
+def set_selected_model(org_id: int, model_vendor: ModelVendors) -> None:
+    """Save the selected model."""
+    update_organisation_settings(org_id, SystemSettingsKey.MODEL_VENDOR.name, model_vendor.value)
+
+    log.debug("Selected Model: %s", model_vendor)
+
+
+def list_available_models() -> List[str]:
+    """List available models."""
+    return list(LLM_MODELS.keys())

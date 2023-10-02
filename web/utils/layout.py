@@ -13,6 +13,7 @@ from docq.support.auth_utils import (
     reset_cache_and_cookie_auth_session,
     verify_cookie_hmac_session_id,
 )
+from docq.model_selection.main import list_available_models
 from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
@@ -683,6 +684,7 @@ def chat_settings_ui(feature: FeatureKey) -> None:
 def system_settings_ui() -> None:
     """System settings."""
     settings = get_system_settings()
+
     with st.form(key="system_settings"):
         st.multiselect(
             SystemSettingsKey.ENABLED_FEATURES.value,
@@ -693,6 +695,15 @@ def system_settings_ui() -> None:
             else [f for f in FeatureType],
             key=f"system_settings_{SystemSettingsKey.ENABLED_FEATURES.name}",
         )
+
+        available_models = list_available_models()
+        st.selectbox(
+            label="Default Model",
+            options=available_models,
+            index=0,
+            key=f"system_settings_default_{SystemSettingsKey.MODEL_VENDOR.name}",
+        )
+
         st.form_submit_button(label="Save", on_click=handle_update_system_settings)
 
 

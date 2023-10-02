@@ -3,7 +3,6 @@
 import logging as log
 import os
 
-from docq.model_selection.main import ModelVendors, get_selected_model
 from langchain.chat_models import AzureChatOpenAI, ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.schema import BaseMessage
@@ -31,6 +30,7 @@ from llama_index.node_parser.extractors import (
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
+from ..model_selection.main import ModelVendors, get_selected_model_settings
 from .store import get_index_dir
 
 # PROMPT_CHAT_SYSTEM = """
@@ -71,7 +71,7 @@ ERROR: {error}
 
 
 def _get_chat_model() -> ChatOpenAI:
-    selected_model = get_selected_model()
+    selected_model = get_selected_model_settings()
 
     if selected_model and selected_model["CHAT"]:
         if selected_model["CHAT"].model_vendor == ModelVendors.AZURE_OPENAI:
@@ -96,7 +96,7 @@ def _get_chat_model() -> ChatOpenAI:
 
 
 def _get_embed_model() -> LangchainEmbedding:
-    selected_model = get_selected_model()
+    selected_model = get_selected_model_settings()
     if selected_model and selected_model["EMBED"]:
         if selected_model["EMBED"].model_vendor == ModelVendors.AZURE_OPENAI:
             embedding_llm = LangchainEmbedding(

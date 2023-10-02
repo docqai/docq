@@ -25,6 +25,7 @@ from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.support.auth_utils import get_cache_auth_session, reset_cache_and_cookie_auth_session, set_cache_auth_session
+from docq.model_selection.main import get_selected_model_settings
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -520,6 +521,12 @@ def get_system_settings() -> dict:
     return manage_settings.get_organisation_settings(org_id=current_org_id)
 
 
+def handle_get_selected_model_settings() -> str:
+    """Handle getting the settings for the saved model."""
+    current_org_id = get_selected_org_id()
+    return get_selected_model_settings(current_org_id)
+
+
 def get_enabled_features() -> list[domain.FeatureKey]:
     current_org_id = get_selected_org_id()
     return manage_settings.get_organisation_settings(
@@ -534,6 +541,9 @@ def handle_update_system_settings() -> None:
         {
             config.SystemSettingsKey.ENABLED_FEATURES.name: [
                 f.name for f in st.session_state[f"system_settings_{config.SystemSettingsKey.ENABLED_FEATURES.name}"]
+            ],
+            config.SystemSettingsKey.MODEL_VENDOR.name: st.session_state[
+                f"system_settings_default_{config.SystemSettingsKey.MODEL_VENDOR.name}"
             ],
         },
         org_id=current_org_id,
