@@ -70,8 +70,8 @@ ERROR: {error}
 #     return OpenAI(temperature=0, model_name="text-davinci-003")
 
 
-def _get_chat_model() -> ChatOpenAI:
-    selected_model = get_selected_model_settings()
+def _get_chat_model(org_id: int) -> ChatOpenAI:
+    selected_model = get_selected_model_settings(org_id)
 
     if selected_model and selected_model["CHAT"]:
         if selected_model["CHAT"].model_vendor == ModelVendors.AZURE_OPENAI:
@@ -95,8 +95,8 @@ def _get_chat_model() -> ChatOpenAI:
         return model
 
 
-def _get_embed_model() -> LangchainEmbedding:
-    selected_model = get_selected_model_settings()
+def _get_embed_model(org_id: int) -> LangchainEmbedding:
+    selected_model = get_selected_model_settings(org_id)
     if selected_model and selected_model["EMBED"]:
         if selected_model["EMBED"].model_vendor == ModelVendors.AZURE_OPENAI:
             embedding_llm = LangchainEmbedding(
@@ -124,8 +124,8 @@ def _get_embed_model() -> LangchainEmbedding:
     return embedding_llm
 
 
-def _get_llm_predictor() -> LLMPredictor:
-    return LLMPredictor(llm=_get_chat_model())
+def _get_llm_predictor(org_id: int) -> LLMPredictor:
+    return LLMPredictor(llm=_get_chat_model(org_id))
 
 
 def _get_default_storage_context() -> StorageContext:
@@ -136,21 +136,21 @@ def _get_storage_context(space: SpaceKey) -> StorageContext:
     return StorageContext.from_defaults(persist_dir=get_index_dir(space))
 
 
-def _get_service_context() -> ServiceContext:
+def _get_service_context(org_id: int) -> ServiceContext:
     log.debug(
         "EXPERIMENTS['INCLUDE_EXTRACTED_METADATA']['enabled']: %s", EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]
     )
 
     if EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]:
         return ServiceContext.from_defaults(
-            llm_predictor=_get_llm_predictor(),
+            llm_predictor=_get_llm_predictor(org_id),
             node_parser=_get_node_parser(),
-            embed_model=_get_embed_model(),
+            embed_model=_get_embed_model(org_id),
         )
     else:
         return ServiceContext.from_defaults(
-            llm_predictor=_get_llm_predictor(),
-            embed_model=_get_embed_model(),
+            llm_predictor=_get_llm_predictor(org_id),
+            embed_model=_get_embed_model(org_id),
         )
 
 
@@ -176,10 +176,13 @@ def _get_node_parser() -> SimpleNodeParser:
 
 def _load_index_from_storage(space: SpaceKey) -> GPTVectorStoreIndex:
     # set service context explicitly for multi model compatibility
-    return load_index_from_storage(storage_context=_get_storage_context(space), service_context=_get_service_context())
+
+    return load_index_from_storage(
+        storage_context=_get_storage_context(space), service_context=_get_service_context(space.org_id)
+    )
 
 
-def run_chat(input_: str, history: str) -> BaseMessage:
+def run_chat(input_: str, history: str, org_id: int) -> BaseMessage:
     """Chat directly with a LLM with history."""
     # prompt = ChatPromptTemplate.from_messages(
     #     [
@@ -188,7 +191,7 @@ def run_chat(input_: str, history: str) -> BaseMessage:
     #     ]
     # )
     # output = _get_chat_model()(prompt.format_prompt(history=history, input=input_).to_messages())
-    engine = SimpleChatEngine.from_defaults(service_context=_get_service_context())
+    engine = SimpleChatEngine.from_defaults(service_context=_get_service_context(org_id))
     output = engine.chat(input_)
 
     log.debug("(Chat) Q: %s, A: %s", input_, output)
@@ -256,7 +259,7 @@ def run_ask(input_: str, history: str, space: SpaceKey = None, spaces: list[Spac
         # No additional spaces i.e. likely to be against a user's documents in their personal space.
         if space is None:
             log.debug("runs_ask(): space is None. executing run_chat(), not ASK.")
-            output = run_chat(input_, history)
+            output = run_chat(input_, history, space.org_id)
         else:
             index = _load_index_from_storage(space)
             engine = index.as_chat_engine(

@@ -161,7 +161,7 @@ def query(
     history = _retrieve_last_n_history(feature, thread_id)
     log.debug("is_chat: %s", is_chat)
     try:
-        response = run_chat(input_, history) if is_chat else run_ask(input_, history, space, spaces)
+        response = run_chat(input_, history, space.org_id) if is_chat else run_ask(input_, history, space, spaces)
         log.debug("Response: %s", response)
 
     except Exception as e:

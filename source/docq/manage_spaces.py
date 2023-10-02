@@ -52,10 +52,10 @@ def _init() -> None:
         connection.commit()
 
 
-def _create_index(documents: List[Document]) -> GPTVectorStoreIndex:
+def _create_index(documents: List[Document], org_id: int) -> GPTVectorStoreIndex:
     # Use default storage and service context to initialise index purely for persisting
     return GPTVectorStoreIndex.from_documents(
-        documents, storage_context=_get_default_storage_context(), service_context=_get_service_context()
+        documents, storage_context=_get_default_storage_context(), service_context=_get_service_context(org_id)
     )
 
 
@@ -71,7 +71,7 @@ def reindex(space: SpaceKey) -> None:
         log.debug("get datasource instance")
         documents = SpaceDataSources[ds_type].value.load(space, ds_configs)
         log.debug("docs to index, %s", len(documents))
-        index = _create_index(documents)
+        index = _create_index(documents, space.org_id)
         _persist_index(index, space)
     except Exception as e:
         log.exception("Error indexing space %s: %s", space, e)

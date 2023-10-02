@@ -90,14 +90,14 @@ LLM_MODELS = {
 
 def get_selected_model_settings(org_id: int) -> dict:
     """Get the settings for the saved model."""
-    saved_setting = get_organisation_settings(org_id, SystemSettingsKey.MODEL_VENDOR.value)
+    saved_setting = get_organisation_settings(org_id, SystemSettingsKey.MODEL_VENDOR)
 
     return LLM_MODELS[saved_setting] if saved_setting else LLM_MODELS[ModelVendors.AZURE_OPENAI]
 
 
 def set_selected_model(org_id: int, model_vendor: ModelVendors) -> None:
     """Save the selected model."""
-    update_organisation_settings(org_id, SystemSettingsKey.MODEL_VENDOR.name, model_vendor.value)
+    update_organisation_settings(SystemSettingsKey.MODEL_VENDOR.name, model_vendor.value, org_id)
 
     log.debug("Selected Model: %s", model_vendor)
 
