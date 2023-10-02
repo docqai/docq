@@ -15,7 +15,7 @@ from streamlit.web.server.websocket_headers import _get_websocket_headers
 
 from ..config import ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY, SESSION_COOKIE_NAME
 
-TTL_HOURS = 4
+TTL_HOURS = 1
 TTL_SEC = 60 * 60 * TTL_HOURS
 CACHE_CONFIG = (1024 * 1, TTL_SEC)
 AUTH_KEY = Fernet.generate_key()
