@@ -1,9 +1,9 @@
 [tool.poetry]
 name = "docq"
-version = "0.1.0"
+version = "0.2.0"
 description = "Docq"
-authors = ["Docq.AI Team <support@docq.ai>"]
-maintainers = ["Docq.AI Team <support@docq.ai>"]
+authors = ["Docq.AI Team <support@docqai.com>"]
+maintainers = ["Docq.AI Team <support@docqai.com>"]
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/docqai/docq"
 documentation = "https://github.com/docqai/docq/tree/main/docs/api/"
