@@ -1,5 +1,0 @@
-[pytest]
-env =
-    DOCQ_DATA=./.persisted-test-integration/
-    OPENAI_API_KEY=YOUR_OPEN_AI_KEY
-    DOCQ_COOKIE_HMAC_SECRET_KEY=32_char_secret_used_to_encrypt
