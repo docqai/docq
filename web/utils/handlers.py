@@ -44,6 +44,7 @@ from .sessions import (
     get_selected_org_id,
     get_settings_session,
     get_username,
+    is_current_user_selected_org_admin,
     reset_session_state,
     set_auth_session,
     set_chat_session,
@@ -160,17 +161,43 @@ def handle_logout() -> None:
 
 
 def handle_create_user() -> int:
+    """Handle create user. If the user already exists, just adds the user to the currently selected org else create and add.
+
+    Only org admins are allowed to create users.
+
+    Return:
+        int: The user id.
+        PermissionError: If the current user is not an org admin of the currently selected org.
+    """
+    if not is_current_user_selected_org_admin():
+        raise PermissionError(
+            "Only org admins are allowed to create users. The current user is not an org admin of the currently selected org."
+        )
+
     current_org_id = get_selected_org_id()
-    result = manage_users.create_user(
-        st.session_state["create_user_username"],
-        st.session_state["create_user_password"],
-        st.session_state["create_user_fullname"],
-        False,
-        False,
-        current_org_id,
-    )
-    log.info("Create user with id: %s", result)
-    return result
+
+    create_user_username = st.session_state["create_user_username"]
+    user = manage_users.get_user(create_user_username)
+
+    if user:
+        # just add to org
+        user_added = manage_users.add_organisation_member(current_org_id, user[0])
+        if not user_added:
+            raise Exception("Failed to add user to org")
+        user_id = user[0]
+        log.info("User already exists, so just added to org_id: %s", current_org_id)
+    else:
+        # create a user and add to org
+        user_id = manage_users.create_user(
+            create_user_username,
+            st.session_state["create_user_password"],
+            st.session_state["create_user_fullname"],
+            False,
+            False,
+            current_org_id,
+        )
+        log.info("Create user with id: %s and added to org_id: %s", user_id, current_org_id)
+    return user_id
 
 
 def handle_update_user(id_: int) -> bool:
