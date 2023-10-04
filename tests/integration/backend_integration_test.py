@@ -5,7 +5,11 @@ from contextlib import suppress
 from shutil import rmtree
 
 import pytest
-from docq import config, domain, manage_documents, manage_users, run_queries, setup
+from docq import config, domain, manage_documents, manage_settings, manage_users, run_queries, setup
+from docq.model_selection.main import (
+    ModelUsageSettingsCollection,
+    get_saved_model_settings_collection,
+)
 
 from tests.utilities import (
     DOCQ_DATA_KEY,
@@ -80,6 +84,30 @@ def _upload_test_file(sample_file: bytes, personal_space: domain.SpaceKey) -> No
     manage_documents.upload(TEST_FILE_NAME, sample_file, personal_space)
 
 
+# Update organisation settings
+@pytest.fixture(autouse=True)
+def _update_organisation_settings(auth_results: dict) -> None:
+    """Update organisation settings."""
+    manage_settings.update_organisation_settings(
+        {
+            config.SystemSettingsKey.ENABLED_FEATURES.name: [
+                f.name for f in config.FeatureType
+            ],
+            config.SystemSettingsKey.MODEL_COLLECTION.name: "openai_latest",
+        },
+        org_id=auth_results[SessionKeyNameForAuth.SELECTED_ORG_ID.name],
+    )
+
+
+# Get saved model settings
+@pytest.fixture()
+def saved_model_settings(auth_results: dict) -> ModelUsageSettingsCollection:
+    """Get saved model settings."""
+    return get_saved_model_settings_collection(
+        auth_results[SessionKeyNameForAuth.SELECTED_ORG_ID.name]
+    )
+
+
 # Run tests
 def test_user_exists(test_user: dict) -> None:
     """Test that user exists."""
@@ -93,7 +121,7 @@ def test_the_sample_file_exists(personal_space: domain.SpaceKey) -> None:
     assert file.endswith(TEST_FILE_NAME), "The test file should have the correct name."
 
 
-def test_chat_private_feature(features: domain.FeatureKey) -> None:
+def test_chat_private_feature(features: domain.FeatureKey, saved_model_settings: ModelUsageSettingsCollection) -> None:
     """Run a query against the private chat feature."""
     prompt = """
     You are an AI designed to help humans with their daily activities.
@@ -114,11 +142,16 @@ def test_chat_private_feature(features: domain.FeatureKey) -> None:
         prompt.format(input="Test 1"),
         features[config.FeatureType.CHAT_PRIVATE.name],
         thread_id,
+        model_settings_collection=saved_model_settings,
     )
     assert "Test 1 from docq" in results[1][1], "The query should return the expected response."
 
 
-def test_ask_personal_docs_feature(features: domain.FeatureKey, personal_space: domain.SpaceKey) -> None:
+def test_ask_personal_docs_feature(
+    features: domain.FeatureKey,
+    personal_space: domain.SpaceKey,
+    saved_model_settings: ModelUsageSettingsCollection
+    ) -> None:
     """Run a query against the personal ask feature."""
     prompt = """
     What is the official docq website?
@@ -130,6 +163,7 @@ def test_ask_personal_docs_feature(features: domain.FeatureKey, personal_space: 
         prompt,
         features[config.FeatureType.ASK_PERSONAL.name],
         thread_id,
+        model_settings_collection=saved_model_settings,
         space=personal_space,
     )
     ai_response: str = results[1][1]

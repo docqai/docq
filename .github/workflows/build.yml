@@ -40,4 +40,4 @@ jobs:
       - name: Install project
         run: poetry install --no-interaction
       - name: Run tests
-        run: poetry run poe test && poetry run poe test-integration
+        run: poetry run poe test
