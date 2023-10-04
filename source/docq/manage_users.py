@@ -137,6 +137,39 @@ def authenticate(username: str, password: str) -> Tuple[int, str, bool, str]:
             return None
 
 
+def get_user(user_id: int = None, username: str = None) -> Tuple[int, str, str, bool, bool, datetime, datetime] | None:
+    """Get a user.
+
+    Args:
+        user_id (int): The user id. Default to None. If not `None` takes precedence over username.
+        username (str): The username. Default to None.
+
+    Returns:
+        If no match is found return `None` else return a tuple with user data as follows:
+        tuple[int, str, str, bool, bool, datetime, datetime]: The user [user_id, username, fullname, super_admin, archived, created_at, updated_at].
+    """
+    log.debug("Getting user: %s, %s", user_id, username)
+    query = "SELECT id, username, fullname, super_admin, archived, created_at, updated_at FROM users WHERE"
+    params = []
+
+    if user_id:
+        query += " id = ?"
+        params.append(user_id)
+    elif username:
+        query += " username = ?"
+        params.append(username)
+    else:
+        raise ValueError("Either user_id or username must be provided")
+
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        return cursor.execute(
+            query,
+            tuple(params),
+        ).fetchone()
+
+
 def list_users(username_match: str = None) -> List[Tuple[int, str, str, bool, bool, datetime, datetime]]:
     """List users.
 
@@ -293,7 +326,7 @@ def create_user(
     log.debug("Creating user: %s", username)
     hashed_password = PH.hash(password)
 
-    rowid = None
+    user_id = None
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
@@ -308,28 +341,32 @@ def create_user(
                     super_admin,
                 ),
             )
-            rowid = cursor.lastrowid
+            user_id = cursor.lastrowid
 
             if org_id:
-                log.info("Adding user %s to org %s", rowid, org_id)
+                log.info("Adding user %s to org %s", user_id, org_id)
                 cursor.execute(
                     "INSERT INTO org_members (org_id, user_id, org_admin) VALUES (?, ?, ?)",
-                    (org_id, rowid, org_admin),
+                    (org_id, user_id, org_admin),
                 )
+
+            first_name = fullname.split(" ")[0]
+            manage_organisations.create_organisation(f"{first_name} Personal Org", user_id)
+
             connection.commit()
-            log.info("Created user %s", rowid)
+            log.info("Created user %s", user_id)
         except Exception as e:
             connection.rollback()
             log.error("Error creating user: %s", e)
 
     # Reindex the user's space for the first time
-    if rowid:
+    if user_id:
         try:
-            _reindex_user_docs(user_id=rowid, org_id=org_id)
+            _reindex_user_docs(user_id=user_id, org_id=org_id)
         except Exception as e:
             log.error("Error reindexing user docs: %s", e)
 
-    return rowid
+    return user_id
 
 
 def reset_password(id_: int, password: str) -> bool:
@@ -384,17 +421,29 @@ def archive_user(id_: int) -> bool:
 
 
 def add_organisation_member(org_id: int, user_id: int, org_admin: bool = False) -> bool:
-    """Add a user to an org as a member."""
+    """Add a user to an org as a member.
+
+    Return:
+        bool: True if the user is added to the org successfully, False otherwise.
+    """
     log.debug("Adding user: %s to org: %s", user_id, org_id)
+    success = False
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(
-            "INSERT INTO org_members (org_id, user_id, org_admin) VALUES (?, ?, ?)",
-            (org_id, user_id, org_admin),
-        )
-        connection.commit()
-        return True
+        try:
+            cursor.execute(
+                "INSERT INTO org_members (org_id, user_id, org_admin) VALUES (?, ?, ?)",
+                (org_id, user_id, org_admin),
+            )
+            connection.commit()
+            success = True
+        except Exception as e:
+            success = False
+            log.error(
+                "add_organisation_member(): Error adding user_id '%s' to org_id '%s'. Error: %s", user_id, org_id, e
+            )
+    return success
 
 
 def update_organisation_members(org_id: int, users: List[Tuple[int, bool]]) -> bool:
