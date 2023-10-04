@@ -702,7 +702,7 @@ def system_settings_ui() -> None:
 
         available_models = list_available_model_settings_collections()
         log.debug("available models %s", available_models)
-        saved_model = settings[SystemSettingsKey.MODEL_COLLECTION.name]
+        saved_model = settings.get(SystemSettingsKey.MODEL_COLLECTION.name)
 
         log.debug("saved model: %s", saved_model)
         list_keys = list(available_models.keys())
