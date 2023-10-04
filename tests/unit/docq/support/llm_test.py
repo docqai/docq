@@ -1,12 +1,14 @@
+"""Tests for docq.support.llm."""
 from unittest.mock import Mock, patch
-from docq.model_selection.main import ModelUsageSettingsCollection
 
+from docq.model_selection.main import ModelUsageSettingsCollection
 from docq.support.llm import run_chat
 from llama_index import ServiceContext
 from llama_index.chat_engine import SimpleChatEngine
 
 
-def test_run_chat():
+def test_run_chat() -> None:
+    """Test run chat."""
     with patch.object(SimpleChatEngine, "from_defaults") as mock_simple_chat_engine, patch(
         "docq.support.llm._get_service_context"
     ) as mock_get_service_context:
