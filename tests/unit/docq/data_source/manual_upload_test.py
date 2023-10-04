@@ -55,7 +55,7 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
 
             documents = self.manual_upload.load(space, configs)
 
-            assert len(documents) == 10
+            assert len(documents) == 11
             assert documents[0].metadata[str(DocumentMetadata.SPACE_ID.name).lower()] == 123
             assert documents[0].metadata[str(DocumentMetadata.SPACE_TYPE.name).lower()] == "PERSONAL"
             assert documents[0].metadata[str(DocumentMetadata.DATA_SOURCE_NAME.name).lower()] == "Manual Upload"
