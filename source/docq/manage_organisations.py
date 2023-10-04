@@ -93,7 +93,7 @@ def list_organisations(
         return [(x[0], x[1], [(y[1], y[2], y[3]) for y in members if y[0] == x[0]], x[2], x[3]) for x in orgs]
 
 
-def create_organisation(name: str, creating_user_id: int) -> bool:
+def create_organisation(name: str, creating_user_id: int) -> int | None:
     """Create an org.
 
     Args:
@@ -101,9 +101,9 @@ def create_organisation(name: str, creating_user_id: int) -> bool:
         creating_user_id (int): The user id of the user creating the org. This user will be the first org admin.
 
     Returns:
-        bool: True if the org is created, False otherwise.
+        int: org id if successful or None otherwise.
     """
-    success = False
+    org_id = None
     log.debug("Creating org: %s", name)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
@@ -121,15 +121,14 @@ def create_organisation(name: str, creating_user_id: int) -> bool:
                 (org_id, creating_user_id, default_org_admin),
             )
             connection.commit()
-            success = True
             log.info("Created organization %s with member %s", org_id, creating_user_id)
         except Exception as e:
             # Rollback transaction on error
-            success = False
             connection.rollback()
             log.error("Error creating organization with member, rolled back: %s", e)
+            raise Exception("Error creating organization with member. DB Transaction rolled back.") from e
 
-        return success
+        return org_id
 
 
 def update_organisation(id_: int, name: str = None) -> bool:
