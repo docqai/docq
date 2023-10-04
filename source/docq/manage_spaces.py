@@ -70,11 +70,9 @@ def _persist_index(index: GPTVectorStoreIndex, space: SpaceKey) -> None:
 
 def reindex(space: SpaceKey) -> None:
     """Reindex documents in a space."""
-    (ds_type, ds_configs) = get_space_data_source(space)
-
-    saved_model_settings = get_saved_model_settings_collection(space.org_id)
-
     try:
+        (ds_type, ds_configs) = get_space_data_source(space)
+        saved_model_settings = get_saved_model_settings_collection(space.org_id)
         log.debug("get datasource instance")
         documents = SpaceDataSources[ds_type].value.load(space, ds_configs)
         log.debug("docs to index, %s", len(documents))
