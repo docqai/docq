@@ -343,15 +343,21 @@ def create_user(
             )
             user_id = cursor.lastrowid
 
+            first_name = fullname.split(" ")[0]
+            # TODO: try creating a wrapper so the following can be called with the cursor context hence include in this transaction.
+            personal_org_id = manage_organisations.create_organisation(f"{first_name} Personal Org", user_id)
+
+            cursor.execute(
+                "INSERT INTO org_members (org_id, user_id, org_admin) VALUES (?, ?, ?)",
+                (personal_org_id, user_id, org_admin),
+            )
+
             if org_id:
                 log.info("Adding user %s to org %s", user_id, org_id)
                 cursor.execute(
                     "INSERT INTO org_members (org_id, user_id, org_admin) VALUES (?, ?, ?)",
                     (org_id, user_id, org_admin),
                 )
-
-            first_name = fullname.split(" ")[0]
-            manage_organisations.create_organisation(f"{first_name} Personal Org", user_id)
 
             connection.commit()
             log.info("Created user %s", user_id)
