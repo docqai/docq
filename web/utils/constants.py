@@ -4,6 +4,10 @@ from enum import Enum
 
 SESSION_KEY_NAME_DOCQ = "_docq"
 
+SESSION_KEY_NAME_ERROR_STATE = "_docq_error_state"
+
+SESSION_KEY_NAME_FORM_VALIDATION_STATE = "_docq_form_validation_state"
+
 
 class SessionKeySubName(Enum):
     """Second-level names for session keys."""
