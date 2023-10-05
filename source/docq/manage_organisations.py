@@ -153,7 +153,7 @@ def create_organisation(name: str, creating_user_id: int) -> int | None:
             # Rollback transaction on error
             connection.rollback()
             log.error("Error creating organization with member, rolled back: %s", e)
-            raise Exception("Error creating organization with member. DB Transaction rolled back.") from e
+            raise Exception("Error creating organization with member. DB Transaction rolled back.", e) from e
     if org_id:
         manage_settings._init_org_settings(org_id)
     return org_id
@@ -169,7 +169,7 @@ def update_organisation(id_: int, name: str = None) -> bool:
     Returns:
         bool: True if the orgs is updated, False otherwise.
     """
-    log.debug("Updating orgs: %d", id_)
+    log.debug("Updating org: %d, name: %s", id_, name)
 
     query = "UPDATE orgs SET updated_at = ?"
     params = [
@@ -182,12 +182,17 @@ def update_organisation(id_: int, name: str = None) -> bool:
 
     query += " WHERE id = ?"
     params.append(id_)
-
+    log.debug("Update org query: %s, params: %s", query, params)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(query, params)
-        return True
+        try:
+            cursor.execute(query, tuple(params))
+            connection.commit()
+            return True
+        except Exception as e:
+            log.error("Error updating org: %s", e)
+            return False
 
 
 def archive_organisation(id_: int) -> bool:

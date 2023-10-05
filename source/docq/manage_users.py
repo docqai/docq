@@ -178,7 +178,7 @@ def list_users(username_match: str = None) -> List[Tuple[int, str, str, bool, bo
         username_match (str, optional): The username match. Defaults to None.
 
     Returns:
-        List[Tuple[int, str, str, str, bool, bool, datetime, datetime]]: The list of users [user id, username, fullname, super_admin, archived, created_at, updated_at].
+        List[Tuple[int, str, str, bool, bool, datetime, datetime]]: The list of users [user id, username, fullname, super_admin, archived, created_at, updated_at].
     """
     log.debug("Listing users: %s", username_match)
     with closing(

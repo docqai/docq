@@ -35,6 +35,7 @@ from .constants import (
     SessionKeyNameForSettings,
     SessionKeySubName,
 )
+from .error_ui import set_error_state_for_ui
 from .sessions import (
     _init_session_state,
     get_auth_session,
@@ -186,36 +187,39 @@ def handle_create_user() -> int:
         PermissionError: If the current user is not an org admin of the currently selected org.
     """
     user_id = None
-    if not is_current_user_selected_org_admin():
-        raise PermissionError(
-            "Only org admins are allowed to create users. The current user is not an org admin of the currently selected org."
-        )
-    current_org_id = get_selected_org_id()
-    create_user_username = st.session_state["create_user_username"]
-    user = manage_users.get_user(username=create_user_username)
-    log.debug("user: %s", user)
-    if user:
-        if not manage_users.user_is_org_member(current_org_id, user[0]):
-            # user exists but not already member of org, so add to org
-            log.info("User already exists, so just added to org_id: %s", current_org_id)
-            user_added = manage_users.add_organisation_member(current_org_id, user[0])
-            if not user_added:
-                raise Exception("Failed to add user to org")
+    try:
+        if not is_current_user_selected_org_admin():
+            raise PermissionError(
+                "Only org admins are allowed to create users. The current user is not an org admin of the currently selected org."
+            )
+        current_org_id = get_selected_org_id()
+        create_user_username = st.session_state["create_user_username"]
+        user = manage_users.get_user(username=create_user_username)
+        log.debug("user: %s", user)
+        if user:
+            if not manage_users.user_is_org_member(current_org_id, user[0]):
+                # user exists but not already member of org, so add to org
+                log.info("User already exists, so just added to org_id: %s", current_org_id)
+                user_added = manage_users.add_organisation_member(current_org_id, user[0])
+                if not user_added:
+                    raise Exception("Failed to add user to org")
+            else:
+                log.info("User already exists and is already a member of org_id: %s. No op.", current_org_id)
+            user_id = user[0]
         else:
-            log.info("User already exists and is already a member of org_id: %s. No op.", current_org_id)
-        user_id = user[0]
-    else:
-        # create a user and add to org
-        user_id = manage_users.create_user(
-            create_user_username,
-            st.session_state["create_user_password"],
-            st.session_state["create_user_fullname"],
-            False,
-            False,
-            current_org_id,
-        )
-        log.info("Create user with id: %s and added to org_id: %s", user_id, current_org_id)
-
+            # create a user and add to org
+            user_id = manage_users.create_user(
+                create_user_username,
+                st.session_state["create_user_password"],
+                st.session_state["create_user_fullname"],
+                False,
+                False,
+                current_org_id,
+            )
+            log.info("Create user with id: %s and added to org_id: %s", user_id, current_org_id)
+    except Exception as e:
+        set_error_state_for_ui(key="create_user", error=str(e), message="Failed to create user.", trace_id="")
+        log.error("handle_create_user() error: %s", e)
     return user_id
 
 
@@ -293,11 +297,16 @@ def list_public_spaces() -> List[Tuple]:
 
 def handle_create_org() -> bool:
     """Create a new organization."""
-    current_user_id = get_authenticated_user_id()
-    name = st.session_state["create_org_name"]
-    result = manage_organisations.create_organisation(name, current_user_id)
+    result = False
+    try:
+        current_user_id = get_authenticated_user_id()
+        name = st.session_state["create_org_name"]
+        result = manage_organisations.create_organisation(name, current_user_id)
 
-    log.info("Create org result: %s", result)
+        log.info("Create org result: %s", result)
+    except Exception as e:
+        log.error("handle_create_org() error: %s", e)
+        set_error_state_for_ui(key="create_org", error=str(e), message="Failed to create org.", trace_id="")
     return result
 
 
@@ -305,8 +314,9 @@ def handle_update_org(org_id: int) -> bool:
     """Update an existing organization."""
     name = st.session_state[f"update_org_{org_id}_name"]
     result = manage_organisations.update_organisation(org_id, name)
-    manage_organisations.update_organisation_members(
-        org_id, [x[0] for x in st.session_state[f"update_org_{org_id}_members"]]
+    log.debug("member state: %s", st.session_state[f"update_org_{org_id}_members"])
+    manage_users.update_organisation_members(
+        org_id, [(x[0], x[2]) for x in st.session_state[f"update_org_{org_id}_members"]]
     )
     log.info("Update org result: %s", result)
     return result
@@ -323,7 +333,7 @@ def handle_list_orgs(name_match: str = None) -> List[Tuple]:
     """List all organizations.
 
     Returns:
-         List[Tuple[int, str, List[Tuple[int, str]], datetime, datetime]]: The list of orgs [org_id, org_name, [user id, users fullname] created_at, updated_at].
+         List[Tuple[int, str, List[Tuple[int, str, bool]], datetime, datetime]]: The list of orgs [org_id, org_name, [user id, users fullname, org admin] created_at, updated_at].
     """
     current_user_id = get_authenticated_user_id()
     return manage_organisations.list_organisations(name_match=name_match, user_id=current_user_id)

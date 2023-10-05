@@ -8,21 +8,22 @@ from docq import setup
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SpaceType, SystemSettingsKey
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
-from docq.support.auth_utils import (
-    get_cache_auth_session,
-    reset_cache_and_cookie_auth_session,
-    verify_cookie_hmac_session_id,
-)
 from docq.model_selection.main import (
     ModelUsageSettingsCollection,
     get_model_settings_collection,
     list_available_model_settings_collections,
+)
+from docq.support.auth_utils import (
+    get_cache_auth_session,
+    reset_cache_and_cookie_auth_session,
+    verify_cookie_hmac_session_id,
 )
 from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
+from .error_ui import _handle_error_state_ui
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
     _set_session_state_configs,
@@ -270,14 +271,6 @@ def __not_authorised() -> None:
     st.stop()
 
 
-def _render_error_ui(msg: str) -> None:
-    """Render a pretty error UI.
-
-    The message is prefixed with the text "Something went wrong. ".
-    """
-    st.error(f"Something went wrong. {msg}")
-
-
 def public_access() -> None:
     """Menu options for public access."""
     # __no_staff_menu()
@@ -372,6 +365,7 @@ def create_user_ui() -> None:
         st.text_input("Password", value="", key="create_user_password", type="password")
         st.text_input("Full Name", value="", key="create_user_fullname")
         st.form_submit_button("Create User", on_click=handle_create_user)
+        _handle_error_state_ui(key="create_user", bubble_error_message=True)
 
 
 def list_users_ui(username_match: str = None) -> None:
@@ -443,6 +437,7 @@ def create_org_ui() -> None:
     with st.expander("### + New Organization"), st.form(key="create_org"):
         st.text_input("Name", value="", key="create_org_name")
         st.form_submit_button("Create Organization", on_click=handle_create_org)
+        _handle_error_state_ui(key="create_org", bubble_error_message=True)
 
 
 def list_orgs_ui(name_match: str = None) -> None:
@@ -458,16 +453,21 @@ def list_orgs_ui(name_match: str = None) -> None:
                 edit_button_disabled = True
                 # only enable edit button if current user is an org admin
                 log.debug("list_orgs_ui() org_id: %s, members: %s", org_id, members)
-                edit_button_disabled = not (any([x[0] == current_user_id and bool(x[2]) is True for x in members]))
+                edit_button_disabled = not (
+                    any([x[0] == current_user_id and bool(x[2]) is True for x in members])
+                )  # only org_admins can edit orgs.
 
+                options = [
+                    (x[0], x[2], next((y[2] for y in members if y[0] == x[0]), 0)) for x in list_users()
+                ]  # map org_admin field for existing members.
                 with edit_col:
                     if st.button("Edit", key=f"update_org_{org_id}_button", disabled=edit_button_disabled):
                         with st.form(key=f"update_org_{org_id}"):
                             st.text_input("Name", value=name, key=f"update_org_{org_id}_name")
                             st.multiselect(
                                 "Members",
-                                options=[(x[0], x[2]) for x in list_users()],
-                                default=[(x[0], x[1]) for x in members],
+                                options=options,
+                                default=members,
                                 key=f"update_org_{org_id}_members",
                                 format_func=lambda x: x[1],
                             )
@@ -604,7 +604,7 @@ def chat_ui(feature: FeatureKey) -> None:
         with create_new_chat:
             if st.button("New chat"):
                 handle_create_new_chat(feature)
-
+    with st.container():
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
         st.markdown(f"#### {day}")
 
