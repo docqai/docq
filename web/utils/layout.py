@@ -270,6 +270,14 @@ def __not_authorised() -> None:
     st.stop()
 
 
+def _render_error_ui(msg: str) -> None:
+    """Render a pretty error UI.
+
+    The message is prefixed with the text "Something went wrong. ".
+    """
+    st.error(f"Something went wrong. {msg}")
+
+
 def public_access() -> None:
     """Menu options for public access."""
     # __no_staff_menu()
@@ -309,7 +317,7 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
         if show_logout_button:
             __logout_button()
 
-        if not auth.get(SessionKeyNameForAuth.SUPER_ADMIN.name, False):
+        if not auth.get(SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name, False):
             __no_admin_menu()
             if requiring_admin:
                 __not_authorised()
@@ -369,6 +377,7 @@ def create_user_ui() -> None:
 def list_users_ui(username_match: str = None) -> None:
     """List all users."""
     users = list_users_by_current_org(username_match)
+
     edit_super_admin_disabled = not is_current_user_super_admin()
 
     if users:
@@ -688,9 +697,18 @@ def chat_settings_ui(feature: FeatureKey) -> None:
 def system_settings_ui() -> None:
     """System settings."""
     settings = get_system_settings()
-
+    log.debug("saved settings raw: %s", settings)
     with st.form(key="system_settings"):
-        st.multiselect(
+        enabled_features_container = st.container()
+
+        model_settings_container = st.container()
+
+        st.form_submit_button(
+            label="Save",
+            on_click=handle_update_system_settings,
+        )
+
+        enabled_features_container.multiselect(
             SystemSettingsKey.ENABLED_FEATURES.value,
             options=[f for f in FeatureType],
             format_func=lambda x: x.value,
@@ -702,22 +720,31 @@ def system_settings_ui() -> None:
 
         available_models = list_available_model_settings_collections()
         log.debug("available models %s", available_models)
-        saved_model = settings[SystemSettingsKey.MODEL_COLLECTION.name]
+        saved_model = (
+            settings[SystemSettingsKey.MODEL_COLLECTION.name]
+            if SystemSettingsKey.MODEL_COLLECTION.name in settings
+            else None
+        )
 
         log.debug("saved model: %s", saved_model)
         list_keys = list(available_models.keys())
         saved_model_index = list_keys.index(saved_model) if saved_model and list_keys.count(saved_model) > 0 else 0
 
-        selected_model = st.selectbox(
+        selected_model = model_settings_container.selectbox(
             label="Default Model",
             options=available_models.items(),
             format_func=lambda x: x[1],
             index=saved_model_index,
             key=f"system_settings_default_{SystemSettingsKey.MODEL_COLLECTION.name}",
         )
+        log.debug(
+            "selected model in session state: %s",
+            st.session_state[f"system_settings_default_{SystemSettingsKey.MODEL_COLLECTION.name}"][0],
+        )
+        log.debug("selected model: %s", selected_model[0])
         selected_model_settings: ModelUsageSettingsCollection = get_model_settings_collection(selected_model[0])
 
-        with st.expander("Model details"):
+        with model_settings_container.expander("Model details"):
             for key, model_settings in selected_model_settings.model_usage_settings.items():
                 st.write(f"{model_settings.model_capability.value} model: ")
                 st.write(f"- Model Vendor: `{model_settings.model_vendor.value}`")
@@ -725,11 +752,6 @@ def system_settings_ui() -> None:
                 st.write(f"- Temperature: `{model_settings.temperature}`")
                 st.write(f"- Deployment Name: `{model_settings.model_deployment_name}`")
                 st.divider()
-
-        st.form_submit_button(
-            label="Save",
-            on_click=handle_update_system_settings,
-        )
 
 
 def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: str, configs: dict = None) -> None:
@@ -937,13 +959,18 @@ def org_selection_ui() -> None:
     except KeyError:
         current_org_id = None
     if current_org_id:
-        st.write("Organisation:")
+        orgs = handle_list_orgs()
+
+        index__ = next((i for i, s in enumerate(orgs) if s[0] == current_org_id), -1)
+
+        log.debug("org_selection_ui index: %s ", index__)
+        log.debug("org_selection_ui() orgs: %s", orgs)
         selected = st.selectbox(
-            "Select your org",
-            handle_list_orgs(),
+            "Organisation",
+            orgs,
             format_func=lambda x: x[1],
             label_visibility="collapsed",
-            index=next((i for i, s in enumerate(handle_list_orgs()) if s[0] == current_org_id), None),
+            index=index__,
         )
         if selected:
             handle_org_selection_change(selected[0])
