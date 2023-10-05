@@ -8,21 +8,22 @@ from docq import setup
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SpaceType, SystemSettingsKey
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
-from docq.support.auth_utils import (
-    get_cache_auth_session,
-    reset_cache_and_cookie_auth_session,
-    verify_cookie_hmac_session_id,
-)
 from docq.model_selection.main import (
     ModelUsageSettingsCollection,
     get_model_settings_collection,
     list_available_model_settings_collections,
+)
+from docq.support.auth_utils import (
+    get_cache_auth_session,
+    reset_cache_and_cookie_auth_session,
+    verify_cookie_hmac_session_id,
 )
 from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
+from .error_ui import _handle_error_state_ui
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
     _set_session_state_configs,
@@ -309,7 +310,7 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
         if show_logout_button:
             __logout_button()
 
-        if not auth.get(SessionKeyNameForAuth.SUPER_ADMIN.name, False):
+        if not auth.get(SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name, False):
             __no_admin_menu()
             if requiring_admin:
                 __not_authorised()
@@ -364,11 +365,13 @@ def create_user_ui() -> None:
         st.text_input("Password", value="", key="create_user_password", type="password")
         st.text_input("Full Name", value="", key="create_user_fullname")
         st.form_submit_button("Create User", on_click=handle_create_user)
+        _handle_error_state_ui(key="create_user", bubble_error_message=True)
 
 
 def list_users_ui(username_match: str = None) -> None:
     """List all users."""
     users = list_users_by_current_org(username_match)
+
     edit_super_admin_disabled = not is_current_user_super_admin()
 
     if users:
@@ -434,6 +437,7 @@ def create_org_ui() -> None:
     with st.expander("### + New Organization"), st.form(key="create_org"):
         st.text_input("Name", value="", key="create_org_name")
         st.form_submit_button("Create Organization", on_click=handle_create_org)
+        _handle_error_state_ui(key="create_org", bubble_error_message=True)
 
 
 def list_orgs_ui(name_match: str = None) -> None:
@@ -449,16 +453,21 @@ def list_orgs_ui(name_match: str = None) -> None:
                 edit_button_disabled = True
                 # only enable edit button if current user is an org admin
                 log.debug("list_orgs_ui() org_id: %s, members: %s", org_id, members)
-                edit_button_disabled = not (any([x[0] == current_user_id and bool(x[2]) is True for x in members]))
+                edit_button_disabled = not (
+                    any([x[0] == current_user_id and bool(x[2]) is True for x in members])
+                )  # only org_admins can edit orgs.
 
+                options = [
+                    (x[0], x[2], next((y[2] for y in members if y[0] == x[0]), 0)) for x in list_users()
+                ]  # map org_admin field for existing members.
                 with edit_col:
                     if st.button("Edit", key=f"update_org_{org_id}_button", disabled=edit_button_disabled):
                         with st.form(key=f"update_org_{org_id}"):
                             st.text_input("Name", value=name, key=f"update_org_{org_id}_name")
                             st.multiselect(
                                 "Members",
-                                options=[(x[0], x[2]) for x in list_users()],
-                                default=[(x[0], x[1]) for x in members],
+                                options=options,
+                                default=members,
                                 key=f"update_org_{org_id}_members",
                                 format_func=lambda x: x[1],
                             )
@@ -595,7 +604,7 @@ def chat_ui(feature: FeatureKey) -> None:
         with create_new_chat:
             if st.button("New chat"):
                 handle_create_new_chat(feature)
-
+    with st.container():
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
         st.markdown(f"#### {day}")
 
@@ -688,9 +697,18 @@ def chat_settings_ui(feature: FeatureKey) -> None:
 def system_settings_ui() -> None:
     """System settings."""
     settings = get_system_settings()
-
+    log.debug("saved settings raw: %s", settings)
     with st.form(key="system_settings"):
-        st.multiselect(
+        enabled_features_container = st.container()
+
+        model_settings_container = st.container()
+
+        st.form_submit_button(
+            label="Save",
+            on_click=handle_update_system_settings,
+        )
+
+        enabled_features_container.multiselect(
             SystemSettingsKey.ENABLED_FEATURES.value,
             options=[f for f in FeatureType],
             format_func=lambda x: x.value,
@@ -702,22 +720,31 @@ def system_settings_ui() -> None:
 
         available_models = list_available_model_settings_collections()
         log.debug("available models %s", available_models)
-        saved_model = settings[SystemSettingsKey.MODEL_COLLECTION.name]
+        saved_model = (
+            settings[SystemSettingsKey.MODEL_COLLECTION.name]
+            if SystemSettingsKey.MODEL_COLLECTION.name in settings
+            else None
+        )
 
         log.debug("saved model: %s", saved_model)
         list_keys = list(available_models.keys())
         saved_model_index = list_keys.index(saved_model) if saved_model and list_keys.count(saved_model) > 0 else 0
 
-        selected_model = st.selectbox(
+        selected_model = model_settings_container.selectbox(
             label="Default Model",
             options=available_models.items(),
             format_func=lambda x: x[1],
             index=saved_model_index,
             key=f"system_settings_default_{SystemSettingsKey.MODEL_COLLECTION.name}",
         )
+        log.debug(
+            "selected model in session state: %s",
+            st.session_state[f"system_settings_default_{SystemSettingsKey.MODEL_COLLECTION.name}"][0],
+        )
+        log.debug("selected model: %s", selected_model[0])
         selected_model_settings: ModelUsageSettingsCollection = get_model_settings_collection(selected_model[0])
 
-        with st.expander("Model details"):
+        with model_settings_container.expander("Model details"):
             for key, model_settings in selected_model_settings.model_usage_settings.items():
                 st.write(f"{model_settings.model_capability.value} model: ")
                 st.write(f"- Model Vendor: `{model_settings.model_vendor.value}`")
@@ -725,11 +752,6 @@ def system_settings_ui() -> None:
                 st.write(f"- Temperature: `{model_settings.temperature}`")
                 st.write(f"- Deployment Name: `{model_settings.model_deployment_name}`")
                 st.divider()
-
-        st.form_submit_button(
-            label="Save",
-            on_click=handle_update_system_settings,
-        )
 
 
 def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: str, configs: dict = None) -> None:
@@ -937,13 +959,18 @@ def org_selection_ui() -> None:
     except KeyError:
         current_org_id = None
     if current_org_id:
-        st.write("Organisation:")
+        orgs = handle_list_orgs()
+
+        index__ = next((i for i, s in enumerate(orgs) if s[0] == current_org_id), -1)
+
+        log.debug("org_selection_ui index: %s ", index__)
+        log.debug("org_selection_ui() orgs: %s", orgs)
         selected = st.selectbox(
-            "Select your org",
-            handle_list_orgs(),
+            "Organisation",
+            orgs,
             format_func=lambda x: x[1],
             label_visibility="collapsed",
-            index=next((i for i, s in enumerate(handle_list_orgs()) if s[0] == current_org_id), None),
+            index=index__,
         )
         if selected:
             handle_org_selection_change(selected[0])

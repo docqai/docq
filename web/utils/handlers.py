@@ -24,8 +24,8 @@ from docq import (
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
-from docq.support.auth_utils import get_cache_auth_session, reset_cache_and_cookie_auth_session, set_cache_auth_session
 from docq.model_selection.main import get_saved_model_settings_collection
+from docq.support.auth_utils import get_cache_auth_session, reset_cache_and_cookie_auth_session, set_cache_auth_session
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -35,6 +35,7 @@ from .constants import (
     SessionKeyNameForSettings,
     SessionKeySubName,
 )
+from .error_ui import set_error_state_for_ui
 from .sessions import (
     _init_session_state,
     get_auth_session,
@@ -44,6 +45,7 @@ from .sessions import (
     get_selected_org_id,
     get_settings_session,
     get_username,
+    is_current_user_selected_org_admin,
     reset_session_state,
     set_auth_session,
     set_chat_session,
@@ -123,6 +125,21 @@ def _set_session_state_configs(
     )
 
 
+def _default_org_id(
+    member_orgs: List[Tuple[int, str, List[Tuple[int, str, bool]], datetime, datetime]],
+    authd_user: Tuple[int, str, bool, str],
+) -> int:
+    """Get the default org id."""
+    result = member_orgs[0][0]
+    firstname = authd_user[1].split(" ")[0]
+    log.debug("firstname arg: %s", firstname)
+    for x in member_orgs:
+        if x[1].startswith(firstname):
+            log.debug("firstname '%s' in org name: %s", firstname, x[1])
+            result = x[0]
+    return result
+
+
 def handle_login(username: str, password: str) -> bool:
     """Handle login."""
     reset_session_state()
@@ -134,7 +151,8 @@ def handle_login(username: str, password: str) -> bool:
         member_orgs = manage_organisations.list_organisations(
             user_id=current_user_id
         )  # we can't use handle_list_orgs() here
-        default_org_id = member_orgs[0][0]
+        log.debug("handle_login(): member_orgs: %s", member_orgs)
+        default_org_id = _default_org_id(member_orgs, result)
         selected_org_admin = current_user_id in [x[0] for x in member_orgs[0][2]]
         log.info("Login result: %s", result)
         _set_session_state_configs(
@@ -160,17 +178,49 @@ def handle_logout() -> None:
 
 
 def handle_create_user() -> int:
-    current_org_id = get_selected_org_id()
-    result = manage_users.create_user(
-        st.session_state["create_user_username"],
-        st.session_state["create_user_password"],
-        st.session_state["create_user_fullname"],
-        False,
-        False,
-        current_org_id,
-    )
-    log.info("Create user with id: %s", result)
-    return result
+    """Handle create user. If the user already exists, just adds the user to the currently selected org else create and add.
+
+    Only org admins are allowed to create users.
+
+    Return:
+        int: The user id.
+        PermissionError: If the current user is not an org admin of the currently selected org.
+    """
+    user_id = None
+    try:
+        if not is_current_user_selected_org_admin():
+            raise PermissionError(
+                "Only org admins are allowed to create users. The current user is not an org admin of the currently selected org."
+            )
+        current_org_id = get_selected_org_id()
+        create_user_username = st.session_state["create_user_username"]
+        user = manage_users.get_user(username=create_user_username)
+        log.debug("user: %s", user)
+        if user:
+            if not manage_users.user_is_org_member(current_org_id, user[0]):
+                # user exists but not already member of org, so add to org
+                log.info("User already exists, so just added to org_id: %s", current_org_id)
+                user_added = manage_users.add_organisation_member(current_org_id, user[0])
+                if not user_added:
+                    raise Exception("Failed to add user to org")
+            else:
+                log.info("User already exists and is already a member of org_id: %s. No op.", current_org_id)
+            user_id = user[0]
+        else:
+            # create a user and add to org
+            user_id = manage_users.create_user(
+                create_user_username,
+                st.session_state["create_user_password"],
+                st.session_state["create_user_fullname"],
+                False,
+                False,
+                current_org_id,
+            )
+            log.info("Create user with id: %s and added to org_id: %s", user_id, current_org_id)
+    except Exception as e:
+        set_error_state_for_ui(key="create_user", error=str(e), message="Failed to create user.", trace_id="")
+        log.error("handle_create_user() error: %s", e)
+    return user_id
 
 
 def handle_update_user(id_: int) -> bool:
@@ -247,11 +297,16 @@ def list_public_spaces() -> List[Tuple]:
 
 def handle_create_org() -> bool:
     """Create a new organization."""
-    current_user_id = get_authenticated_user_id()
-    name = st.session_state["create_org_name"]
-    result = manage_organisations.create_organisation(name, current_user_id)
+    result = False
+    try:
+        current_user_id = get_authenticated_user_id()
+        name = st.session_state["create_org_name"]
+        result = manage_organisations.create_organisation(name, current_user_id)
 
-    log.info("Create org result: %s", result)
+        log.info("Create org result: %s", result)
+    except Exception as e:
+        log.error("handle_create_org() error: %s", e)
+        set_error_state_for_ui(key="create_org", error=str(e), message="Failed to create org.", trace_id="")
     return result
 
 
@@ -259,8 +314,9 @@ def handle_update_org(org_id: int) -> bool:
     """Update an existing organization."""
     name = st.session_state[f"update_org_{org_id}_name"]
     result = manage_organisations.update_organisation(org_id, name)
-    manage_organisations.update_organisation_members(
-        org_id, [x[0] for x in st.session_state[f"update_org_{org_id}_members"]]
+    log.debug("member state: %s", st.session_state[f"update_org_{org_id}_members"])
+    manage_users.update_organisation_members(
+        org_id, [(x[0], x[2]) for x in st.session_state[f"update_org_{org_id}_members"]]
     )
     log.info("Update org result: %s", result)
     return result
@@ -277,7 +333,7 @@ def handle_list_orgs(name_match: str = None) -> List[Tuple]:
     """List all organizations.
 
     Returns:
-         List[Tuple[int, str, List[Tuple[int, str]], datetime, datetime]]: The list of orgs [org_id, org_name, [user id, users fullname] created_at, updated_at].
+         List[Tuple[int, str, List[Tuple[int, str, bool]], datetime, datetime]]: The list of orgs [org_id, org_name, [user id, users fullname, org admin] created_at, updated_at].
     """
     current_user_id = get_authenticated_user_id()
     return manage_organisations.list_organisations(name_match=name_match, user_id=current_user_id)
@@ -286,6 +342,7 @@ def handle_list_orgs(name_match: str = None) -> List[Tuple]:
 def handle_org_selection_change(org_id: int) -> None:
     """Handle org selection change."""
     set_selected_org_id(org_id)
+
     set_if_current_user_is_selected_org_admin(org_id)
 
 
