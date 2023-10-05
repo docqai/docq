@@ -81,7 +81,10 @@ def reindex(space: SpaceKey) -> None:
         index = _create_index(documents, saved_model_settings)
         _persist_index(index, space)
     except Exception as e:
-        log.exception("Error indexing space %s: %s", space, e)
+        if e.__str__().__contains__("No files found"):
+            log.info("Reindex skipped. No documents found in space '%s'", space)
+        else:
+            log.exception("Error indexing space '%s'. Error: %s", space, e)
 
 
 def list_documents(space: SpaceKey) -> List[DocumentListItem]:
