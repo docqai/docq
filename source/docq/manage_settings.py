@@ -12,7 +12,7 @@ import sqlite3
 from contextlib import closing
 from typing import Any
 
-from .config import SystemSettingsKey, UserSettingsKey
+from .config import FeatureType, SystemSettingsKey, UserSettingsKey
 from .support.store import get_sqlite_system_file, get_sqlite_usage_file
 
 SQL_CREATE_SETTINGS_TABLE = """
@@ -38,13 +38,30 @@ def _init(user_id: int = None) -> None:
         connection.commit()
 
 
+def _init_org_settings(org_id: int) -> None:
+    """Initialise org settings with defaults."""
+    update_organisation_settings(
+        {
+            SystemSettingsKey.ENABLED_FEATURES.name: [
+                FeatureType.ASK_PERSONAL.name,
+                FeatureType.ASK_PUBLIC.name,
+                FeatureType.ASK_SHARED.name,
+                FeatureType.CHAT_PRIVATE.name,
+            ],
+            SystemSettingsKey.MODEL_COLLECTION.name: "azure_openai_with_local_embedding",
+        },
+        org_id=org_id,
+    )
+    log.debug("Org setting initialised with defaults for org_id: %s", org_id)
+
+
 def _get_sqlite_file(user_id: int = None) -> str:
     """Get the sqlite file for the given user."""
     return get_sqlite_usage_file(user_id) if user_id else get_sqlite_system_file()
 
 
 def _get_settings(org_id: int, user_id: int = None) -> dict:
-    log.debug("Getting settings for user %s", str(user_id))
+    log.debug("Getting settings for user '%s'", str(user_id))
     with closing(
         sqlite3.connect(_get_sqlite_file(user_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
