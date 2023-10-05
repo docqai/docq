@@ -4,6 +4,8 @@ import streamlit as st
 from st_pages import Page, Section, add_page_title, show_pages
 from utils.layout import init_with_pretty_error_ui, org_selection_ui, production_layout, public_access
 
+from web.st_components.sidebar_header import sidebar
+
 init_with_pretty_error_ui()
 
 
@@ -65,5 +67,7 @@ org_menu_options = [
     {"label": "Org 1", "value": "org1"},
     {"label": "Org 2", "value": "org2"},
     {"label": "Org 3", "value": "org3"},
-    {"label": "Org 4", "value": "org4"},
+    {"label": "Org 4", "value": "org4"}
 ]
+
+sidebar(org_menu_options)

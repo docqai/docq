@@ -1,0 +1,6 @@
+div[docq-data-sidebar='true'][key='{{key}}'] {
+    position: sticky ;
+    top: 0;
+    width: 100% !important;
+    background-color: red !important;
+}

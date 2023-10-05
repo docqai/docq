@@ -22,6 +22,8 @@ from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 
+from web.st_components.page_header import header
+
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .error_ui import _handle_error_state_ui
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
@@ -984,3 +986,9 @@ def init_with_pretty_error_ui() -> None:
         st.error("Something went wrong starting Docq.")
         log.fatal("Error: setup.init() failed with %s", e)
         st.stop()
+
+
+def header_ui() -> None:
+    """Header UI."""
+    avatar_src = handle_get_gravatar_url()
+    header("DocQ@Test-Org", avatar_src, )
