@@ -6,9 +6,8 @@ with open("web/st_components/page_header/static/header.js") as f:
     script = f.read()
 
 
-
-def header(username: str, avatar_src: str) -> None:
+def header(username: str, avatar_src: str, org: str) -> None:
     """Header bar."""
     s = script.replace('{{avatar-src}}', avatar_src)
     j = s.replace('{{username}}', username)
-    html(f"<script>{j}</script>",height=0,)
+    html(f"<script>{j.replace('{{org}}', org)}</script>",height=0,)

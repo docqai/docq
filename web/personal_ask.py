@@ -15,5 +15,3 @@ add_page_title()
 feature = FeatureKey(FeatureType.ASK_PERSONAL, get_authenticated_user_id())
 
 chat_ui(feature)
-
-header_ui()

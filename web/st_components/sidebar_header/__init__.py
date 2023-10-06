@@ -1,10 +1,7 @@
 """Nav UI example."""
 import json
 import os
-from contextlib import contextmanager
-from typing import Self
 
-import streamlit as st
 import streamlit.components.v1 as components
 
 parent_dir = os.path.dirname(os.path.abspath(__file__))
@@ -16,7 +13,6 @@ with open(script_path) as f:
 
 with open(os.path.join(parent_dir, "static", "sidebar.css")) as f:
     style = f.read()
-
 
 def sidebar(options: list) -> None:
     """SIDE BAR."""

@@ -15,7 +15,7 @@ docqLogoContainer.setAttribute("class", "docq-logo-container");
 docqLogoContainer.setAttribute("id", "docq-logo-container");
 docqLogoContainer.setAttribute(
   "style",
-  "display: flex; justify-content: center; align-items: center; width: 100%; position: sticky; top: 0; z-index: 1000; background-color: red; flex-direction: column; padding: 10px;"
+  "display: flex; justify-content: center; align-items: center; width: 100%; position: sticky; top: 0; z-index: 1000; background-color: transparent; flex-direction: column; padding: 10px;"
 );
 
 // Close button
@@ -25,9 +25,10 @@ closeButton.setAttribute(
   "style",
   "position: absolute; right: 10px; top: 10px; background-color: transparent; border: none; outline: none; cursor: pointer;"
 );
-closeButton.setAttribute("onclick", "docqClose()");
+closeButton.setAttribute("kind", "header");
 closeButton.innerText = "X";
 
+parent.querySelector("button[kind='header']")?.remove();
 docqLogoContainer.appendChild(closeButton);
 
 // Logo
@@ -43,29 +44,29 @@ docqLogo.setAttribute("async", "1");
 
 docqLogoContainer.appendChild(docqLogo);
 
-// Create a dropdown menu
-const menuTitle = document.createElement("label");
-menuTitle.setAttribute("for", "docq-menu");
-menuTitle.innerText = "Select Organization:";
+// Selcted org info
+const selectedOrgInfo = document.createElement("div");
+selectedOrgInfo.setAttribute("id", "docq-selected-org-info");
+selectedOrgInfo.setAttribute("style", "margin-top: 10px;");
+selectedOrgInfo.innerHTML = `
+  <span> Selected org: </span> <br />
+  <span style="font-size: 12px;">
+    <strong>{{org}}</strong>
+  </span>
+`;
 
-const dropdownMenu = document.createElement("select");
-dropdownMenu.setAttribute("name", "docq-menu");
-dropdownMenu.setAttribute("id", "docq-menu");
-dropdownMenu.setAttribute(
-  "style",
-  "width: 100%; height: 40px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; margin-top: 10"
-);
+docqLogoContainer.appendChild(selectedOrgInfo);
 
-const options = JSON.parse('{{org-menu-options}}');
-options.forEach((option) => {
-  const optionElement = document.createElement("option");
-  optionElement.setAttribute("value", option.value);
-  optionElement.innerText = option.label;
-  dropdownMenu.appendChild(optionElement);
-});
+// Change org link
+const changeOrgButton = document.createElement("a");
+changeOrgButton.setAttribute("id", "docq-change-org-button");
+changeOrgButton.setAttribute("style", "margin-top: 10px;");
+changeOrgButton.setAttribute("href", "http://172.26.68.148:8501/Admin_Orgs");
+// changeOrgButton.setAttribute("target", "_blank");
+changeOrgButton.innerHTML = "<span>Change org</span>";
 
-docqLogoContainer.appendChild(menuTitle);
-docqLogoContainer.appendChild(dropdownMenu);
+docqLogoContainer.appendChild(changeOrgButton);
+
 
 const sideBar = findSideBar();
 

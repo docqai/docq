@@ -317,7 +317,7 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
             if requiring_admin:
                 __not_authorised()
                 return False
-
+        header_ui(auth.get(SessionKeyNameForAuth.NAME.name, ""))
         return True
     else:
         log.debug("auth_required(): No valid auth session found. User needs to re-authenticate.")
@@ -988,7 +988,10 @@ def init_with_pretty_error_ui() -> None:
         st.stop()
 
 
-def header_ui() -> None:
+def header_ui(name: str) -> None:
     """Header UI."""
     avatar_src = handle_get_gravatar_url()
-    header("DocQ@Test-Org", avatar_src, )
+    selected_org_id = get_selected_org_id()
+    orgs = handle_list_orgs()
+    selected_org = next((o for o in orgs if o[0] == selected_org_id), None)
+    header(username=name, avatar_src=avatar_src, org=selected_org[1] if selected_org else None)
