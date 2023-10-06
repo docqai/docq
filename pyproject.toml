@@ -31,7 +31,7 @@ black = { version = "^22.3.0", allow-prereleases = true }
 xdoctest = "^1.0.0"
 poethepoet = "^0.16.4"
 ruff = "^0.0.253"
-pytest = "7.1.1"
+pytest = "7.3.1"
 pytest-html = "^3.1.1"
 pytest-sugar = "^0.9.6"
 pytest-reverse = "^1.5.0"
@@ -44,6 +44,7 @@ mkdocs-awesome-pages-plugin = "^2.8.0"
 mkapi = "^1.0.14"
 pillow = "^9.5.0"
 cairosvg = "^2.7.0"
+python-dotenv = "^1.0.0"
 
 [tool.poetry.scripts]
 -c = "poethepoet:main"
@@ -123,7 +124,8 @@ exclude_lines = [
 [tool.poe.tasks]
 install = "poetry install --only main"
 install-dev = "poetry install"
-test = "pytest"
+test = "pytest tests/unit"
+test-integration = "pytest tests/integration"
 pre-commit = "pre-commit run --all-files"
 lint-ruff = "ruff check **/*.py --fix"
 lint-black = "black **/*.py"

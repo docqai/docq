@@ -17,10 +17,10 @@ from docq.support.auth_utils import (
     _set_cookie_session_id,
     _verify_hmac,
     cached_session_data,
+    cached_session_ids,
     generate_hmac_session_id,
     get_cache_auth_session,
     reset_cache_and_cookie_auth_session,
-    cached_session_ids,
     set_cache_auth_session,
 )
 

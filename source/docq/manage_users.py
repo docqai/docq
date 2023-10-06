@@ -356,11 +356,11 @@ def create_user(
 
             personal_org_id = cursor.lastrowid
 
-            manage_organisations._add_organisation_member_sql(cursor, personal_org_id, user_id, True)
+            _add_organisation_member_sql(cursor, personal_org_id, user_id, True)
 
             if org_id:
                 log.info("Adding user %s to org %s", user_id, org_id)
-                manage_organisations._add_organisation_member_sql(cursor, org_id, user_id, org_admin)
+                _add_organisation_member_sql(cursor, org_id, user_id, org_admin)
 
             connection.commit()
             log.info("Created user %s", user_id)

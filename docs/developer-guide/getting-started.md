@@ -57,9 +57,24 @@ Some useful examples of how this project can be used:
   ```
 
 - Run tests
+  
+  - Unit tests
 
   ```sh
   poe test
+  ``` 
+
+  - Integration tests
+  
+    - Prepare env vars by supplying a pytest.env file required for the integration tests
+
+      ```sh
+      cp misc/pytest.env.template pytest.env
+      ## Make edits on pytest.env with the correct values for the test environment then run the tests
+      ```
+  
+  ```sh
+  poe test-integration
   ```
 
 - Run the project

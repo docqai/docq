@@ -2,6 +2,7 @@
 
 import unittest
 from datetime import datetime
+from typing import Self
 from unittest.mock import MagicMock, patch
 
 from docq.config import SpaceType
@@ -11,11 +12,11 @@ from docq.domain import DocumentListItem, SpaceKey
 
 
 class TestManualUpload(unittest.TestCase):  # noqa: D101
-    def setUp(self) -> None:
+    def setUp(self: Self) -> None:
         """Set up the test."""
         self.manual_upload = ManualUpload()
 
-    def test_get_document_list(self) -> None:
+    def test_get_document_list(self: Self) -> None:
         """Test the get_document_list method."""
         space = SpaceKey(SpaceType.PERSONAL, 123, 345)
         configs = {}
@@ -44,7 +45,7 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
                 )
             ]
 
-    def test_load(self) -> None:
+    def test_load(self: Self) -> None:
         """Test the load method including the metadata fields."""
         space = SpaceKey(SpaceType.PERSONAL, 123, 345)
         configs = {}
@@ -54,7 +55,7 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
 
             documents = self.manual_upload.load(space, configs)
 
-            assert len(documents) == 10
+            assert len(documents) == 11
             assert documents[0].metadata[str(DocumentMetadata.SPACE_ID.name).lower()] == 123
             assert documents[0].metadata[str(DocumentMetadata.SPACE_TYPE.name).lower()] == "PERSONAL"
             assert documents[0].metadata[str(DocumentMetadata.DATA_SOURCE_NAME.name).lower()] == "Manual Upload"

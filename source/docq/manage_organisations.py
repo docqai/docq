@@ -6,8 +6,7 @@ from contextlib import closing
 from datetime import datetime
 from typing import List, Tuple
 
-from . import manage_settings
-from .manage_users import _add_organisation_member_sql
+from . import manage_settings, manage_users
 from .support.store import get_sqlite_system_file
 
 SQL_CREATE_ORGS_TABLE = """
@@ -146,7 +145,7 @@ def create_organisation(name: str, creating_user_id: int) -> int | None:
             _create_organisation_sql(cursor, name)
             org_id = cursor.lastrowid
             is_default_org_admin = True
-            _add_organisation_member_sql(cursor, org_id, creating_user_id, is_default_org_admin)
+            manage_users._add_organisation_member_sql(cursor, org_id, creating_user_id, is_default_org_admin)
             connection.commit()
             log.info("Created organization %s with member %s", org_id, creating_user_id)
         except Exception as e:
