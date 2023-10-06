@@ -46,7 +46,9 @@ def test_user() -> dict:
 @pytest.fixture(autouse=True)
 def _create_test_user(test_user: dict) -> None:
     """Create a test user."""
-    manage_users.create_user(**test_user)
+    with suppress(ValueError):
+        manage_users.create_user(**test_user)
+
 
 # Login
 @pytest.fixture()
