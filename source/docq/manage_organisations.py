@@ -6,6 +6,8 @@ from contextlib import closing
 from datetime import datetime
 from typing import List, Tuple
 
+from . import manage_settings
+from .manage_users import _add_organisation_member_sql
 from .support.store import get_sqlite_system_file
 
 SQL_CREATE_ORGS_TABLE = """
@@ -68,22 +70,24 @@ def list_organisations(
     Returns:
         List[Tuple[int, str, List[Tuple[int, str, bool]], datetime, datetime]]: The list of orgs [org_id, org_name, [user id, users fullname, is org admin] created_at, updated_at].
     """
-    log.debug("Listing orgs: %s", name_match)
     orgs = []
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         if user_id:
+            log.debug("Listing orgs that user_id '%s' is member", user_id)
+            orgs = cursor.execute(
+                "SELECT o.id, o.name, o.created_at, o.updated_at FROM org_members om INNER JOIN orgs o ON om.user_id = ? AND om.org_id = o.id",
+                (user_id,),
+            ).fetchall()
+        else:
+            log.debug("Listing orgs name like '%s'", name_match)
             orgs = cursor.execute(
                 "SELECT id, name, created_at, updated_at FROM orgs WHERE name LIKE ?",
                 (f"%{name_match}%" if name_match else "%",),
             ).fetchall()
-        else:
-            orgs = cursor.execute(
-                "SELECT o.id, o.name, o.created_at, o.updated_at FROM orgs o LEFT JOIN org_members om ON user_id = ? AND o.id = om.org_id",
-                (user_id,),
-            ).fetchall()
 
+        log.debug("Listing orgs members for orgs: %s", orgs)
         members = cursor.execute(
             "SELECT m.org_id, u.id, u.fullname, m.org_admin FROM org_members m, users u WHERE m.org_id IN ({}) AND m.user_id = u.id".format(  # noqa: S608
                 ",".join([str(x[0]) for x in orgs])
@@ -93,7 +97,36 @@ def list_organisations(
         return [(x[0], x[1], [(y[1], y[2], y[3]) for y in members if y[0] == x[0]], x[2], x[3]) for x in orgs]
 
 
-def create_organisation(name: str, creating_user_id: int) -> bool:
+def _create_organisation_sql(connection_cursor: sqlite3.Cursor, name: str) -> sqlite3.Cursor:
+    """Create org.
+
+    Internal function to be called with a connection context. This enables executing the same SQL logic within transaction in multiple places.
+
+    Example:
+    ```python
+        with closing(
+            sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        ) as connection, closing(connection.cursor()) as cursor:
+            try:
+                cursor.execute("BEGIN TRANSACTION")
+                _create_organisation_cursor(cursor, name, creating_user_id)
+                connection.commit()
+            except Exception as e:
+                # Rollback transaction on error
+                connection.rollback()
+                log.error("Error creating xxxxxxxxxxxx, rolled back: %s", e)
+                raise Exception("Error creating xxxxxxxxxx. DB Transaction rolled back.") from e
+    ```
+    """
+    connection_cursor.execute(
+        "INSERT INTO orgs (name) VALUES (?)",
+        (name,),
+    )
+
+    return connection_cursor
+
+
+def create_organisation(name: str, creating_user_id: int) -> int | None:
     """Create an org.
 
     Args:
@@ -101,35 +134,29 @@ def create_organisation(name: str, creating_user_id: int) -> bool:
         creating_user_id (int): The user id of the user creating the org. This user will be the first org admin.
 
     Returns:
-        bool: True if the org is created, False otherwise.
+        int: org id if successful or None otherwise.
     """
-    success = False
+    org_id = None
     log.debug("Creating org: %s", name)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         try:
             cursor.execute("BEGIN TRANSACTION")
-            cursor.execute(
-                "INSERT INTO orgs (name) VALUES (?)",
-                (name,),
-            )
+            _create_organisation_sql(cursor, name)
             org_id = cursor.lastrowid
-            default_org_admin = True
-            cursor.execute(
-                "INSERT INTO org_members (org_id, user_id, org_admin) VALUES (?, ?, ?)",
-                (org_id, creating_user_id, default_org_admin),
-            )
+            is_default_org_admin = True
+            _add_organisation_member_sql(cursor, org_id, creating_user_id, is_default_org_admin)
             connection.commit()
-            success = True
             log.info("Created organization %s with member %s", org_id, creating_user_id)
         except Exception as e:
             # Rollback transaction on error
-            success = False
             connection.rollback()
             log.error("Error creating organization with member, rolled back: %s", e)
-
-        return success
+            raise Exception("Error creating organization with member. DB Transaction rolled back.", e) from e
+    if org_id:
+        manage_settings._init_org_settings(org_id)
+    return org_id
 
 
 def update_organisation(id_: int, name: str = None) -> bool:
@@ -142,7 +169,7 @@ def update_organisation(id_: int, name: str = None) -> bool:
     Returns:
         bool: True if the orgs is updated, False otherwise.
     """
-    log.debug("Updating orgs: %d", id_)
+    log.debug("Updating org: %d, name: %s", id_, name)
 
     query = "UPDATE orgs SET updated_at = ?"
     params = [
@@ -155,12 +182,17 @@ def update_organisation(id_: int, name: str = None) -> bool:
 
     query += " WHERE id = ?"
     params.append(id_)
-
+    log.debug("Update org query: %s, params: %s", query, params)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(query, params)
-        return True
+        try:
+            cursor.execute(query, tuple(params))
+            connection.commit()
+            return True
+        except Exception as e:
+            log.error("Error updating org: %s", e)
+            return False
 
 
 def archive_organisation(id_: int) -> bool:

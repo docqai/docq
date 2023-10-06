@@ -1,5 +1,6 @@
 """Page: Admin / Manage Users."""
 
+import logging
 import streamlit as st
 from st_pages import add_page_title
 from utils.layout import auth_required, create_user_ui, list_users_ui, org_selection_ui
