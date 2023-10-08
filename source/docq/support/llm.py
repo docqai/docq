@@ -82,9 +82,13 @@ def _init_local_models() -> None:
     for model_collection in LLM_MODEL_COLLECTIONS.values():
         for model_usage_settings in model_collection.model_usage_settings.values():
             if model_usage_settings.model_vendor == ModelVendor.HUGGINGFACE_OPTIMUM_BAAI:
-                OptimumEmbedding.create_and_save_optimum_model(
-                    model_usage_settings.model_name, get_models_dir(model_usage_settings.model_name)
-                )
+                model_dir = get_models_dir(model_usage_settings.model_name, makedir=False)
+                if not os.path.exists(model_dir):
+                    model_dir = get_models_dir(model_usage_settings.model_name, makedir=True)
+                    OptimumEmbedding.create_and_save_optimum_model(
+                        model_usage_settings.model_name,
+                        model_dir,
+                    )
 
 
 def _get_chat_model(model_settings_collection: ModelUsageSettingsCollection) -> ChatOpenAI:

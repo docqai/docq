@@ -51,10 +51,11 @@ def _get_path(store: _StoreSubdir, type_: SpaceType, subtype: str = None, filena
         return dir_
 
 
-def get_models_dir(model_group_key: str) -> str:
+def get_models_dir(model_group_key: str, makedir: bool = True) -> str:
     """Get directory where local models are stored."""
     dir_ = os.path.join(os.environ[ENV_VAR_DOCQ_DATA], _StoreSubdir.MODELS.value, model_group_key)
-    os.makedirs(dir_, exist_ok=True)
+    if makedir:
+        os.makedirs(dir_, exist_ok=True)
     return dir_
 
 
