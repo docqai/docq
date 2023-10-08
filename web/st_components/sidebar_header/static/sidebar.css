@@ -1,6 +1,29 @@
-div[docq-data-sidebar='true'][key='{{key}}'] {
-    position: sticky ;
-    top: 0;
-    width: 100% !important;
-    background-color: red !important;
+section[data-testid="stSidebar"] ul {
+    padding-top: 1rem !important;
+}
+
+section[data-testid="stSidebar"][aria-expanded="true"] button[kind="header"] {
+    display: none !important;
+}
+
+#docq-org-dropdown {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 0 1rem;
+}
+
+#docq-org-dropdown-select {
+    width: 100%;
+    height: 2.5rem;
+    border-radius: 8px;
+    margin-top: 4px;
+    padding: 0 1rem;
+}
+
+.docq-select-label {
+    font-weight: 500;
+    padding: 0 1rem;
 }
