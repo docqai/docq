@@ -172,6 +172,9 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+# Weigts and Biases
+wandb/
+
 # Docq specific files
 
 # Exported from Poetry, used in docker build only

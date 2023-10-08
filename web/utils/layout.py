@@ -208,6 +208,8 @@ def __no_admin_menu() -> None:
             "Admin_Users",
             "Admin_User_Groups",
             "Admin_Logs",
+            "Developers",
+            "Dev",
         ]
     )
 

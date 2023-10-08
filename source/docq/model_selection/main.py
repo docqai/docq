@@ -37,6 +37,7 @@ class ModelVendor(str, Enum):
 class ModelCapability(str, Enum):
     """Model capability."""
 
+    COMPLETION = "Completion"
     CHAT = "Chat"
     EMBEDDING = "Embedding"
     INSTRUCTION = "Instruction"
@@ -119,6 +120,12 @@ LLM_MODEL_COLLECTIONS = {
                 model_vendor=ModelVendor.HUGGINGFACE_OPTIMUM_BAAI,
                 model_name="BAAI/bge-small-en-v1.5",
                 model_capability=ModelCapability.EMBEDDING,
+            ),
+            ModelCapability.COMPLETION: ModelUsageSettings(
+                model_vendor=ModelVendor.AZURE_OPENAI,
+                model_name="gpt-35-turbo",
+                model_deployment_name="gpt-35-turbo",
+                model_capability=ModelCapability.COMPLETION,
             ),
         },
     ),

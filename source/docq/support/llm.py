@@ -20,6 +20,8 @@ from llama_index.chat_engine import SimpleChatEngine
 from llama_index.chat_engine.types import ChatMode
 from llama_index.embeddings import OptimumEmbedding
 from llama_index.indices.composability import ComposableGraph
+from llama_index.llms import AzureOpenAI, OpenAI
+from llama_index.llms.base import LLM
 from llama_index.node_parser import SimpleNodeParser
 from llama_index.node_parser.extractors import (
     EntityExtractor,
@@ -147,6 +149,30 @@ def _get_embed_model(model_settings_collection: ModelUsageSettingsCollection) ->
     return embedding_llm
 
 
+def _get_completion_model(model_settings_collection: ModelUsageSettingsCollection) -> LLM:
+    if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.COMPLETION]:
+        chat_model_settings = model_settings_collection.model_usage_settings[ModelCapability.COMPLETION]
+        if chat_model_settings.model_vendor == ModelVendor.AZURE_OPENAI:
+            model = AzureOpenAI(
+                temperature=chat_model_settings.temperature,
+                model=chat_model_settings.model_name,
+                deployment_name=chat_model_settings.model_deployment_name,
+                api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE"),
+                api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1"),
+                api_type="azure",
+                api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION"),
+            )
+            log.info("Completion model: using Azure OpenAI")
+        elif chat_model_settings.model_vendor == ModelVendor.OPENAI:
+            model = OpenAI(
+                temperature=chat_model_settings.temperature,
+                model=chat_model_settings.model_name,
+                api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
+            )
+            log.info("Completion model: using OpenAI.")
+        return model
+
+
 def _get_llm_predictor(model_settings_collection: ModelUsageSettingsCollection) -> LLMPredictor:
     return LLMPredictor(llm=_get_chat_model(model_settings_collection))
 
@@ -243,7 +269,6 @@ def run_ask(
         for s_ in all_spaces:
             try:
                 index_ = _load_index_from_storage(s_, model_settings_collection)
-
             except Exception as e:
                 log.warning(
                     "Index for space '%s' failed to load, skipping. Maybe the index isn't created yet. Error message: %s",
@@ -253,10 +278,10 @@ def run_ask(
                 continue
 
             try:
+                summary_prompts = ["What is the summary of all the documents?", "Generate a summary for each document."]
                 query_engine = index_.as_query_engine()
-
                 summary_ = query_engine.query(
-                    "What is the summary of all the documents?"
+                    summary_prompts[1]
                 )  # note: we might not need to do this any longer because summary is added as node metadata.
             except Exception as e:
                 log.warning(
@@ -267,6 +292,7 @@ def run_ask(
                 continue
 
             if summary_ and summary_.response is not None:
+                log.debug("Summary of space '%s': %s", s_.id_, summary_)
                 indices.append(index_)
                 summaries.append(summary_.response)
             else:
