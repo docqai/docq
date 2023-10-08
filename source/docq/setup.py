@@ -22,7 +22,7 @@ def _config_logging() -> None:
 
 def _config_observability() -> None:
     """Configure observability."""
-    _config_arize_phoenix()
+    # _config_arize_phoenix()
     # _config_wandb()
 
 
@@ -33,6 +33,7 @@ def _config_arize_phoenix() -> None:
     # Look for a URL in the output to open the App in a browser.
     logging.info("Launching Phoenix App...")
     px.launch_app()
+
     # The App is initially empty, but as you proceed with the steps below,
     # traces will appear automatically as your LlamaIndex application runs.
 

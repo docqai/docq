@@ -31,8 +31,8 @@ show_pages(
         Page("web/admin_user_groups.py", "Admin_User_Groups"),
         Page("web/admin_orgs.py", "Admin_Orgs"),
         Page("web/admin_logs.py", "Admin_Logs"),
-        Section("Developers", icon="💻"),
-        Page("web/dev.py", "Dev"),
+        Section("ML Engineering", icon="💻"),
+        Page("web/tools.py", "Tools"),
     ]
 )
 
