@@ -90,7 +90,7 @@ def render_sidebar(selected_org: str, org_options: list, logo_url: str = None) -
 
     Args:
         selected_org: The currently selected org.
-        org_options: json string containing available orgs.
+        org_options: A list containing available orgs for the drop down menu.
         logo_url: URL to logo.
     """
     __side_bar_header_api.selected_org = selected_org
