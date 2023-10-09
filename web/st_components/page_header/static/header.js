@@ -1,13 +1,36 @@
 parent = window.parent.document || window.document;
 
 // Get params === These are to be set in the template by the method that loads this script
-const username = "{{username}}";
-const avatarSrc = "{{avatar_src}}";
+const username = "{{username}}"; // User name to be displayed in the header
+const avatarSrc = "{{avatar_src}}"; // Avatar image source
 const menuItemsJson = `{{menu_items_json}}`; // [{ "text": "Menu item text", "key": "menu-item-button-key", "icon": "menu-item-icon-html"}]
+const styleDoc = `{{style_doc}}`; // CSS string to be added to the parent.document.head
 
 const matchParamNotSet = /\{\{.*\}\}/;
 
 const defaultMenuItemIcon = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M21 12L13 12" stroke="#323232" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M18 15L20.913 12.087V12.087C20.961 12.039 20.961 11.961 20.913 11.913V11.913L18 9" stroke="#323232" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M16 5V4.5V4.5C16 3.67157 15.3284 3 14.5 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H14.5C15.3284 21 16 20.3284 16 19.5V19.5V19" stroke="#323232" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>`
+
+
+// Add style to the parent document head
+if (!matchParamNotSet.test(styleDoc)) {
+  const style = parent.createElement("style");
+  style.setAttribute("id", "docq-header-style");
+  // check if style tag already exists and verify if it is the same as the one to be added
+  const prevStyle = parent.getElementById("docq-header-style");
+  if (prevStyle) {
+    if (prevStyle.innerHTML === styleDoc) {
+      console.log("Style already exists");
+    } else {
+      console.log("Style exists but is different");
+      prevStyle.remove();
+      style.innerHTML = styleDoc;
+      parent.head.appendChild(style);
+    }
+  } else {
+    style.innerHTML = styleDoc;
+    parent.head.appendChild(style);
+  }  
+}
 
 
 /** Utility functions */// ==========================================================================================================================================================

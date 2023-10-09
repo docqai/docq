@@ -26,8 +26,8 @@ class _PageHeaderAPI:
 
     def __init__(self: Self,) -> None:
         """Initialize the class."""
+        self.__page_style = load_file_variables(css_path, {})
         self._load_script()
-        self._load_style()
 
     @property
     def menu_options_json(self: Self,) -> str:
@@ -53,11 +53,6 @@ class _PageHeaderAPI:
     def script(self: Self,) -> str:
         """Get the script."""
         return self.__page_script
-
-    @property
-    def style(self: Self,) -> str:
-        """Get the style."""
-        return self.__page_style
 
     @menu_options_list.setter
     def menu_options_list(self: Self, value: list) -> None:
@@ -86,7 +81,6 @@ class _PageHeaderAPI:
         self.__menu_options_list.append({"text": label, "key": key})
         self.__menu_options_json = json.dumps(self.__menu_options_list)
         self._load_script()
-        self._load_style()
 
     def _load_script(self: Self,) -> None:
         """Load the script."""
@@ -94,13 +88,9 @@ class _PageHeaderAPI:
             "username": self.__username,
             "avatar_src": self.__avatar_src,
             "menu_items_json": self.__menu_options_json,
+            "style_doc": self.__page_style,
         }
         self.__page_script = load_file_variables(script_path, script_args)
-
-    def _load_style(self: Self,) -> None:
-        """Load the style."""
-        self.__page_style = load_file_variables(css_path)
-
 
 
 __page_header_api = _PageHeaderAPI()
@@ -114,7 +104,6 @@ def render_header(username: str, avatar_src: str) -> None:
     """
     __page_header_api.username = username
     __page_header_api.avatar_src = avatar_src
-    st.markdown(f"<style>{__page_header_api.style}</style>", unsafe_allow_html=True)
     html(f"<script>{__page_header_api.script}</script>",height=0,)
 
 
