@@ -22,7 +22,7 @@ from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 
-from web.st_components.page_header import header
+from web.st_components.page_header import menu_option, render_header
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .error_ui import _handle_error_state_ui
@@ -260,7 +260,7 @@ def __login_form() -> None:
 
 
 def __logout_button() -> None:
-    if st.button("Logout"):
+    if st.button("Logout", type="primary"):
         handle_logout()
         st.experimental_rerun()
 
@@ -599,14 +599,16 @@ def chat_ui(feature: FeatureKey) -> None:
                 )
                 st.checkbox("Including your documents", value=True, key="chat_personal_space")
 
-        load_history, create_new_chat = st.columns([3, 1])
-        with load_history:
+        _, chat_histoy, _ = st.columns([1,1,1])
+        with chat_histoy:
             if st.button("Load chat history earlier"):
                 query_chat_history(feature)
-        with create_new_chat:
-            if st.button("New chat"):
-                handle_create_new_chat(feature)
-    with st.container():
+        if st.button("New chat", type="primary"):
+            handle_create_new_chat(feature)
+
+        with menu_option("Chat Settings"):
+            print("\x1b[31mChat settings test\x1b[0m")
+
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
         st.markdown(f"#### {day}")
 
@@ -991,7 +993,4 @@ def init_with_pretty_error_ui() -> None:
 def header_ui(name: str) -> None:
     """Header UI."""
     avatar_src = handle_get_gravatar_url()
-    selected_org_id = get_selected_org_id()
-    orgs = handle_list_orgs()
-    selected_org = next((o for o in orgs if o[0] == selected_org_id), None)
-    header(username=name, avatar_src=avatar_src, org=selected_org[1] if selected_org else None)
+    render_header(username=name, avatar_src=avatar_src)

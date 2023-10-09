@@ -4,7 +4,7 @@ import streamlit as st
 from st_pages import Page, Section, add_page_title, show_pages
 from utils.layout import init_with_pretty_error_ui, org_selection_ui, production_layout, public_access
 
-from web.st_components.sidebar_header import sidebar
+from web.st_components.sidebar_header import render_sidebar
 
 init_with_pretty_error_ui()
 
@@ -63,11 +63,17 @@ st.markdown(
 
 
 st.markdown("Enjoy [Docq](https://docq.ai)!")
-org_menu_options = [
-    {"label": "Org 1", "value": "org1"},
-    {"label": "Org 2", "value": "org2"},
-    {"label": "Org 3", "value": "org3"},
-    {"label": "Org 4", "value": "org4"}
+
+mock_org_options = [
+    "org name 1",
+    "org name 2",
+    "org name 3",
+    "org name 4",
 ]
 
-sidebar(org_menu_options)
+mock_selected_org = "org name 2"
+
+render_sidebar(
+    selected_org=mock_selected_org,
+    org_options=mock_org_options,
+)
