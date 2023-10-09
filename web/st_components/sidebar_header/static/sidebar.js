@@ -3,12 +3,32 @@ parent = window.parent.document || window.document;
 // === Required params ===
 const selectedOrg = "{{selected_org}}";
 const orgOptionsJson = `{{org_options_json}}`;
+const styleDoc = `{{style_doc}}`;
 
 // === Optional params ===
 const logoUrl = "{{logo_url}}";
 
 
 const matchParamNotSet = /\{\{.*\}\}/g;
+
+
+// === Style document ======================================================================================================================================================
+const styleDocElement = document.createElement("style");
+styleDocElement.setAttribute("id", "docq-sidebar-style-doc");
+
+if (!matchParamNotSet.test(styleDoc)) {
+  styleDocElement.innerHTML = styleDoc;
+  const prevStyleDoc = parent.getElementById("docq-sidebar-style-doc");
+  if (prevStyleDoc) {
+    if (prevStyleDoc.innerHTML !== styleDoc) {
+      prevStyleDoc.innerHTML = styleDoc;
+    } else {
+      console.log("Style doc already exists");
+    }
+  } else {
+    parent.head.appendChild(styleDocElement);
+  }
+}
 
 // === Util functions ======================================================================================================================================================
 const findSideBar = () => {
@@ -139,7 +159,7 @@ selectOrgScript.setAttribute("type", "text/javascript");
 selectOrgScript.setAttribute("id", "docq-select-org-script");
 selectOrgScript.innerHTML = `
   function selectOrg(org) {
-    const orgParam = encodeURIComponent(org);
+    const orgParam = encodeURIComponent(btoa(org));
     window.parent.location.href = \`?org=\${orgParam}\`;
   }
 `;

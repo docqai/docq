@@ -22,9 +22,7 @@ if (!matchParamNotSet.test(styleDoc)) {
       console.log("Style already exists");
     } else {
       console.log("Style exists but is different");
-      prevStyle.remove();
-      style.innerHTML = styleDoc;
-      parent.head.appendChild(style);
+      prevStyle.innerHTML = styleDoc;
     }
   } else {
     style.innerHTML = styleDoc;

@@ -1,4 +1,5 @@
 """Nav UI example."""
+import base64
 import json
 import os
 from typing import Self
@@ -23,8 +24,8 @@ class _SideBarHeaderAPI:
 
     def __init__(self: Self,) -> None:
         """Initialize the class."""
+        self.__header_style = load_file_variables(css_path, {})
         self._load_script()
-        self._load_style()
 
     @property
     def selected_org(self: Self,) -> str:
@@ -74,12 +75,9 @@ class _SideBarHeaderAPI:
             "selected_org": self.selected_org,
             "org_options_json": self.org_options_json,
             "logo_url": self.logo_url,
+            "style_doc": self.style,
         }
         self.__header_script = load_file_variables(script_path, params)
-
-    def _load_style(self: Self,) -> None:
-        params = {}
-        self.__header_style = load_file_variables(css_path, params)
 
 
 __side_bar_header_api = _SideBarHeaderAPI()
@@ -96,7 +94,6 @@ def render_sidebar(selected_org: str, org_options: list, logo_url: str = None) -
     __side_bar_header_api.selected_org = selected_org
     __side_bar_header_api.org_options_json = org_options
     __side_bar_header_api.logo_url = logo_url
-    st.markdown(f"<style>{__side_bar_header_api.style}</style>", unsafe_allow_html=True)
     components.html(f"""
         // ST-SIDEBAR-SCRIPT-CONTAINER
         <script>{__side_bar_header_api.script}</script>
@@ -115,6 +112,8 @@ def update_org_options(org_options: list) -> None:
     __side_bar_header_api.org_options_json = org_options
 
 
-def get_selected_org() -> str:
+def get_selected_org_from_ui() -> str:
     """Get the current org."""
-    return st.experimental_get_query_params().get("org", [None])[0]
+    org = st.experimental_get_query_params().get("org", [None])[0]
+    if org is not None:
+        return base64.b64decode(org).decode("utf-8")

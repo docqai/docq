@@ -73,6 +73,7 @@ mock_org_options = [
 
 mock_selected_org = "org name 2"
 
+
 render_sidebar(
     selected_org=mock_selected_org,
     org_options=mock_org_options,
