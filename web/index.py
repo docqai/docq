@@ -1,6 +1,8 @@
 """Page: Home (no auth required)."""
-
+import st_components.page_header as st_header
 import streamlit as st
+from docq import setup
+from st_components.sidebar_header import get_selected_org_from_ui, render_sidebar
 from st_pages import Page, Section, add_page_title, show_pages
 from utils.layout import init_with_pretty_error_ui, org_selection_ui, production_layout, public_access
 
@@ -35,6 +37,8 @@ show_pages(
         Page("web/admin_logs.py", "Admin_Logs"),
     ]
 )
+
+st_header._setup_page_script()
 
 public_access()
 
@@ -78,3 +82,10 @@ render_sidebar(
     selected_org=mock_selected_org,
     org_options=mock_org_options,
 )
+
+selected_org = get_selected_org_from_ui()
+if selected_org is not None:
+    print("\x1b[31m", "selected_org", selected_org, "\x1b[0m")
+    st.experimental_set_query_params()
+
+st_header.run_script()

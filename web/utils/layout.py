@@ -22,7 +22,7 @@ from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 
-from web.st_components.page_header import menu_option, render_header
+from web.st_components.page_header import floating_action_button, menu_option, render_header
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .error_ui import _handle_error_state_ui
@@ -603,10 +603,11 @@ def chat_ui(feature: FeatureKey) -> None:
         with chat_histoy:
             if st.button("Load chat history earlier"):
                 query_chat_history(feature)
-        if st.button("New chat", type="primary"):
+
+        if floating_action_button("New chat", icon="+"):
             handle_create_new_chat(feature)
 
-        with menu_option("Chat Settings"):
+        if menu_option("Chat Settings"):
             print("\x1b[31mChat settings test\x1b[0m")
 
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))

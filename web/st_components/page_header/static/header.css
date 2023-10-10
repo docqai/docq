@@ -101,7 +101,7 @@ div.appview-container div.row-widget.stButton button[kind="primary"] {
 
 
 /* New Chat floating button */
-#docq-new-chat-button-container {
+#docq-floating-action-button-container {
     position: fixed;
     bottom: 70px;
     right: 30px;
@@ -114,7 +114,7 @@ div.appview-container div.row-widget.stButton button[kind="primary"] {
     z-index: 1000;
 }
 
-#docq-new-chat-button {
+#docq-floating-action-button {
     bottom: 70px;
     right: 80%;
     width: 40px;
@@ -128,13 +128,20 @@ div.appview-container div.row-widget.stButton button[kind="primary"] {
     align-items: center;
     cursor: pointer;
     z-index: 1000;
-}
-
-#docq-new-chat-button:active {
     border: none;
+    outline: none;
 }
 
-#docq-new-chat-tooltip {
+#docq-floating-action-button:active, #docq-floating-action-button:focus {
+    border: none;
+    outline: none;
+}
+
+#docq-floating-action-button:active {
+    transform: translateY(4px);
+}
+
+#docq-fab-tooltip {
     position: absolute;
     top: -35px;
     right: -26px;
@@ -149,7 +156,7 @@ div.appview-container div.row-widget.stButton button[kind="primary"] {
     animation: tooltip-slide-out 0.2s ease-in-out;
 }
 
-#docq-new-chat-button-container:hover #docq-new-chat-tooltip {
+#docq-floating-action-button-container:hover #docq-fab-tooltip {
     visibility: visible;
     animation: tooltip-slide-in 0.2s ease-in-out;
 }
@@ -226,4 +233,8 @@ div[data-testid="stStatusWidget"] {
     height: 1px;
     background-color: #e31010;
     margin: 0.5rem 0;
+}
+
+.docq-iframe-container {
+    display: none !important;
 }

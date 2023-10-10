@@ -1,17 +1,18 @@
 """Header bar."""
 import json
 import os
-from contextlib import contextmanager
 from typing import Self
 
 import streamlit as st
 from streamlit.components.v1 import html
 
-from ..static_utils import load_file_variables
+from ..static_utils import get_current_page_info, load_file_variables
 
 parent_dir = os.path.dirname(os.path.abspath(__file__))
 script_path = os.path.join(parent_dir, "static", "header.js")
 css_path = os.path.join(parent_dir, "static", "header.css")
+
+api_key = "page_header_api{page_script_hash}_{page_name}"
 
 
 class _PageHeaderAPI:
@@ -23,6 +24,7 @@ class _PageHeaderAPI:
     __avatar_src: str = None
     __page_script: str = None
     __page_style: str = None
+    __fab_config: str = None
 
     def __init__(self: Self,) -> None:
         """Initialize the class."""
@@ -77,9 +79,16 @@ class _PageHeaderAPI:
         """Add a menu option."""
         for entry in self.__menu_options_list:
             if entry["text"] == label and entry["key"] == key:
+                self.__menu_options_json = json.dumps(self.__menu_options_list)
+                self._load_script()
                 return
         self.__menu_options_list.append({"text": label, "key": key})
         self.__menu_options_json = json.dumps(self.__menu_options_list)
+        self._load_script()
+
+    def setup_fab(self: Self, tool_tip_label: str, key: str, icon: str = "+") -> None:
+        """Setup floating action button."""
+        self.__fab_config = json.dumps({"label": tool_tip_label, "key": key, "icon": icon})
         self._load_script()
 
     def _load_script(self: Self,) -> None:
@@ -89,11 +98,24 @@ class _PageHeaderAPI:
             "avatar_src": self.__avatar_src,
             "menu_items_json": self.__menu_options_json,
             "style_doc": self.__page_style,
+            "fab_config": self.__fab_config,
         }
         self.__page_script = load_file_variables(script_path, script_args)
 
 
-__page_header_api = _PageHeaderAPI()
+# Run this at the start of each page
+def _setup_page_script() -> None:
+    """Setup page script."""
+    script_caller_info = get_current_page_info()
+    print(f"\x1b[31mDebug-script-caller-info: {script_caller_info}\x1b[0m")
+    st.session_state[
+        api_key.format(
+           page_script_hash=script_caller_info["page_script_hash"],
+           page_name=script_caller_info["page_name"]
+        )
+    ] = _PageHeaderAPI()
+    theme = st.get_option("theme.primaryColor")
+    print(f"\x1b[31mDebug-theme: {theme}\x1b[0m")
 
 def render_header(username: str, avatar_src: str) -> None:
     """Header bar.
@@ -102,15 +124,56 @@ def render_header(username: str, avatar_src: str) -> None:
         username (str): Username.
         avatar_src (str): Avatar source.
     """
+    script_caller_info = get_current_page_info()
+    __page_header_api: _PageHeaderAPI = st.session_state[
+        api_key.format(
+           page_script_hash=script_caller_info["page_script_hash"],
+           page_name=script_caller_info["page_name"]
+        )
+    ]
     __page_header_api.username = username
     __page_header_api.avatar_src = avatar_src
     html(f"<script>{__page_header_api.script}</script>",height=0,)
 
 
-@contextmanager
-def menu_option(label: str, key: str = None) -> None:
+def menu_option(label: str, key: str = None) -> bool:
     """Add a menu option."""
     f_label = label.strip().replace(" ", "_").lower()
-    __button_key = st.button(label=f_label, key=key, type="primary")
+    script_caller_info = get_current_page_info()
+    __page_header_api: _PageHeaderAPI = st.session_state[
+        api_key.format(
+           page_script_hash=script_caller_info["page_script_hash"],
+           page_name=script_caller_info["page_name"]
+        )
+    ]
     __page_header_api.add_menu_option(label=label, key=f_label)
-    yield __button_key
+    return st.button(label=f_label, key=key, type="primary")
+
+
+def floating_action_button(label: str, key: str = None, icon: str = None) -> bool:
+    """Add a floating action button."""
+    f_label = label.strip().replace(" ", "_").lower()
+    script_caller_info = get_current_page_info()
+    __page_header_api: _PageHeaderAPI = st.session_state[
+        api_key.format(
+           page_script_hash=script_caller_info["page_script_hash"],
+           page_name=script_caller_info["page_name"]
+        )
+    ]
+    __page_header_api.setup_fab(tool_tip_label=label, key=f_label, icon=icon)
+    return st.button(label=f_label, key=key, type="primary")
+
+
+def run_script() -> None:
+    """Run page header script.
+
+    Run this at the end of each page to load all the defined components for the page.
+    """
+    script_caller_info = get_current_page_info()
+    __page_header_api: _PageHeaderAPI = st.session_state[
+        api_key.format(
+           page_script_hash=script_caller_info["page_script_hash"],
+           page_name=script_caller_info["page_name"]
+        )
+    ]
+    html(f"<script>{__page_header_api.script}</script>",height=0,)

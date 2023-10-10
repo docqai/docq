@@ -1,10 +1,12 @@
+// PAGE-HEADER-SCRIPT === DO NOT REMOVE THIS COMMENT --- Used to identify this script in the page header
 parent = window.parent.document || window.document;
 
 // Get params === These are to be set in the template by the method that loads this script
-const username = "{{username}}"; // User name to be displayed in the header
-const avatarSrc = "{{avatar_src}}"; // Avatar image source
+const username = `{{username}}`; // User name to be displayed in the header
+const avatarSrc = `{{avatar_src}}`; // Avatar image source
 const menuItemsJson = `{{menu_items_json}}`; // [{ "text": "Menu item text", "key": "menu-item-button-key", "icon": "menu-item-icon-html"}]
 const styleDoc = `{{style_doc}}`; // CSS string to be added to the parent.document.head
+const fab_config = `{{fab_config}}`; // { "icon": "fab-icon", "label": "tool-tip-text", "key": "fab-button-key" }
 
 const matchParamNotSet = /\{\{.*\}\}/;
 
@@ -250,37 +252,53 @@ const pageTitle = document.createElement("span");
 [right, center, left].forEach((div) => docqContainer.appendChild(div));
 
 
-// New chat button container
-const newChatButtonContainer = document.createElement("div");
-newChatButtonContainer.setAttribute("id", "docq-new-chat-button-container");
-newChatButtonContainer.setAttribute("class", "docq-new-chat-button-container");
+// === Floating action button ====================================================================================================================================================
+const fabContainer = document.createElement("div");
+fabContainer.setAttribute("id", "docq-floating-action-button-container");
+fabContainer.setAttribute("class", "docq-floating-action-button-container");
 
 // New chat button
-const newChatButton = document.createElement("button");
-newChatButton.setAttribute("id", "docq-new-chat-button");
-newChatButton.setAttribute("class", "docq-new-chat-button");
-newChatButton.innerHTML = "<strong>+</strong>";
-newChatButton.addEventListener("click", () => {
-  const btns = parent.querySelectorAll('button[kind="secondary"]');
-  const newChatBtn = Array.from(btns).find((btn) => btn.innerText.toLowerCase() === "new chat");
-  if (newChatBtn) {
-    newChatBtn.click();
-  } else {
-    console.log("New chat button not found", newChatBtn);
-  }
-});
+function fabSetup (key, icon) {
+  const newChatButton = document.createElement("button");
+  newChatButton.setAttribute("id", "docq-floating-action-button");
+  newChatButton.setAttribute("class", "docq-floating-action-button");
+  newChatButton.innerHTML = `${icon}`;
+  newChatButton.addEventListener("click", () => {
+    const btns = parent.querySelectorAll('button[kind="primary"]');
+    const newChatBtn = Array.from(btns).find((btn) => btn.innerText.toLowerCase() === key.toLowerCase());
+    if (newChatBtn) {
+      newChatBtn.click();
+    } else {
+      console.log("New chat button not found", newChatBtn, key, icon);
+    }
+  });
+  return newChatButton;
+}
 
 
+function tooltipSetup (label) {
+  const newChatTooltip = document.createElement("span");
+  newChatTooltip.setAttribute("id", "docq-fab-tooltip");
+  newChatTooltip.setAttribute("class", "docq-fab-tooltip");
+  newChatTooltip.innerHTML = label;
+  return newChatTooltip;
+}
 
-const newChatTooltip = document.createElement("span");
-newChatTooltip.setAttribute("id", "docq-new-chat-tooltip");
-newChatTooltip.setAttribute("class", "docq-new-chat-tooltip");
-newChatTooltip.innerHTML = "New chat";
+previousFabButton = parent.getElementById("docq-floating-action-button");
+if (previousFabButton) {
+  previousFabButton.remove();
+}
 
-newChatButtonContainer.appendChild(newChatTooltip);
-newChatButtonContainer.appendChild(newChatButton);
+if (!matchParamNotSet.test(fab_config)) {
+  const { icon, label, key } = JSON.parse(fab_config)
+  const newChatButton = fabSetup(key, icon)
+  const newChatTooltip = tooltipSetup(label)
+  fabContainer.appendChild(newChatTooltip);
+  fabContainer.appendChild(newChatButton);
+  parent.body.appendChild(fabContainer);
+}
 
-parent.body.appendChild(newChatButtonContainer);
+// === END Floating action button =======================
 
 // Insert docq container in the DOM
 stApp = parent.querySelector("header[data-testid='stHeader']");
@@ -291,3 +309,13 @@ if (stApp) {
   }
   stApp.insertBefore(docqContainer, stApp.firstChild);
 }
+
+
+// ===
+const iframes = parent.querySelectorAll("iframe");
+iframes.forEach((iframe) => {
+  const srcdoc = iframe.getAttribute("srcdoc");
+  if (srcdoc.includes("PAGE-HEADER-SCRIPT")) {
+    iframe.parentNode.setAttribute("class", "docq-iframe-container");
+  }
+});

@@ -2,16 +2,19 @@
 import base64
 import json
 import os
+from datetime import datetime
 from typing import Self
+from urllib.parse import unquote
 
 import streamlit as st
 import streamlit.components.v1 as components
 
-from ..static_utils import load_file_variables
+from ..static_utils import get_current_page_info, load_file_variables
 
 parent_dir = os.path.dirname(os.path.abspath(__file__))
 script_path = os.path.join(parent_dir, "static", "sidebar.js")
 css_path = os.path.join(parent_dir, "static", "sidebar.css")
+
 
 class _SideBarHeaderAPI:
     """Custom API for the st_components package."""
@@ -82,7 +85,6 @@ class _SideBarHeaderAPI:
 
 __side_bar_header_api = _SideBarHeaderAPI()
 
-
 def render_sidebar(selected_org: str, org_options: list, logo_url: str = None) -> None:
     """Docq sidebar header component.
 
@@ -112,8 +114,14 @@ def update_org_options(org_options: list) -> None:
     __side_bar_header_api.org_options_json = org_options
 
 
-def get_selected_org_from_ui() -> str:
+def get_selected_org_from_ui() -> str | None:
     """Get the current org."""
-    org = st.experimental_get_query_params().get("org", [None])[0]
-    if org is not None:
-        return base64.b64decode(org).decode("utf-8")
+    param = st.experimental_get_query_params().get("org", [None])[0]
+    if param is not None:
+        org, timestamp = base64.b64decode(
+            unquote(param)
+        ).decode("utf-8").split("::")
+        now_ = datetime.now()
+        if now_.timestamp() - float(timestamp) < 60:
+            return org
+    return None

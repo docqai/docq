@@ -1,12 +1,14 @@
+// SIDEBAR-HEADER-SCRIPT === DO NOT REMOVE THIS COMMENT --- Used to identify this script in the page header
 parent = window.parent.document || window.document;
 
 // === Required params ===
-const selectedOrg = "{{selected_org}}";
+const selectedOrg = `{{selected_org}}`;
 const orgOptionsJson = `{{org_options_json}}`;
 const styleDoc = `{{style_doc}}`;
+const orgSelectorLabel = `{{org_selector_label}}`;
 
 // === Optional params ===
-const logoUrl = "{{logo_url}}";
+const logoUrl = `{{logo_url}}`;
 
 
 const matchParamNotSet = /\{\{.*\}\}/g;
@@ -98,7 +100,7 @@ const logoSrc = logoUrl && !logoUrl.match(matchParamNotSet) ? logoUrl : "https:/
 
 docqLogo.setAttribute("src", logoSrc);
 docqLogo.setAttribute("alt", "docq logo");
-docqLogo.setAttribute("style", "width: 50px; height: 50px;");
+docqLogo.setAttribute("style", "width: 25%;");
 docqLogo.setAttribute("id", "docq-logo");
 docqLogo.setAttribute("async", "1");
 
@@ -115,6 +117,10 @@ const selectLabel = document.createElement("label");
 selectLabel.setAttribute("for", "docq-org-dropdown-select");
 selectLabel.setAttribute("class", "docq-select-label");
 selectLabel.innerHTML = "Select org:";
+if (!matchParamNotSet.test(orgSelectorLabel)) {
+  selectLabel.innerHTML = orgSelectorLabel;
+}
+
 selectLabel.setAttribute("style", "margin-right: 10px;");
 
 const selectMenu = document.createElement("select");
@@ -159,7 +165,8 @@ selectOrgScript.setAttribute("type", "text/javascript");
 selectOrgScript.setAttribute("id", "docq-select-org-script");
 selectOrgScript.innerHTML = `
   function selectOrg(org) {
-    const orgParam = encodeURIComponent(btoa(org));
+    const timeStamp = new Date().getTime();
+    const orgParam = encodeURIComponent(btoa(org + "::" + timeStamp));
     window.parent.location.href = \`?org=\${orgParam}\`;
   }
 `;
@@ -170,3 +177,13 @@ if (prevScript) {
 }
 
 parent.body.appendChild(selectOrgScript);
+
+// ===
+const iframes = parent.querySelectorAll("iframe");
+iframes.forEach((iframe) => {
+  const srcdoc = iframe.getAttribute("srcdoc");
+  if (srcdoc.includes("SIDEBAR-HEADER-SCRIPT")) {
+    iframe.parentNode.setAttribute("class", "docq-iframe-container");
+  }
+});
+// === EOF =================================================================================================================================================================
