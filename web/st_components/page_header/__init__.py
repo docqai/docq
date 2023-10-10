@@ -1,5 +1,6 @@
 """Header bar."""
 import json
+import logging as log
 import os
 from typing import Self
 
@@ -25,6 +26,7 @@ class _PageHeaderAPI:
     __page_script: str = None
     __page_style: str = None
     __fab_config: str = None
+    __auth_state: str = None
 
     def __init__(self: Self,) -> None:
         """Initialize the class."""
@@ -55,6 +57,20 @@ class _PageHeaderAPI:
     def script(self: Self,) -> str:
         """Get the script."""
         return self.__page_script
+
+    @property
+    def auth_state(self: Self,) -> str:
+        """Get the auth state."""
+        return self.__auth_state
+
+    @auth_state.setter
+    def auth_state(self: Self, value: bool) -> None:
+        """Set the auth state."""
+        if value:
+            self.__auth_state = "authenticated"
+        else:
+            self.__auth_state = "unauthenticated"
+        self._load_script()
 
     @menu_options_list.setter
     def menu_options_list(self: Self, value: list) -> None:
@@ -99,81 +115,78 @@ class _PageHeaderAPI:
             "menu_items_json": self.__menu_options_json,
             "style_doc": self.__page_style,
             "fab_config": self.__fab_config,
+            "auth_state": self.__auth_state,
         }
         self.__page_script = load_file_variables(script_path, script_args)
 
 
 # Run this at the start of each page
-def _setup_page_script() -> None:
+def _setup_page_script(auth_state: bool) -> None:
     """Setup page script."""
     script_caller_info = get_current_page_info()
-    print(f"\x1b[31mDebug-script-caller-info: {script_caller_info}\x1b[0m")
-    st.session_state[
-        api_key.format(
-           page_script_hash=script_caller_info["page_script_hash"],
-           page_name=script_caller_info["page_name"]
-        )
-    ] = _PageHeaderAPI()
-    theme = st.get_option("theme.primaryColor")
-    print(f"\x1b[31mDebug-theme: {theme}\x1b[0m")
-
-def render_header(username: str, avatar_src: str) -> None:
-    """Header bar.
-
-    Args:
-        username (str): Username.
-        avatar_src (str): Avatar source.
-    """
-    script_caller_info = get_current_page_info()
-    __page_header_api: _PageHeaderAPI = st.session_state[
-        api_key.format(
-           page_script_hash=script_caller_info["page_script_hash"],
-           page_name=script_caller_info["page_name"]
-        )
-    ]
-    __page_header_api.username = username
-    __page_header_api.avatar_src = avatar_src
-    html(f"<script>{__page_header_api.script}</script>",height=0,)
+    try:
+        _key = api_key.format(
+            page_script_hash=script_caller_info["page_script_hash"],
+            page_name=script_caller_info["page_name"]
+            )
+        __page_header_api = _PageHeaderAPI()
+        __page_header_api.auth_state = auth_state
+        st.session_state[_key] = __page_header_api
+        html(f"<script>{__page_header_api.script}</script>",height=0,)
+    except Exception as e:
+        log.error("Page header not initialized properly. error: %s", e)
 
 
 def menu_option(label: str, key: str = None) -> bool:
     """Add a menu option."""
     f_label = label.strip().replace(" ", "_").lower()
     script_caller_info = get_current_page_info()
-    __page_header_api: _PageHeaderAPI = st.session_state[
-        api_key.format(
-           page_script_hash=script_caller_info["page_script_hash"],
-           page_name=script_caller_info["page_name"]
-        )
-    ]
-    __page_header_api.add_menu_option(label=label, key=f_label)
-    return st.button(label=f_label, key=key, type="primary")
+    try:
+        _key = api_key.format(
+            page_script_hash=script_caller_info["page_script_hash"],
+            page_name=script_caller_info["page_name"]
+            )
+        __page_header_api: _PageHeaderAPI = st.session_state[_key]
+        __page_header_api.add_menu_option(label=label, key=f_label)
+        return st.button(label=f_label, key=key, type="primary")
+    except KeyError as e:
+        log.error("Page header not initialized. Please run `setup_page_script` first. error: %s", e)
 
 
 def floating_action_button(label: str, key: str = None, icon: str = None) -> bool:
     """Add a floating action button."""
     f_label = label.strip().replace(" ", "_").lower()
     script_caller_info = get_current_page_info()
-    __page_header_api: _PageHeaderAPI = st.session_state[
-        api_key.format(
-           page_script_hash=script_caller_info["page_script_hash"],
-           page_name=script_caller_info["page_name"]
-        )
-    ]
-    __page_header_api.setup_fab(tool_tip_label=label, key=f_label, icon=icon)
-    return st.button(label=f_label, key=key, type="primary")
+    try:
+        _key = api_key.format(
+            page_script_hash=script_caller_info["page_script_hash"],
+            page_name=script_caller_info["page_name"]
+            )
+        __page_header_api: _PageHeaderAPI = st.session_state[_key]
+        __page_header_api.setup_fab(tool_tip_label=label, key=f_label, icon=icon)
+        return st.button(label=f_label, key=key, type="primary")
+    except KeyError as e:
+        log.error("Page header not initialized. Please run `setup_page_script` first. error: %s", e)
 
 
-def run_script() -> None:
-    """Run page header script.
+def run_script(auth_state: bool, username: str = None, avatar_src: str = None) -> None:
+    """Render the header bar.
 
-    Run this at the end of each page to load all the defined components for the page.
+    Args:
+        auth_state (bool): Authentication state.
+        username (str): Username.
+        avatar_src (str): Avatar source.
     """
     script_caller_info = get_current_page_info()
-    __page_header_api: _PageHeaderAPI = st.session_state[
-        api_key.format(
-           page_script_hash=script_caller_info["page_script_hash"],
-           page_name=script_caller_info["page_name"]
+    try:
+        _key = api_key.format(
+            page_script_hash=script_caller_info["page_script_hash"],
+            page_name=script_caller_info["page_name"]
         )
-    ]
-    html(f"<script>{__page_header_api.script}</script>",height=0,)
+        __page_header_api: _PageHeaderAPI = st.session_state[_key]
+        __page_header_api.auth_state = auth_state
+        __page_header_api.username = username
+        __page_header_api.avatar_src = avatar_src
+        html(f"<script>{__page_header_api.script}</script>",height=0,)
+    except KeyError as e:
+        log.error("Page header not initialized. Please run `setup_page_script` first. error: %s", e)

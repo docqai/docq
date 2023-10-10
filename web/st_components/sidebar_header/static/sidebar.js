@@ -6,6 +6,7 @@ const selectedOrg = `{{selected_org}}`;
 const orgOptionsJson = `{{org_options_json}}`;
 const styleDoc = `{{style_doc}}`;
 const orgSelectorLabel = `{{org_selector_label}}`;
+const authState = `{{auth_state}}`;
 
 // === Optional params ===
 const logoUrl = `{{logo_url}}`;
@@ -141,7 +142,7 @@ if (orgOptionsJson && !orgOptionsJson.match(matchParamNotSet)) {
 orgDropdown.appendChild(selectLabel);
 orgDropdown.appendChild(selectMenu);
 
-if (!selectedOrg.match(matchParamNotSet) && !orgOptionsJson.match(matchParamNotSet)) {
+if (!selectedOrg.match(matchParamNotSet) && !orgOptionsJson.match(matchParamNotSet) && authState === "authenticated") {
   docqLogoContainer.appendChild(orgDropdown);
 }
 

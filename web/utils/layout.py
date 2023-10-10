@@ -3,6 +3,8 @@
 import logging as log
 from typing import List, Tuple
 
+import st_components.page_header as st_header
+import st_components.sidebar_header as st_sidebar
 import streamlit as st
 from docq import setup
 from docq.access_control.main import SpaceAccessType
@@ -22,13 +24,12 @@ from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 
-from web.st_components.page_header import floating_action_button, menu_option, render_header
-
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .error_ui import _handle_error_state_ui
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
     _set_session_state_configs,
+    get_auth_state,
     get_enabled_features,
     get_max_number_of_documents,
     get_shared_space,
@@ -317,7 +318,6 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
             if requiring_admin:
                 __not_authorised()
                 return False
-        header_ui(auth.get(SessionKeyNameForAuth.NAME.name, ""))
         return True
     else:
         log.debug("auth_required(): No valid auth session found. User needs to re-authenticate.")
@@ -604,10 +604,10 @@ def chat_ui(feature: FeatureKey) -> None:
             if st.button("Load chat history earlier"):
                 query_chat_history(feature)
 
-        if floating_action_button("New chat", icon="+"):
+        if st_header.floating_action_button("New chat", icon="+"):
             handle_create_new_chat(feature)
 
-        if menu_option("Chat Settings"):
+        if st_header.menu_option("Chat Settings"):
             print("\x1b[31mChat settings test\x1b[0m")
 
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
@@ -957,28 +957,28 @@ def admin_docs_ui(q_param: str = None) -> None:
         _editor_view(q_param)
 
 
-def org_selection_ui() -> None:
-    """Render organisation selection UI."""
-    try:
-        current_org_id = get_selected_org_id()
-    except KeyError:
-        current_org_id = None
-    if current_org_id:
-        orgs = handle_list_orgs()
+# def org_selection_ui() -> None:
+#     """Render organisation selection UI."""
+#     try:
+#         current_org_id = get_selected_org_id()
+#     except KeyError:
+#         current_org_id = None
+#     if current_org_id:
+#         orgs = handle_list_orgs()
 
-        index__ = next((i for i, s in enumerate(orgs) if s[0] == current_org_id), -1)
+#         index__ = next((i for i, s in enumerate(orgs) if s[0] == current_org_id), -1)
 
-        log.debug("org_selection_ui index: %s ", index__)
-        log.debug("org_selection_ui() orgs: %s", orgs)
-        selected = st.selectbox(
-            "Organisation",
-            orgs,
-            format_func=lambda x: x[1],
-            label_visibility="collapsed",
-            index=index__,
-        )
-        if selected:
-            handle_org_selection_change(selected[0])
+#         log.debug("org_selection_ui index: %s ", index__)
+#         log.debug("org_selection_ui() orgs: %s", orgs)
+#         selected = st.selectbox(
+#             "Organisation",
+#             orgs,
+#             format_func=lambda x: x[1],
+#             label_visibility="collapsed",
+#             index=index__,
+#         )
+#         if selected:
+#             handle_org_selection_change(selected[0])
 
 
 def init_with_pretty_error_ui() -> None:
@@ -991,7 +991,37 @@ def init_with_pretty_error_ui() -> None:
         st.stop()
 
 
-def header_ui(name: str) -> None:
-    """Header UI."""
-    avatar_src = handle_get_gravatar_url()
-    render_header(username=name, avatar_src=avatar_src)
+def setup_page_scripts() -> None:
+    """Setup page scripts.
+
+    Called at the begining of each page.
+    """
+    auth_state = get_auth_state()
+    st_header._setup_page_script(auth_state)
+    st_sidebar._setup_page_script(auth_state)
+
+
+def run_page_scripts() -> None:
+    """Run page scripts.
+
+    Called at the end of each page.
+    """
+    auth_state, name = get_auth_state()
+
+    if auth_state:
+        handle_org_selection_change()
+        selected_org_id, org_list = get_selected_org_id(), handle_list_orgs()
+        selected_org_name = next((x[1] for x in org_list if x[0] == selected_org_id), None)
+        print(f"\x1b31mDebug selected org name {selected_org_name}\x1b[0m")
+        st_sidebar.run_script(
+            auth_state=auth_state,
+            org_options=[ x[1] for x in org_list ],
+            selected_org=selected_org_name,
+        )
+
+        avatar_src = handle_get_gravatar_url()
+        st_header.run_script(auth_state, name, avatar_src)
+    else:
+        st_sidebar.run_script(auth_state)
+        st_header.run_script(auth_state)
+

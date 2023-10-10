@@ -1,10 +1,15 @@
 """Page: Admin / Manage Space Groups."""
 
-import st_components.page_header as st_header
 from st_pages import add_page_title
-from utils.layout import auth_required, create_space_group_ui, list_space_groups_ui
+from utils.layout import (
+    auth_required,
+    create_space_group_ui,
+    list_space_groups_ui,
+    run_page_scripts,
+    setup_page_scripts,
+)
 
-st_header._setup_page_script()
+setup_page_scripts()
 auth_required(requiring_admin=True)
 
 add_page_title()
@@ -12,4 +17,4 @@ add_page_title()
 create_space_group_ui()
 list_space_groups_ui()
 
-st_header.run_script()
+run_page_scripts()

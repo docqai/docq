@@ -7,6 +7,7 @@ const avatarSrc = `{{avatar_src}}`; // Avatar image source
 const menuItemsJson = `{{menu_items_json}}`; // [{ "text": "Menu item text", "key": "menu-item-button-key", "icon": "menu-item-icon-html"}]
 const styleDoc = `{{style_doc}}`; // CSS string to be added to the parent.document.head
 const fab_config = `{{fab_config}}`; // { "icon": "fab-icon", "label": "tool-tip-text", "key": "fab-button-key" }
+const authState = `{{auth_state}}`; // "authenticated" or "unauthenticated"
 
 const matchParamNotSet = /\{\{.*\}\}/;
 
@@ -19,13 +20,8 @@ if (!matchParamNotSet.test(styleDoc)) {
   style.setAttribute("id", "docq-header-style");
   // check if style tag already exists and verify if it is the same as the one to be added
   const prevStyle = parent.getElementById("docq-header-style");
-  if (prevStyle) {
-    if (prevStyle.innerHTML === styleDoc) {
-      console.log("Style already exists");
-    } else {
-      console.log("Style exists but is different");
-      prevStyle.innerHTML = styleDoc;
-    }
+  if (prevStyle && prevStyle.innerHTML !== styleDoc) {
+    prevStyle.innerHTML = styleDoc;
   } else {
     style.innerHTML = styleDoc;
     parent.head.appendChild(style);
@@ -97,7 +93,8 @@ const [left, center, right] = ["left", "center", "right"].map((id) => {
 // Avatar
 const loadAvatar = () => {
   const avatar = document.createElement("img");
-  avatar.setAttribute("src", avatarSrc);
+  const src = matchParamNotSet.test(avatarSrc) ? "https://www.gravatar.com/avatar/00" : avatarSrc;
+  avatar.setAttribute("src", src);
   avatar.setAttribute("alt", "user-avatar");
   avatar.setAttribute("style", "width: 20px; height: 20px;");
   avatar.setAttribute("id", "docq-img-avatar");
@@ -111,7 +108,10 @@ avatarContainer.setAttribute("id", "docq-avatar-container");
 
 
 const avatar = loadAvatar();
-avatarContainer.appendChild(avatar);
+
+if (authState === "authenticated" && !matchParamNotSet.test(avatarSrc)) {
+  avatarContainer.appendChild(avatar);
+}
 
 // User menu ========================================================================================================================================================================
 const userMenu = document.createElement("div");
@@ -182,13 +182,15 @@ userMenu.appendChild(helpBtn);
 userMenu.appendChild(feedbackBtn);
 
 // Add user menu to avatar container
-avatarContainer.appendChild(userMenu);
+console.log("authState", authState);
+if (authState === "authenticated") {
+  avatarContainer.appendChild(userMenu);
+}
 
 // User menu toggle
 avatar.addEventListener("click", () => {
   const userMenu = parent.getElementById("docq-user-menu");
   if (userMenu) {
-    console.log("User menu found", userMenu);
     userMenu.classList.toggle("docq-user-menu-active");
     // Autofocus on the user menu
     const userMenuItems = userMenu.querySelectorAll(".docq-user-menu-item");
@@ -227,6 +229,16 @@ const userMenuObserver = new MutationObserver((mutations) => {
 
 userMenuObserver.observe(userMenu, { attributes: true });
 
+// Close user menu on clicking its child elements
+userMenu.addEventListener("click", (e) => {
+  if (e.target !== userMenu) {
+    const userMenu = parent.getElementById("docq-user-menu");
+    if (userMenu) {
+      userMenu.classList.remove("docq-user-menu-active");
+    }
+  }
+});
+
 // End user menu ====================================================================================================================================================================
 
 
@@ -235,10 +247,10 @@ const userName = document.createElement("span");
 userName.innerHTML = `<strong>${username}</strong>`;
 userName.setAttribute("id", "docq-user-name");
 
-if(!matchParamNotSet.test(username)) {
+if(!matchParamNotSet.test(username) && authState === "authenticated") {
   left.appendChild(userName);
 }
-if (!matchParamNotSet.test(avatarSrc)) {
+if (!matchParamNotSet.test(avatarSrc) && authState === "authenticated") {
   left.appendChild(avatarContainer);
 }
 
@@ -295,7 +307,9 @@ if (!matchParamNotSet.test(fab_config)) {
   const newChatTooltip = tooltipSetup(label)
   fabContainer.appendChild(newChatTooltip);
   fabContainer.appendChild(newChatButton);
-  parent.body.appendChild(fabContainer);
+  if(authState === "authenticated") {
+    parent.body.appendChild(fabContainer);
+  }
 }
 
 // === END Floating action button =======================

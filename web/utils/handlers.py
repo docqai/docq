@@ -8,6 +8,7 @@ import random
 from datetime import datetime
 from typing import Any, List, Optional, Tuple
 
+import st_components.sidebar_header as st_sidebar
 import streamlit as st
 from docq import (
     config,
@@ -339,11 +340,16 @@ def handle_list_orgs(name_match: str = None) -> List[Tuple]:
     return manage_organisations.list_organisations(name_match=name_match, user_id=current_user_id)
 
 
-def handle_org_selection_change(org_id: int) -> None:
+def handle_org_selection_change() -> None:
     """Handle org selection change."""
-    set_selected_org_id(org_id)
+    org_selection =  st_sidebar.get_selected_org_from_ui()
+    if org_selection is not None:
+        orgs_list = handle_list_orgs(org_selection)
+        new_org_id = orgs_list[0][0]
+        set_selected_org_id(new_org_id)
 
-    set_if_current_user_is_selected_org_admin(org_id)
+        set_if_current_user_is_selected_org_admin(new_org_id)
+        st.experimental_set_query_params()
 
 
 def handle_create_space_group() -> int:
@@ -720,3 +726,11 @@ def handle_public_session() -> None:
             space_group_id=-1,
             public_session_id=-1,
         )
+
+
+def get_auth_state() -> tuple[bool, str | None]:
+    """Check the auth state."""
+    auth_session = get_auth_session()
+    state =  auth_session and not auth_session.get(SessionKeyNameForAuth.ANONYMOUS.name)
+    name = auth_session.get(SessionKeyNameForAuth.NAME.name)
+    return state, name
