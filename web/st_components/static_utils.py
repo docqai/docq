@@ -8,9 +8,6 @@ except ImportError:
         get_script_run_ctx,
     )
 
-import os
-import sys
-
 
 def load_file_variables(file_path: str, vars_: dict = None) -> str:
     """Load file variables."""
@@ -25,7 +22,6 @@ def load_file_variables(file_path: str, vars_: dict = None) -> str:
 
 def get_current_page_info() -> str:
     """Get the current page name."""
-    main_script_path = os.path.abspath(sys.argv[0])
     pages = get_pages("")
     ctx = get_script_run_ctx()
     if ctx is not None:
