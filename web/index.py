@@ -15,7 +15,8 @@ with st.sidebar:
 show_pages(
     [
         Page("web/index.py", "Home", "🏠"),
-        Page("web/signup.py", "Signup"),
+        Page("web/signup.py", "signup"),
+        Page("web/verify.py", "verify"),
         Section("Your_Space", icon="📁"),
         Page("web/personal_chat.py", "General_Chat"),
         Page("web/personal_ask.py", "Ask_Your_Documents"),
