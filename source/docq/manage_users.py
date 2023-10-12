@@ -74,8 +74,8 @@ def _init_admin_if_necessary() -> bool:
             log.info("No super_admin user found, creating one with default values...")
             password = PH.hash(DEFAULT_ADMIN_PASSWORD)
             cursor.execute(
-                "INSERT INTO users (id, username, password, fullname, super_admin) VALUES (?, ?, ?, ?, ?)",
-                (DEFAULT_ADMIN_ID, DEFAULT_ADMIN_USERNAME, password, DEFAULT_ADMIN_FULLNAME, 1),
+                "INSERT INTO users (id, username, password, fullname, super_admin, verified) VALUES (?, ?, ?, ?, ?, ?)",
+                (DEFAULT_ADMIN_ID, DEFAULT_ADMIN_USERNAME, password, DEFAULT_ADMIN_FULLNAME, 1, 1),
             )
             connection.commit()
             add_organisation_member(manage_organisations.DEFAULT_ORG_ID, DEFAULT_ADMIN_ID, True)
