@@ -132,12 +132,12 @@ def _setup_page_script(auth_state: bool) -> None:
         __page_header_api = _PageHeaderAPI()
         __page_header_api.auth_state = auth_state
         st.session_state[_key] = __page_header_api
-        html(f"<script>{__page_header_api.script}</script>",height=0,)
+        # html(f"<script>{__page_header_api.script}</script>",height=0,)
     except Exception as e:
         log.error("Page header not initialized properly. error: %s", e)
 
 
-def menu_option(label: str, key: str = None) -> bool:
+def _menu_option(label: str, key: str = None) -> bool:
     """Add a menu option."""
     f_label = label.strip().replace(" ", "_").lower()
     script_caller_info = get_current_page_info()
@@ -153,7 +153,7 @@ def menu_option(label: str, key: str = None) -> bool:
         log.error("Page header not initialized. Please run `setup_page_script` first. error: %s", e)
 
 
-def floating_action_button(label: str, key: str = None, icon: str = None) -> bool:
+def _floating_action_button(label: str, key: str = None, icon: str = None) -> bool:
     """Add a floating action button."""
     f_label = label.strip().replace(" ", "_").lower()
     script_caller_info = get_current_page_info()
@@ -169,7 +169,7 @@ def floating_action_button(label: str, key: str = None, icon: str = None) -> boo
         log.error("Page header not initialized. Please run `setup_page_script` first. error: %s", e)
 
 
-def run_script(auth_state: bool, username: str = None, avatar_src: str = None) -> None:
+def _run_script(auth_state: bool, username: str = None, avatar_src: str = None) -> None:
     """Render the header bar.
 
     Args:
@@ -190,3 +190,8 @@ def run_script(auth_state: bool, username: str = None, avatar_src: str = None) -
         html(f"<script>{__page_header_api.script}</script>",height=0,)
     except KeyError as e:
         log.error("Page header not initialized. Please run `setup_page_script` first. error: %s", e)
+
+
+floating_action_button = _floating_action_button
+menu_option = _menu_option
+run_script = _run_script

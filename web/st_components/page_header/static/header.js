@@ -1,11 +1,11 @@
 // PAGE-HEADER-SCRIPT === DO NOT REMOVE THIS COMMENT --- Used to identify this script in the page header
-parent = window.parent.document || window.document;
+const __parent = window.parent.document || window.document;
 
 // Get params === These are to be set in the template by the method that loads this script
 const username = `{{username}}`; // User name to be displayed in the header
 const avatarSrc = `{{avatar_src}}`; // Avatar image source
 const menuItemsJson = `{{menu_items_json}}`; // [{ "text": "Menu item text", "key": "menu-item-button-key", "icon": "menu-item-icon-html"}]
-const styleDoc = `{{style_doc}}`; // CSS string to be added to the parent.document.head
+const styleDoc = `{{style_doc}}`; // CSS string to be added to the __parent.document.head
 const fab_config = `{{fab_config}}`; // { "icon": "fab-icon", "label": "tool-tip-text", "key": "fab-button-key" }
 const authState = `{{auth_state}}`; // "authenticated" or "unauthenticated"
 
@@ -16,15 +16,15 @@ const defaultMenuItemIcon = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://
 
 // Add style to the parent document head
 if (!matchParamNotSet.test(styleDoc)) {
-  const style = parent.createElement("style");
+  const style = __parent.createElement("style");
   style.setAttribute("id", "docq-header-style");
   // check if style tag already exists and verify if it is the same as the one to be added
-  const prevStyle = parent.getElementById("docq-header-style");
+  const prevStyle = __parent.getElementById("docq-header-style");
   if (prevStyle && prevStyle.innerHTML !== styleDoc) {
     prevStyle.innerHTML = styleDoc;
   } else {
     style.innerHTML = styleDoc;
-    parent.head.appendChild(style);
+    __parent.head.appendChild(style);
   }  
 }
 
@@ -52,7 +52,7 @@ function insertUserMenuItemIconClass(menuItemHtml, iconClass = 'docq-user-menu-i
  * @returns {HTMLButtonElement} The user menu item
  */
 function createUserMenuItem(text, imgHtml = null){
-  const item = parent.createElement('button')
+  const item = __parent.createElement('button')
   item.setAttribute('class', 'docq-user-menu-item')
   item.setAttribute('id', `docq-user-menu-item-${text.replace(' ', '-')}`)
   if (imgHtml) {
@@ -69,7 +69,7 @@ function createUserMenuItem(text, imgHtml = null){
  * @returns {HTMLDivElement} The horizontal divider
  */
 function createHorizontalDivider(){
-  const divider = parent.createElement('div')
+  const divider = __parent.createElement('div')
   divider.setAttribute('class', 'docq-user-menu-divider')
   return divider
 }
@@ -130,7 +130,7 @@ userProfile.innerHTML = `<div class="docq-user-profile-avatar">${avatar.outerHTM
 const logoutImgHtml = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M21 12L13 12" stroke="#323232" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M18 15L20.913 12.087V12.087C20.961 12.039 20.961 11.961 20.913 11.913V11.913L18 9" stroke="#323232" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M16 5V4.5V4.5C16 3.67157 15.3284 3 14.5 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H14.5C15.3284 21 16 20.3284 16 19.5V19.5V19" stroke="#323232" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>`
 const logoutBtn = createUserMenuItem("Logout", logoutImgHtml)
 logoutBtn.addEventListener("click", () => {
-  const btns = parent.querySelectorAll('button[kind="primary"]');
+  const btns = __parent.querySelectorAll('button[kind="primary"]');
   const logoutBtn = Array.from(btns).find((btn) => btn.innerText === "Logout");
   if (logoutBtn) {
     logoutBtn.click();
@@ -165,7 +165,7 @@ if (!matchParamNotSet.test(menuItemsJson)) {
     const icon = item?.icon || defaultMenuItemIcon
     const menuItem = createUserMenuItem(item.text, icon)
     menuItem.addEventListener('click', () => {
-      const btns = parent.querySelectorAll('button[kind="primary"]');
+      const btns = __parent.querySelectorAll('button[kind="primary"]');
       const menuItemBtn = Array.from(btns).find((btn) => btn.innerText === item.key);
       if (menuItemBtn) {
         menuItemBtn.click();
@@ -189,7 +189,7 @@ if (authState === "authenticated") {
 
 // User menu toggle
 avatar.addEventListener("click", () => {
-  const userMenu = parent.getElementById("docq-user-menu");
+  const userMenu = __parent.getElementById("docq-user-menu");
   if (userMenu) {
     userMenu.classList.toggle("docq-user-menu-active");
     // Autofocus on the user menu
@@ -200,12 +200,12 @@ avatar.addEventListener("click", () => {
 
     // Close user menu on click outside
     const closeUserMenu = (e) => {
-      if (!userMenu.contains(parent.activeElement)) {
+      if (!userMenu.contains(__parent.activeElement)) {
         userMenu.classList.remove("docq-user-menu-active");
-        parent.removeEventListener("click", closeUserMenu);
+        __parent.removeEventListener("click", closeUserMenu);
       }
     };
-    parent.addEventListener("click", closeUserMenu);
+    __parent.addEventListener("click", closeUserMenu);
   } else {
     console.log("User menu not found", userMenu);
   }
@@ -215,7 +215,7 @@ avatar.addEventListener("click", () => {
 const userMenuObserver = new MutationObserver((mutations) => {
   mutations.forEach((mutation) => {
     if (mutation.attributeName === "class") {
-      const userMenu = parent.getElementById("docq-user-menu");
+      const userMenu = __parent.getElementById("docq-user-menu");
       if (userMenu) {
         if (userMenu.classList.contains("docq-user-menu-active")) {
           userMenu.style.animation = "docq-user-menu-slide-in 0.2s ease-in-out";
@@ -232,7 +232,7 @@ userMenuObserver.observe(userMenu, { attributes: true });
 // Close user menu on clicking its child elements
 userMenu.addEventListener("click", (e) => {
   if (e.target !== userMenu) {
-    const userMenu = parent.getElementById("docq-user-menu");
+    const userMenu = __parent.getElementById("docq-user-menu");
     if (userMenu) {
       userMenu.classList.remove("docq-user-menu-active");
     }
@@ -276,7 +276,7 @@ function fabSetup (key, icon) {
   newChatButton.setAttribute("class", "docq-floating-action-button");
   newChatButton.innerHTML = `${icon}`;
   newChatButton.addEventListener("click", () => {
-    const btns = parent.querySelectorAll('button[kind="primary"]');
+    const btns = __parent.querySelectorAll('button[kind="primary"]');
     const newChatBtn = Array.from(btns).find((btn) => btn.innerText.toLowerCase() === key.toLowerCase());
     if (newChatBtn) {
       newChatBtn.click();
@@ -296,7 +296,7 @@ function tooltipSetup (label) {
   return newChatTooltip;
 }
 
-previousFabButton = parent.getElementById("docq-floating-action-button");
+previousFabButton = __parent.getElementById("docq-floating-action-button");
 if (previousFabButton) {
   previousFabButton.remove();
 }
@@ -308,16 +308,16 @@ if (!matchParamNotSet.test(fab_config)) {
   fabContainer.appendChild(newChatTooltip);
   fabContainer.appendChild(newChatButton);
   if(authState === "authenticated") {
-    parent.body.appendChild(fabContainer);
+    __parent.body.appendChild(fabContainer);
   }
 }
 
 // === END Floating action button =======================
 
 // Insert docq container in the DOM
-stApp = parent.querySelector("header[data-testid='stHeader']");
+stApp = __parent.querySelector("header[data-testid='stHeader']");
 if (stApp) {
-  const prevDocqContainer = parent.getElementById("docq-header-container");
+  const prevDocqContainer = __parent.getElementById("docq-header-container");
   if (prevDocqContainer) {
     prevDocqContainer.remove();
   }
@@ -326,7 +326,7 @@ if (stApp) {
 
 
 // ===
-const iframes = parent.querySelectorAll("iframe");
+const iframes = __parent.querySelectorAll("iframe");
 iframes.forEach((iframe) => {
   const srcdoc = iframe.getAttribute("srcdoc");
   if (srcdoc.includes("PAGE-HEADER-SCRIPT")) {

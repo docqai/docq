@@ -1,5 +1,5 @@
 // SIDEBAR-HEADER-SCRIPT === DO NOT REMOVE THIS COMMENT --- Used to identify this script in the page header
-parent = window.parent.document || window.document;
+const __parent = window.parent.document || window.document;
 
 // === Required params ===
 const selectedOrg = `{{selected_org}}`;
@@ -21,22 +21,17 @@ styleDocElement.setAttribute("id", "docq-sidebar-style-doc");
 
 if (!matchParamNotSet.test(styleDoc)) {
   styleDocElement.innerHTML = styleDoc;
-  const prevStyleDoc = parent.getElementById("docq-sidebar-style-doc");
-  if (prevStyleDoc) {
-    if (prevStyleDoc.innerHTML !== styleDoc) {
-      prevStyleDoc.innerHTML = styleDoc;
-    } else {
-      console.log("Style doc already exists");
-    }
+  const prevStyleDoc = __parent.getElementById("docq-sidebar-style-doc");
+  if (prevStyleDoc && prevStyleDoc.innerHTML !== styleDoc) {
+    prevStyleDoc.innerHTML = styleDoc;
   } else {
-    parent.head.appendChild(styleDocElement);
+    __parent.head.appendChild(styleDocElement);
   }
 }
 
 // === Util functions ======================================================================================================================================================
 const findSideBar = () => {
-  const sideBar = parent.querySelectorAll('section[data-testid="stSidebar"]');
-  console.log(`sideBar: ${sideBar}, body: ${parent.body}`);
+  const sideBar = __parent.querySelectorAll('section[data-testid="stSidebar"]');
   if (sideBar) {
     return sideBar[0];
   }
@@ -81,11 +76,10 @@ closeButton.innerHTML = closeIcon;
 
 // Close sidebar on click
 closeButton.addEventListener("click", () => {
-  const closeBtn = parent.querySelector(
+  const closeBtn = __parent.querySelector(
     'section[data-testid="stSidebar"][aria-expanded="true"] button[kind="header"]'
   );
   if (closeBtn) {
-    console.log("Close button found", closeBtn);
     closeBtn.click();
   } else {
     console.log("Close button not found", closeBtn);
@@ -152,7 +146,7 @@ const sideBar = findSideBar();
 
 if (sideBar) {
   // Check if the logo already exists
-  const docqLogo = parent.getElementById("docq-logo-container");
+  const docqLogo = __parent.getElementById("docq-logo-container");
   if (docqLogo) {
     docqLogo.remove();
   }
@@ -172,15 +166,15 @@ selectOrgScript.innerHTML = `
   }
 `;
 
-const prevScript = parent.getElementById("docq-select-org-script");
+const prevScript =__parent.getElementById("docq-select-org-script");
 if (prevScript) {
   prevScript.remove();
 }
 
-parent.body.appendChild(selectOrgScript);
+__parent.body.appendChild(selectOrgScript);
 
 // ===
-const iframes = parent.querySelectorAll("iframe");
+const iframes =__parent.querySelectorAll("iframe");
 iframes.forEach((iframe) => {
   const srcdoc = iframe.getAttribute("srcdoc");
   if (srcdoc.includes("SIDEBAR-HEADER-SCRIPT")) {

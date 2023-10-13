@@ -263,6 +263,7 @@ def __login_form() -> None:
 def __logout_button() -> None:
     if st.button("Logout", type="primary"):
         handle_logout()
+        st_sidebar._cleanup_script()
         st.experimental_rerun()
 
 
@@ -1011,12 +1012,10 @@ def run_page_scripts() -> None:
     if auth_state:
         handle_org_selection_change()
         selected_org_id, org_list = get_selected_org_id(), handle_list_orgs()
-        selected_org_name = next((x[1] for x in org_list if x[0] == selected_org_id), None)
-        print(f"\x1b31mDebug selected org name {selected_org_name}\x1b[0m")
         st_sidebar.run_script(
             auth_state=auth_state,
             org_options=[ x[1] for x in org_list ],
-            selected_org=selected_org_name,
+            selected_org=next((x[1] for x in org_list if x[0] == selected_org_id), None),
         )
 
         avatar_src = handle_get_gravatar_url()

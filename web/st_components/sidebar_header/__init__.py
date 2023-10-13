@@ -106,15 +106,11 @@ class _SideBarHeaderAPI:
 
 __side_bar_header_api = _SideBarHeaderAPI()
 
+
 def _setup_page_script(auth_state: bool) -> None:
     """Setup the page script."""
     __side_bar_header_api.auth_state = auth_state
-    components.html(f"""
-        // ST-SIDEBAR-SCRIPT-CONTAINER
-        <script>{__side_bar_header_api.script}</script>
-        """,
-        height=0
-    )
+
 
 def set_selected_org(selected_org: str) -> None:
     """Set the current org."""
@@ -139,7 +135,7 @@ def get_selected_org_from_ui() -> str | None:
     return None
 
 
-def run_script(auth_state: bool, selected_org: str = None, org_options: list = None) -> None:
+def _run_script(auth_state: bool, selected_org: str = None, org_options: list = None) -> None:
     """Run the script."""
     __side_bar_header_api.selected_org = selected_org
     __side_bar_header_api.org_options_list = org_options
@@ -150,3 +146,21 @@ def run_script(auth_state: bool, selected_org: str = None, org_options: list = N
         """,
         height=0
     )
+
+
+def _cleanup_script() -> None:
+    """Cleanup the script."""
+    __side_bar_header_api.reset_user_details()
+    components.html("""
+        // ST-SIDEBAR-SCRIPT-CONTAINER
+        <script>
+            ['docq-org-dropdown', 'docq-header-container', 'docq-floating-action-button'].forEach(id => {
+                const element = window.parent.document.getElementById(id);
+                if (element) element.remove();
+            });
+        </script>
+        """,
+        height=0
+    )
+
+run_script = _run_script
