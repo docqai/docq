@@ -345,10 +345,10 @@ def handle_org_selection_change() -> None:
     org_selection =  st_sidebar.get_selected_org_from_ui()
     if org_selection is not None:
         orgs_list = handle_list_orgs(org_selection)
-        new_org_id = orgs_list[0][0]
-        set_selected_org_id(new_org_id)
-
-        set_if_current_user_is_selected_org_admin(new_org_id)
+        new_org_id = next((x[0] for x in orgs_list if x[1] == org_selection), None)
+        if new_org_id:
+            set_selected_org_id(new_org_id)
+            set_if_current_user_is_selected_org_admin(new_org_id)
         st.experimental_set_query_params()
 
 

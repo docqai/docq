@@ -958,29 +958,6 @@ def admin_docs_ui(q_param: str = None) -> None:
         _editor_view(q_param)
 
 
-# def org_selection_ui() -> None:
-#     """Render organisation selection UI."""
-#     try:
-#         current_org_id = get_selected_org_id()
-#     except KeyError:
-#         current_org_id = None
-#     if current_org_id:
-#         orgs = handle_list_orgs()
-
-#         index__ = next((i for i, s in enumerate(orgs) if s[0] == current_org_id), -1)
-
-#         log.debug("org_selection_ui index: %s ", index__)
-#         log.debug("org_selection_ui() orgs: %s", orgs)
-#         selected = st.selectbox(
-#             "Organisation",
-#             orgs,
-#             format_func=lambda x: x[1],
-#             label_visibility="collapsed",
-#             index=index__,
-#         )
-#         if selected:
-#             handle_org_selection_change(selected[0])
-
 def init_with_pretty_error_ui() -> None:
     """UI to run setup and prevent showing errors to the user."""
     try:

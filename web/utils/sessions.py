@@ -29,7 +29,11 @@ def _init_session_state() -> None:
 
 def session_state_exists() -> bool:
     """Check if any session state exists."""
-    return SESSION_KEY_NAME_DOCQ in st.session_state
+    docq_initialized = SESSION_KEY_NAME_DOCQ in st.session_state
+    auth_initialized = SessionKeySubName.AUTH.name in st.session_state.get(SESSION_KEY_NAME_DOCQ, {})
+    if docq_initialized and auth_initialized:
+        return bool(get_auth_session())
+    return False
 
 
 def reset_session_state() -> None:
@@ -126,7 +130,7 @@ def set_selected_org_id(org_id: int) -> None:
     """Set the selected org_id context."""
     _set_session_value(org_id, SessionKeySubName.AUTH, SessionKeyNameForAuth.SELECTED_ORG_ID.name)
     set_cache_auth_session(
-        st.session_state[SESSION_KEY_NAME_DOCQ][SessionKeySubName.AUTH.name][SessionKeyNameForAuth.ID.name]
+        st.session_state[SESSION_KEY_NAME_DOCQ][SessionKeySubName.AUTH.name]
     )
 
 
