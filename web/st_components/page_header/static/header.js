@@ -11,7 +11,16 @@ const authState = `{{auth_state}}`; // "authenticated" or "unauthenticated"
 
 const matchParamNotSet = /\{\{.*\}\}/;
 
-const defaultMenuItemIcon = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M21 12L13 12" stroke="#323232" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M18 15L20.913 12.087V12.087C20.961 12.039 20.961 11.961 20.913 11.913V11.913L18 9" stroke="#323232" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M16 5V4.5V4.5C16 3.67157 15.3284 3 14.5 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H14.5C15.3284 21 16 20.3284 16 19.5V19.5V19" stroke="#323232" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>`
+// Add font awesome icons
+const _link = document.createElement('link')
+_link.setAttribute('rel', 'stylesheet')
+_link.setAttribute('id', 'docq-fa-icon-link')
+_link.setAttribute('href', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css')
+const prevIconLink = __parent.getElementById('docq-fa-icon-link')
+if (!prevIconLink) {
+  __parent.head.appendChild(_link)
+}
+
 
 
 // Add style to the parent document head
@@ -28,36 +37,32 @@ if (!matchParamNotSet.test(styleDoc)) {
   }  
 }
 
+const iconsMap = { "logout": "sign-out", "help": "question-circle",
+  "feedback": "commenting-o", "settings": "cog", "profile": "user-circle-o",
+  "new chat": "commenting-o", "new ticket": "ticket", "new task": "tasks",
+}
 
 /** Utility functions */// ==========================================================================================================================================================
 
-/**
- * Inserts a class to the svg element in the menu item html
- * @param {string} menuItemHtml  The html string of the menu item
- * @param {string} iconClass Icon class to be added to the svg element (default: 'docq-user-menu-item-icon')
- * @returns {string} The html string of the menu item with the icon class added to the svg element
- */
-function insertUserMenuItemIconClass(menuItemHtml, iconClass = 'docq-user-menu-item-icon'){
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(menuItemHtml, 'text/html')
-  const svg = doc.querySelector('svg')
-  svg.setAttribute('class', iconClass)
-  return doc.body.innerHTML
+function createFAIcon(name) {
+  if (name in iconsMap) {
+    name = iconsMap[name]
+  }
+  return `<i class="fa fa-${name}"></i>` 
 }
 
 /**
  * Creates a user menu item using the given text and icon html string 
  * @param {string} text The text to be displayed in the menu item
- * @param {string} imgHtml 
+ * @param {string} name 
  * @returns {HTMLButtonElement} The user menu item
  */
-function createUserMenuItem(text, imgHtml = null){
+function createUserMenuItem(text, name = null){
   const item = __parent.createElement('button')
   item.setAttribute('class', 'docq-user-menu-item')
   item.setAttribute('id', `docq-user-menu-item-${text.replace(' ', '-')}`)
-  if (imgHtml) {
-    const iconWithClass = insertUserMenuItemIconClass(imgHtml)
-    item.innerHTML = `<span>${iconWithClass}${text}</span>`
+  if (name) {
+    item.innerHTML = `<span>${createFAIcon(name)} ${text}</span>`
   } else {
     item.innerHTML = `<span>${text}</span>`
   }
@@ -127,8 +132,7 @@ userProfile.setAttribute("class", "docq-user-menu-profile");
 userProfile.innerHTML = `<div class="docq-user-profile-avatar">${avatar.outerHTML}</div><div class="docq-user-profile-name">${username}</div>`;
 
 // Logout ===================================================================================
-const logoutImgHtml = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M21 12L13 12" stroke="#323232" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M18 15L20.913 12.087V12.087C20.961 12.039 20.961 11.961 20.913 11.913V11.913L18 9" stroke="#323232" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M16 5V4.5V4.5C16 3.67157 15.3284 3 14.5 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H14.5C15.3284 21 16 20.3284 16 19.5V19.5V19" stroke="#323232" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>`
-const logoutBtn = createUserMenuItem("Logout", logoutImgHtml)
+const logoutBtn = createUserMenuItem("Logout", 'logout')
 logoutBtn.addEventListener("click", () => {
   const btns = __parent.querySelectorAll('button[kind="primary"]');
   const logoutBtn = Array.from(btns).find((btn) => btn.innerText === "Logout");
@@ -141,15 +145,13 @@ logoutBtn.addEventListener("click", () => {
 
 /** Help and Feedback section */
 // Help =====================================================================================
-const helpSvgHtml = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M23 12C23 18.0751 18.0751 23 12 23C5.92487 23 1 18.0751 1 12C1 5.92487 5.92487 1 12 1C18.0751 1 23 5.92487 23 12ZM3.00683 12C3.00683 16.9668 7.03321 20.9932 12 20.9932C16.9668 20.9932 20.9932 16.9668 20.9932 12C20.9932 7.03321 16.9668 3.00683 12 3.00683C7.03321 3.00683 3.00683 7.03321 3.00683 12Z" fill="#0F0F0F"></path> <path d="M13.5 18C13.5 18.8284 12.8284 19.5 12 19.5C11.1716 19.5 10.5 18.8284 10.5 18C10.5 17.1716 11.1716 16.5 12 16.5C12.8284 16.5 13.5 17.1716 13.5 18Z" fill="#0F0F0F"></path> <path d="M11 12V14C11 14 11 15 12 15C13 15 13 14 13 14V12C13 12 13.4792 11.8629 13.6629 11.7883C13.6629 11.7883 13.9969 11.6691 14.2307 11.4896C14.4646 11.3102 14.6761 11.097 14.8654 10.8503C15.0658 10.6035 15.2217 10.3175 15.333 9.99221C15.4443 9.66693 15.5 9.4038 15.5 9C15.5 8.32701 15.3497 7.63675 15.0491 7.132C14.7596 6.61604 14.3476 6.21786 13.8132 5.93745C13.2788 5.64582 12.6553 5.5 11.9427 5.5C11.4974 5.5 11.1021 5.55608 10.757 5.66825C10.4118 5.7692 10.1057 5.9094 9.83844 6.08887C9.58236 6.25712 9.36525 6.4478 9.18711 6.66091C9.02011 6.86281 8.8865 7.0591 8.78629 7.24978C8.68609 7.44046 8.61929 7.6087 8.58589 7.75452C8.51908 7.96763 8.49125 8.14149 8.50238 8.27609C8.52465 8.41069 8.59145 8.52285 8.70279 8.61258C8.81413 8.70231 8.9867 8.79765 9.22051 8.8986C9.46546 8.97712 9.65473 9.00516 9.78834 8.98273C9.93308 8.96029 10.05 8.89299 10.1391 8.78083C10.1391 8.78083 10.6138 8.10569 10.7474 7.97109C10.8922 7.82528 11.0703 7.71312 11.2819 7.6346C11.4934 7.54487 11.7328 7.5 12 7.5C12.579 7.5 13.0076 7.64021 13.286 7.92062C13.5754 8.18982 13.6629 8.41629 13.6629 8.93225C13.6629 9.27996 13.6017 9.56038 13.4792 9.77349C13.3567 9.9866 13.1953 10.1605 12.9949 10.2951C12.9949 10.2951 12.7227 10.3991 12.5 10.5C12.2885 10.5897 11.9001 10.7381 11.6997 10.8503C11.5104 10.9512 11.4043 11.0573 11.2819 11.2144C11.1594 11.3714 11 11.7308 11 12Z" fill="#0F0F0F"></path> </g></svg>`
-const helpBtn = createUserMenuItem("Help", helpSvgHtml)
+const helpBtn = createUserMenuItem("Help", 'help')
 helpBtn.addEventListener("click", () => {
   window.open("https://docq.ai", "_blank");
 });
 
 // Send feedback ===========================================================================
-const feedbackSvgHtml = `<svg viewBox="0 0 1024 1024" class="icon" version="1.1" xmlns="http://www.w3.org/2000/svg" fill="#000000"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path d="M415.808 755.2L512 851.392 608.192 755.2H883.2V204.8H704V128h256v704h-320l-128 128-128-128H64V128h256v76.8H140.8v550.4h275.008zM473.6 64h76.8v448H473.6V64z m0 512h76.8v76.8H473.6V576z" fill="#000000"></path></g></svg>`
-const feedbackBtn = createUserMenuItem("Send feedback", feedbackSvgHtml)
+const feedbackBtn = createUserMenuItem("Send feedback", 'feedback')
 feedbackBtn.addEventListener("click", () => {
   window.open("https://docq.ai", "_blank");
 });
@@ -162,7 +164,7 @@ userMenu.appendChild(logoutBtn)
 if (!matchParamNotSet.test(menuItemsJson)) {
   const menuItems = JSON.parse(menuItemsJson)
   menuItems.forEach(item => {
-    const icon = item?.icon || defaultMenuItemIcon
+    const icon = item.icon || "square" // default icon
     const menuItem = createUserMenuItem(item.text, icon)
     menuItem.addEventListener('click', () => {
       const btns = __parent.querySelectorAll('button[kind="primary"]');
@@ -182,7 +184,6 @@ userMenu.appendChild(helpBtn);
 userMenu.appendChild(feedbackBtn);
 
 // Add user menu to avatar container
-console.log("authState", authState);
 if (authState === "authenticated") {
   avatarContainer.appendChild(userMenu);
 }

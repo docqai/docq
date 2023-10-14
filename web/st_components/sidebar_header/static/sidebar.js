@@ -147,10 +147,10 @@ const sideBar = findSideBar();
 if (sideBar) {
   // Check if the logo already exists
   const docqLogo = __parent.getElementById("docq-logo-container");
-  if (docqLogo) {
-    docqLogo.remove();
+  if (!docqLogo || docqLogo.innerHTML !== docqLogoContainer.innerHTML) {
+    if(docqLogo) docqLogo.remove();
+    sideBar.insertBefore(docqLogoContainer, sideBar.firstChild);
   }
-  sideBar.insertBefore(docqLogoContainer, sideBar.firstChild);
 }
 
 

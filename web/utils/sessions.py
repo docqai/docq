@@ -125,6 +125,9 @@ def get_selected_org_id() -> int | None:
 def set_selected_org_id(org_id: int) -> None:
     """Set the selected org_id context."""
     _set_session_value(org_id, SessionKeySubName.AUTH, SessionKeyNameForAuth.SELECTED_ORG_ID.name)
+    set_cache_auth_session(
+        st.session_state[SESSION_KEY_NAME_DOCQ][SessionKeySubName.AUTH.name][SessionKeyNameForAuth.ID.name]
+    )
 
 
 def get_username() -> str | None:

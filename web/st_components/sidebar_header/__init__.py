@@ -24,6 +24,11 @@ class _SideBarHeaderAPI:
     __header_script: str = None
     __header_style: str = None
     __auth_state: str = "unauthenticated"
+    __active_elements: list = [
+        "docq-org-dropdown",
+        "docq-header-container",
+        "docq-floating-action-button",
+    ]
 
     def __init__(self: Self,) -> None:
         """Initialize the class."""
@@ -56,6 +61,11 @@ class _SideBarHeaderAPI:
     def logo_url(self: Self,) -> str:
         """Get the URL to logo."""
         return self.__logo_url
+
+    @property
+    def active_elements(self: Self,) -> list:
+        """Get the active elements."""
+        return json.dumps(self.__active_elements)
 
     @logo_url.setter
     def logo_url(self: Self, value: str) -> None:
@@ -151,16 +161,18 @@ def _run_script(auth_state: bool, selected_org: str = None, org_options: list = 
 def _cleanup_script() -> None:
     """Cleanup the script."""
     __side_bar_header_api.reset_user_details()
-    components.html("""
-        // ST-SIDEBAR-SCRIPT-CONTAINER
+    components.html(f"""
         <script>
-            ['docq-org-dropdown', 'docq-header-container', 'docq-floating-action-button'].forEach(id => {
+            const active_elements = `{__side_bar_header_api.active_elements}`;
+            JSON.parse(active_elements).forEach(id => {{
                 const element = window.parent.document.getElementById(id);
                 if (element) element.remove();
-            });
+            }});
         </script>
         """,
         height=0
     )
+
+
 
 run_script = _run_script

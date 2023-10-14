@@ -608,7 +608,7 @@ def chat_ui(feature: FeatureKey) -> None:
         if st_header.floating_action_button("New chat", icon="+"):
             handle_create_new_chat(feature)
 
-        if st_header.menu_option("Chat Settings"):
+        if st_header.menu_option("Chat Settings", "settings"):
             print("\x1b[31mChat settings test\x1b[0m")
 
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
@@ -980,7 +980,6 @@ def admin_docs_ui(q_param: str = None) -> None:
 #         )
 #         if selected:
 #             handle_org_selection_change(selected[0])
-
 
 def init_with_pretty_error_ui() -> None:
     """UI to run setup and prevent showing errors to the user."""

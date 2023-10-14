@@ -91,16 +91,18 @@ class _PageHeaderAPI:
         self.__avatar_src = value
         self._load_script()
 
-    def add_menu_option(self: Self, label: str, key: str, icon_html_: str = None) -> None:
+
+    def add_menu_option(self: Self, label: str, key: str, icon: str = None) -> None:
         """Add a menu option."""
         for entry in self.__menu_options_list:
             if entry["text"] == label and entry["key"] == key:
                 self.__menu_options_json = json.dumps(self.__menu_options_list)
                 self._load_script()
                 return
-        self.__menu_options_list.append({"text": label, "key": key})
+        self.__menu_options_list.append({"text": label, "key": key, "icon": icon})
         self.__menu_options_json = json.dumps(self.__menu_options_list)
         self._load_script()
+
 
     def setup_fab(self: Self, tool_tip_label: str, key: str, icon: str = "+") -> None:
         """Setup floating action button."""
@@ -137,7 +139,7 @@ def _setup_page_script(auth_state: bool) -> None:
         log.error("Page header not initialized properly. error: %s", e)
 
 
-def _menu_option(label: str, key: str = None) -> bool:
+def _menu_option(label: str, key: str = None, icon: str = None) -> bool:
     """Add a menu option."""
     f_label = label.strip().replace(" ", "_").lower()
     script_caller_info = get_current_page_info()
@@ -147,7 +149,7 @@ def _menu_option(label: str, key: str = None) -> bool:
             page_name=script_caller_info["page_name"]
             )
         __page_header_api: _PageHeaderAPI = st.session_state[_key]
-        __page_header_api.add_menu_option(label=label, key=f_label)
+        __page_header_api.add_menu_option(label=label, key=f_label, icon=icon)
         return st.button(label=f_label, key=key, type="primary")
     except KeyError as e:
         log.error("Page header not initialized. Please run `setup_page_script` first. error: %s", e)

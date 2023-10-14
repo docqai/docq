@@ -1,3 +1,7 @@
+section[data-testid="stSidebar"] div[data-testid="stSidebarNav"] {
+    min-height: 800px !important;
+}
+
 section[data-testid="stSidebar"] ul {
     padding-top: 1rem !important;
 }
