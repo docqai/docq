@@ -256,7 +256,7 @@ def __login_form() -> None:
     password = st.text_input("Password", value="", key="login_password", type="password")
     if st.button("Login"):
         if not handle_check_account_activated(username):
-            form_validator.error("Your account is not activated. please check your email for the activation link.")
+            form_validator.error("Your account is not activated. Please check your email for the activation link.")
             st.stop()
         elif handle_login(username, password):
             st.experimental_rerun()
@@ -1028,7 +1028,7 @@ def _validate_email(email: str, generator: DeltaGenerator) -> bool:
 def _validate_password(password: str, generator: DeltaGenerator) -> bool:
     """Validate the password."""
     special_chars = r"[_@$!#%^&*()-=+\{\}\[\]|\\:;\"'<>,.?/~`]"
-    if  password is None:
+    if password is None:
         generator.error("Password is required!")
         return False
     elif len(password) < 8:
@@ -1047,6 +1047,7 @@ def _validate_password(password: str, generator: DeltaGenerator) -> bool:
         generator.error("Password must contain at least 1 special character!")
         return False
     return True
+
 
 def validate_signup_form(form: str = "user-signup") -> None:
     """Handle validation of the signup form."""
@@ -1093,7 +1094,6 @@ def signup_ui() -> None:
         if submit:
             validate_signup_form()
             handle_user_signup()
-
 
 
 def verify_email_ui() -> None:
