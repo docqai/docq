@@ -268,7 +268,8 @@ def __login_form() -> None:
 
 
 def __logout_button() -> None:
-    if st.button("Logout"):
+    sidebar = st.sidebar
+    if sidebar.button("Logout"):
         handle_logout()
         st.experimental_rerun()
 
