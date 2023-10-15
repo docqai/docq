@@ -2,7 +2,7 @@
 
 import streamlit as st
 from st_pages import Page, Section, add_page_title, show_pages
-from utils.layout import init_with_pretty_error_ui, org_selection_ui, production_layout, public_access
+from utils.layout import auth_required, init_with_pretty_error_ui, org_selection_ui, production_layout, public_access
 
 init_with_pretty_error_ui()
 
@@ -40,6 +40,7 @@ public_access()
 
 add_page_title()
 
+login_container = st.container()
 
 st.subheader("Welcome to Docq - Private & Secure AI Knowledge Insight")
 
@@ -58,7 +59,18 @@ st.markdown(
 - You can manage the documents in your space which sets the context for your questions.
 - Your access to shared spaces is subject to permissions set by your organisation.
 - For any questions or feedback, please contact your organisation's Docq administrator.
+
+Enjoy Docq!
 """
 )
 
-st.markdown("Enjoy [Docq](https://docq.ai)!")
+
+st.markdown(
+    """
+[Website](https://docq.ai) | [Docs](https://docqai.github.io/docq/) | [Github](https://github.com/docqai) | [Twitter](https://twitter.com/docqai)
+    """
+)
+
+
+with login_container:
+    auth_required(show_login_form=True, requiring_admin=False, show_logout_button=True)
