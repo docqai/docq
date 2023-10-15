@@ -24,7 +24,7 @@ EMAIL_VERIFICATION_TEMPLATE = """
             <h1 style="margin-bottom: 20px;">{title}</h1>
         </div>
         <p style="margin-bottom: 0.5rem; padding: 0 1rem;">Hello {name},</p>
-        <p style="margin-bottom: 0.5rem; padding: 0 1rem;">Thank you for signing up for docq! To complete your registration, please click the button below to verify your email address.</p>
+        <p style="margin-bottom: 0.5rem; padding: 0 1rem;">Thank you for signing up for Docq.AI! To complete your registration, please click the button below to verify your email address.</p>
         <div style="width: 100%; text-align: center; margin-bottom: 20px;">
             <a href="{verification_url}" style="background-color: #4CAF50; border: none; color: white; padding: 15px 32px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px;">Verify Email</a>
         </div>
@@ -33,6 +33,7 @@ EMAIL_VERIFICATION_TEMPLATE = """
   </body>
 </html>
 """
+
 
 def _send_email(
     sender_email: str,
@@ -67,9 +68,7 @@ def _generate_verification_url(user_id: int) -> str:
     timestamp = datetime.now().timestamp()
     stringparam = f"{user_id}::{timestamp}"
     hash_ = hashlib.sha256(stringparam.encode("utf-8")).hexdigest()
-    query_param = quote_plus(
-        base64.b64encode(f"{user_id}::{timestamp}::{hash_}".encode("utf-8"))
-    )
+    query_param = quote_plus(base64.b64encode(f"{user_id}::{timestamp}::{hash_}".encode("utf-8")))
     return f"{server_address}/verify?token={query_param}"
 
 
@@ -80,7 +79,7 @@ def send_verification_email(reciever_email: str, name: str, user_id: int) -> Non
     smtp_password = os.environ.get(SMTP_PASSWORD_KEY)
     smtp_server = os.environ.get(SMTP_SERVER_KEY)
 
-    subject = "Docq sign-up - email verification"
+    subject = "Docq.AI Sign-up - Email Verification"
     message = EMAIL_VERIFICATION_TEMPLATE.format(
         title=subject,
         name=name,
