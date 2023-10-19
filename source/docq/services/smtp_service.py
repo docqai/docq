@@ -22,6 +22,7 @@ def _get_email_template() -> str:
     with open(template, "r") as f:
         return f.read()
 
+
 def _send_email(
     sender_email: str,
     receiver_email: str,
@@ -68,6 +69,7 @@ def send_verification_email(reciever_email: str, name: str, user_id: int) -> Non
 
     subject = "Docq.AI Sign-up - Email Verification"
     message = _get_email_template()
+    message = message.replace("{{ name }}", name)
     message = message.replace("{{ doubleoptin }}", _generate_verification_url(user_id))
     _send_email(
         sender_email=sender_email,
