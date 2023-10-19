@@ -58,6 +58,7 @@ from .handlers import (
     handle_org_selection_change,
     handle_public_session,
     handle_reindex_space,
+    handle_resend_email_verification,
     handle_update_org,
     handle_update_space_details,
     handle_update_space_group,
@@ -256,12 +257,22 @@ def __login_form() -> None:
     password = st.text_input("Password", value="", key="login_password", type="password")
     if st.button("Login"):
         if not handle_check_account_activated(username):
-            form_validator.error("Your account is not activated. Please check your email for the activation link.")
-            st.stop()
+            st.session_state["login-form-account-not-activated"] = True
         elif handle_login(username, password):
             st.experimental_rerun()
         else:
             form_validator.error("The Username and Password you entered doesn't match what we have.")
+            st.stop()
+
+    if st.session_state.get("login-form-account-not-activated", False):
+        with form_validator.container():
+            msg = st.empty()
+            msg.error("Your account is not activated. Please check your email for the activation link.")
+            _, center, _ = st.columns([1, 1, 1])
+            if center.button("Resend verification email"):
+                handle_resend_email_verification(username)
+                st.session_state["login-form-account-not-activated"] = False
+                msg.success("Verification email sent. Please check your email.")
             st.stop()
     else:
         st.stop()
@@ -1035,19 +1046,21 @@ def _validate_password(password: str, generator: DeltaGenerator) -> bool:
     elif len(password) < 8:
         generator.error("Password must be at least 8 characters long!")
         return False
-    elif not re.search("[a-z]", password):
-        generator.error("Password must contain at least 1 lowercase letter!")
-        return False
-    elif not re.search("[A-Z]", password):
-        generator.error("Password must contain at least 1 uppercase letter!")
-        return False
-    elif not re.search("[0-9]", password):
-        generator.error("Password must contain at least 1 number!")
-        return False
-    elif not re.search(special_chars, password):
-        generator.error("Password must contain at least 1 special character!")
-        return False
-    return True
+    else:
+        password_fmt = {
+            "1 lower case letter": re.search(r"[a-z]", password),
+            "1 upper case letter": re.search(r"[A-Z]", password),
+            "1 number": re.search(r"[0-9]", password),
+            "1 special character": re.search(special_chars, password),
+        }
+        missing_fmt = [k for k, v in password_fmt.items() if not v]
+        if missing_fmt:
+            error_text = f"Password must contain at least {', '.join(missing_fmt)}."
+            if len(missing_fmt) > 1:
+                error_text = f"Password must contain at least {', '.join(missing_fmt[:-1])} and {missing_fmt[-1]}."
+            generator.error(error_text)
+            return False
+        return True
 
 
 def validate_signup_form(form: str = "user-signup") -> None:
@@ -1090,7 +1103,12 @@ def signup_ui() -> None:
     with st.form(key=form):
         st.text_input("Name", placeholder="John Doe", key=f"{form}-name")
         st.text_input("Email", placeholder="johndoe@mail.com", key=f"{form}-email")
-        st.text_input("Password", type="password", key=f"{form}-password")
+        st.text_input(
+            "Password",
+            type="password",
+            key=f"{form}-password",
+            help="Password must be at least 8 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number and 1 special character."
+        )
         submit = st.form_submit_button("Signup")
         if submit:
             validate_signup_form()

@@ -292,6 +292,16 @@ def handle_user_signup() -> bool:
         return False
 
 
+def handle_resend_email_verification(username: str) -> bool:
+    """Handle resend email verification."""
+    user_id, fullname = manage_users.get_user_verification_params(username)
+    if user_id and fullname:
+        send_verification_email(username, fullname, user_id)
+        log.info("Verification email sent: %s", {username, user_id, fullname})
+        return True
+    return False
+
+
 def _verify_timestamp(timestamp: str) -> bool:
     """Verify the timestamp."""
     try:

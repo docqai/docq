@@ -439,6 +439,17 @@ def check_account_activated(username: str) -> bool:
         )
 
 
+def get_user_verification_params(username: str) -> tuple[int, str]:
+    """Get a user's verification params (user_id, fullname)."""
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection:
+        return connection.execute(
+            "SELECT id, fullname FROM users WHERE username = ?",
+            (username,),
+        ).fetchone()
+
+
 def reset_password(id_: int, password: str) -> bool:
     """Reset a user's password.
 

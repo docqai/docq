@@ -16,24 +16,11 @@ SMTP_SERVER_KEY = "SMTP_SERVER"
 SERVER_ADDRESS_KEY = "SERVER_ADDRESS"
 
 
-EMAIL_VERIFICATION_TEMPLATE = """
-<html>
-  <body style="font-family: Ariel, sans-serif; margin: 0; padding: 20px;">
-    <div style="max-width: 600px; margin: 0 auto; text-align: left; border: 1px solid; padding: 0; font-size: 1rem;">
-        <div style="background-color: #4CAF50; color: white; text-align: center; width: 100%; margin: 0;">
-            <h1 style="margin-bottom: 20px;">{title}</h1>
-        </div>
-        <p style="margin-bottom: 0.5rem; padding: 0 1rem;">Hello {name},</p>
-        <p style="margin-bottom: 0.5rem; padding: 0 1rem;">Thank you for signing up for Docq.AI! To complete your registration, please click the button below to verify your email address.</p>
-        <div style="width: 100%; text-align: center; margin-bottom: 20px;">
-            <a href="{verification_url}" style="background-color: #4CAF50; border: none; color: white; padding: 15px 32px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px;">Verify Email</a>
-        </div>
-        <p style="margin-bottom: 0.5rem; padding: 0 1rem;">If you did not sign up for Docq, please ignore this email.</p>
-    </div>
-  </body>
-</html>
-"""
-
+def _get_email_template() -> str:
+    directory = os.path.dirname(os.path.abspath(__file__))
+    template = os.path.join(directory, "email-template.html")
+    with open(template, "r") as f:
+        return f.read()
 
 def _send_email(
     sender_email: str,
@@ -80,12 +67,8 @@ def send_verification_email(reciever_email: str, name: str, user_id: int) -> Non
     smtp_server = os.environ.get(SMTP_SERVER_KEY)
 
     subject = "Docq.AI Sign-up - Email Verification"
-    message = EMAIL_VERIFICATION_TEMPLATE.format(
-        title=subject,
-        name=name,
-        verification_url=_generate_verification_url(user_id),
-    )
-
+    message = _get_email_template()
+    message = message.replace("{{ doubleoptin }}", _generate_verification_url(user_id))
     _send_email(
         sender_email=sender_email,
         receiver_email=reciever_email,
