@@ -42,7 +42,7 @@ add_page_title()
 
 login_container = st.container()
 
-st.subheader("Welcome to Docq - Private & Secure AI Knowledge Insight")
+st.subheader("Welcome to Docq - Private & Secure AI Knowledge Insight, your second brain.")
 
 st.markdown(
     """
@@ -55,7 +55,7 @@ st.markdown(
 st.subheader("Tips & Tricks")
 st.markdown(
     """
-- Always ask questions in plane English and try to be as specific as possible.
+- Always ask questions in plain English and try to be as specific as possible.
 - You can manage the documents in your space which sets the context for your questions.
 - Your access to shared spaces is subject to permissions set by your organisation.
 - For any questions or feedback, please contact your organisation's Docq administrator.
