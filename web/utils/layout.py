@@ -1045,7 +1045,7 @@ def _validate_password(password: str, generator: DeltaGenerator) -> bool:
         generator.error("Password is required!")
         return False
     elif len(password) < 8:
-        generator.error("Password must be at least 8 characters long!")
+        generator.error("Password must be at least 8 characters long and contain atleast 1 of the following: 1 uppercase, 1 lowercase, 1 number and 1 special character.")
         return False
     else:
         password_fmt = {
