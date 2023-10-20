@@ -38,6 +38,7 @@ from .handlers import (
     handle_archive_org,
     handle_chat_input,
     handle_check_account_activated,
+    handle_check_mailer_ready,
     handle_check_user_exists,
     handle_create_new_chat,
     handle_create_org,
@@ -256,12 +257,12 @@ def __login_form() -> None:
     username = st.text_input("Username", value="", key="login_username")
     password = st.text_input("Password", value="", key="login_password", type="password")
     if st.button("Login"):
-        if not handle_check_account_activated(username):
-            st.session_state["login-form-account-not-activated"] = True
-        elif handle_login(username, password):
+        if handle_login(username, password):
             st.experimental_rerun()
+        elif not handle_check_account_activated(username):
+            st.session_state["login-form-account-not-activated"] = True
         else:
-            form_validator.error("The Username and Password you entered doesn't match what we have.")
+            form_validator.error("The Username or the Password you've entered doesn't match what we have.")
             st.stop()
 
     if st.session_state.get("login-form-account-not-activated", False):
@@ -269,7 +270,7 @@ def __login_form() -> None:
             msg = st.empty()
             msg.error("Your account is not activated. Please check your email for the activation link.")
             _, center, _ = st.columns([1, 1, 1])
-            if center.button("Resend verification email"):
+            if handle_check_mailer_ready() and center.button("Resend verification email"):
                 handle_resend_email_verification(username)
                 st.session_state["login-form-account-not-activated"] = False
                 msg.success("Verification email sent. Please check your email.")
@@ -1098,6 +1099,12 @@ def signup_ui() -> None:
     handle_logout()
     st.title("Docq Signup")
     st.markdown('Already have an account? Login <a href="/" target="_self">here</a>.', unsafe_allow_html=True)
+
+    if not handle_check_mailer_ready():
+        st.error("Unable to create personal accounts")
+        st.info("Please contact your administrator to help you create an account.")
+        st.stop()
+
     form = "user-signup"
     st.session_state[f"{form}-validator"] = st.empty()
     with st.form(key=form):

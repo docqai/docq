@@ -27,7 +27,7 @@ from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.model_selection.main import get_saved_model_settings_collection
-from docq.services.smtp_service import send_verification_email
+from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import get_cache_auth_session, reset_cache_and_cookie_auth_session, set_cache_auth_session
 
 from .constants import (
@@ -335,6 +335,11 @@ def handle_verify_email() -> bool:
 def handle_check_account_activated(username: str) -> bool:
     """Check if the account is activated."""
     return manage_users.check_account_activated(username)
+
+
+def handle_check_mailer_ready () -> bool:
+    """Check if the mailer is ready."""
+    return mailer_ready()
 
 
 def handle_create_user_group() -> int:
