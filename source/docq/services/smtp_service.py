@@ -5,15 +5,17 @@ import logging as log
 import os
 import smtplib
 from datetime import datetime
+from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from urllib.parse import quote_plus
 
-SENDER_EMAIL_KEY = "SMTP_LOGIN"
-SMTP_PORT_KEY = "SMTP_PORT"
-SMTP_PASSWORD_KEY = "SMTP_KEY"
-SMTP_SERVER_KEY = "SMTP_SERVER"
-SERVER_ADDRESS_KEY = "SERVER_ADDRESS"
+SENDER_EMAIL_KEY = "DOCQ_SMTP_LOGIN"
+SMTP_PORT_KEY = "DOCQ_SMTP_PORT"
+SMTP_PASSWORD_KEY = "DOCQ_SMTP_KEY"
+SMTP_SERVER_KEY = "DOCQ_SMTP_SERVER"
+SERVER_ADDRESS_KEY = "DOCQ_SERVER_ADDRESS"
+SMTP_SENDER_EMAIL_KEY = "DOCQ_SMTP_FROM"
 
 VERIFICATION_EMAIL_TEMPLATE = """
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
@@ -31,27 +33,35 @@ def _get_verification_email_template(**kwargs: dict) -> str:
 
 def _send_email(
     sender_email: str,
-    receiver_email: str,
+    recipients: list[str],
     subject: str,
     message: str,
     smtp_server: str,
     smtp_port: int,
     username: str,
     password: str,
+    attachments: list[str] = None,
 ) -> None:
     """Send an email."""
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
         msg["From"] = sender_email
-        msg["To"] = receiver_email
-        msg.attach(MIMEText(message, "plain"))
-        text = msg.as_string()
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.starttls()
-        server.login(username, password)
-        server.sendmail(sender_email, receiver_email, text)
-        server.quit()
+        msg["To"] = ', '.join(recipients)
+        msg.attach(MIMEText(message, "html"))
+
+        if attachments:
+            for attachment in attachments:
+                with open(attachment, "rb") as f:
+                    part = MIMEApplication(f.read(), Name=attachment.split("/")[-1])
+                    part["Content-Disposition"] = f'attachment; filename="{attachment.split("/")[-1]}"'
+                    msg.attach(part)
+
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(username, password)
+            server.sendmail(sender_email, recipients, msg.as_string())
+
     except Exception as e:
         log.exception("SMTP send_verification_email error: %s", e)
 
@@ -68,10 +78,11 @@ def _generate_verification_url(user_id: int) -> str:
 
 def send_verification_email(reciever_email: str, name: str, user_id: int) -> None:
     """Send verification email."""
-    sender_email = os.environ.get(SENDER_EMAIL_KEY)
+    username = os.environ.get(SENDER_EMAIL_KEY)
     smtp_port = os.environ.get(SMTP_PORT_KEY)
     smtp_password = os.environ.get(SMTP_PASSWORD_KEY)
     smtp_server = os.environ.get(SMTP_SERVER_KEY)
+    sender_email = os.environ.get(SMTP_SENDER_EMAIL_KEY)
 
     subject = "Docq.AI Sign-up - Email Verification"
     message = _get_verification_email_template(
@@ -82,12 +93,12 @@ def send_verification_email(reciever_email: str, name: str, user_id: int) -> Non
 
     _send_email(
         sender_email=sender_email,
-        receiver_email=reciever_email,
+        recipients=[reciever_email],
         subject=subject,
         message=message,
         smtp_server=smtp_server,
         smtp_port=smtp_port,
-        username=sender_email,
+        username=username,
         password=smtp_password,
     )
 
@@ -101,5 +112,6 @@ def mailer_ready() -> bool:
             os.environ.get(SMTP_PASSWORD_KEY),
             os.environ.get(SMTP_SERVER_KEY),
             os.environ.get(SERVER_ADDRESS_KEY),
+            os.environ.get(SMTP_SENDER_EMAIL_KEY),
         ]
     )
