@@ -1039,7 +1039,7 @@ def _validate_email(email: str, generator: DeltaGenerator, form: str) -> bool:
         return False
     elif handle_check_user_exists(email) and not handle_check_account_activated(email):
         st.session_state[f"{form}-resend-verification-email"] = True
-        return False
+        st.experimental_rerun()
     elif handle_check_user_exists(email) and handle_check_account_activated(email):
         generator.error(f"A user with _{email}_ is already registered!")
         return False
@@ -1082,7 +1082,7 @@ def validate_signup_form(form: str = "user-signup") -> None:
     if not _validate_name(name, validator):
         st.stop()
     if not _validate_email(email, validator, form):
-        st.experimental_rerun()
+        st.stop()
     if not _validate_password(password, validator):
         st.stop()
     return True
