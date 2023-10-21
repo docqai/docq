@@ -404,20 +404,6 @@ def verify_user(id_: int) -> bool:
         return True
 
 
-def check_user_exists(username: str) -> bool:
-    """Check if a user exists with the provided username (email)."""
-    with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
-    ) as connection:
-        return (
-            connection.execute(
-                "SELECT * FROM users WHERE username = ?",
-                (username,),
-            ).fetchone()
-            is not None
-        )
-
-
 def check_account_activated(username: str) -> bool:
     """Check if a user's account is activated.
 
@@ -432,22 +418,11 @@ def check_account_activated(username: str) -> bool:
     ) as connection:
         return (
             connection.execute(
-                "SELECT * FROM users WHERE username = ? AND verified = ?",
+                "SELECT id FROM users WHERE username = ? AND verified = ?",
                 (username, 1),
             ).fetchone()
             is not None
         )
-
-
-def get_user_verification_params(username: str) -> tuple[int, str]:
-    """Get a user's verification params (user_id, fullname)."""
-    with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
-    ) as connection:
-        return connection.execute(
-            "SELECT id, fullname FROM users WHERE username = ?",
-            (username,),
-        ).fetchone()
 
 
 def reset_password(id_: int, password: str) -> bool:
