@@ -249,32 +249,37 @@ def __always_hidden_pages() -> None:
     hide_pages(["widget", "signup", "verify"])
 
 
+def __resend_verification_ui(username: st, form: str,  ) -> None:
+    """Resend email verification UI."""
+    msg = st.empty()
+    msg.error("Your account is not activated. Please check your email for the activation link.")
+    _, center, _ = st.columns([1, 1, 1])
+    if handle_check_mailer_ready() and center.button("Resend verification email"):
+        handle_resend_email_verification(username)
+        st.session_state[f"{form}-resend-verification-email"] = False
+        msg.success("Verification email sent. Please check your email.")
+    st.stop()
+
+
 def __login_form() -> None:
     __no_admin_menu()
     st.markdown('Dont have an account? signup <a href="/signup" target="_self">here</a>', unsafe_allow_html=True)
     st.markdown("### Please login to continue")
-    form_validator = st.empty()
+    form_validator, form_name = st.empty(), "login-form"
     username = st.text_input("Username", value="", key="login_username")
     password = st.text_input("Password", value="", key="login_password", type="password")
     if st.button("Login"):
         if handle_login(username, password):
             st.experimental_rerun()
         elif not handle_check_account_activated(username):
-            st.session_state["login-form-account-not-activated"] = True
+            st.session_state[f"{form_name}-resend-verification-email"] = True
         else:
             form_validator.error("The Username or the Password you've entered doesn't match what we have.")
             st.stop()
 
-    if st.session_state.get("login-form-account-not-activated", False):
+    if st.session_state.get(f"{form_name}-resend-verification-email", False):
         with form_validator.container():
-            msg = st.empty()
-            msg.error("Your account is not activated. Please check your email for the activation link.")
-            _, center, _ = st.columns([1, 1, 1])
-            if handle_check_mailer_ready() and center.button("Resend verification email"):
-                handle_resend_email_verification(username)
-                st.session_state["login-form-account-not-activated"] = False
-                msg.success("Verification email sent. Please check your email.")
-            st.stop()
+            __resend_verification_ui(username, form_name)
     else:
         st.stop()
 
@@ -1020,7 +1025,7 @@ def _validate_name(name: str, generator: DeltaGenerator) -> bool:
     return True
 
 
-def _validate_email(email: str, generator: DeltaGenerator) -> bool:
+def _validate_email(email: str, generator: DeltaGenerator, form: str) -> bool:
     """Validate the email."""
     email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
     if not email:
@@ -1032,7 +1037,10 @@ def _validate_email(email: str, generator: DeltaGenerator) -> bool:
     elif not re.match(email_regex, email):
         generator.error(f"_{email}_ is not a valid email address!")
         return False
-    elif handle_check_user_exists(email):
+    elif handle_check_user_exists(email) and not handle_check_account_activated(email):
+        st.session_state[f"{form}-resend-verification-email"] = True
+        return False
+    elif handle_check_user_exists(email) and handle_check_account_activated(email):
         generator.error(f"A user with _{email}_ is already registered!")
         return False
     return True
@@ -1073,8 +1081,8 @@ def validate_signup_form(form: str = "user-signup") -> None:
 
     if not _validate_name(name, validator):
         st.stop()
-    if not _validate_email(email, validator):
-        st.stop()
+    if not _validate_email(email, validator, form):
+        st.experimental_rerun()
     if not _validate_password(password, validator):
         st.stop()
     return True
@@ -1101,12 +1109,14 @@ def signup_ui() -> None:
     st.markdown('Already have an account? Login <a href="/" target="_self">here</a>.', unsafe_allow_html=True)
 
     if not handle_check_mailer_ready():
+        log.error("Mailer not available. User self signup disabled.")
         st.error("Unable to create personal accounts")
         st.info("Please contact your administrator to help you create an account.")
         st.stop()
 
     form = "user-signup"
     st.session_state[f"{form}-validator"] = st.empty()
+
     with st.form(key=form):
         st.text_input("Name", placeholder="John Doe", key=f"{form}-name")
         st.text_input("Email", placeholder="johndoe@mail.com", key=f"{form}-email")
@@ -1120,6 +1130,10 @@ def signup_ui() -> None:
         if submit:
             validate_signup_form()
             handle_user_signup()
+
+    if st.session_state.get(f"{form}-resend-verification-email", False):
+            with st.session_state[f"{form}-validator"].container():
+                __resend_verification_ui(st.session_state[f"{form}-email"], form)
 
 
 def verify_email_ui() -> None:

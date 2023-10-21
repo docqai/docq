@@ -266,7 +266,7 @@ def list_users_by_current_org(username_match: str = None) -> list[tuple]:
 
 def handle_check_user_exists(username: str) -> bool:
     """Check if a user with a given username (email) exists."""
-    return manage_users.check_user_exists(username)
+    return ( manage_users.get_user(username=username) is not None )
 
 
 def handle_user_signup() -> bool:
@@ -294,7 +294,7 @@ def handle_user_signup() -> bool:
 
 def handle_resend_email_verification(username: str) -> bool:
     """Handle resend email verification."""
-    user_id, fullname = manage_users.get_user_verification_params(username)
+    user_id, _, fullname, *_ = manage_users.get_user(username=username)
     if user_id and fullname:
         send_verification_email(username, fullname, user_id)
         log.info("Verification email sent: %s", {username, user_id, fullname})
