@@ -47,7 +47,7 @@ def test_user() -> dict:
 def _create_test_user(test_user: dict) -> None:
     """Create a test user."""
     with suppress(ValueError):
-        manage_users.create_user(**test_user)
+        manage_users.create_user(**test_user, verified=True)
 
 
 # Login
