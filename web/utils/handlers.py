@@ -266,7 +266,7 @@ def list_users_by_current_org(username_match: str = None) -> list[tuple]:
 
 def handle_check_user_exists(username: str) -> bool:
     """Check if a user with a given username (email) exists."""
-    return ( manage_users.get_user(username=username) is not None )
+    return manage_users.get_user(username=username) is not None
 
 
 def handle_user_signup() -> bool:
@@ -283,7 +283,9 @@ def handle_user_signup() -> bool:
         )
         if user_id:
             send_verification_email(username, fullname, user_id)
-            validator.success("A verification email has been sent to your email address. Please verify your email before logging in.")
+            validator.success(
+                "A verification email has been sent to your email address. Please verify your email before logging in."
+            )
         log.info("User signup result: %s", user_id)
         return True
     except Exception as e:
@@ -327,7 +329,7 @@ def handle_verify_email() -> bool:
         decoded = unquote_plus(base64.b64decode(user_info).decode("utf-8"))
         user_id, timestamp, hash_ = decoded.split("::")
         if _verify_timestamp(timestamp) and _verify_hash(user_id, timestamp, hash_):
-            manage_users.verify_user(int(user_id))
+            manage_users.set_user_as_verified(int(user_id))
             return True
     return False
 
@@ -337,7 +339,7 @@ def handle_check_account_activated(username: str) -> bool:
     return manage_users.check_account_activated(username)
 
 
-def handle_check_mailer_ready () -> bool:
+def handle_check_mailer_ready() -> bool:
     """Check if the mailer is ready."""
     return mailer_ready()
 

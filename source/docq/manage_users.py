@@ -357,7 +357,7 @@ def create_user(
 
             _fullname = fullname if fullname else username
             first_name = _fullname.split(" ")[0]
-            personal_org_name = f"{first_name} Personal Org {rnd()}"  # org names much be unique
+            personal_org_name = f"{first_name} Personal Org {rnd()}"  # org names must be unique
             log.debug("Creating personal org: %s", personal_org_name)
             manage_organisations._create_organisation_sql(cursor, personal_org_name)
 
@@ -385,13 +385,12 @@ def create_user(
     return user_id
 
 
-def verify_user(id_: int) -> bool:
+def set_user_as_verified(id_: int) -> bool:
     """Verify a user."""
     log.debug("Verifying user: %d", id_)
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-
         cursor.execute(
             "UPDATE users SET verified = ?, updated_at = ? WHERE id = ?",
             (
@@ -413,9 +412,7 @@ def check_account_activated(username: str) -> bool:
     Returns:
         bool: True if the user's account is activated, False otherwise.
     """
-    with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
-    ) as connection:
+    with closing(sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)) as connection:
         return (
             connection.execute(
                 "SELECT id FROM users WHERE username = ? AND verified = ?",
