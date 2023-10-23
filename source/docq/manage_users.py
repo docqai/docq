@@ -314,7 +314,6 @@ def create_user(
     super_admin: bool = False,
     org_admin: bool = False,
     org_id: int = None,
-    verified: bool = False,
 ) -> int:
     """Create a user.
 
@@ -344,13 +343,12 @@ def create_user(
         try:
             cursor.execute("BEGIN TRANSACTION")
             cursor.execute(
-                "INSERT INTO users (username, password, fullname, super_admin, verified) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO users (username, password, fullname, super_admin) VALUES (?, ?, ?, ?)",
                 (
                     username,
                     hashed_password,
                     fullname,
                     super_admin,
-                    verified,
                 ),
             )
             user_id = cursor.lastrowid

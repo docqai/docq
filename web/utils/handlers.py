@@ -218,8 +218,8 @@ def handle_create_user() -> int:
                 False,
                 False,
                 current_org_id,
-                verified=True,
             )
+            manage_users.set_user_as_verified(user_id)
             log.info("Create user with id: %s and added to org_id: %s", user_id, current_org_id)
     except Exception as e:
         set_error_state_for_ui(key="create_user", error=str(e), message="Failed to create user.", trace_id="")
