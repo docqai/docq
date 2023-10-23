@@ -3,8 +3,7 @@
 import logging as log
 from typing import List, Tuple
 
-import st_components.page_header as st_header
-import st_components.sidebar_header as st_sidebar
+import st_components.sidebar_header as st_header
 import streamlit as st
 from docq import setup
 from docq.access_control.main import SpaceAccessType
@@ -29,7 +28,6 @@ from .error_ui import _handle_error_state_ui
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
     _set_session_state_configs,
-    get_auth_state,
     get_enabled_features,
     get_max_number_of_documents,
     get_shared_space,
@@ -261,9 +259,8 @@ def __login_form() -> None:
 
 
 def __logout_button() -> None:
-    if st.button("Logout", type="primary"):
+    if st.button("Logout"):
         handle_logout()
-        st_sidebar._cleanup_script()
         st.experimental_rerun()
 
 
@@ -319,6 +316,7 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
             if requiring_admin:
                 __not_authorised()
                 return False
+
         return True
     else:
         log.debug("auth_required(): No valid auth session found. User needs to re-authenticate.")
@@ -600,17 +598,14 @@ def chat_ui(feature: FeatureKey) -> None:
                 )
                 st.checkbox("Including your documents", value=True, key="chat_personal_space")
 
-        _, chat_histoy, _ = st.columns([1,1,1])
-        with chat_histoy:
+        load_history, create_new_chat = st.columns([3, 1])
+        with load_history:
             if st.button("Load chat history earlier"):
                 query_chat_history(feature)
-
-        if st_header.floating_action_button("New chat", icon="+"):
-            handle_create_new_chat(feature)
-
-        if st_header.menu_option("Chat Settings", "settings"):
-            print("\x1b[31mChat settings test\x1b[0m")
-
+        with create_new_chat:
+            if st.button("New chat"):
+                handle_create_new_chat(feature)
+    with st.container():
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
         st.markdown(f"#### {day}")
 
@@ -958,6 +953,30 @@ def admin_docs_ui(q_param: str = None) -> None:
         _editor_view(q_param)
 
 
+def org_selection_ui() -> None:
+    """Render organisation selection UI."""
+    try:
+        current_org_id = get_selected_org_id()
+    except KeyError:
+        current_org_id = None
+    if current_org_id:
+        orgs = handle_list_orgs()
+
+        index__ = next((i for i, s in enumerate(orgs) if s[0] == current_org_id), -1)
+
+        log.debug("org_selection_ui index: %s ", index__)
+        log.debug("org_selection_ui() orgs: %s", orgs)
+        selected = st.selectbox(
+            "Organisation",
+            orgs,
+            format_func=lambda x: x[1],
+            label_visibility="collapsed",
+            index=index__,
+        )
+        if selected:
+            handle_org_selection_change(selected[0])
+
+
 def init_with_pretty_error_ui() -> None:
     """UI to run setup and prevent showing errors to the user."""
     try:
@@ -967,36 +986,11 @@ def init_with_pretty_error_ui() -> None:
         log.fatal("Error: setup.init() failed with %s", e)
         st.stop()
 
-
 def setup_page_scripts() -> None:
-    """Setup page scripts.
-
-    Called at the begining of each page.
-    """
-    auth_state = get_auth_state()
-    st_header._setup_page_script(auth_state)
-    st_sidebar._setup_page_script(auth_state)
+    """Setup page scripts."""
+    pass
 
 
 def run_page_scripts() -> None:
-    """Run page scripts.
-
-    Called at the end of each page.
-    """
-    auth_state, name = get_auth_state()
-
-    if auth_state:
-        handle_org_selection_change()
-        selected_org_id, org_list = get_selected_org_id(), handle_list_orgs()
-        st_sidebar.run_script(
-            auth_state=auth_state,
-            org_options=[ x[1] for x in org_list ],
-            selected_org=next((x[1] for x in org_list if x[0] == selected_org_id), None),
-        )
-
-        avatar_src = handle_get_gravatar_url()
-        st_header.run_script(auth_state, name, avatar_src)
-    else:
-        st_sidebar.run_script(auth_state)
-        st_header.run_script(auth_state)
-
+    """Run page scripts."""
+    st_header.run_script()
