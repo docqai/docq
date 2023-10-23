@@ -720,3 +720,11 @@ def handle_public_session() -> None:
             space_group_id=-1,
             public_session_id=-1,
         )
+
+
+def get_auth_state() -> tuple[bool, str | None]:
+    """Check the auth state."""
+    auth_session = get_auth_session()
+    state =  auth_session and not auth_session.get(SessionKeyNameForAuth.ANONYMOUS.name)
+    name = auth_session.get(SessionKeyNameForAuth.NAME.name)
+    return state, name

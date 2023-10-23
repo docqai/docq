@@ -3,7 +3,8 @@
 import logging as log
 from typing import List, Tuple
 
-import st_components.sidebar_header as st_header
+import st_components.page_header as st_header
+import st_components.sidebar_header as st_sidebar
 import streamlit as st
 from docq import setup
 from docq.access_control.main import SpaceAccessType
@@ -28,6 +29,7 @@ from .error_ui import _handle_error_state_ui
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
     _set_session_state_configs,
+    get_auth_state,
     get_enabled_features,
     get_max_number_of_documents,
     get_shared_space,
@@ -986,11 +988,21 @@ def init_with_pretty_error_ui() -> None:
         log.fatal("Error: setup.init() failed with %s", e)
         st.stop()
 
+
 def setup_page_scripts() -> None:
     """Setup page scripts."""
-    pass
+    auth_state, _ = get_auth_state()
+    st_header._setup_page_script(auth_state)
 
 
 def run_page_scripts() -> None:
     """Run page scripts."""
-    st_header.run_script()
+    selected_org_id, org_list = get_selected_org_id(), handle_list_orgs()
+    auth_state, name = get_auth_state()
+    st_sidebar.run_script()
+    st_header.run_script(
+        auth_state=auth_state,
+        selected_org=next((x[1] for x in org_list if x[0] == selected_org_id), None),
+        username=name,
+        avatar_src=handle_get_gravatar_url(),
+    )
