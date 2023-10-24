@@ -8,14 +8,13 @@ from langchain.chat_models import AzureChatOpenAI, ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.schema import BaseMessage
 from llama_index import (
-    GPTListIndex,
-    GPTVectorStoreIndex,
     LangchainEmbedding,
     LLMPredictor,
     Response,
     ServiceContext,
     StorageContext,
     SummaryIndex,
+    VectorStoreIndex,
     load_index_from_storage,
 )
 from llama_index.chat_engine import SimpleChatEngine
@@ -211,7 +210,7 @@ def _get_node_parser(model_settings_collection: ModelUsageSettingsCollection) ->
 
 def _load_index_from_storage(
     space: SpaceKey, model_settings_collection: ModelUsageSettingsCollection
-) -> GPTVectorStoreIndex:
+) -> VectorStoreIndex:
     # set service context explicitly for multi model compatibility
 
     return load_index_from_storage(
@@ -266,28 +265,6 @@ def run_ask(
                     e,
                 )
                 continue
-
-            # try:
-            #     query_engine = index_.as_query_engine()
-
-            #     summary_ = query_engine.query(
-            #         "What is the summary of all the documents?"
-            #     )  # note: we might not need to do this any longer because summary is added as node metadata.
-            # except Exception as e:
-            #     log.warning(
-            #         "Summary for space '%s' failed to load, skipping. Maybe the index isn't created yet. Error message: %s",
-            #         s_,
-            #         e,
-            #     )
-            #     continue
-
-            # if summary_ and summary_.response is not None:
-            # indices.append(index_)
-            # summaries.append(summary_.response)
-
-            # else:
-            # log.warning("The summary generated for Space '%s' was empty so skipping from the Graph index.", s_)
-            # continue
 
         log.debug("number summaries: %s", len(summaries))
         try:

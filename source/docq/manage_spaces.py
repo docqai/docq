@@ -7,7 +7,7 @@ from contextlib import closing
 from datetime import datetime
 from typing import List, Tuple
 
-from llama_index import Document, DocumentSummaryIndex, GPTVectorStoreIndex
+from llama_index import Document, DocumentSummaryIndex, VectorStoreIndex
 from llama_index.indices.base import BaseIndex
 
 from .access_control.main import SpaceAccessor, SpaceAccessType
@@ -56,9 +56,9 @@ def _init() -> None:
 
 def _create_index(
     documents: List[Document], model_settings_collection: ModelUsageSettingsCollection
-) -> GPTVectorStoreIndex:
+) -> VectorStoreIndex:
     # Use default storage and service context to initialise index purely for persisting
-    return GPTVectorStoreIndex.from_documents(
+    return VectorStoreIndex.from_documents(
         documents,
         storage_context=_get_default_storage_context(),
         service_context=_get_service_context(model_settings_collection),
