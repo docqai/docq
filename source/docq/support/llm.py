@@ -2,34 +2,32 @@
 
 import logging as log
 import os
-from .metadata_extractors import DocqEntityExtractor
 
 from langchain.chat_models import AzureChatOpenAI, ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.schema import BaseMessage
 from llama_index import (
     LangchainEmbedding,
-    LLMPredictor,
     Response,
     ServiceContext,
     StorageContext,
     SummaryIndex,
-    VectorStoreIndex,
     load_index_from_storage,
 )
 from llama_index.chat_engine import SimpleChatEngine
-from llama_index.chat_engine.types import ChatMode
+from llama_index.chat_engine.types import AGENT_CHAT_RESPONSE_TYPE, ChatMode
 from llama_index.embeddings import OptimumEmbedding
+from llama_index.indices.base import BaseIndex
 from llama_index.indices.composability import ComposableGraph
+from llama_index.llms.base import LLM
+from llama_index.llms.langchain import LangChainLLM
 from llama_index.node_parser import SimpleNodeParser
 from llama_index.node_parser.extractors import (
     EntityExtractor,
     KeywordExtractor,
     MetadataExtractor,
-    QuestionsAnsweredExtractor,
-    SummaryExtractor,
-    TitleExtractor,
 )
+from llama_index.response.schema import RESPONSE_TYPE
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
@@ -39,6 +37,8 @@ from ..model_selection.main import (
     ModelUsageSettingsCollection,
     ModelVendor,
 )
+from .metadata_extractors import DocqEntityExtractor, DocqMetadataExtractor
+from .node_parsers import AsyncSimpleNodeParser
 from .store import get_index_dir, get_models_dir
 
 # PROMPT_CHAT_SYSTEM = """
@@ -92,7 +92,8 @@ def _init_local_models() -> None:
                     )
 
 
-def _get_chat_model(model_settings_collection: ModelUsageSettingsCollection) -> ChatOpenAI:
+def _get_chat_model_using_langchain(model_settings_collection: ModelUsageSettingsCollection) -> LLM | None:
+    model = None
     if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.CHAT]:
         chat_model_settings = model_settings_collection.model_usage_settings[ModelCapability.CHAT]
         if chat_model_settings.model_vendor == ModelVendor.AZURE_OPENAI:
@@ -100,20 +101,19 @@ def _get_chat_model(model_settings_collection: ModelUsageSettingsCollection) -> 
                 temperature=chat_model_settings.temperature,
                 model=chat_model_settings.model_name,
                 deployment_name=chat_model_settings.model_deployment_name,
-                openai_api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE"),
-                openai_api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1"),
+                openai_api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
+                openai_api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
                 openai_api_type="azure",
-                openai_api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION"),
+                openai_api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION") or "",
             )
             log.info("Chat model: using Azure OpenAI")
-            log.warning(
-                "Chat model: env var values missing %s",
-                not bool(
-                    os.getenv("DOCQ_AZURE_OPENAI_API_BASE")
-                    and os.getenv("DOCQ_AZURE_OPENAI_API_KEY1")
-                    and os.getenv("DOCQ_AZURE_OPENAI_API_VERSION")
-                ),
+            _env_missing = not bool(
+                os.getenv("DOCQ_AZURE_OPENAI_API_BASE")
+                and os.getenv("DOCQ_AZURE_OPENAI_API_KEY1")
+                and os.getenv("DOCQ_AZURE_OPENAI_API_VERSION")
             )
+            if _env_missing:
+                log.warning("Chat model: env var values missing.")
         elif chat_model_settings.model_vendor == ModelVendor.OPENAI:
             model = ChatOpenAI(
                 temperature=chat_model_settings.temperature,
@@ -121,16 +121,22 @@ def _get_chat_model(model_settings_collection: ModelUsageSettingsCollection) -> 
                 openai_api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
             )
             log.info("Chat model: using OpenAI.")
-            log.warning("Chat model: env var values missing %s", not bool(os.getenv("DOCQ_OPENAI_API_KEY")))
-        return model
+            _env_missing = not bool(os.getenv("DOCQ_OPENAI_API_KEY"))
+            if _env_missing:
+                log.warning("Chat model: env var values missing")
+        else:
+            raise ValueError("Chat model: model settings with a supported model vendor not found.")
+
+        return LangChainLLM(model)
 
 
-def _get_embed_model(model_settings_collection: ModelUsageSettingsCollection) -> LangchainEmbedding:
+def _get_embed_model_using_langchain(model_settings_collection: ModelUsageSettingsCollection) -> LLM | None:
+    embedding_model = None
     if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]:
         embedding_model_settings = model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]
 
         if embedding_model_settings.model_vendor == ModelVendor.AZURE_OPENAI:
-            embedding_llm = LangchainEmbedding(
+            embedding_model = LangchainEmbedding(
                 OpenAIEmbeddings(
                     model=embedding_model_settings.model_name,
                     deployment=embedding_model_settings.model_deployment_name,
@@ -142,7 +148,7 @@ def _get_embed_model(model_settings_collection: ModelUsageSettingsCollection) ->
                 embed_batch_size=1,
             )
         elif embedding_model_settings.model_vendor == ModelVendor.OPENAI:
-            embedding_llm = LangchainEmbedding(
+            embedding_model = LangchainEmbedding(
                 OpenAIEmbeddings(
                     model=embedding_model_settings.model_name,
                     openai_api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
@@ -150,19 +156,16 @@ def _get_embed_model(model_settings_collection: ModelUsageSettingsCollection) ->
                 embed_batch_size=1,
             )
         elif embedding_model_settings.model_vendor == ModelVendor.HUGGINGFACE_OPTIMUM_BAAI:
-            embedding_llm = OptimumEmbedding(folder_name=get_models_dir(embedding_model_settings.model_name))
+            embedding_model = OptimumEmbedding(folder_name=get_models_dir(embedding_model_settings.model_name))
         else:
             # defaults
-            embedding_llm = LangchainEmbedding(OpenAIEmbeddings())
-    return embedding_llm
-
-
-def _get_llm_predictor(model_settings_collection: ModelUsageSettingsCollection) -> LLMPredictor:
-    return LLMPredictor(llm=_get_chat_model(model_settings_collection))
+            embedding_model = LangchainEmbedding(OpenAIEmbeddings())
+    return LangChainLLM(embedding_model)
 
 
 def _get_default_storage_context() -> StorageContext:
     return StorageContext.from_defaults()
+
 
 
 def _get_storage_context(space: SpaceKey) -> StorageContext:
@@ -173,28 +176,28 @@ def _get_service_context(model_settings_collection: ModelUsageSettingsCollection
     log.debug(
         "EXPERIMENTS['INCLUDE_EXTRACTED_METADATA']['enabled']: %s", EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]
     )
+    log.debug("EXPERIMENTS['ASYNC_NODE_PARSER']['enabled']: %s", EXPERIMENTS["ASYNC_NODE_PARSER"]["enabled"])
 
+    _node_parser = None  # use default node parser
     if EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]:
-        return ServiceContext.from_defaults(
-            llm_predictor=_get_llm_predictor(model_settings_collection),
-            node_parser=_get_node_parser(model_settings_collection),
-            embed_model=_get_embed_model(model_settings_collection),
-        )
-    else:
-        return ServiceContext.from_defaults(
-            llm_predictor=_get_llm_predictor(model_settings_collection),
-            embed_model=_get_embed_model(model_settings_collection),
-        )
+        _node_parser = _get_node_parser(model_settings_collection)
+        if EXPERIMENTS["ASYNC_NODE_PARSER"]["enabled"]:
+            log.debug("loading async node parser.")
+            _node_parser = _get_async_node_parser(model_settings_collection)
+
+    return ServiceContext.from_defaults(
+        llm=_get_chat_model_using_langchain(model_settings_collection),
+        node_parser=_node_parser,
+        embed_model=_get_embed_model_using_langchain(model_settings_collection),
+    )
 
 
 def _get_node_parser(model_settings_collection: ModelUsageSettingsCollection) -> SimpleNodeParser:
     metadata_extractor = MetadataExtractor(
         extractors=[
-            # TitleExtractor(nodes=5),
-            # QuestionsAnsweredExtractor(questions=3),
-            # SummaryExtractor(summaries=["prev", "self"]),
-            KeywordExtractor(llm=_get_chat_model(model_settings_collection), keywords=5),
-            DocqEntityExtractor(label_entities=True, device="cpu"),
+
+            KeywordExtractor(llm=_get_chat_model_using_langchain(model_settings_collection), keywords=5),
+            EntityExtractor(label_entities=True, device="cpu"),
             # CustomExtractor()
         ],
     )
@@ -208,9 +211,25 @@ def _get_node_parser(model_settings_collection: ModelUsageSettingsCollection) ->
     return node_parser
 
 
-def _load_index_from_storage(
-    space: SpaceKey, model_settings_collection: ModelUsageSettingsCollection
-) -> VectorStoreIndex:
+def _get_async_node_parser(model_settings_collection: ModelUsageSettingsCollection) -> AsyncSimpleNodeParser:
+
+    metadata_extractor = DocqMetadataExtractor(
+        extractors=[
+            #KeywordExtractor(llm=_get_chat_model_using_langchain(model_settings_collection), keywords=5),
+        ],
+        async_extractors=[
+            DocqEntityExtractor(label_entities=True, device="cpu"),
+        ]
+    )
+
+    node_parser = AsyncSimpleNodeParser.from_defaults(  # SimpleNodeParser is the default when calling ServiceContext.from_defaults()
+        metadata_extractor=metadata_extractor,  # adds extracted metadata as metadata
+    )
+
+    return node_parser
+
+
+def _load_index_from_storage(space: SpaceKey, model_settings_collection: ModelUsageSettingsCollection) -> BaseIndex:
     # set service context explicitly for multi model compatibility
 
     return load_index_from_storage(
@@ -238,9 +257,9 @@ def run_ask(
     input_: str,
     history: str,
     model_settings_collection: ModelUsageSettingsCollection,
-    space: SpaceKey = None,
-    spaces: list[SpaceKey] = None,
-) -> Response:
+    space: SpaceKey | None = None,
+    spaces: list[SpaceKey] | None = None,
+) -> RESPONSE_TYPE | AGENT_CHAT_RESPONSE_TYPE | BaseMessage:
     """Ask questions against existing index(es) with history."""
     log.debug("exec: runs_ask()")
     if spaces is not None and len(spaces) > 0:
@@ -287,9 +306,9 @@ def run_ask(
         # No additional spaces i.e. likely to be against a user's documents in their personal space.
         if space is None:
             log.debug("runs_ask(): space is None. executing run_chat(), not ASK.")
-            output = run_chat(input_, history, space.org_id)
+            output = run_chat(input_=input_, history=history, model_settings_collection=model_settings_collection)
         else:
-            index = _load_index_from_storage(space, model_settings_collection)
+            index = _load_index_from_storage(space=space, model_settings_collection=model_settings_collection)
             engine = index.as_chat_engine(
                 verbose=True,
                 similarity_top_k=3,

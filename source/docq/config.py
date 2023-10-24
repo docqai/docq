@@ -52,4 +52,8 @@ EXPERIMENTS = {
         "enabled": False,
         "description": "Include extracts, using LlamaIndex extract modules, in the document index metadata.",
     },
+    "ASYNC_NODE_PARSER": {
+        "enabled": False,
+        "description": "Use an async node parser to speed up document parsing.",
+    },
 }
