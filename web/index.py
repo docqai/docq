@@ -33,6 +33,8 @@ show_pages(
         Page("web/admin_user_groups.py", "Admin_User_Groups"),
         Page("web/admin_orgs.py", "Admin_Orgs"),
         Page("web/admin_logs.py", "Admin_Logs"),
+        Section("ML Engineering", icon="💻"),
+        Page("web/ml_eng_tools/visualise_index.py", "Visualise Index"),
     ]
 )
 

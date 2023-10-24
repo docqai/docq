@@ -5,9 +5,10 @@ import logging as log
 import sqlite3
 from contextlib import closing
 from datetime import datetime
-from typing import List
+from typing import List, Optional, Tuple
 
-from llama_index import Document, GPTVectorStoreIndex
+from llama_index import Document, DocumentSummaryIndex, VectorStoreIndex
+from llama_index.indices.base import BaseIndex
 
 from .access_control.main import SpaceAccessor, SpaceAccessType
 from .config import SpaceType
@@ -55,39 +56,68 @@ def _init() -> None:
 
 def _create_index(
     documents: List[Document], model_settings_collection: ModelUsageSettingsCollection
-) -> GPTVectorStoreIndex:
+) -> VectorStoreIndex:
     # Use default storage and service context to initialise index purely for persisting
-    return GPTVectorStoreIndex.from_documents(
+    return VectorStoreIndex.from_documents(
         documents,
         storage_context=_get_default_storage_context(),
         service_context=_get_service_context(model_settings_collection),
     )
 
 
-def _persist_index(index: GPTVectorStoreIndex, space: SpaceKey) -> None:
+def _create_document_summary_index(
+    documents: List[Document], model_settings_collection: ModelUsageSettingsCollection
+) -> DocumentSummaryIndex:
+    """Create a an index of summaries for each document."""
+    return DocumentSummaryIndex.from_documents(
+        documents,
+        storage_context=_get_default_storage_context(),
+        service_context=_get_service_context(model_settings_collection),
+    )
+
+
+def _persist_index(index: BaseIndex, space: SpaceKey) -> None:
+    """Persist an Space datasource index to disk."""
     index.storage_context.persist(persist_dir=get_index_dir(space))
 
 
 def reindex(space: SpaceKey) -> None:
-    """Reindex documents in a space."""
+    """Reindex documents in a space from scratch. If an index already exists, it will be overwritten."""
     try:
-        (ds_type, ds_configs) = get_space_data_source(space)
+        log.debug("reindex(): Start...")
+        log.debug("reindex(): get saved model settings")
         saved_model_settings = get_saved_model_settings_collection(space.org_id)
-        log.debug("get datasource instance")
+        _space_data_source = get_space_data_source(space)
+        if _space_data_source is None:
+            raise ValueError(f"No data source found for space {space}")
+        (ds_type, ds_configs) = _space_data_source
+        log.debug("reindex(): get datasource instance")
         documents = SpaceDataSources[ds_type].value.load(space, ds_configs)
-        log.debug("docs to index, %s", len(documents))
-        index = _create_index(documents, saved_model_settings)
-        _persist_index(index, space)
+        log.debug("reindex(): docs to index, %s", len(documents))
+        log.debug("reindex(): first doc metadata: %s", documents[0].metadata)
+        log.debug("reindex(): first doc text: %s", documents[0].text)
+        # index = _create_index(documents, saved_model_settings)
+        # _persist_index(index, space)
+        summary_index = _create_document_summary_index(documents, saved_model_settings)
+        _persist_index(summary_index, space)
     except Exception as e:
         if e.__str__().__contains__("No files found"):
             log.info("Reindex skipped. No documents found in space '%s'", space)
         else:
             log.exception("Error indexing space '%s'. Error: %s", space, e)
+    finally:
+        log.debug("reindex(): Complete")
 
 
 def list_documents(space: SpaceKey) -> List[DocumentListItem]:
     """Return a list of tuples containing the filename, creation time, and size of each file in the space."""
-    (ds_type, ds_configs) = get_space_data_source(space)
+    _space_data_source = get_space_data_source(space)
+
+    if _space_data_source is None:
+        raise ValueError(f"No data source found for space {space}")
+
+
+    (ds_type, ds_configs) = _space_data_source
 
     space_data_source = SpaceDataSources[ds_type].value
 
@@ -106,7 +136,7 @@ def list_documents(space: SpaceKey) -> List[DocumentListItem]:
     return documents_list
 
 
-def get_space_data_source(space: SpaceKey) -> tuple[str, dict]:
+def get_space_data_source(space: SpaceKey) -> tuple[str, dict] | None:
     """Returns the data source type and configuration for the given space.
 
     Args:
@@ -119,14 +149,15 @@ def get_space_data_source(space: SpaceKey) -> tuple[str, dict]:
         ds_type = "MANUAL_UPLOAD"
         ds_configs = {}
     else:
-        (id_, org_id, name, summary, archived, ds_type, ds_configs, created_at, updated_at) = get_shared_space(
-            space.id_, space.org_id
-        )
+        shared_space = get_shared_space(space.id_, space.org_id)
+        if shared_space is None:
+            raise ValueError(f"No shared space found with id {space.id_} and org_id {space.org_id}")
+        (_, _, _, _, _, ds_type, ds_configs, _, _) = shared_space
 
     return ds_type, ds_configs
 
 
-def get_shared_space(id_: int, org_id: int) -> tuple[int, int, str, str, bool, str, dict, datetime, datetime]:
+def get_shared_space(id_: int, org_id: int) -> tuple[int, int, str, str, bool, str, dict, datetime, datetime] | None:
     """Get a shared space."""
     log.debug("get_shared_space(): Getting space with id=%d", id_)
     with closing(
@@ -142,14 +173,35 @@ def get_shared_space(id_: int, org_id: int) -> tuple[int, int, str, str, bool, s
         )
 
 
+def get_shared_spaces(space_ids: List[int]) -> List[Tuple[int, int, str, str, bool, str, dict, datetime, datetime]]:
+    """Get a shared spaces by ids.
+
+    Returns:
+        list[tuple[int, int, str, str, bool, str, dict, datetime, datetime]] - [id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at]
+    """
+    log.debug("get_shared_spaces(): Getting space with ids=%s", space_ids)
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        placeholders = ", ".join("?" * len(space_ids))
+        query = "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM spaces WHERE id IN ({})".format(
+            placeholders
+        )
+        cursor.execute(query, space_ids)
+        rows = cursor.fetchall()
+        return [
+            (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8]) for row in rows
+        ]
+
+
 def update_shared_space(
     id_: int,
     org_id: int,
-    name: str = None,
-    summary: str = None,
+    name: Optional[str] = None,
+    summary: Optional[str] = None,
     archived: bool = False,
-    datasource_type: str = None,
-    datasource_configs: dict = None,
+    datasource_type: Optional[str] = None,
+    datasource_configs: Optional[dict] = None,
 ) -> bool:
     """Update a shared space."""
     query = "UPDATE spaces SET updated_at = ?"
@@ -207,6 +259,8 @@ def create_shared_space(
         )
         rowid = cursor.lastrowid
         connection.commit()
+        if rowid is None:
+            raise ValueError("Failed to create space")
         log.debug("Created space with rowid: %d", rowid)
         space = SpaceKey(SpaceType.SHARED, rowid, org_id)
 
@@ -216,8 +270,8 @@ def create_shared_space(
 
 
 def list_shared_spaces(
-    org_id: int, user_id: int = None
-) -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
+    org_id: int, user_id: Optional[int] = None
+) -> list[tuple[int, int, str, str, bool, str, dict, datetime, datetime]]:
     """List all shared spaces."""
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
@@ -232,7 +286,7 @@ def list_shared_spaces(
         ]
 
 
-def list_public_spaces(space_group_id: int) -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
+def list_public_spaces(space_group_id: int) -> list[tuple[int, int, str, str, bool, str, dict, datetime, datetime]]:
     """List all public spaces from a given space group."""
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)

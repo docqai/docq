@@ -9,12 +9,12 @@ from . import (
     manage_user_groups,
     manage_users,
 )
-from .support import auth_utils, llm, store
+from .support import auth_utils, llm, metadata_extractors, store
 
 
 def _config_logging() -> None:
     """Configure logging."""
-    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
+    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(process)d %(levelname)s %(message)s")
 
 
 def init() -> None:
@@ -31,4 +31,5 @@ def init() -> None:
     manage_users._init_admin_if_necessary()
     auth_utils.init_session_cache()
     llm._init_local_models()
+    metadata_extractors._cache_metadata_extractor_models()
     logging.info("Docq initialized")

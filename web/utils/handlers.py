@@ -483,13 +483,17 @@ def _get_chat_spaces(feature: domain.FeatureKey) -> tuple[Optional[SpaceKey], Li
     select_org_id = get_selected_org_id()
 
     personal_space = domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_, select_org_id)
+    shared_spaces = manage_spaces.get_shared_spaces(
+        [s_[0] for s_ in st.session_state[f"chat_shared_spaces_{feature.value()}"]]
+    )
 
     if feature.type_ == config.FeatureType.ASK_SHARED:
         if not st.session_state["chat_personal_space"]:
             personal_space = None
         shared_spaces = [
-            domain.SpaceKey(config.SpaceType.SHARED, s_[0], select_org_id)
-            for s_ in st.session_state[f"chat_shared_spaces_{feature.value()}"]
+            domain.SpaceKey(config.SpaceType.SHARED, s_[0], select_org_id, summary=s_[3])
+            # for s_ in st.session_state[f"chat_shared_spaces_{feature.value()}"]
+            for s_ in shared_spaces
         ]
         return personal_space, shared_spaces
 

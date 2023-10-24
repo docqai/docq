@@ -2,16 +2,20 @@
 from unittest.mock import Mock, patch
 
 from docq.model_selection.main import ModelUsageSettingsCollection
-from docq.support.llm import run_chat
+
 from llama_index import ServiceContext
 from llama_index.chat_engine import SimpleChatEngine
 
 
-def test_run_chat() -> None:
+@patch("docq.support.metadata_extractors.DEFAULT_MODEL_PATH")
+def test_run_chat(mock_DEFAULT_MODEL_PATH) -> None:
     """Test run chat."""
+    from docq.support.llm import run_chat
+
     with patch.object(SimpleChatEngine, "from_defaults") as mock_simple_chat_engine, patch(
         "docq.support.llm._get_service_context"
     ) as mock_get_service_context:
+        mock_DEFAULT_MODEL_PATH.return_value = "./sfsdf"
         mock_get_service_context.return_value = Mock(ServiceContext)
         mocked_engine = Mock(SimpleChatEngine)
         mock_simple_chat_engine.return_value = mocked_engine
