@@ -238,7 +238,7 @@ class DocqEntityExtractor(DocqMetadataFeatureExtractor):
         if device is not None:
             import torch
             tdevice = torch.device(device)
-            self._model = self._model.to(self, device=tdevice)
+            self._model = self._model.to(device=tdevice) # type: ignore
 
         self._tokenizer = tokenizer or word_tokenize
 
