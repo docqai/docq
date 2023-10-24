@@ -5,7 +5,7 @@ import logging as log
 import sqlite3
 from contextlib import closing
 from datetime import datetime
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from llama_index import Document, DocumentSummaryIndex, VectorStoreIndex
 from llama_index.indices.base import BaseIndex
@@ -87,7 +87,10 @@ def reindex(space: SpaceKey) -> None:
         log.debug("reindex(): Start...")
         log.debug("reindex(): get saved model settings")
         saved_model_settings = get_saved_model_settings_collection(space.org_id)
-        (ds_type, ds_configs) = get_space_data_source(space)
+        _space_data_source = get_space_data_source(space)
+        if _space_data_source is None:
+            raise ValueError(f"No data source found for space {space}")
+        (ds_type, ds_configs) = _space_data_source
         log.debug("reindex(): get datasource instance")
         documents = SpaceDataSources[ds_type].value.load(space, ds_configs)
         log.debug("reindex(): docs to index, %s", len(documents))
@@ -108,7 +111,13 @@ def reindex(space: SpaceKey) -> None:
 
 def list_documents(space: SpaceKey) -> List[DocumentListItem]:
     """Return a list of tuples containing the filename, creation time, and size of each file in the space."""
-    (ds_type, ds_configs) = get_space_data_source(space)
+    _space_data_source = get_space_data_source(space)
+
+    if _space_data_source is None:
+        raise ValueError(f"No data source found for space {space}")
+
+
+    (ds_type, ds_configs) = _space_data_source
 
     space_data_source = SpaceDataSources[ds_type].value
 
@@ -127,7 +136,7 @@ def list_documents(space: SpaceKey) -> List[DocumentListItem]:
     return documents_list
 
 
-def get_space_data_source(space: SpaceKey) -> tuple[str, dict]:
+def get_space_data_source(space: SpaceKey) -> tuple[str, dict] | None:
     """Returns the data source type and configuration for the given space.
 
     Args:
@@ -140,14 +149,15 @@ def get_space_data_source(space: SpaceKey) -> tuple[str, dict]:
         ds_type = "MANUAL_UPLOAD"
         ds_configs = {}
     else:
-        (id_, org_id, name, summary, archived, ds_type, ds_configs, created_at, updated_at) = get_shared_space(
-            space.id_, space.org_id
-        )
+        shared_space = get_shared_space(space.id_, space.org_id)
+        if shared_space is None:
+            raise ValueError(f"No shared space found with id {space.id_} and org_id {space.org_id}")
+        (_, _, _, _, _, ds_type, ds_configs, _, _) = shared_space
 
     return ds_type, ds_configs
 
 
-def get_shared_space(id_: int, org_id: int) -> tuple[int, int, str, str, bool, str, dict, datetime, datetime]:
+def get_shared_space(id_: int, org_id: int) -> tuple[int, int, str, str, bool, str, dict, datetime, datetime] | None:
     """Get a shared space."""
     log.debug("get_shared_space(): Getting space with id=%d", id_)
     with closing(
@@ -187,11 +197,11 @@ def get_shared_spaces(space_ids: List[int]) -> List[Tuple[int, int, str, str, bo
 def update_shared_space(
     id_: int,
     org_id: int,
-    name: str = None,
-    summary: str = None,
+    name: Optional[str] = None,
+    summary: Optional[str] = None,
     archived: bool = False,
-    datasource_type: str = None,
-    datasource_configs: dict = None,
+    datasource_type: Optional[str] = None,
+    datasource_configs: Optional[dict] = None,
 ) -> bool:
     """Update a shared space."""
     query = "UPDATE spaces SET updated_at = ?"
@@ -249,6 +259,8 @@ def create_shared_space(
         )
         rowid = cursor.lastrowid
         connection.commit()
+        if rowid is None:
+            raise ValueError("Failed to create space")
         log.debug("Created space with rowid: %d", rowid)
         space = SpaceKey(SpaceType.SHARED, rowid, org_id)
 
@@ -258,8 +270,8 @@ def create_shared_space(
 
 
 def list_shared_spaces(
-    org_id: int, user_id: int = None
-) -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
+    org_id: int, user_id: Optional[int] = None
+) -> list[tuple[int, int, str, str, bool, str, dict, datetime, datetime]]:
     """List all shared spaces."""
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
@@ -274,7 +286,7 @@ def list_shared_spaces(
         ]
 
 
-def list_public_spaces(space_group_id: int) -> list[tuple[int, str, str, bool, str, dict, datetime, datetime]]:
+def list_public_spaces(space_group_id: int) -> list[tuple[int, int, str, str, bool, str, dict, datetime, datetime]]:
     """List all public spaces from a given space group."""
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
