@@ -1,9 +1,11 @@
 import json
+import logging
 from docq.config import SpaceType
 from docq.domain import SpaceKey
 from docq.manage_spaces import list_shared_spaces
 from docq.model_selection.main import ModelUsageSettingsCollection, get_saved_model_settings_collection
 from docq.support.llm import _get_service_context, _get_storage_context
+from docq.support.metadata_extractors import DEFAULT_ENTITY_MAP
 from llama_index import VectorStoreIndex, load_index_from_storage
 from st_pages import _add_page_title
 import streamlit as st
@@ -47,7 +49,18 @@ docs = vector_index.docstore.docs
 
 
 for doc_id in docs:
+    doc_json = json.loads(docs[doc_id].to_json())
+    # st.write(docs[doc_id].get_content(metadata_mode=MetadataMode.ALL))
+    metadata_keys = doc_json["metadata"].keys()
+
     with st.expander(label=doc_id):
-        doc_json = json.loads(docs[doc_id].to_json())
-        # st.write(docs[doc_id].get_content(metadata_mode=MetadataMode.ALL))
         st.write(doc_json)
+
+    if "excerpt_keywords" in metadata_keys:
+        keyword_count = len(doc_json["metadata"]["excerpt_keywords"].split(", "))
+        st.write(f"Metadata Keyword Count: {keyword_count}")
+
+    for key, entity_label in DEFAULT_ENTITY_MAP.items():
+        if entity_label in metadata_keys:
+            x_count = len(doc_json["metadata"][entity_label])
+            st.write(f"Metadata Entity '{entity_label}' count: {x_count}")
