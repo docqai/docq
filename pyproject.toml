@@ -138,7 +138,7 @@ doc-html = "mkdocs build --site-dir ./_site"
 [tool.poe.tasks.run]
 cmd = "streamlit run web/index.py --server.port $port --browser.gatherUsageStats false"
 args = [{ name = "port", default = 8501, type = "integer" }]
-env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${POE_PWD}/web:${POE_PWD}/source" }
+env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${POE_PWD}/web/:${POE_PWD}/source/" }
 
 [tool.poe.tasks.docker-build]
 cmd = """
