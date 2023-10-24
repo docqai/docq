@@ -1,12 +1,14 @@
 """Handlers for the web app."""
 
 import asyncio
+import base64
 import hashlib
 import logging as log
 import math
 import random
 from datetime import datetime
 from typing import Any, List, Optional, Tuple
+from urllib.parse import unquote_plus
 
 import streamlit as st
 from docq import (
@@ -25,6 +27,7 @@ from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.model_selection.main import get_saved_model_settings_collection
+from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import get_cache_auth_session, reset_cache_and_cookie_auth_session, set_cache_auth_session
 
 from .constants import (
@@ -216,6 +219,7 @@ def handle_create_user() -> int:
                 False,
                 current_org_id,
             )
+            manage_users.set_user_as_verified(user_id)
             log.info("Create user with id: %s and added to org_id: %s", user_id, current_org_id)
     except Exception as e:
         set_error_state_for_ui(key="create_user", error=str(e), message="Failed to create user.", trace_id="")
@@ -258,6 +262,86 @@ def list_users_by_current_org(username_match: str = None) -> list[tuple]:
     """
     org_id = get_selected_org_id()
     return manage_users.list_users_by_org(org_id=org_id, username_match=username_match)
+
+
+def handle_check_user_exists(username: str) -> bool:
+    """Check if a user with a given username (email) exists."""
+    return manage_users.get_user(username=username) is not None
+
+
+def handle_user_signup() -> bool:
+    """Handle user signup."""
+    form = "user-signup"
+    validator = st.session_state.get(f"{form}-validator", st.empty())
+    try:
+        username = st.session_state[f"{form}-email"]
+        fullname = st.session_state[f"{form}-name"]
+        user_id = manage_users.create_user(
+            username=username,
+            password=st.session_state[f"{form}-password"],
+            fullname=fullname,
+        )
+        if user_id:
+            send_verification_email(username, fullname, user_id)
+            validator.success(
+                "A verification email has been sent to your email address. Please verify your email before logging in."
+            )
+        log.info("User signup result: %s", user_id)
+        return True
+    except Exception as e:
+        validator.error("Failed to create user.")
+        log.error("handle_user_signup() error: %s", e)
+        return False
+
+
+def handle_resend_email_verification(username: str) -> bool:
+    """Handle resend email verification."""
+    user_id, _, fullname, *_ = manage_users.get_user(username=username)
+    if user_id and fullname:
+        send_verification_email(username, fullname, user_id)
+        log.info("Verification email sent: %s", {username, user_id, fullname})
+        return True
+    return False
+
+
+def _verify_timestamp(timestamp: str) -> bool:
+    """Verify the timestamp."""
+    try:
+        return int(float(timestamp)) > int(datetime.now().timestamp()) - 3600
+    except Exception as e:
+        log.exception("Error verifying timestamp: %s", e)
+        return False
+
+
+def _verify_hash(user_id: str, timestamp: str, hash_: str) -> bool:
+    """Verify the hash."""
+    try:
+        return hashlib.sha256(f"{user_id}::{timestamp}".encode("utf-8")).hexdigest() == hash_
+    except Exception as e:
+        log.exception("Error verifying hash: %s", e)
+        return False
+
+
+def handle_verify_email() -> bool:
+    """Handle email verification."""
+    user_info = st.experimental_get_query_params().get("token", [None])[0]
+    if user_info:
+        decoded = unquote_plus(base64.b64decode(user_info).decode("utf-8"))
+        user_id, timestamp, hash_ = decoded.split("::")
+        if _verify_timestamp(timestamp) and _verify_hash(user_id, timestamp, hash_):
+            manage_users.set_user_as_verified(int(user_id))
+            return True
+    return False
+
+
+def handle_check_account_activated(username: str) -> bool:
+    """Check if the account is activated."""
+    return manage_users.check_account_activated(username)
+
+
+def handle_check_mailer_ready() -> bool:
+    """Check if the mailer is ready."""
+    return mailer_ready()
 
 
 def handle_create_user_group() -> int:

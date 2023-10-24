@@ -1,6 +1,7 @@
 """Layout components for the web app."""
 
 import logging as log
+import re
 from typing import List, Tuple
 
 import streamlit as st
@@ -36,6 +37,9 @@ from .handlers import (
     get_system_settings,
     handle_archive_org,
     handle_chat_input,
+    handle_check_account_activated,
+    handle_check_mailer_ready,
+    handle_check_user_exists,
     handle_create_new_chat,
     handle_create_org,
     handle_create_space,
@@ -55,6 +59,7 @@ from .handlers import (
     handle_org_selection_change,
     handle_public_session,
     handle_reindex_space,
+    handle_resend_email_verification,
     handle_update_org,
     handle_update_space_details,
     handle_update_space_group,
@@ -62,6 +67,8 @@ from .handlers import (
     handle_update_user,
     handle_update_user_group,
     handle_upload_file,
+    handle_user_signup,
+    handle_verify_email,
     list_public_spaces,
     list_shared_spaces,
     list_space_data_source_choices,
@@ -239,26 +246,47 @@ def __embed_page_config() -> None:
 
 def __always_hidden_pages() -> None:
     """These pages are always hidden whether the user is an admin or not."""
-    hide_pages(["widget"])
+    hide_pages(["widget", "signup", "verify"])
+
+
+def __resend_verification_ui(username: st, form: str,  ) -> None:
+    """Resend email verification UI."""
+    msg = st.empty()
+    msg.error("Your account is not activated. Please check your email for the activation link.")
+    _, center, _ = st.columns([1, 1, 1])
+    if handle_check_mailer_ready() and center.button("Resend verification email"):
+        handle_resend_email_verification(username)
+        st.session_state[f"{form}-resend-verification-email"] = False
+        msg.success("Verification email sent. Please check your email.")
+    st.stop()
 
 
 def __login_form() -> None:
     __no_admin_menu()
+    st.markdown('Dont have an account? signup <a href="/signup" target="_self">here</a>', unsafe_allow_html=True)
     st.markdown("### Please login to continue")
+    form_validator, form_name = st.empty(), "login-form"
     username = st.text_input("Username", value="", key="login_username")
     password = st.text_input("Password", value="", key="login_password", type="password")
     if st.button("Login"):
         if handle_login(username, password):
             st.experimental_rerun()
+        elif not handle_check_account_activated(username):
+            st.session_state[f"{form_name}-resend-verification-email"] = True
         else:
-            st.error("The Username and Password you entered doesn't match what we have.")
+            form_validator.error("The Username or the Password you've entered doesn't match what we have.")
             st.stop()
+
+    if st.session_state.get(f"{form_name}-resend-verification-email", False):
+        with form_validator.container():
+            __resend_verification_ui(username, form_name)
     else:
         st.stop()
 
 
 def __logout_button() -> None:
-    if st.button("Logout"):
+    sidebar = st.sidebar
+    if sidebar.button("Logout"):
         handle_logout()
         st.experimental_rerun()
 
@@ -984,3 +1012,137 @@ def init_with_pretty_error_ui() -> None:
         st.error("Something went wrong starting Docq.")
         log.fatal("Error: setup.init() failed with %s", e)
         st.stop()
+
+
+def _validate_name(name: str, generator: DeltaGenerator) -> bool:
+    """Validate the name."""
+    if not name:
+        generator.error("Name is required!")
+        return False
+    elif len(name) < 3:
+        generator.error("Name must be at least 3 characters long!")
+        return False
+    return True
+
+
+def _validate_email(email: str, generator: DeltaGenerator, form: str) -> bool:
+    """Validate the email."""
+    email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+    if not email:
+        generator.error("Email is required!")
+        return False
+    elif len(email) < 3:
+        generator.error("Email must be at least 3 characters long!")
+        return False
+    elif not re.match(email_regex, email):
+        generator.error(f"_{email}_ is not a valid email address!")
+        return False
+    elif handle_check_user_exists(email) and not handle_check_account_activated(email):
+        st.session_state[f"{form}-resend-verification-email"] = True
+        st.experimental_rerun()
+    elif handle_check_user_exists(email) and handle_check_account_activated(email):
+        generator.error(f"A user with _{email}_ is already registered!")
+        return False
+    return True
+
+
+def _validate_password(password: str, generator: DeltaGenerator) -> bool:
+    """Validate the password."""
+    special_chars = r"[_@$!#%^&*()-=+\{\}\[\]|\\:;\"'<>,.?/~`]"
+    if password is None:
+        generator.error("Password is required!")
+        return False
+    elif len(password) < 8:
+        generator.error("Password must be at least 8 characters long and contain atleast 1 of the following: 1 uppercase, 1 lowercase, 1 number and 1 special character.")
+        return False
+    else:
+        password_fmt = {
+            "1 lower case letter": re.search(r"[a-z]", password),
+            "1 upper case letter": re.search(r"[A-Z]", password),
+            "1 number": re.search(r"[0-9]", password),
+            "1 special character": re.search(special_chars, password),
+        }
+        missing_fmt = [k for k, v in password_fmt.items() if not v]
+        if missing_fmt:
+            error_text = f"Password must contain at least {', '.join(missing_fmt)}."
+            if len(missing_fmt) > 1:
+                error_text = f"Password must contain at least {', '.join(missing_fmt[:-1])} and {missing_fmt[-1]}."
+            generator.error(error_text)
+            return False
+        return True
+
+
+def validate_signup_form(form: str = "user-signup") -> None:
+    """Handle validation of the signup form."""
+    name = st.session_state.get(f"{form}-name", None)
+    email = st.session_state.get(f"{form}-email", None)
+    password = st.session_state.get(f"{form}-password", None)
+    validator = st.session_state[f"{form}-validator"]
+
+    if not _validate_name(name, validator):
+        st.stop()
+    if not _validate_email(email, validator, form):
+        st.stop()
+    if not _validate_password(password, validator):
+        st.stop()
+    return True
+
+
+def _disable_sidebar() -> None:
+    """Disable the sidebar."""
+    st.markdown(
+        """<style>
+            section[data-testid="stSidebar"] {
+              display: none !important;
+            }
+           </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def signup_ui() -> None:
+    """Render signup UI."""
+    _disable_sidebar()
+    handle_logout()
+    st.title("Docq Signup")
+    st.markdown('Already have an account? Login <a href="/" target="_self">here</a>.', unsafe_allow_html=True)
+
+    if not handle_check_mailer_ready():
+        log.error("Mailer not available. User self signup disabled.")
+        st.error("Unable to create personal accounts")
+        st.info("Please contact your administrator to help you create an account.")
+        st.stop()
+
+    form = "user-signup"
+    st.session_state[f"{form}-validator"] = st.empty()
+
+    with st.form(key=form):
+        st.text_input("Name", placeholder="John Doe", key=f"{form}-name")
+        st.text_input("Email", placeholder="johndoe@mail.com", key=f"{form}-email")
+        st.text_input(
+            "Password",
+            type="password",
+            key=f"{form}-password",
+            help="Password must be at least 8 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number and 1 special character."
+        )
+        submit = st.form_submit_button("Signup")
+        if submit:
+            validate_signup_form()
+            handle_user_signup()
+
+    if st.session_state.get(f"{form}-resend-verification-email", False):
+            with st.session_state[f"{form}-validator"].container():
+                __resend_verification_ui(st.session_state[f"{form}-email"], form)
+
+
+def verify_email_ui() -> None:
+    """UI for verifying email."""
+    _disable_sidebar()
+    handle_logout()
+    if handle_verify_email():
+        st.success("Email address verified and account activated. Thank you for signing up for Docq.")
+        st.markdown('You can now Access docq from <a href="/" target="_self">here</a>.', unsafe_allow_html=True)
+    else:
+        st.error("Email verification failed!")
+        st.info("Please try again or contact your administrator.")

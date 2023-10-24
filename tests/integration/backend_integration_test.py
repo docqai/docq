@@ -43,18 +43,18 @@ def test_user() -> dict:
 ## User actions
 
 # Create user
-@pytest.fixture(autouse=True)
-def _create_test_user(test_user: dict) -> None:
+@pytest.fixture()
+def user_id(test_user: dict) -> int:
     """Create a test user."""
     with suppress(ValueError):
-        manage_users.create_user(**test_user)
+        return manage_users.create_user(**test_user)
 
 
 # Login
 @pytest.fixture()
-def auth_results(test_user: dict) -> dict:
+def auth_results(test_user: dict, user_id: int) -> dict:
     """Authenticate the test user."""
-    return get_auth_results(test_user)
+    return get_auth_results(test_user, user_id)
 
 
 @pytest.fixture()

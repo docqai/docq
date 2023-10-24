@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS users (
     fullname TEXT,
     super_admin BOOL default 0,
     archived BOOL DEFAULT 0,
+    verified BOOL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
@@ -73,8 +74,8 @@ def _init_admin_if_necessary() -> bool:
             log.info("No super_admin user found, creating one with default values...")
             password = PH.hash(DEFAULT_ADMIN_PASSWORD)
             cursor.execute(
-                "INSERT INTO users (id, username, password, fullname, super_admin) VALUES (?, ?, ?, ?, ?)",
-                (DEFAULT_ADMIN_ID, DEFAULT_ADMIN_USERNAME, password, DEFAULT_ADMIN_FULLNAME, 1),
+                "INSERT INTO users (id, username, password, fullname, super_admin, verified) VALUES (?, ?, ?, ?, ?, ?)",
+                (DEFAULT_ADMIN_ID, DEFAULT_ADMIN_USERNAME, password, DEFAULT_ADMIN_FULLNAME, 1, 1),
             )
             connection.commit()
             add_organisation_member(manage_organisations.DEFAULT_ORG_ID, DEFAULT_ADMIN_ID, True)
@@ -111,12 +112,15 @@ def authenticate(username: str, password: str) -> Tuple[int, str, bool, str]:
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         selected = cursor.execute(
-            "SELECT id, password, fullname, super_admin FROM users WHERE username = ? AND archived = 0",
+            "SELECT id, password, fullname, super_admin, verified FROM users WHERE username = ? AND archived = 0",
             (username,),
         ).fetchone()
         if selected:
             log.debug("User found: %s", selected)
-            (id_, saved_password, fullname, super_admin) = selected
+            (id_, saved_password, fullname, super_admin, verified) = selected
+            if not verified:
+                log.warning("User: %s is not verified", username)
+                return None
             try:
                 result = (id_, fullname, super_admin, username) if PH.verify(saved_password, password) else None
             except VerificationError as e:
@@ -320,6 +324,7 @@ def create_user(
         super_admin (bool, optional): Whether the user is a super admin, all the god powers at a system level. Defaults to False.
         org_admin (bool, optional): Whether the user is an org level admin for the `org_id`. Defaults to False.
         org_id (int, optional): The org id to add the user to. Defaults to None.
+        verified (bool, optional): Whether the user is verified. Defaults to False.
 
     Returns:
         bool: True if the user is created, False otherwise.
@@ -350,7 +355,7 @@ def create_user(
 
             _fullname = fullname if fullname else username
             first_name = _fullname.split(" ")[0]
-            personal_org_name = f"{first_name} Personal Org {rnd()}"  # org names much be unique
+            personal_org_name = f"{first_name} Personal Org {rnd()}"  # org names must be unique
             log.debug("Creating personal org: %s", personal_org_name)
             manage_organisations._create_organisation_sql(cursor, personal_org_name)
 
@@ -376,6 +381,43 @@ def create_user(
             msettings._init_org_settings(personal_org_id)
 
     return user_id
+
+
+def set_user_as_verified(id_: int) -> bool:
+    """Verify a user."""
+    log.debug("Verifying user: %d", id_)
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(
+            "UPDATE users SET verified = ?, updated_at = ? WHERE id = ?",
+            (
+                1,
+                datetime.now(),
+                id_,
+            ),
+        )
+        connection.commit()
+        return True
+
+
+def check_account_activated(username: str) -> bool:
+    """Check if a user's account is activated.
+
+    Args:
+        username (str): The username (email).
+
+    Returns:
+        bool: True if the user's account is activated, False otherwise.
+    """
+    with closing(sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)) as connection:
+        return (
+            connection.execute(
+                "SELECT id FROM users WHERE username = ? AND verified = ?",
+                (username, 1),
+            ).fetchone()
+            is not None
+        )
 
 
 def reset_password(id_: int, password: str) -> bool:

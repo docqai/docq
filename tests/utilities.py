@@ -33,8 +33,9 @@ def get_features(user_id: int) -> dict[str, domain.FeatureKey]:
     }
 
 
-def get_auth_results(test_user: dict, selected_org_admin: bool = False) -> dict:
+def get_auth_results(test_user: dict, user_id: int, selected_org_admin: bool = False) -> dict:
     """Authenticate a user and retrive auth results."""
+    manage_users.set_user_as_verified(user_id)
     auth_result = manage_users.authenticate(**test_user)
     list_orgs = manage_organisations.list_organisations(user_id=auth_result[0])
     default_org_id = list_orgs[0][0] if list_orgs else None
