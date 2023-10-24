@@ -5,7 +5,7 @@ import logging as log
 import sqlite3
 from contextlib import closing
 from datetime import datetime
-from typing import List
+from typing import List, Tuple
 
 from llama_index import Document, DocumentSummaryIndex, GPTVectorStoreIndex
 from llama_index.indices.base import BaseIndex
@@ -91,7 +91,8 @@ def reindex(space: SpaceKey) -> None:
         log.debug("reindex(): get datasource instance")
         documents = SpaceDataSources[ds_type].value.load(space, ds_configs)
         log.debug("reindex(): docs to index, %s", len(documents))
-        log.debug("reindex(): first doc: %s", documents[0].metadata)
+        log.debug("reindex(): first doc metadata: %s", documents[0].metadata)
+        log.debug("reindex(): first doc text: %s", documents[0].text)
         # index = _create_index(documents, saved_model_settings)
         # _persist_index(index, space)
         summary_index = _create_document_summary_index(documents, saved_model_settings)
@@ -160,6 +161,27 @@ def get_shared_space(id_: int, org_id: int) -> tuple[int, int, str, str, bool, s
         return (
             (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8]) if row else None
         )
+
+
+def get_shared_spaces(space_ids: List[int]) -> List[Tuple[int, int, str, str, bool, str, dict, datetime, datetime]]:
+    """Get a shared spaces by ids.
+
+    Returns:
+        list[tuple[int, int, str, str, bool, str, dict, datetime, datetime]] - [id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at]
+    """
+    log.debug("get_shared_spaces(): Getting space with ids=%s", space_ids)
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        placeholders = ", ".join("?" * len(space_ids))
+        query = "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM spaces WHERE id IN ({})".format(
+            placeholders
+        )
+        cursor.execute(query, space_ids)
+        rows = cursor.fetchall()
+        return [
+            (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8]) for row in rows
+        ]
 
 
 def update_shared_space(

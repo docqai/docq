@@ -14,6 +14,7 @@ from llama_index import (
     Response,
     ServiceContext,
     StorageContext,
+    SummaryIndex,
     load_index_from_storage,
 )
 from llama_index.chat_engine import SimpleChatEngine
@@ -107,7 +108,7 @@ def _get_chat_model(model_settings_collection: ModelUsageSettingsCollection) -> 
             log.info("Chat model: using Azure OpenAI")
             log.warning(
                 "Chat model: env var values missing %s",
-                bool(
+                not bool(
                     os.getenv("DOCQ_AZURE_OPENAI_API_BASE")
                     and os.getenv("DOCQ_AZURE_OPENAI_API_KEY1")
                     and os.getenv("DOCQ_AZURE_OPENAI_API_VERSION")
@@ -120,7 +121,7 @@ def _get_chat_model(model_settings_collection: ModelUsageSettingsCollection) -> 
                 openai_api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
             )
             log.info("Chat model: using OpenAI.")
-            log.warning("Chat model: env var values missing %s", bool(os.getenv("DOCQ_OPENAI_API_KEY")))
+            log.warning("Chat model: env var values missing %s", not bool(os.getenv("DOCQ_OPENAI_API_KEY")))
         return model
 
 
@@ -253,6 +254,10 @@ def run_ask(
             try:
                 index_ = _load_index_from_storage(s_, model_settings_collection)
 
+                log.debug("run_chat(): %s, %s", index_.index_id, s_.summary)
+                indices.append(index_)
+                summaries.append(s_.summary) if s_.summary else summaries.append("")
+
             except Exception as e:
                 log.warning(
                     "Index for space '%s' failed to load, skipping. Maybe the index isn't created yet. Error message: %s",
@@ -261,31 +266,32 @@ def run_ask(
                 )
                 continue
 
-            try:
-                query_engine = index_.as_query_engine()
+            # try:
+            #     query_engine = index_.as_query_engine()
 
-                summary_ = query_engine.query(
-                    "What is the summary of all the documents?"
-                )  # note: we might not need to do this any longer because summary is added as node metadata.
-            except Exception as e:
-                log.warning(
-                    "Summary for space '%s' failed to load, skipping. Maybe the index isn't created yet. Error message: %s",
-                    s_,
-                    e,
-                )
-                continue
+            #     summary_ = query_engine.query(
+            #         "What is the summary of all the documents?"
+            #     )  # note: we might not need to do this any longer because summary is added as node metadata.
+            # except Exception as e:
+            #     log.warning(
+            #         "Summary for space '%s' failed to load, skipping. Maybe the index isn't created yet. Error message: %s",
+            #         s_,
+            #         e,
+            #     )
+            #     continue
 
-            if summary_ and summary_.response is not None:
-                indices.append(index_)
-                summaries.append(summary_.response)
-            else:
-                log.warning("The summary generated for Space '%s' was empty so skipping from the Graph index.", s_)
-                continue
+            # if summary_ and summary_.response is not None:
+            # indices.append(index_)
+            # summaries.append(summary_.response)
+
+            # else:
+            # log.warning("The summary generated for Space '%s' was empty so skipping from the Graph index.", s_)
+            # continue
 
         log.debug("number summaries: %s", len(summaries))
         try:
             graph = ComposableGraph.from_indices(
-                GPTListIndex,
+                SummaryIndex,
                 indices,
                 index_summaries=summaries,
                 service_context=_get_service_context(model_settings_collection),

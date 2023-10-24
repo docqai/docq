@@ -38,6 +38,7 @@ class SpaceKey:
     type_: SpaceType
     id_: int
     org_id: int
+    summary: str = None
     """The organisation ID that owns the space."""
 
     def __str__(self) -> str:
