@@ -35,14 +35,6 @@ from pydantic import Field, PrivateAttr
 from llama_index.schema import BaseNode
 
 
-def _cache_metadata_extractor_models() -> None:
-    """Cache metadata extractor models."""
-    dir_ = get_models_dir(DEFAULT_ENTITY_MODEL, makedir=False)
-    if not os.path.exists(dir_):
-        logging.info("Caching EntityExtractor model: '%s'", DocqEntityExtractor.model_name)
-        DocqEntityExtractor.save_model(path=dir_)
-
-
 DEFAULT_EXTRACT_TEMPLATE_STR = """\
 Here is the content of the section:
 ----------------
@@ -70,7 +62,18 @@ DEFAULT_ENTITY_MAP = {
 }
 
 DEFAULT_ENTITY_MODEL = "tomaarsen/span-marker-mbert-base-multinerd"
+
 DEFAULT_MODEL_PATH = get_models_dir(DEFAULT_ENTITY_MODEL, makedir=False)
+
+
+def _cache_metadata_extractor_models() -> None:
+    """Cache metadata extractor models."""
+
+    # cache default model
+    dir_ = get_models_dir(DEFAULT_ENTITY_MODEL, makedir=False)
+    if not os.path.exists(dir_):
+        logging.info("Caching default DocqEntityExtractor model: '%s'", DEFAULT_ENTITY_MODEL)
+        DocqEntityExtractor.save_model(path=dir_)
 
 
 class DocqEntityExtractor(MetadataFeatureExtractor):

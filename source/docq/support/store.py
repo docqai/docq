@@ -53,13 +53,8 @@ def _get_path(store: _StoreSubdir, type_: SpaceType, subtype: str = None, filena
 
 def get_models_dir(model_group_key: str, makedir: bool = True) -> str:
     """Get directory where local models are stored."""
-    try:
-        dir_ = os.path.join(os.environ[ENV_VAR_DOCQ_DATA], _StoreSubdir.MODELS.value, model_group_key)
-    except KeyError as err:
-        dir_ = ""
-        log.warning("Environment variable %s not set.", ENV_VAR_DOCQ_DATA)
-    except Exception as err:
-        raise err
+
+    dir_ = os.path.join(os.environ[ENV_VAR_DOCQ_DATA], _StoreSubdir.MODELS.value, model_group_key)
 
     if makedir:
         os.makedirs(dir_, exist_ok=True)
