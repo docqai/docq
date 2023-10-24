@@ -49,7 +49,7 @@ class UserSettingsKey(Enum):
 # NOTE: global for now. Later we can adjust to use a different backend to set per user.
 EXPERIMENTS = {
     "INCLUDE_EXTRACTED_METADATA": {
-        "enabled": False,
+        "enabled": True,
         "description": "Include extracts, using LlamaIndex extract modules, in the document index metadata.",
     },
 }
