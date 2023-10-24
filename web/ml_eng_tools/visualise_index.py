@@ -1,6 +1,8 @@
 import json
 import logging
 from typing import cast
+
+import streamlit as st
 from docq.config import SpaceType
 from docq.domain import SpaceKey
 from docq.manage_spaces import list_shared_spaces
@@ -8,13 +10,11 @@ from docq.model_selection.main import ModelUsageSettingsCollection, get_saved_mo
 from docq.support.llm import _get_service_context, _get_storage_context
 from docq.support.metadata_extractors import DEFAULT_ENTITY_MAP
 from llama_index import DocumentSummaryIndex, VectorStoreIndex, load_index_from_storage
-from llama_index.schema import TextNode
+from llama_index.indices.base import BaseIndex
+from llama_index.schema import MetadataMode, TextNode
 from st_pages import _add_page_title
-import streamlit as st
 from utils.layout import auth_required
 from utils.sessions import get_selected_org_id
-from llama_index.schema import MetadataMode
-
 
 auth_required(requiring_admin=True)
 
@@ -23,7 +23,7 @@ _add_page_title()
 
 def _load_index(
     space: SpaceKey, model_settings_collection: ModelUsageSettingsCollection, exp_id: str = None
-) -> VectorStoreIndex:
+) -> BaseIndex:
     """Load index from storage."""
     storage_context = _get_storage_context(space)
     service_context = _get_service_context(model_settings_collection)
@@ -52,6 +52,10 @@ def visualise_document_summary_index(_index: DocumentSummaryIndex) -> None:
 
         node_ids = _index.index_struct.summary_id_to_node_ids[summary_node_id]
         st.write(f"**Document ID**: `{doc_id}`, **Chunks**: `{len(node_ids)}`")
+
+
+
+
         with st.expander(label=f"**Summary** NodeID: `{summary_node_id}`"):
             st.write(summary_node.to_dict())
 
@@ -59,6 +63,15 @@ def visualise_document_summary_index(_index: DocumentSummaryIndex) -> None:
             with st.expander(label=f"**Chunk** NodeID: `{node_id}`"):
                 node: TextNode = cast(TextNode, docs[node_id])
                 st.write(node.to_dict())
+
+            metadata = docs[node_id].to_dict()["metadata"]
+            if "excerpt_keywords" in metadata:
+                keyword_count = len(docs[node_id].to_dict()["metadata"]["excerpt_keywords"].split(", "))
+                st.write(f"Metadata Keyword Count: {keyword_count}")
+            for key, entity_label in DEFAULT_ENTITY_MAP.items():
+                if entity_label in metadata:
+                    x_count = len(metadata[entity_label])
+                    st.write(f"Metadata Entity '{entity_label}' count: {x_count}")
 
         st.divider()
 
