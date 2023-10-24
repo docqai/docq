@@ -2,6 +2,7 @@
 
 import logging as log
 import os
+from .metadata_extractors import DocqEntityExtractor
 
 from langchain.chat_models import AzureChatOpenAI, ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
@@ -194,7 +195,7 @@ def _get_node_parser(model_settings_collection: ModelUsageSettingsCollection) ->
             # QuestionsAnsweredExtractor(questions=3),
             # SummaryExtractor(summaries=["prev", "self"]),
             KeywordExtractor(llm=_get_chat_model(model_settings_collection), keywords=5),
-            EntityExtractor(label_entities=True, device="cpu"),
+            DocqEntityExtractor(label_entities=True, device="cpu"),
             # CustomExtractor()
         ],
     )
