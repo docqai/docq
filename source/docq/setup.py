@@ -1,8 +1,6 @@
 """Initialize Docq."""
 import logging
 
-from .support import metadata_extractors
-
 from . import (
     manage_organisations,
     manage_settings,
@@ -11,12 +9,12 @@ from . import (
     manage_user_groups,
     manage_users,
 )
-from .support import auth_utils, llm, store
+from .support import auth_utils, llm, metadata_extractors, store
 
 
 def _config_logging() -> None:
     """Configure logging."""
-    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
+    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(process)d %(levelname)s %(message)s")
 
 
 def init() -> None:
