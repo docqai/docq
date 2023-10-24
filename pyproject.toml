@@ -57,6 +57,8 @@ build-backend = "poetry.core.masonry.api"
 line-length = 120
 target-version = ['py310']
 include = '\.pyi?$'
+check = true
+
 
 [tool.ruff]
 ignore = ["E501"]
