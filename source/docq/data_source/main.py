@@ -94,6 +94,18 @@ class SpaceDataSourceFileBased(SpaceDataSource):
             document_list = [DocumentListItem(**item) for item in data]
             return document_list
 
+    def _add_exclude_metadata_keys(
+        self, documents: List[Document], embed_keys: List[str], llm_keys: List[str]
+    ) -> List[Document]:
+        """Exclude metadata keys from embedding and LLM."""
+        if documents is None:
+            raise ValueError("`documents` cannot be None")
+        doc_count = len(documents)
+        for i in range(doc_count):
+            documents[i].excluded_embed_metadata_keys = embed_keys
+            documents[i].excluded_llm_metadata_keys = llm_keys
+        return documents
+
 
 class SpaceDataSourceWebBased(SpaceDataSourceFileBased):
     """Abstract definition of a web-based data source for a space. To be extended by concrete data sources."""
