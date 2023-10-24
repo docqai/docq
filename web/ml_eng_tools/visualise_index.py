@@ -44,18 +44,19 @@ selected_space = st.selectbox(
 def visualise_document_summary_index(_index: DocumentSummaryIndex) -> None:
     """Visualise document summary index."""
     docs = _index.docstore.docs
-    st.write("Index class: ", _index.index_struct_cls.__name__)
+    st.write(f"Index class: `{_index.index_struct_cls.__name__}`")
+    st.write("Total Docs: ", len(_index.index_struct.doc_id_to_summary_id.items()), " | ", "Total Chunks: ", len(docs))
 
     for doc_id, summary_node_id in _index.index_struct.doc_id_to_summary_id.items():
         summary_node = docs[summary_node_id]
 
         node_ids = _index.index_struct.summary_id_to_node_ids[summary_node_id]
-        st.write(f"**Document ID**: {doc_id}, **Chunks**: {len(node_ids)}")
-        with st.expander(label=f"**Summary** NodeID: {summary_node_id}"):
+        st.write(f"**Document ID**: `{doc_id}`, **Chunks**: `{len(node_ids)}`")
+        with st.expander(label=f"**Summary** NodeID: `{summary_node_id}`"):
             st.write(summary_node.to_dict())
 
         for node_id in node_ids:
-            with st.expander(label=f"**Chunk** NodeID: {node_id}"):
+            with st.expander(label=f"**Chunk** NodeID: `{node_id}`"):
                 node: TextNode = cast(TextNode, docs[node_id])
                 st.write(node.to_dict())
 
