@@ -7,7 +7,8 @@ from contextlib import closing
 from datetime import datetime
 from typing import List
 
-from llama_index import Document, GPTVectorStoreIndex
+from llama_index import Document, DocumentSummaryIndex, GPTVectorStoreIndex
+from llama_index.indices.base import BaseIndex
 
 from .access_control.main import SpaceAccessor, SpaceAccessType
 from .config import SpaceType
@@ -64,25 +65,44 @@ def _create_index(
     )
 
 
-def _persist_index(index: GPTVectorStoreIndex, space: SpaceKey) -> None:
+def _create_document_summary_index(
+    documents: List[Document], model_settings_collection: ModelUsageSettingsCollection
+) -> DocumentSummaryIndex:
+    """Create a an index of summaries for each document."""
+    return DocumentSummaryIndex.from_documents(
+        documents,
+        storage_context=_get_default_storage_context(),
+        service_context=_get_service_context(model_settings_collection),
+    )
+
+
+def _persist_index(index: BaseIndex, space: SpaceKey) -> None:
+    """Persist an Space datasource index to disk."""
     index.storage_context.persist(persist_dir=get_index_dir(space))
 
 
 def reindex(space: SpaceKey) -> None:
-    """Reindex documents in a space."""
+    """Reindex documents in a space from scratch. If an index already exists, it will be overwritten."""
     try:
-        (ds_type, ds_configs) = get_space_data_source(space)
+        log.debug("reindex(): Start...")
+        log.debug("reindex(): get saved model settings")
         saved_model_settings = get_saved_model_settings_collection(space.org_id)
-        log.debug("get datasource instance")
+        (ds_type, ds_configs) = get_space_data_source(space)
+        log.debug("reindex(): get datasource instance")
         documents = SpaceDataSources[ds_type].value.load(space, ds_configs)
-        log.debug("docs to index, %s", len(documents))
-        index = _create_index(documents, saved_model_settings)
-        _persist_index(index, space)
+        log.debug("reindex(): docs to index, %s", len(documents))
+        log.debug("reindex(): first doc: %s", documents[0].metadata)
+        # index = _create_index(documents, saved_model_settings)
+        # _persist_index(index, space)
+        summary_index = _create_document_summary_index(documents, saved_model_settings)
+        _persist_index(summary_index, space)
     except Exception as e:
         if e.__str__().__contains__("No files found"):
             log.info("Reindex skipped. No documents found in space '%s'", space)
         else:
             log.exception("Error indexing space '%s'. Error: %s", space, e)
+    finally:
+        log.debug("reindex(): Complete")
 
 
 def list_documents(space: SpaceKey) -> List[DocumentListItem]:
