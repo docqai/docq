@@ -46,6 +46,7 @@ class ManualUpload(SpaceDataSourceFileBased):
             str(DocumentMetadata.SPACE_ID.name).lower(),
             str(DocumentMetadata.SPACE_TYPE.name).lower(),
             str(DocumentMetadata.DATA_SOURCE_NAME.name).lower(),
+            str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower(),
             str(DocumentMetadata.SOURCE_URI.name).lower(),
             str(DocumentMetadata.INDEXED_ON.name).lower(),
         ]
@@ -56,6 +57,7 @@ class ManualUpload(SpaceDataSourceFileBased):
             str(DocumentMetadata.SPACE_ID.name).lower(),
             str(DocumentMetadata.SPACE_TYPE.name).lower(),
             str(DocumentMetadata.DATA_SOURCE_NAME.name).lower(),
+            str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower(),
             str(DocumentMetadata.INDEXED_ON.name).lower(),
         ]
         # logging.debug("exclude_embed_metadata_keys_: %s", exclude_embed_metadata_keys_)
@@ -80,7 +82,7 @@ class ManualUpload(SpaceDataSourceFileBased):
         """
         return list(
             map(
-                lambda f: DocumentListItem(f.name, f.stat().st_ctime, f.stat().st_size),
+                lambda f: DocumentListItem(f.name, int(f.stat().st_ctime), f.stat().st_size),
                 os.scandir(get_upload_dir(space)),
             )
         )
