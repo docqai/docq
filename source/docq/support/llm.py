@@ -105,6 +105,14 @@ def _get_chat_model(model_settings_collection: ModelUsageSettingsCollection) -> 
                 openai_api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION"),
             )
             log.info("Chat model: using Azure OpenAI")
+            log.warning(
+                "Chat model: env var values missing %s",
+                bool(
+                    os.getenv("DOCQ_AZURE_OPENAI_API_BASE")
+                    and os.getenv("DOCQ_AZURE_OPENAI_API_KEY1")
+                    and os.getenv("DOCQ_AZURE_OPENAI_API_VERSION")
+                ),
+            )
         elif chat_model_settings.model_vendor == ModelVendor.OPENAI:
             model = ChatOpenAI(
                 temperature=chat_model_settings.temperature,
@@ -112,6 +120,7 @@ def _get_chat_model(model_settings_collection: ModelUsageSettingsCollection) -> 
                 openai_api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
             )
             log.info("Chat model: using OpenAI.")
+            log.warning("Chat model: env var values missing %s", bool(os.getenv("DOCQ_OPENAI_API_KEY")))
         return model
 
 
@@ -167,7 +176,7 @@ def _get_service_context(model_settings_collection: ModelUsageSettingsCollection
     if EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]:
         return ServiceContext.from_defaults(
             llm_predictor=_get_llm_predictor(model_settings_collection),
-            node_parser=_get_node_parser(),
+            node_parser=_get_node_parser(model_settings_collection),
             embed_model=_get_embed_model(model_settings_collection),
         )
     else:
@@ -177,14 +186,14 @@ def _get_service_context(model_settings_collection: ModelUsageSettingsCollection
         )
 
 
-def _get_node_parser() -> SimpleNodeParser:
+def _get_node_parser(model_settings_collection: ModelUsageSettingsCollection) -> SimpleNodeParser:
     metadata_extractor = MetadataExtractor(
         extractors=[
-            TitleExtractor(nodes=5),
-            QuestionsAnsweredExtractor(questions=3),
-            SummaryExtractor(summaries=["prev", "self"]),
-            KeywordExtractor(keywords=10),
-            EntityExtractor(entities=["prev", "self"]),
+            # TitleExtractor(nodes=5),
+            # QuestionsAnsweredExtractor(questions=3),
+            # SummaryExtractor(summaries=["prev", "self"]),
+            KeywordExtractor(llm=_get_chat_model(model_settings_collection), keywords=5),
+            EntityExtractor(label_entities=True, device="cpu"),
             # CustomExtractor()
         ],
     )
