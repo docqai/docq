@@ -1,6 +1,5 @@
 """Handlers for the web app."""
 
-import asyncio
 import base64
 import hashlib
 import logging as log
@@ -28,7 +27,7 @@ from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.model_selection.main import get_saved_model_settings_collection
 from docq.services.smtp_service import mailer_ready, send_verification_email
-from docq.support.auth_utils import get_cache_auth_session, reset_cache_and_cookie_auth_session, set_cache_auth_session
+from docq.support.auth_utils import reset_cache_and_cookie_auth_session
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -36,17 +35,14 @@ from .constants import (
     SessionKeyNameForAuth,
     SessionKeyNameForChat,
     SessionKeyNameForSettings,
-    SessionKeySubName,
 )
 from .error_ui import set_error_state_for_ui
 from .sessions import (
-    _init_session_state,
     get_auth_session,
     get_authenticated_user_id,
     get_chat_session,
     get_public_space_group_id,
     get_selected_org_id,
-    get_settings_session,
     get_username,
     is_current_user_selected_org_admin,
     reset_session_state,
@@ -509,11 +505,13 @@ def _get_chat_spaces(feature: domain.FeatureKey) -> tuple[Optional[SpaceKey], Li
 def handle_chat_input(feature: domain.FeatureKey) -> None:
     """Handle chat input."""
     req = st.session_state[f"chat_input_{feature.value()}"]
-
-    space, spaces = _get_chat_spaces(feature)
+    space, spaces = None, None
+    if feature.type_ is not config.FeatureType.CHAT_PRIVATE:
+        space, spaces = _get_chat_spaces(feature)
 
     thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
-
+    if thread_id is None:
+        raise ValueError("Thread id in session state was None")
     saved_model_settings = get_saved_model_settings_collection(get_selected_org_id())
 
     result = run_queries.query(req, feature, thread_id, saved_model_settings, space, spaces)

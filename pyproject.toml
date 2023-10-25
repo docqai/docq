@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "docq"
-version = "0.4.0"
+version = "0.4.1"
 description = "Docq"
 authors = ["Docq.AI Team <support@docqai.com>"]
 maintainers = ["Docq.AI Team <support@docqai.com>"]
@@ -162,7 +162,7 @@ docker run \
 -it
 --rm \
 --name docq \
---env-file docker-env-file \
+--env-file docker.env \
 -p $port:$port \
 docq:$target-$build_tag """
 help = "Run the docker image"
