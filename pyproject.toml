@@ -162,7 +162,7 @@ docker run \
 -it
 --rm \
 --name docq \
---env-file docker-env-file \
+--env-file docker.env \
 -p $port:$port \
 docq:$target-$build_tag """
 help = "Run the docker image"
