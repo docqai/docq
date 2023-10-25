@@ -38,7 +38,7 @@ class SpaceKey:
     type_: SpaceType
     id_: int
     org_id: int
-    summary: str = None
+    summary: Optional[str] = None
     """The organisation ID that owns the space."""
 
     def __str__(self) -> str:
@@ -56,7 +56,7 @@ class ConfigKey:
     name: str
     is_optional: bool = False
     is_secret: bool = False
-    ref_link: str = None
+    ref_link: Optional[str] = None
 
 
 @dataclass
@@ -74,7 +74,7 @@ class DocumentListItem:
     size: int
 
     @staticmethod
-    def create_instance(document_link: str, document_text: str, indexed_on: int = None) -> "DocumentListItem":
+    def create_instance(document_link: str, document_text: str, indexed_on: Optional[int] = None) -> "DocumentListItem":
         """Creates a tuple containing information about a document.
 
         Args:
@@ -91,7 +91,7 @@ class DocumentListItem:
             size_in_bytes = size_in_bytes if size_in_bytes > 0 else 0
 
             if indexed_on is None:
-                indexed_on = datetime.timestamp(datetime.now().utcnow())
+                indexed_on = int(datetime.timestamp(datetime.now().utcnow()))
 
             item = DocumentListItem(document_link, indexed_on, size_in_bytes)
             log.debug("Created document list item: %s", item)

@@ -359,7 +359,7 @@ def public_session_setup() -> None:
     handle_public_session()
 
 
-def feature_enabled(feature: FeatureKey) -> bool:
+def feature_enabled(feature: FeatureType) -> bool:
     """Check if a feature is enabled."""
     feats = get_enabled_features()
     # Note that we are checking `feats` first and then using `not in` here because we want to allow the features to be enabled by default.
@@ -371,7 +371,7 @@ def feature_enabled(feature: FeatureKey) -> bool:
     return True
 
 
-def public_space_enabled(feature: FeatureKey) -> None:
+def public_space_enabled(feature: FeatureType) -> None:
     """Check if public space is ready."""
     __embed_page_config()
     feature_enabled(feature)

@@ -4,6 +4,7 @@ import logging as log
 import sqlite3
 from contextlib import closing
 from datetime import datetime
+from typing import Optional
 
 from docq.model_selection.main import ModelUsageSettingsCollection
 
@@ -159,8 +160,8 @@ def query(
     feature: FeatureKey,
     thread_id: int,
     model_settings_collection: ModelUsageSettingsCollection,
-    space: SpaceKey = None,
-    spaces: list[SpaceKey] = None,
+    space: Optional[SpaceKey] = None,
+    spaces: Optional[list[SpaceKey]] = None,
 ) -> list[int]:
     """Run the query again documents in the space(s) using a LLM."""
     log.debug(
