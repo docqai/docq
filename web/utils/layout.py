@@ -4,6 +4,7 @@ import logging as log
 import re
 from typing import List, Tuple
 
+import docq
 import streamlit as st
 from docq import setup
 from docq.access_control.main import SpaceAccessType
@@ -249,7 +250,17 @@ def __always_hidden_pages() -> None:
     hide_pages(["widget", "signup", "verify"])
 
 
-def __resend_verification_ui(username: st, form: str,  ) -> None:
+def configure_top_right_menu() -> None:
+    """Configure the Streamlit top right menu."""
+    st.set_page_config(menu_items={"About": f"**{docq.__summary__}** \
+                                Version: **{docq.__version__}** | \
+                                Homepage: {docq.__homepage_url__} | \
+                                Docs: {docq.__documentation_url__} \
+                                Twitter: https://twitter.com/docqai \
+                               "})
+
+
+def __resend_verification_ui(username: str, form: str,  ) -> None:
     """Resend email verification UI."""
     msg = st.empty()
     msg.error("Your account is not activated. Please check your email for the activation link.")
