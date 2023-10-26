@@ -1,12 +1,13 @@
 [tool.poetry]
 name = "docq"
-version = "0.4.1"
-description = "Docq"
+version = "0.4.2"
+description = "Docq.AI - private and secure knowledge insight on your data."
 authors = ["Docq.AI Team <support@docqai.com>"]
 maintainers = ["Docq.AI Team <support@docqai.com>"]
 license = "AGPL-3.0-or-later"
+homepage = "https://docq.ai"
 repository = "https://github.com/docqai/docq"
-documentation = "https://github.com/docqai/docq/tree/main/docs/api/"
+documentation = "https://docqai.github.io/docq"
 readme = "README.md"
 packages = [{ include = "docq", from = "source" }]
 
