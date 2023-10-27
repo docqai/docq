@@ -98,7 +98,7 @@ def get_drive_service(creds: dict) -> Any:  # noqa: ANN401
     return build('drive', 'v3', credentials=_creds)
 
 
-def download_file(service: Any, file_id: str, file_name: str) -> int:
+def download_file(service: Any, file_id: str, file_name: str) -> None:
     """Download file."""
     request = service.files().get_media(fileId=file_id)
     with open(file_name, "wb") as fh:
@@ -107,4 +107,3 @@ def download_file(service: Any, file_id: str, file_name: str) -> int:
         while done is False:
             status, done = downloader.next_chunk()
             log.debug("Download - %s: %d%", file_name, int(status.progress() * 100))
-        return len(fh.read())
