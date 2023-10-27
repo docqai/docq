@@ -4,13 +4,14 @@ import logging as log
 import sys
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional, Union
 
 from .config import FeatureType, SpaceType
 
 _SEPARATOR_FOR_STR = ":"
 _SEPARATOR_FOR_VALUE = "_"
 _DEFAULT_SEPARATOR = _SEPARATOR_FOR_STR
+InputElementType = Literal["text_input", "file_uploader", "selectbox", "checkbox", "radio", "none"]
 
 
 def _join_properties(separator: str = _DEFAULT_SEPARATOR, *args: Optional[Any]) -> str:
@@ -50,13 +51,25 @@ class SpaceKey:
 
 @dataclass
 class ConfigKey:
-    """Config key."""
+    """Configuration key.
+
+    Args:
+    key (str): The key for the configuration.
+    name (str): The name of the configuration.
+    is_optional (bool): Whether the configuration is optional.
+    is_secret (bool): Whether the configuration is a secret.
+    ref_link (Optional[str]): The reference link for the configuration.
+    input_element (Optional[str]): The type of the configuration defaults to text_input.
+    is_hidden (bool): Whether the configuration is hidden.
+    """
 
     key: str
     name: str
     is_optional: bool = False
     is_secret: bool = False
     ref_link: Optional[str] = None
+    input_element: InputElementType = "text_input"
+    is_hidden: bool = False
 
 
 @dataclass

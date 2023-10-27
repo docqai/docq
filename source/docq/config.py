@@ -45,6 +45,17 @@ class UserSettingsKey(Enum):
     """User settings keys."""
 
 
+class ConfigKeyHandlers(Enum):
+    """Config key handlers."""
+    GET_USER_ID = "get_user_id"
+    GET_GDRIVE_CREDENTIAL = "get_gdrive_credential"
+
+
+class ConfigKeyOptions(Enum):
+    """Config key renderers."""
+    GET_GDRIVE_OPTIONS = "get_gdrive_options"
+
+
 """A dictionary of experiment names mapped to their enabled state and description."""
 # NOTE: global for now. Later we can adjust to use a different backend to set per user.
 EXPERIMENTS = {
