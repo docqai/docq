@@ -2380,15 +2380,15 @@ wandb = ["numpy", "openpyxl (>=3.0.7)", "pandas (>=1.2.3)", "pandas-stubs (>=1.1
 
 [[package]]
 name = "opendal"
-version = "0.38.1"
+version = "0.41.0"
 description = "OpenDAL Python Binding"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "opendal-0.38.1-cp37-abi3-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:95e008199d33387a2cdcb004d314f9a3f132ff6ceb5cafafb90e5722bdd53fe5"},
-    {file = "opendal-0.38.1-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8a6b775f04b240d05ba59ffea995cc509fe6f0dadc3fcf893f439d7d66e4190e"},
-    {file = "opendal-0.38.1-cp37-abi3-win_amd64.whl", hash = "sha256:279353e91b754ed6f93a6b5f26928b77cdc16be7adbc3c1cc60364a114ffb490"},
-    {file = "opendal-0.38.1.tar.gz", hash = "sha256:9214bcc64671494734a37f03cf1fe040dd21469fad2bd476b29e4d4d11923cfb"},
+    {file = "opendal-0.41.0-cp37-abi3-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:db45b4915ad275f40aa27de2413299fcaf07fec7f77b7f8ab2f98e81a9298c3c"},
+    {file = "opendal-0.41.0-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:314c1cb4140aa9b6da32c9e0a193247628dbd7ebcda427a709bafbbbc1351f0c"},
+    {file = "opendal-0.41.0-cp37-abi3-win_amd64.whl", hash = "sha256:ba5abec90218220a41d64d910114f4864d11593be3f51475f37cb67c9b5e4a03"},
+    {file = "opendal-0.41.0.tar.gz", hash = "sha256:d5761ed82653a453650233e58372cda40df7708b6f29144414e05675127469b5"},
 ]
 
 [package.extras]
@@ -5311,4 +5311,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "2984c964e52ce095c0cb9321d0e1c4575bf09cd922fcb333dfef9029a115bb90"
+content-hash = "90a47568566a18437282e3ed432a00569bd3a09f92f7b2933bc2cebc1cb9ab69"

@@ -1,4 +1,5 @@
 """Google drive datasource test."""
+import json
 import logging as log
 
 # import tempfile
@@ -53,27 +54,29 @@ class GDrive(SpaceDataSourceFileBased):
             }
 
         drive_options = configs[ConfigKeyOptions.GET_GDRIVE_OPTIONS.name]
+
         options = {
-            "root": configs[ConfigKeyOptions.GET_GDRIVE_OPTIONS.name],
-            "access_token": configs[ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name],
+            "root": drive_options["name"],
+            "access_token": json.dumps(configs[ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name]),
         }
+
         log.debug("Google drive options: %s", options)
         print(f"\x1b[31mDebug options: {options}\x1b[0m")
 
-        # try:
-        #     loader = OpendalReader(
-        #         scheme="gdrive",
-        #         file_metadata=lambda_metadata,
-        #         **options,
-        #     )
-        # except Exception as e:
-            # log.error("Failed to load google drive with opendal reader: %s", e)
-        loader = GoogleDriveReader(
-            file_metadata=lambda_metadata,
-            root=drive_options["name"],
-            access_token=configs[ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name],
-            selected_folder_id=drive_options["id"]
-        )
+        try:
+            loader = OpendalReader(
+                scheme="gdrive",
+                file_metadata=lambda_metadata,
+                **options,
+            )
+        except Exception as e:
+            log.error("Failed to load google drive with opendal reader: %s", e)
+            loader = GoogleDriveReader(
+                file_metadata=lambda_metadata,
+                root=drive_options["name"],
+                access_token=configs[ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name],
+                selected_folder_id=drive_options["id"]
+            )
 
         documents = loader.load_data()
         file_list = loader.get_document_list()

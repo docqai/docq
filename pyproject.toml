@@ -19,7 +19,7 @@ pypdf = "^3.9.0"
 docx2txt = "^0.8"
 argon2-cffi = "^21.3.0"
 azure-core = "^1.27.1"
-opendal = "^0.38.1"
+opendal = "^0.41.0"
 llama-index = "0.8.34"
 transformers = "^4.33.2"
 optimum = { extras = ["exporters"], version = "^1.13.2" }
@@ -157,9 +157,12 @@ doc-html = "mkdocs build --site-dir ./_site"
 run-otel = "opentelemetry-instrument --logs_exporter none poe run"
 
 [tool.poe.tasks.run]
-cmd = "streamlit run web/index.py --server.port $port --browser.gatherUsageStats false"
-args = [{ name = "port", default = 8501, type = "integer" }]
-env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${POE_PWD}/web/:${POE_PWD}/source/" }
+cmd = "streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.headless $headless"
+args = [
+    { name = "port", default = 8501, type = "integer" },
+    { name = "headless", default = false, type = "boolean"}
+]
+env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${POE_PWD}/web/:${POE_PWD}/source/:${PYTHONPATH}" }
 
 
 [tool.poe.tasks.docker-build]
