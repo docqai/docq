@@ -26,6 +26,7 @@ show_pages(
         Page("web/index.py", "Home", "🏠"),
         Page("web/signup.py", "signup"),
         Page("web/verify.py", "verify"),
+        Page("web/authorize_gdrive.py", "authorize_gdrive"),
         Section("Your_Space", icon="📁"),
         Page("web/personal_chat.py", "General_Chat"),
         Page("web/personal_ask.py", "Ask_Your_Documents"),

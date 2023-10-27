@@ -5,14 +5,17 @@ import hashlib
 import logging as log
 import math
 import random
+import re
 from datetime import datetime
-from typing import Any, List, Optional, Tuple
+from enum import Enum
+from typing import Any, Callable, List, Optional, Self, Tuple
 from urllib.parse import unquote_plus
 
 import streamlit as st
 from docq import (
     config,
     domain,
+    manage_credetials,
     manage_documents,
     manage_organisations,
     manage_settings,
@@ -21,6 +24,7 @@ from docq import (
     manage_user_groups,
     manage_users,
     run_queries,
+    services,
 )
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
@@ -28,7 +32,9 @@ from docq.domain import DocumentListItem, SpaceKey
 from docq.model_selection.main import get_saved_model_settings_collection
 from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
+from google_auth_oauthlib.flow import InstalledAppFlow
 from opentelemetry import trace
+from streamlit.components.v1 import html
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -791,6 +797,14 @@ def get_query_param(key: str, type_: type = int) -> Any | None:
         return None
 
 
+def handle_check_str_is_email(str_: Optional[str]) -> bool:
+    """Check if a string is a valid email."""
+    if str_ is None:
+        return False
+    email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+    return bool(re.match(email_regex, str_))
+
+
 def handle_public_session() -> None:
     """Handle public session."""
     session_id = get_query_param("session_id", str)
@@ -818,3 +832,94 @@ def handle_public_session() -> None:
             space_group_id=-1,
             public_session_id=-1,
         )
+
+
+def handle_set_credential(key: str, val: str) -> None:
+    """Handle set credential."""
+    org_id, user_id = get_selected_org_id(), get_authenticated_user_id()
+    if org_id and user_id:
+        manage_credetials.set_credential(org_id, user_id, key, val)
+
+
+def handle_get_credential(key: str) -> Optional[dict]:
+    """Handle get credential."""
+    org_id, user_id = get_selected_org_id(), get_authenticated_user_id()
+    if org_id and user_id:
+        return manage_credetials.get_credential(org_id, user_id, key)
+
+def handle_remove_credential(key: str) -> None:
+    """Handle remove credential."""
+    org_id, user_id = get_selected_org_id(), get_authenticated_user_id()
+    if org_id and user_id:
+        manage_credetials.remove_credential(org_id, user_id, key)
+
+
+def handle_get_user_email() -> Optional[str]:
+    """Handle get username and check if it is an email.
+
+    Returns:
+        Optional[str]: The username if it is an email, otherwise None.
+    """
+    _email =  get_username()
+    if handle_check_str_is_email(_email):
+        return _email
+    return None
+
+
+def handle_get_gdrive_authurl() -> tuple[str, Optional[str]]:
+    """Get google drive authurl."""
+    creds = handle_get_credential(services.google_drive.KEY)
+    user_email = handle_get_user_email()
+
+    if bool(creds) and services.google_drive.get_credentials(creds).valid:
+        return services.google_drive.VALID_CREDENTIALS, None
+
+    code = st.experimental_get_query_params().get("code", [None])[0]
+    flow = services.google_drive.get_flow()
+    auth_url = str(flow.authorization_url(
+        **services.google_drive.get_auth_url_params(user_email))[0]
+    )
+
+    if code:
+        flow.fetch_token(code=code)
+        creds = flow.credentials
+        authorized_email = services.google_drive.get_gdrive_authorized_email(creds)
+        if user_email and (authorized_email != user_email):
+            handle_remove_credential(services.google_drive.KEY)
+            return services.google_drive.AUTH_WRONG_EMAIL, auth_url
+        else:
+            handle_set_credential(services.google_drive.KEY, creds.to_json())
+            st.experimental_set_query_params()
+            st.experimental_rerun()
+
+    return services.google_drive.AUTH_URL, auth_url
+
+
+def handle_redirect_to_url(url: str, key: str) -> None:
+    """Redirect to url."""
+    html(f"""
+        <script>
+            const gotoPage = document.createElement('script');
+            gotoPage.type = 'text/javascript';
+            gotoPage.id = 'docq-gotoPage-script-{key}';
+            gotoPage.innerHTML = `window.location.href = "{url}";`;
+            const prevScript = window.parent.document.getElementById('docq-gotoPage-script-{key}');
+            if (prevScript) prevScript.remove();
+            window.parent.document.body.appendChild(gotoPage);
+        </script>
+        """, height=0
+    )
+
+
+class SetHandler:
+    """Set handler function."""
+    def __init__(self: Self, handler: Callable) -> None:
+        """Initialize."""
+        self.handler = handler
+
+
+class GetConfigKeyHandlers (Enum):
+    """Get config key handlers."""
+    GET_USER_ID = SetHandler(get_authenticated_user_id),
+    GET_GDRIVE_CREDENTIAL = SetHandler(lambda: handle_get_credential(services.google_drive.KEY))
+

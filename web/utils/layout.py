@@ -2,14 +2,15 @@
 
 import logging as log
 import re
-from typing import List, Tuple
+from enum import Enum
+from typing import Callable, List, Optional, Tuple
 
 import docq
 import streamlit as st
-from docq import setup
+from docq import config, services, setup
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SpaceType, SystemSettingsKey
-from docq.domain import DocumentListItem, FeatureKey, SpaceKey
+from docq.domain import ConfigKey, DocumentListItem, FeatureKey, SpaceKey
 from docq.model_selection.main import (
     ModelUsageSettingsCollection,
     get_model_settings_collection,
@@ -28,6 +29,8 @@ from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameFo
 from .error_ui import _handle_error_state_ui
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
+    GetConfigKeyHandlers,
+    SetHandler,
     _set_session_state_configs,
     get_enabled_features,
     get_max_number_of_documents,
@@ -51,7 +54,10 @@ from .handlers import (
     handle_delete_document,
     handle_delete_space_group,
     handle_delete_user_group,
+    handle_get_credential,
+    handle_get_gdrive_authurl,
     handle_get_gravatar_url,
+    handle_get_user_email,
     handle_list_documents,
     handle_list_orgs,
     handle_login,
@@ -59,8 +65,10 @@ from .handlers import (
     handle_manage_space_permissions,
     handle_org_selection_change,
     handle_public_session,
+    handle_redirect_to_url,
     handle_reindex_space,
     handle_resend_email_verification,
+    handle_set_credential,
     handle_update_org,
     handle_update_space_details,
     handle_update_space_group,
@@ -247,7 +255,7 @@ def __embed_page_config() -> None:
 
 def __always_hidden_pages() -> None:
     """These pages are always hidden whether the user is an admin or not."""
-    hide_pages(["widget", "signup", "verify"])
+    hide_pages(["widget", "signup", "verify", "authorize_gdrive"])
 
 
 def configure_top_right_menu() -> None:
@@ -795,17 +803,42 @@ def system_settings_ui() -> None:
                 st.divider()
 
 
-def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: str, configs: dict = None) -> None:
-    for key in data_source[2]:
-        input_type = "password" if key.is_secret else "default"
-        st.text_input(
-            f"{key.name}{'' if key.is_optional else ' *'}",
-            value=configs.get(key.key) if configs else "",
-            key=prefix + "ds_config_" + key.key,
-            type=input_type,
-            help=key.ref_link,
-            autocomplete="off",  # disable autofill by password manager etc.
-        )
+def _handle_no_element_config_key(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
+    value = configs.get(configkey.key) if configs else None
+    if value is None:
+        value = GetConfigKeyHandlers[configkey.key].value.handler()
+    st.session_state[key] = value
+
+
+def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: str, configs: Optional[dict] = None) -> None:
+    config_key_list: List[ConfigKey] = data_source[2]
+
+    for key in config_key_list:
+        if key.input_element == "none":
+            _handle_no_element_config_key(key, prefix + "ds_config_" + key.key, configs)
+
+        elif key.input_element == "selectbox":
+            options, fmt = GetConfigKeyOptions[key.key].value.handler()
+            selected = configs.get(key.key) if configs else None
+            st.selectbox(
+                f"{key.name}{'' if key.is_optional else ' *'}",
+                options=options,
+                key=prefix + "ds_config_" + key.key,
+                format_func=fmt,
+                help=key.ref_link,
+                index=options.index(selected) if selected else 0,
+            )
+
+        else:
+            input_type = "password" if key.is_secret else "default"
+            st.text_input(
+                f"{key.name}{'' if key.is_optional else ' *'}",
+                value=configs.get(key.key) if configs else "",
+                key=prefix + "ds_config_" + key.key,
+                type=input_type,
+                help=key.ref_link,
+                autocomplete="off",  # disable autofill by password manager etc.
+            )
 
 
 def create_space_ui(expanded: bool = False) -> None:
@@ -964,7 +997,7 @@ def _editor_view(q_param: str) -> None:
                 _render_manage_space_permissions_form(s)
 
 
-def admin_docs_ui(q_param: str = None) -> None:
+def admin_docs_ui(q_param: Optional[str] = None) -> None:
     """Manage Documents UI."""
     spaces = list_shared_spaces()
     if spaces:
@@ -988,9 +1021,10 @@ def admin_docs_ui(q_param: str = None) -> None:
             index=default_sid if default_sid else 0,
         )
 
-        if selected:
+        if selected and q_param:
             st.experimental_set_query_params(**{q_param: selected[0]})
-        _editor_view(q_param)
+        if q_param:
+            _editor_view(q_param)
 
 
 def org_selection_ui() -> None:
@@ -1085,11 +1119,11 @@ def _validate_password(password: str, generator: DeltaGenerator) -> bool:
         return True
 
 
-def validate_signup_form(form: str = "user-signup") -> None:
+def validate_signup_form(form: str = "user-signup") ->bool:
     """Handle validation of the signup form."""
-    name = st.session_state.get(f"{form}-name", None)
-    email = st.session_state.get(f"{form}-email", None)
-    password = st.session_state.get(f"{form}-password", None)
+    name: str = st.session_state.get(f"{form}-name", None)
+    email: str = st.session_state.get(f"{form}-email", None)
+    password: str = st.session_state.get(f"{form}-password", None)
     validator = st.session_state[f"{form}-validator"]
 
     if not _validate_name(name, validator):
@@ -1159,3 +1193,71 @@ def verify_email_ui() -> None:
     else:
         st.error("Email verification failed!")
         st.info("Please try again or contact your administrator.")
+
+
+def _render_request_auth_button(auth_url: Optional[str], key: str) -> None:
+    """Render the request auth button."""
+    if auth_url and st.button("Authorize Docq.AI to access your Google Drive"):
+        handle_redirect_to_url(auth_url, key)
+
+
+def authorize_gdrive_ui() -> None:
+    """Authorize Google Drive."""
+    _disable_sidebar()
+    st.markdown('<a href="/" target="_self"><h2>Goto Homepage</h2></a>', unsafe_allow_html=True)
+    st.divider()
+    auth_status, auth_url = handle_get_gdrive_authurl()
+
+    if auth_status == services.google_drive.VALID_CREDENTIALS:
+        st.success("Google Drive authorized successfully.")
+        st.markdown('You can manage your documents from <a href="/Admin_Spaces" target="_self">here</a>.', unsafe_allow_html=True)
+
+    elif auth_status == services.google_drive.AUTH_WRONG_EMAIL:
+        st.error("Email address verification failed!")
+        st.info("You must use the same email address you used to signup for Docq.AI")
+        _render_request_auth_button(auth_url, "gdrive_auth")
+
+    elif auth_status == services.google_drive.AUTH_URL:
+        st.markdown("""
+            ### By granting Docq.AI the right to your Google Drive, you allow Docq.AI to:
+
+            - Access and read your user profile to obtain your email address;
+            - Access, read, and retrieve files from your Google Drive account; and
+            - Access and read your openeid profile info.
+
+            """
+        )
+        st.divider()
+        _render_request_auth_button(auth_url, "gdrive_auth")
+
+    else:
+        st.error("Google Drive authorization failed!")
+        st.info("Please try again or contact your administrator.")
+
+
+def _get_gdrive_options() -> tuple[list, Callable]:
+    """Render GDrive folder lists."""
+    creds =  handle_get_credential(services.google_drive.KEY)
+    if not creds:
+        st.markdown("You have not Authorized Docq.AI to access your Google Drive.")
+        if st.button("Authorize Docq.AI to access your Google Drive"):
+            handle_redirect_to_url("/authorize_gdrive", "gdrive_auth")
+        st.stop()
+    options = services.google_drive.list_folders(creds)
+
+    return options, lambda x: x["name"]
+
+
+
+
+class GetConfigKeyOptions(Enum):
+    """Config key options.
+
+    This is used to map selectbox options to config keys.
+    each enum option is mapped to a function that returns a tuple of options and a format function.
+
+    Example:
+    >>> def get_options() -> tuple[list, Callable]:
+    >>>    return ["option1", "option2"], lambda x: x
+    """
+    GET_GDRIVE_OPTIONS = SetHandler(_get_gdrive_options)
