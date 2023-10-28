@@ -1120,8 +1120,8 @@ def signup_ui() -> None:
     st.markdown('Already have an account? Login <a href="/" target="_self">here</a>.', unsafe_allow_html=True)
 
     if not handle_check_mailer_ready():
-        log.error("Mailer not available. User self signup disabled.")
-        st.error("Unable to create personal accounts")
+        log.error("Mailer service not available due to a config problem. User self signup disabled. All the following env vars needs to be set: DOCQ_SMTP_SERVER, DOCQ_SMTP_PORT, DOCQ_SMTP_LOGIN, DOCQ_SMTP_KEY, DOCQ_SMTP_FROM, DOCQ_SERVER_ADDRESS. Refer to he `misc/secrets.toml.template` in the repo for details.")
+        st.error("Unable to create personal accounts.")
         st.info("Please contact your administrator to help you create an account.")
         st.stop()
 
