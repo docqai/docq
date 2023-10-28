@@ -81,7 +81,7 @@ check = true
 
 
 [tool.ruff]
-ignore = ["E501"]
+ignore = ["E501", "ANN401"]
 line-length = 120
 select = [
     "C9",
@@ -162,7 +162,7 @@ args = [
     { name = "port", default = 8501, type = "integer" },
     { name = "headless", default = false, type = "boolean"}
 ]
-env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${POE_PWD}/web/:${POE_PWD}/source/:${PYTHONPATH}" }
+env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${PWD}/web/:${PWD}/source/:${PYTHONPATH}" }
 
 
 [tool.poe.tasks.docker-build]

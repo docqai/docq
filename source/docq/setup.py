@@ -9,6 +9,7 @@ from . import (
     manage_spaces,
     manage_user_groups,
     manage_users,
+    services,
 )
 from .support import auth_utils, llm, metadata_extractors, store
 
@@ -28,6 +29,7 @@ def init() -> None:
     manage_settings._init()
     manage_spaces._init()
     manage_users._init()
+    services._init()
     store._init()
     manage_organisations._init_default_org_if_necessary()
     manage_users._init_admin_if_necessary()

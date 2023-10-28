@@ -6,4 +6,6 @@ __all__ = [
     "smtp_service"
 ]
 
-google_drive._init()
+def _init() -> None:
+    """Initialize all default services."""
+    google_drive._init()

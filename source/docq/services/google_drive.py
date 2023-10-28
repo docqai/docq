@@ -92,7 +92,7 @@ def list_folders(creds: dict) -> list[dict]:
     return folders.get('files', [])
 
 
-def get_drive_service(creds: dict) -> Any:  # noqa: ANN401
+def get_drive_service(creds: dict) -> Any:
     """Get drive service."""
     _creds = get_credentials(creds)
     return build('drive', 'v3', credentials=_creds)
