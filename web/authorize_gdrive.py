@@ -2,6 +2,6 @@
 
 from utils.layout import auth_required, authorize_gdrive_ui
 
-auth_required(requiring_admin=True)
+auth_required()
 
 authorize_gdrive_ui()

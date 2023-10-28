@@ -1243,9 +1243,8 @@ def _get_gdrive_options() -> tuple[list, Callable]:
         if st.button("Authorize Docq.AI to access your Google Drive"):
             handle_redirect_to_url("/authorize_gdrive", "gdrive_auth")
         st.stop()
-    options = services.google_drive.list_folders(creds)
 
-    return options, lambda x: x["name"]
+    return services.google_drive.list_folders(creds), lambda x: x["name"]
 
 
 
