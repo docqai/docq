@@ -913,13 +913,18 @@ def handle_redirect_to_url(url: str, key: str) -> None:
 
 class SetHandler:
     """Set handler function."""
-    def __init__(self: Self, handler: Callable) -> None:
+    def __init__(self: Self, handler: Callable, *args: Any, **kwargs: Any) -> None:
         """Initialize."""
         self.handler = handler
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self: Self) -> Any:
+        """Call."""
+        return self.handler(*self.args, **self.kwargs)
 
 
 class GetConfigKeyHandlers (Enum):
     """Get config key handlers."""
-    GET_USER_ID = SetHandler(get_authenticated_user_id),
-    GET_GDRIVE_CREDENTIAL = SetHandler(lambda: handle_get_credential(services.google_drive.KEY))
-
+    GET_USER_ID = SetHandler(get_authenticated_user_id)
+    GET_GDRIVE_CREDENTIAL = SetHandler(handle_get_credential, services.google_drive.KEY)

@@ -806,7 +806,7 @@ def system_settings_ui() -> None:
 def _handle_no_element_config_key(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
     value = configs.get(configkey.key) if configs else None
     if value is None:
-        value = GetConfigKeyHandlers[configkey.key].value.handler()
+        value = GetConfigKeyHandlers[configkey.key].value()
     st.session_state[key] = value
 
 
