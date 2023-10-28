@@ -818,7 +818,7 @@ def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: st
             _handle_no_element_config_key(key, prefix + "ds_config_" + key.key, configs)
 
         elif key.input_element == "selectbox":
-            options, fmt = GetConfigKeyOptions[key.key].value.handler()
+            options, fmt = GetConfigKeyOptions[key.key].value()
             selected = configs.get(key.key) if configs else None
             st.selectbox(
                 f"{key.name}{'' if key.is_optional else ' *'}",
