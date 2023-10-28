@@ -220,7 +220,7 @@ def download_from_gdrive(files: List[dict], temp_dir: str, service: Any,) -> Lis
         if suffix not in DEFAULT_FILE_READER_CLS:
             continue
 
-        file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}" # type: ignore
+        file_path = f"{temp_dir}/{file['name']}" # type: ignore
         indexed_on = datetime.timestamp(datetime.now().utcnow())
         services.google_drive.download_file(service, file["id"], file_path)
         downloaded_files.append((file["webViewLink"], file_path, int(indexed_on), int(file["size"])))
