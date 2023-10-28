@@ -1,0 +1,13 @@
+# .github/release.yml
+# This auto generate the notes shown in GH for each release
+changelog:
+  categories:
+    - title: 🏕 What's New
+      labels:
+        - "*"
+      exclude:
+        labels:
+          - dependencies
+    - title: 👒 Dependencies
+      labels:
+        - dependencies
