@@ -52,7 +52,7 @@ class ConfigKeyHandlers(Enum):
 
 
 class ConfigKeyOptions(Enum):
-    """Config key renderers."""
+    """Config key options."""
     GET_GDRIVE_OPTIONS = "get_gdrive_options"
 
 

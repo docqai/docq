@@ -60,9 +60,6 @@ class GDrive(SpaceDataSourceFileBased):
             "access_token": json.dumps(configs[ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name]),
         }
 
-        log.debug("Google drive options: %s", options)
-        print(f"\x1b[31mDebug options: {options}\x1b[0m")
-
         try:
             loader = OpendalReader(
                 scheme="gdrive",
@@ -84,4 +81,3 @@ class GDrive(SpaceDataSourceFileBased):
         persist_path = get_index_dir(space)
         self._save_document_list(file_list, persist_path, self._DOCUMENT_LIST_FILENAME)
         return documents
-
