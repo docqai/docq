@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "docq"
-version = "0.4.2"
+version = "0.4.3"
 description = "Docq.AI - private and secure knowledge insight on your data."
 authors = ["Docq.AI Team <support@docqai.com>"]
 maintainers = ["Docq.AI Team <support@docqai.com>"]
@@ -157,6 +157,23 @@ args = [
     { name = "target", default = "prod" },
 ]
 
+[tool.poe.tasks.docker-build-pipcached]
+cmd = """
+docker build 
+--build-arg TESTBUILD=$test \
+--build-arg BUILDTAG=$build_tag \
+--build-arg BUILDPLATFORM=$build_platform \
+--build-arg PIPNOCACHE= \
+--target $target \
+-t docq:$target-$build_tag ."""
+help = "Build a docker image to test the project in an isolated environment"
+args = [
+    { name = "test", default = false, type = "boolean" },
+    { name = "build-tag", default = "3.11-slim-buster" },
+    { name = "build-platform", default = "linux/amd64" },
+    { name = "target", default = "prod" },
+]
+
 [tool.poe.tasks.docker-run]
 cmd = """
 docker run \
@@ -164,6 +181,23 @@ docker run \
 --rm \
 --name docq \
 --env-file docker.env \
+-p $port:$port \
+docq:$target-$build_tag """
+help = "Run the docker image"
+args = [
+    { name = "build-tag", default = "3.11-slim-buster" },
+    { name = "target", default = "prod" },
+    { name = "port", default = 8501, type = "integer" },
+]
+
+[tool.poe.tasks.docker-run-infisical]
+cmd = """
+docker run \
+-it
+--rm \
+--name docq \
+--env INFISICAL_TOKEN=$INFISICAL_TOKEN \
+--env INFISICAL_ENV_NAME=stage
 -p $port:$port \
 docq:$target-$build_tag """
 help = "Run the docker image"
