@@ -62,6 +62,31 @@ DEFAULT_FILE_READER_CLS: Dict[str, Type[BaseReader]] = {
     ".md": MarkdownReader,
     ".mbox": MboxReader,
     ".ipynb": IPYNBReader,
+    ".gdoc": DocxReader,
+    ".gslides": PptxReader,
+    ".gsheet": PandasCSVReader,
+}
+
+FILE_MIME_EXTENSION_MAP: Dict[str, str] = {
+    "application/pdf": ".pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+    "application/vnd.google-apps.document": ".gdoc",
+    "application/vnd.google-apps.presentation": ".gslides",
+    "application/vnd.google-apps.spreadsheet": ".gsheet",
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/jpg": ".jpg",
+    "audio/mpeg": ".mp3",
+    "audio/mp3": ".mp3",
+    "video/mp4": ".mp4",
+    "video/mpeg": ".mp4",
+    "text/csv": ".csv",
+    "application/epub+zip": ".epub",
+    "text/markdown": ".md",
+    "application/x-ipynb+json": ".ipynb",
+    "application/mbox": ".mbox",
 }
 
 
@@ -137,9 +162,6 @@ class OpendalReader(BaseReader):
         return dl
 
 
-
-
-
 class GoogleDriveReader(BaseReader):
     """Google Drive reader."""
 
@@ -186,7 +208,9 @@ class GoogleDriveReader(BaseReader):
         ).execute()
         files = folder_content.get("files", [])
         with tempfile.TemporaryDirectory() as temp_dir:
-            self.downloaded_files = download_from_gdrive(files, temp_dir, service)
+            self.downloaded_files = asyncio.run(
+                download_from_gdrive(files, temp_dir, service)
+            )
 
             self.documents = asyncio.run(
                 extract_files(
@@ -208,22 +232,26 @@ class GoogleDriveReader(BaseReader):
         return dl
 
 
-def download_from_gdrive(files: List[dict], temp_dir: str, service: Any,) -> List[tuple[str, str, int, int]]:
+async def download_from_gdrive(files: List[dict], temp_dir: str, service: Any,) -> List[tuple[str, str, int, int]]:
     """Download files from Google Drive."""
     downloaded_files: List[tuple[str, str, int, int]] = []
 
-    # async with aiohttp.ClientSession() as session:
     for file in files:
-        if file["mimeType"] == "application/vnd.google-apps.folder" or "fullFileExtension" not in file:
+        if file["mimeType"] == "application/vnd.google-apps.folder":
+            # TODO: Implement recursive folder download
             continue
-        suffix = f".{file['fullFileExtension']}"
+        suffix = FILE_MIME_EXTENSION_MAP.get(file["mimeType"], None)
         if suffix not in DEFAULT_FILE_READER_CLS:
             continue
 
-        file_path = f"{temp_dir}/{file['name']}" # type: ignore
+        file_path = f"{temp_dir}/{file['name']}"
         indexed_on = datetime.timestamp(datetime.now().utcnow())
-        services.google_drive.download_file(service, file["id"], file_path)
-        downloaded_files.append((file["webViewLink"], file_path, int(indexed_on), int(file["size"])))
+        await asyncio.to_thread(
+            services.google_drive.download_file, service, file["id"], file_path, file["mimeType"]
+        )
+        downloaded_files.append(
+            (file["webViewLink"], file_path, int(indexed_on), int(file["size"]))
+        )
 
     return downloaded_files
 
