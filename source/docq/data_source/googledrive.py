@@ -1,8 +1,6 @@
-"""Google drive datasource test."""
+"""Google drive datasource."""
 import json
 import logging as log
-
-# import tempfile
 from datetime import datetime
 from typing import List, Self
 
