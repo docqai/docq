@@ -62,9 +62,6 @@ DEFAULT_FILE_READER_CLS: Dict[str, Type[BaseReader]] = {
     ".md": MarkdownReader,
     ".mbox": MboxReader,
     ".ipynb": IPYNBReader,
-    ".gdoc": DocxReader,
-    ".gslides": PptxReader,
-    ".gsheet": PandasCSVReader,
 }
 
 FILE_MIME_EXTENSION_MAP: Dict[str, str] = {
