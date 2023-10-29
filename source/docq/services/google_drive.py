@@ -98,12 +98,25 @@ def get_drive_service(creds: dict) -> Any:
     return build('drive', 'v3', credentials=_creds)
 
 
-def download_file(service: Any, file_id: str, file_name: str) -> None:
+def _export_gdrive_docs(service: Any, file_id: str) -> Any:
+    """Export google docs."""
+    return service.files().export(fileId=file_id, mimeType="application/pdf")
+
+
+def download_file(service: Any, file_id: str, file_name: str, mime: str) -> bool:
     """Download file."""
-    request = service.files().get_media(fileId=file_id)
-    with open(file_name, "wb") as fh:
-        downloader = MediaIoBaseDownload(fh, request)
-        done = False
-        while done is False:
-            status, done = downloader.next_chunk()
-            log.debug("Download - %s: %d%", file_name, int(status.progress() * 100))
+    try:
+        if "google-apps" in mime:
+            request = _export_gdrive_docs(service, file_id)
+            file_name = f"{file_name}.pdf"
+        else:
+            request = service.files().get_media(fileId=file_id)
+        with open(file_name, "wb") as fh:
+            downloader, done = MediaIoBaseDownload(fh, request), False
+            while done is False:
+                status, done = downloader.next_chunk()
+                log.debug("Download - %s", f"{file_name}: {str(status.progress() * 100)}%")
+        return True
+    except Exception as e:
+        log.error("Failed to download file: %s", e)
+        return False
