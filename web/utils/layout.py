@@ -789,7 +789,9 @@ def system_settings_ui() -> None:
                 st.write(f"- Model Vendor: `{model_settings.model_vendor.value}`")
                 st.write(f"- Model Name: `{model_settings.model_name}`")
                 st.write(f"- Temperature: `{model_settings.temperature}`")
-                st.write(f"- Deployment Name: `{model_settings.model_deployment_name}`")
+                st.write(f"- Deployment Name: `{model_settings.model_deployment_name if model_settings.model_deployment_name else 'n/a'}`")
+                st.write(f"- License: `{model_settings.license_ if model_settings.license_ else 'unknown'}`")
+                st.write(f"- Citation: `{model_settings.citation}`")
                 st.divider()
 
 

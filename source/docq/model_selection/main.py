@@ -9,7 +9,7 @@ Model collections grouped by vendor and model capability is just one way to stru
 import logging as log
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict
+from typing import Dict, Optional
 
 from ..config import SystemSettingsKey
 from ..manage_settings import get_organisation_settings
@@ -57,9 +57,12 @@ class ModelUsageSettings:
     """This value is defined in the infrastructure. LLM hosting services such as AzureML Online Endpoints and AWS SageMaker Endpoints require a deployment name be given to each instance of a model deployed behind an endpoint. This is used to route traffic to the correct model."""
     model_capability: ModelCapability
     temperature: float = 0.0
+    model_deployment_name: Optional[str] = None
     """Each LLM hosting provider defines string name to identify different version of models."""
-    model_deployment_name: str = None
-
+    citation: Optional[str] = None
+    """Any citation information for the model. Typically applies to open source models."""
+    license_: Optional[str] = None
+    """The licenses under which the model is released. Especially important for open source models."""
 
 @dataclass
 class ModelUsageSettingsCollection:
@@ -119,6 +122,15 @@ LLM_MODEL_COLLECTIONS = {
                 model_vendor=ModelVendor.HUGGINGFACE_OPTIMUM_BAAI,
                 model_name="BAAI/bge-small-en-v1.5",
                 model_capability=ModelCapability.EMBEDDING,
+                license_="MIT",
+                citation="""@misc{bge_embedding,
+                            title={C-Pack: Packaged Resources To Advance General Chinese Embedding}, 
+                            author={Shitao Xiao and Zheng Liu and Peitian Zhang and Niklas Muennighoff},
+                            year={2023},
+                            eprint={2309.07597},
+                            archivePrefix={arXiv},
+                            primaryClass={cs.CL}
+                            }""",
             ),
         },
     ),
