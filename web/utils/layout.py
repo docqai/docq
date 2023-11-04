@@ -3,7 +3,7 @@ import base64
 import logging as log
 import random
 import re
-from typing import Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 from urllib.parse import quote_plus, unquote_plus
 
 import docq
@@ -808,43 +808,48 @@ def _get_create_space_config_input_values() -> str:
     return quote_plus(base64.b64encode(space_configs.encode("utf-8")))
 
 
+def _get_random_key(prefix: str) -> str:
+    return prefix + str(random.randint(0, 1000000)) # noqa E501
+
+
 def _render_gdrive_credential_request(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
-    prev_creds_available = not (key not in st.session_state and configkey.key not in st.session_state)
-    __st = st.empty()
-    __creds = configs.get(configkey.key) if configs else None
-    __creds = services.google_drive.validate_credentials(__creds)
+    creds = configs.get(configkey.key) if configs else None
+    creds = services.google_drive.validate_credentials(creds)
+
     st.write(f"{configkey.name}{'' if configkey.is_optional else ' *'}")
     text_box, btn = st.columns([3, 1])
 
-    state = _get_create_space_config_input_values()
-    resp, auth = handle_get_gdrive_authurl(state)
-    st.experimental_set_query_params()
-    credential_present = prev_creds_available or resp == services.google_drive.VALID_CREDENTIALS or __creds
-    _input_value = '*' * 64 if credential_present else ""
-    _input_key = "_input_key" + str(random.randint(0, 1000000)) # noqa: S311
-    _btn_key = "_btn_key" + str(random.randint(0, 1000000)) # noqa: S311
-    text_box.text_input(configkey.name, value=_input_value, key=_input_key, disabled=True, label_visibility="collapsed")
-    
-    if btn.button("Signin with Google", key=_btn_key, disabled=(resp == services.google_drive.VALID_CREDENTIALS or bool(__creds))) and not __creds:
-        if resp == services.google_drive.AUTH_URL and auth:
-            handle_redirect_to_url(auth, "gdrive")
-            st.stop()
-        if resp == services.google_drive.AUTH_WRONG_EMAIL and auth:
-            __st.error("You must authenticate google drive using the same email address for your Docq.AI account")
-            handle_redirect_to_url(auth, "gdrive")
-            st.stop()
-    if (resp == services.google_drive.VALID_CREDENTIALS and auth) or __creds:
-        st.session_state[key] = __creds if __creds else auth
-        st.session_state[configkey.key] =  __creds if __creds else auth
-    elif key not in st.session_state and configkey.key not in st.session_state:
-        st.stop()
+    if creds:
+        text_box.text_input(configkey.name, value='*' * 64, disabled=True, label_visibility="collapsed")
+        btn.button("Signin with Google", key=_get_random_key("_btn_key"), disabled=True)
+        st.session_state[key] = creds
+        st.session_state[configkey.key] = creds
+    else:
+        state = _get_create_space_config_input_values()
+        resp, auth = handle_get_gdrive_authurl(state)
+        credential_present = key in st.session_state or configkey.key in st.session_state or resp == services.google_drive.VALID_CREDENTIALS
+        _input_value = '*' * 64 if credential_present else ""
+        _input_key = _get_random_key("_input_key")
+        _btn_key = _get_random_key("_btn_key")
+        text_box.text_input(configkey.name, value=_input_value, key=_input_key, disabled=True, label_visibility="collapsed")
+
+        if btn.button("Signin with Google", key=_btn_key, disabled=(resp == services.google_drive.VALID_CREDENTIALS or bool(creds))) and not creds:
+            if resp == services.google_drive.AUTH_URL and auth:
+                handle_redirect_to_url(auth, "gdrive")
+                st.stop()
+            if resp == services.google_drive.AUTH_WRONG_EMAIL and auth:
+                st.error("You must authenticate google drive using the same email address for your Docq.AI account")
+                handle_redirect_to_url(auth, "gdrive")
+                st.stop()
 
 
-def _list_gdrive_folders(configkey: ConfigKey, _: str, configs: Optional[dict]) -> tuple[list, Callable]:
-    __creds= configs.get(configkey.key) if configs else st.session_state.get(config.ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name, None)
-    __creds = services.google_drive.validate_credentials(__creds)
-    if __creds:
-        return services.google_drive.list_folders(__creds), lambda x: x["name"]
+def _list_gdrive_folders(**kwargs: Any) -> tuple[list, Callable]:
+    configs = kwargs.get("configs")
+    key = config.ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name
+    __creds= configs.get(key) if configs else st.session_state.get(config.ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name, None)
+    creds = services.google_drive.validate_credentials(__creds)
+    if creds:
+        return services.google_drive.list_folders(creds), lambda x: x["name"]
     return [], lambda x: x
 
 
@@ -864,7 +869,7 @@ def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: st
             config_key_handlers[key.key](key, _input_key, configs)
 
         elif key.input_element == "selectbox":
-            options, fmt = get_config_key_options[key.key](key, _input_key, configs)
+            options, fmt = get_config_key_options[key.key](configkey=key, key=_input_key, configs=configs)
             selected = configs.get(key.key) if configs else None
             st.selectbox(
                 f"{key.name}{'' if key.is_optional else ' *'}",
