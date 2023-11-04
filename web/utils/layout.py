@@ -879,7 +879,7 @@ def _list_gdrive_folders(**kwargs: Any) -> tuple[list, Callable, bool]:
 
     # Make API call to Google Drive to get folders if creating space, i.e No saved settings.
     credential_key = config.ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name
-    __creds= configs.get(credential_key) if configs else st.session_state.get(credential_key, None)
+    __creds = configs.get(credential_key) if configs else st.session_state.get(credential_key, None)
     creds = services.google_drive.validate_credentials(__creds)
 
     return (services.google_drive.list_folders(creds), lambda x: x["name"], False) if creds else ([], lambda x: x, False)
@@ -934,6 +934,7 @@ def _get_space_defaults() -> Tuple[str, str, str]:
             space_name, space_summary, ds_type = base64.b64decode(space_config).decode("utf-8").split("::")
             st.session_state["create_space_defaults"] = (space_name, space_summary, ds_type)
         except Exception as e:
+            st.session_state["create_space_defaults"] = ("", "", "")
             log.error("Error parsing space config from query string: %s", e)
     return st.session_state.get("create_space_defaults", ("", "", ""))
 
