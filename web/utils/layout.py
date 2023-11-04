@@ -813,18 +813,22 @@ def _get_random_key(prefix: str) -> str:
 
 
 def _render_gdrive_credential_request(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
+    """Renders the Google Drive credential request input field with an action burron."""
     creds = configs.get(configkey.key) if configs else st.session_state.get(key, None)
     creds = services.google_drive.validate_credentials(creds)
     info_container = st.empty()
-    st.markdown("""
+    global opacity
+    opacity = 0.4 if creds else 1.0
+    st.markdown(f"""
     <style>
-      div.element-container .stMarkdown div[data-testid="stMarkdownContainer"] p {
+      div.element-container .stMarkdown div[data-testid="stMarkdownContainer"] p {{
         margin-bottom: 8px !important;
         font-size: 14px !important;
-      }
-      div.element-container .stMarkdown div[data-testid="stMarkdownContainer"] style {
+        opacity: {opacity} !important;
+      }}
+      div.element-container .stMarkdown div[data-testid="stMarkdownContainer"] style {{
         display: none !important;
-      }
+      }}
     </style>
     """, unsafe_allow_html=True)
     st.write(f"{configkey.name}{'' if configkey.is_optional else ' *'}")
@@ -837,16 +841,26 @@ def _render_gdrive_credential_request(configkey: ConfigKey, key: str, configs: O
         resp, auth = handle_get_gdrive_authurl(state)
 
     credential_present = bool(creds or resp == services.google_drive.VALID_CREDENTIALS)
+    opacity = 0.4 if credential_present else 1.0
     _input_value = '*' * 64 if credential_present else ""
 
-    text_box.text_input(configkey.name, value=_input_value, key=_get_random_key("_input_key"), disabled=True, label_visibility="collapsed")
+    text_box.text_input(
+        configkey.name,
+        value=_input_value,
+        key=_get_random_key("_input_key"),
+        disabled=True, label_visibility="collapsed"
+    )
+
+    btn.button(
+        "Signin with Google",
+        disabled=credential_present,
+        key=_get_random_key("_btn_key"),
+        on_click=lambda: handle_redirect_to_url(auth, "gdrive") if auth else None,
+    )
 
     if resp == services.google_drive.VALID_CREDENTIALS:
         st.session_state[key] = auth
         st.session_state[configkey.key] = auth
-
-    if btn.button("Signin with Google", disabled=credential_present) and auth:
-        handle_redirect_to_url(auth, "gdrive")
 
     if resp == services.google_drive.AUTH_WRONG_EMAIL:
         info_container.error("You must authenticate google drive using the same email address for your Docq.AI account")
@@ -855,12 +869,20 @@ def _render_gdrive_credential_request(configkey: ConfigKey, key: str, configs: O
         st.stop()
 
 
-def _list_gdrive_folders(**kwargs: Any) -> tuple[list, Callable]:
+def _list_gdrive_folders(**kwargs: Any) -> tuple[list, Callable, bool]:
     configs: dict = kwargs.get("configs", {})
-    key = config.ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name
-    __creds= configs.get(key) if configs else st.session_state.get(key, None)
+    configkey: ConfigKey = kwargs.get("configkey", None)
+    saved_settings = configs.get(configkey.key) if configs else None
+
+    if saved_settings:
+        return [saved_settings], lambda x: x["name"], True
+
+    # Make API call to Google Drive to get folders if creating space, i.e No saved settings.
+    credential_key = config.ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name
+    __creds= configs.get(credential_key) if configs else st.session_state.get(credential_key, None)
     creds = services.google_drive.validate_credentials(__creds)
-    return (services.google_drive.list_folders(creds), lambda x: x["name"]) if creds else ([], lambda x: x)
+
+    return (services.google_drive.list_folders(creds), lambda x: x["name"], False) if creds else ([], lambda x: x, False)
 
 
 def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: str, configs: Optional[dict] = None) -> None:
@@ -879,7 +901,7 @@ def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: st
             config_key_handlers[key.key](key, _input_key, configs)
 
         elif key.input_element == "selectbox":
-            options, fmt = get_config_key_options[key.key](configkey=key, key=_input_key, configs=configs)
+            options, fmt, disabled = get_config_key_options[key.key](configkey=key, key=_input_key, configs=configs)
             selected = configs.get(key.key) if configs else None
             st.selectbox(
                 f"{key.name}{'' if key.is_optional else ' *'}",
@@ -887,6 +909,7 @@ def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: st
                 key=_input_key,
                 format_func=fmt,
                 help=key.ref_link,
+                disabled=disabled,
                 index=options.index(selected) if bool(selected and options) else 0,
             )
 
