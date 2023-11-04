@@ -11,7 +11,7 @@ from .config import FeatureType, SpaceType
 _SEPARATOR_FOR_STR = ":"
 _SEPARATOR_FOR_VALUE = "_"
 _DEFAULT_SEPARATOR = _SEPARATOR_FOR_STR
-InputElementType = Literal["text_input", "file_uploader", "selectbox", "checkbox", "radio", "none"]
+InputElementType = Literal["text_input", "selectbox", "credential_request"]
 
 
 def _join_properties(separator: str = _DEFAULT_SEPARATOR, *args: Optional[Any]) -> str:

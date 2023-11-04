@@ -1,8 +1,10 @@
 """Google drive service."""
 
+import json
 import logging as log
 import os
 from typing import Any, Optional, Union
+from urllib.parse import urlencode
 
 from google.auth.external_account_authorized_user import Credentials as ExtCredentials
 from google.auth.transport.requests import Request
@@ -28,6 +30,7 @@ VALID_CREDENTIALS = "valid_credentials"
 INVALID_CREDENTIALS = "invalid_credentials"
 AUTH_WRONG_EMAIL = "auth_wrong_email"
 AUTH_URL = "auth_url"
+AUTH_ERROR = "auth_error"
 
 CREDENTIALS = Union[Credentials,  ExtCredentials]
 
@@ -64,17 +67,32 @@ def refresh_credentials(creds: CREDENTIALS) -> CREDENTIALS:
     return creds
 
 
+def validate_credentials(creds: Optional[str]) -> Optional[dict]:
+    """Validate credentials."""
+    if not creds:
+        return None
+    try:
+        _creds = get_credentials(json.loads(creds))
+        if _creds.valid:
+            return json.loads(_creds.to_json())
+        return None
+    except Exception as e:
+        log.error("Failed to validate credentials: %s", e)
+        return None
+
+
 def get_gdrive_authorized_email(creds: CREDENTIALS) -> str:
     """Get user email."""
     service = build('oauth2', 'v2', credentials=creds)
     return service.userinfo().get().execute()['email']
 
 
-def get_auth_url_params(email: Optional[str] = None) -> dict:
+def get_auth_url_params(email: Optional[str] = None, state: Optional[str] = None) -> dict:
     """Get authorization url params."""
     authorization_params = {
         "access_type": "offline",
         "prompt": "consent",
+        "state": state if state else "",
     }
     if email:
         authorization_params["login_hint"] = email
@@ -92,9 +110,11 @@ def list_folders(creds: dict) -> list[dict]:
     return folders.get('files', [])
 
 
-def get_drive_service(creds: dict) -> Any:
+def get_drive_service(creds: dict | str) -> Any:
     """Get drive service."""
-    _creds = get_credentials(creds)
+    _cred_dict = {}
+    _cred_dict = json.loads(creds) if isinstance(creds, str) else creds
+    _creds = get_credentials(_cred_dict)
     return build('drive', 'v3', credentials=_creds)
 
 

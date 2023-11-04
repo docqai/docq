@@ -2,7 +2,6 @@
 import logging
 
 from . import (
-    manage_credetials,
     manage_organisations,
     manage_settings,
     manage_space_groups,
@@ -25,7 +24,6 @@ def init() -> None:
     manage_space_groups._init()
     manage_organisations._init()
     manage_user_groups._init()
-    manage_credetials._init()
     manage_settings._init()
     manage_spaces._init()
     manage_users._init()

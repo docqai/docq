@@ -1,5 +1,7 @@
 """Page: Home (no auth required)."""
 
+import importlib.metadata as _metadata
+
 import docq
 import streamlit as st
 from st_pages import Page, Section, add_page_title, show_pages
@@ -11,7 +13,7 @@ from utils.layout import (
     production_layout,
     public_access,
 )
-import importlib.metadata as _metadata 
+
 init_with_pretty_error_ui()
 
 configure_top_right_menu()
@@ -26,7 +28,6 @@ show_pages(
         Page("web/index.py", "Home", "🏠"),
         Page("web/signup.py", "signup"),
         Page("web/verify.py", "verify"),
-        Page("web/authorize_gdrive.py", "authorize_gdrive"),
         Section("Your_Space", icon="📁"),
         Page("web/personal_chat.py", "General_Chat"),
         Page("web/personal_ask.py", "Ask_Your_Documents"),

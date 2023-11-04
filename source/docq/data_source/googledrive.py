@@ -24,17 +24,17 @@ class GDrive(SpaceDataSourceFileBased):
         """Get the config keys for google drive."""
         return [
             ConfigKey(
+                ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name,
+                "Credential",
+                is_hidden=True,
+                input_element="credential_request",
+            ),
+            ConfigKey(
                 ConfigKeyOptions.GET_GDRIVE_OPTIONS.name,
                 "Select a folder",
                 input_element="selectbox",
                 ref_link="https://docqai.github.io/docq/user-guide/config-spaces/#data-source-google-drive",
             ),
-            ConfigKey(
-                ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name,
-                "Credential",
-                is_hidden=True,
-                input_element="none"
-            )
         ]
 
     def load(self: Self, space: SpaceKey, configs: dict) -> list[Document] | None:

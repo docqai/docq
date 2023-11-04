@@ -1,9 +1,10 @@
 """Layout components for the web app."""
-
+import base64
 import logging as log
+import random
 import re
-from enum import Enum
 from typing import Callable, List, Optional, Tuple
+from urllib.parse import quote_plus, unquote_plus
 
 import docq
 import streamlit as st
@@ -29,8 +30,6 @@ from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameFo
 from .error_ui import _handle_error_state_ui
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
-    GetConfigKeyHandlers,
-    SetHandler,
     _set_session_state_configs,
     get_enabled_features,
     get_max_number_of_documents,
@@ -54,10 +53,8 @@ from .handlers import (
     handle_delete_document,
     handle_delete_space_group,
     handle_delete_user_group,
-    handle_get_credential,
     handle_get_gdrive_authurl,
     handle_get_gravatar_url,
-    handle_get_user_email,
     handle_list_documents,
     handle_list_orgs,
     handle_login,
@@ -68,7 +65,6 @@ from .handlers import (
     handle_redirect_to_url,
     handle_reindex_space,
     handle_resend_email_verification,
-    handle_set_credential,
     handle_update_org,
     handle_update_space_details,
     handle_update_space_group,
@@ -255,7 +251,7 @@ def __embed_page_config() -> None:
 
 def __always_hidden_pages() -> None:
     """These pages are always hidden whether the user is an admin or not."""
-    hide_pages(["widget", "signup", "verify", "authorize_gdrive"])
+    hide_pages(["widget", "signup", "verify"])
 
 
 def configure_top_right_menu() -> None:
@@ -803,30 +799,80 @@ def system_settings_ui() -> None:
                 st.divider()
 
 
-def _handle_no_element_config_key(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
-    value = configs.get(configkey.key) if configs else None
-    if value is None:
-        value = GetConfigKeyHandlers[configkey.key].value()
-    st.session_state[key] = value
+def _get_create_space_config_input_values() -> str:
+    """Get values for space creation from session state."""
+    space_name = st.session_state.get("create_space_name", "")
+    space_summary = st.session_state.get("create_space_summary", "")
+    ds_type = st.session_state.get("create_space_ds_type", ["", ""])
+    space_configs = f"{space_name}::{space_summary}::{ds_type[1]}"
+    return quote_plus(base64.b64encode(space_configs.encode("utf-8")))
+
+
+def _render_gdrive_credential_request(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
+    prev_creds_available = not (key not in st.session_state and configkey.key not in st.session_state)
+    __st = st.empty()
+    __creds = configs.get(configkey.key) if configs else None
+    __creds = services.google_drive.validate_credentials(__creds)
+    st.write(f"{configkey.name}{'' if configkey.is_optional else ' *'}")
+    text_box, btn = st.columns([3, 1])
+
+    state = _get_create_space_config_input_values()
+    resp, auth = handle_get_gdrive_authurl(state)
+    st.experimental_set_query_params()
+    credential_present = prev_creds_available or resp == services.google_drive.VALID_CREDENTIALS or __creds
+    _input_value = '*' * 64 if credential_present else ""
+    _input_key = "_input_key" + str(random.randint(0, 1000000)) # noqa: S311
+    _btn_key = "_btn_key" + str(random.randint(0, 1000000)) # noqa: S311
+    text_box.text_input(configkey.name, value=_input_value, key=_input_key, disabled=True, label_visibility="collapsed")
+    
+    if btn.button("Signin with Google", key=_btn_key, disabled=(resp == services.google_drive.VALID_CREDENTIALS or bool(__creds))) and not __creds:
+        if resp == services.google_drive.AUTH_URL and auth:
+            handle_redirect_to_url(auth, "gdrive")
+            st.stop()
+        if resp == services.google_drive.AUTH_WRONG_EMAIL and auth:
+            __st.error("You must authenticate google drive using the same email address for your Docq.AI account")
+            handle_redirect_to_url(auth, "gdrive")
+            st.stop()
+    if (resp == services.google_drive.VALID_CREDENTIALS and auth) or __creds:
+        st.session_state[key] = __creds if __creds else auth
+        st.session_state[configkey.key] =  __creds if __creds else auth
+    elif key not in st.session_state and configkey.key not in st.session_state:
+        st.stop()
+
+
+def _list_gdrive_folders(configkey: ConfigKey, _: str, configs: Optional[dict]) -> tuple[list, Callable]:
+    __creds= configs.get(configkey.key) if configs else st.session_state.get(config.ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name, None)
+    __creds = services.google_drive.validate_credentials(__creds)
+    if __creds:
+        return services.google_drive.list_folders(__creds), lambda x: x["name"]
+    return [], lambda x: x
 
 
 def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: str, configs: Optional[dict] = None) -> None:
+    config_key_handlers = {
+        config.ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name: _render_gdrive_credential_request,
+    }
+    get_config_key_options = {
+        config.ConfigKeyOptions.GET_GDRIVE_OPTIONS.name: _list_gdrive_folders,
+    }
+
     config_key_list: List[ConfigKey] = data_source[2]
 
     for key in config_key_list:
-        if key.input_element == "none":
-            _handle_no_element_config_key(key, prefix + "ds_config_" + key.key, configs)
+        _input_key = prefix + "ds_config_" + key.key
+        if key.input_element == "credential_request":
+            config_key_handlers[key.key](key, _input_key, configs)
 
         elif key.input_element == "selectbox":
-            options, fmt = GetConfigKeyOptions[key.key].value()
+            options, fmt = get_config_key_options[key.key](key, _input_key, configs)
             selected = configs.get(key.key) if configs else None
             st.selectbox(
                 f"{key.name}{'' if key.is_optional else ' *'}",
                 options=options,
-                key=prefix + "ds_config_" + key.key,
+                key=_input_key,
                 format_func=fmt,
                 help=key.ref_link,
-                index=options.index(selected) if selected else 0,
+                index=options.index(selected) if bool(selected and options) else 0,
             )
 
         else:
@@ -834,24 +880,40 @@ def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: st
             st.text_input(
                 f"{key.name}{'' if key.is_optional else ' *'}",
                 value=configs.get(key.key) if configs else "",
-                key=prefix + "ds_config_" + key.key,
+                key=_input_key,
                 type=input_type,
                 help=key.ref_link,
                 autocomplete="off",  # disable autofill by password manager etc.
             )
 
 
+def _get_space_defaults() -> Tuple[str, str, str]:
+    """Get default values for space creation from query string."""
+    space_config = st.experimental_get_query_params().get("state", [None])[0]
+    if space_config:
+        try:
+            space_config = unquote_plus(space_config)
+            space_name, space_summary, ds_type = base64.b64decode(space_config).decode("utf-8").split("::")
+            st.session_state["create_space_defaults"] = (space_name, space_summary, ds_type)
+        except Exception as e:
+            log.error("Error parsing space config from query string: %s", e)
+    return st.session_state.get("create_space_defaults", ("", "", ""))
+
+
 def create_space_ui(expanded: bool = False) -> None:
     """Create a new space."""
     data_sources = list_space_data_source_choices()
-    with st.expander("### + New Space", expanded=expanded):
-        st.text_input("Name", value="", key="create_space_name")
-        st.text_input("Summary", value="", key="create_space_summary")
+    space_name, space_summary, ds_type = _get_space_defaults()
+    _prefill_form = bool(space_name or space_summary or ds_type)
+    with st.expander("### + New Space", expanded=expanded or _prefill_form):
+        st.text_input("Name", value=space_name if space_name else "", key="create_space_name")
+        st.text_input("Summary", value=space_summary if space_summary else "", key="create_space_summary")
         ds = st.selectbox(
             "Data Source",
             options=data_sources,
             key="create_space_ds_type",
             format_func=lambda x: x[1],
+            index=[x[1] for x in data_sources].index(ds_type) if ds_type else 0,
         )
         if ds:
             _render_space_data_source_config_input_fields(ds, "create_space_")
@@ -883,7 +945,7 @@ def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> No
     has_edit_perm = org_id == get_selected_org_id()
 
     if has_edit_perm:
-        with st.form(key=f"update_space_details_{id_}"):
+        with st.expander("Edit space", expanded=True):
             st.text_input("Name", value=name, key=f"update_space_details_{id_}_name")
             st.text_input("Summary", value=summary, key=f"update_space_details_{id_}_summary")
             st.checkbox("Is Archived", value=archived, key=f"update_space_details_{id_}_archived")
@@ -896,7 +958,8 @@ def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> No
                 format_func=lambda x: x[1],
             )
             _render_space_data_source_config_input_fields(data_source, f"update_space_details_{id_}_", ds_configs)
-            st.form_submit_button("Save", on_click=handle_update_space_details, args=(id_,))
+            if st.button("Save", key=f"_update_space_details_{id_}_button_{random.randint(0, 1000000)}"): # noqa: S311
+                handle_update_space_details(id_)
 
 
 def _render_edit_space_details(space_data: Tuple, data_source: Tuple) -> None:
@@ -913,7 +976,7 @@ def _render_manage_space_permissions_form(space_data: Tuple) -> None:
     if has_edit_perm:
         permissions = get_shared_space_permissions(id_)
 
-        with st.form(key=f"manage_space_permissions_{id_}"):
+        with st.expander("Manage Space Permissions", expanded=True):
             st.checkbox(
                 "Public Access",
                 value=permissions[SpaceAccessType.PUBLIC],
@@ -933,7 +996,8 @@ def _render_manage_space_permissions_form(space_data: Tuple) -> None:
                 key=f"manage_space_permissions_{id_}_{SpaceAccessType.GROUP.name}",
                 format_func=lambda x: x[1],
             )
-            st.form_submit_button("Save", on_click=handle_manage_space_permissions, args=(id_,))
+            if st.button("Save"):
+                handle_manage_space_permissions(id_)
 
 
 def _render_manage_space_permissions(space_data: Tuple) -> None:
@@ -1193,70 +1257,3 @@ def verify_email_ui() -> None:
     else:
         st.error("Email verification failed!")
         st.info("Please try again or contact your administrator.")
-
-
-def _render_request_auth_button(auth_url: Optional[str], key: str) -> None:
-    """Render the request auth button."""
-    if auth_url and st.button("Authorize Docq.AI to access your Google Drive"):
-        handle_redirect_to_url(auth_url, key)
-
-
-def authorize_gdrive_ui() -> None:
-    """Authorize Google Drive."""
-    _disable_sidebar()
-    st.markdown('<a href="/" target="_self"><h2>Goto Homepage</h2></a>', unsafe_allow_html=True)
-    st.divider()
-    auth_status, auth_url = handle_get_gdrive_authurl()
-
-    if auth_status == services.google_drive.VALID_CREDENTIALS:
-        st.success("Google Drive authorized successfully.")
-        st.markdown('You can manage your documents from <a href="/Admin_Spaces" target="_self">here</a>.', unsafe_allow_html=True)
-
-    elif auth_status == services.google_drive.AUTH_WRONG_EMAIL:
-        st.error("Email address verification failed!")
-        st.info("You must use the same email address you used to signup for Docq.AI")
-        _render_request_auth_button(auth_url, "gdrive_auth")
-
-    elif auth_status == services.google_drive.AUTH_URL:
-        st.markdown("""
-            ### By granting Docq.AI the right to your Google Drive, you allow Docq.AI to:
-
-            - Access and read your user profile to obtain your email address;
-            - Access, read, and retrieve files from your Google Drive account; and
-            - Access and read your openeid profile info.
-
-            """
-        )
-        st.divider()
-        _render_request_auth_button(auth_url, "gdrive_auth")
-
-    else:
-        st.error("Google Drive authorization failed!")
-        st.info("Please try again or contact your administrator.")
-
-
-def _get_gdrive_options() -> tuple[list, Callable]:
-    """Render GDrive folder lists."""
-    creds =  handle_get_credential(services.google_drive.KEY)
-    if not creds:
-        st.markdown("You have not Authorized Docq.AI to access your Google Drive.")
-        if st.button("Authorize Docq.AI to access your Google Drive"):
-            handle_redirect_to_url("/authorize_gdrive", "gdrive_auth")
-        st.stop()
-
-    return services.google_drive.list_folders(creds), lambda x: x["name"]
-
-
-
-
-class GetConfigKeyOptions(Enum):
-    """Config key options.
-
-    This is used to map selectbox options to config keys.
-    each enum option is mapped to a function that returns a tuple of options and a format function.
-
-    Example:
-    >>> def get_options() -> tuple[list, Callable]:
-    >>>    return ["option1", "option2"], lambda x: x
-    """
-    GET_GDRIVE_OPTIONS = SetHandler(_get_gdrive_options)

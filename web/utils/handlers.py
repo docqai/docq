@@ -7,15 +7,13 @@ import math
 import random
 import re
 from datetime import datetime
-from enum import Enum
-from typing import Any, Callable, List, Optional, Self, Tuple
+from typing import Any, List, Optional, Tuple
 from urllib.parse import unquote_plus
 
 import streamlit as st
 from docq import (
     config,
     domain,
-    manage_credetials,
     manage_documents,
     manage_organisations,
     manage_settings,
@@ -618,6 +616,7 @@ def _prepare_space_data_source(prefix: str) -> Tuple[str, dict]:
 
 
 def handle_update_space_details(id_: int) -> bool:
+    """Update space details."""
     ds_type, ds_configs = _prepare_space_data_source(f"update_space_details_{id_}_")
     org_id = get_selected_org_id()
     result = manage_spaces.update_shared_space(
@@ -834,26 +833,6 @@ def handle_public_session() -> None:
         )
 
 
-def handle_set_credential(key: str, val: str) -> None:
-    """Handle set credential."""
-    org_id, user_id = get_selected_org_id(), get_authenticated_user_id()
-    if org_id and user_id:
-        manage_credetials.set_credential(org_id, user_id, key, val)
-
-
-def handle_get_credential(key: str) -> Optional[dict]:
-    """Handle get credential."""
-    org_id, user_id = get_selected_org_id(), get_authenticated_user_id()
-    if org_id and user_id:
-        return manage_credetials.get_credential(org_id, user_id, key)
-
-def handle_remove_credential(key: str) -> None:
-    """Handle remove credential."""
-    org_id, user_id = get_selected_org_id(), get_authenticated_user_id()
-    if org_id and user_id:
-        manage_credetials.remove_credential(org_id, user_id, key)
-
-
 def handle_get_user_email() -> Optional[str]:
     """Handle get username and check if it is an email.
 
@@ -866,33 +845,35 @@ def handle_get_user_email() -> Optional[str]:
     return None
 
 
-def handle_get_gdrive_authurl() -> tuple[str, Optional[str]]:
+def handle_get_gdrive_authurl(state: Optional[str]) -> tuple[str, Optional[str]]:
     """Get google drive authurl."""
-    creds = handle_get_credential(services.google_drive.KEY)
     user_email = handle_get_user_email()
 
-    if bool(creds) and services.google_drive.get_credentials(creds).valid:
-        return services.google_drive.VALID_CREDENTIALS, None
-
     code = st.experimental_get_query_params().get("code", [None])[0]
-    flow = services.google_drive.get_flow()
-    auth_url = str(flow.authorization_url(
-        **services.google_drive.get_auth_url_params(user_email))[0]
-    )
 
-    if code:
-        flow.fetch_token(code=code)
-        creds = flow.credentials
-        authorized_email = services.google_drive.get_gdrive_authorized_email(creds)
-        if user_email and (authorized_email != user_email):
-            handle_remove_credential(services.google_drive.KEY)
-            return services.google_drive.AUTH_WRONG_EMAIL, auth_url
+    try:
+        flow = services.google_drive.get_flow()
+
+        if code:
+            flow.fetch_token(code=code)
+            creds = flow.credentials
+            authorized_email = services.google_drive.get_gdrive_authorized_email(creds)
+            if user_email and (authorized_email != user_email):
+                auth_url = str(flow.authorization_url(
+                    **services.google_drive.get_auth_url_params(user_email, state=state))[0]
+                )
+                return services.google_drive.AUTH_WRONG_EMAIL, auth_url
+            else:
+                return services.google_drive.VALID_CREDENTIALS, creds.to_json()
+
         else:
-            handle_set_credential(services.google_drive.KEY, creds.to_json())
-            st.experimental_set_query_params()
-            st.experimental_rerun()
-
-    return services.google_drive.AUTH_URL, auth_url
+            auth_url = str(flow.authorization_url(
+                **services.google_drive.get_auth_url_params(user_email, state=state))[0]
+            )
+            return services.google_drive.AUTH_URL, auth_url
+    except Exception as e:
+        log.exception("Error getting google drive auth url: %s", e)
+        return services.google_drive.AUTH_ERROR, None
 
 
 def handle_redirect_to_url(url: str, key: str) -> None:
@@ -909,22 +890,3 @@ def handle_redirect_to_url(url: str, key: str) -> None:
         </script>
         """, height=0
     )
-
-
-class SetHandler:
-    """Set handler function."""
-    def __init__(self: Self, handler: Callable, *args: Any, **kwargs: Any) -> None:
-        """Initialize."""
-        self.handler = handler
-        self.args = args
-        self.kwargs = kwargs
-
-    def __call__(self: Self) -> Any:
-        """Call."""
-        return self.handler(*self.args, **self.kwargs)
-
-
-class GetConfigKeyHandlers (Enum):
-    """Get config key handlers."""
-    GET_USER_ID = SetHandler(get_authenticated_user_id)
-    GET_GDRIVE_CREDENTIAL = SetHandler(handle_get_credential, services.google_drive.KEY)

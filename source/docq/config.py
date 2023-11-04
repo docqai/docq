@@ -47,7 +47,6 @@ class UserSettingsKey(Enum):
 
 class ConfigKeyHandlers(Enum):
     """Config key handlers."""
-    GET_USER_ID = "get_user_id"
     GET_GDRIVE_CREDENTIAL = "get_gdrive_credential"
 
 
