@@ -805,7 +805,7 @@ def _get_create_space_config_input_values() -> str:
     space_summary = st.session_state.get("create_space_summary", "")
     ds_type = st.session_state.get("create_space_ds_type", ["", ""])
     space_configs = f"{space_name}::{space_summary}::{ds_type[1]}"
-    return quote_plus(base64.b64encode(space_configs.encode("utf-8")))
+    return quote_plus(base64.b64encode(space_configs.encode()))
 
 
 def _get_random_key(prefix: str) -> str:
@@ -813,7 +813,7 @@ def _get_random_key(prefix: str) -> str:
 
 
 def _render_gdrive_credential_request(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
-    creds = configs.get(configkey.key) if configs else None
+    creds = configs.get(configkey.key) if configs else st.session_state.get(key, None)
     creds = services.google_drive.validate_credentials(creds)
 
     st.write(f"{configkey.name}{'' if configkey.is_optional else ' *'}")
@@ -844,13 +844,11 @@ def _render_gdrive_credential_request(configkey: ConfigKey, key: str, configs: O
 
 
 def _list_gdrive_folders(**kwargs: Any) -> tuple[list, Callable]:
-    configs = kwargs.get("configs")
+    configs: dict = kwargs.get("configs", {})
     key = config.ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name
-    __creds= configs.get(key) if configs else st.session_state.get(config.ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name, None)
+    __creds= configs.get(key) if configs else st.session_state.get(key, None)
     creds = services.google_drive.validate_credentials(__creds)
-    if creds:
-        return services.google_drive.list_folders(creds), lambda x: x["name"]
-    return [], lambda x: x
+    return (services.google_drive.list_folders(creds), lambda x: x["name"]) if creds else ([], lambda x: x)
 
 
 def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: str, configs: Optional[dict] = None) -> None:
@@ -963,7 +961,7 @@ def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> No
                 format_func=lambda x: x[1],
             )
             _render_space_data_source_config_input_fields(data_source, f"update_space_details_{id_}_", ds_configs)
-            if st.button("Save", key=f"_update_space_details_{id_}_button_{random.randint(0, 1000000)}"): # noqa: S311
+            if st.button("Save", key=_get_random_key("_save_btn_key")):
                 handle_update_space_details(id_)
 
 
