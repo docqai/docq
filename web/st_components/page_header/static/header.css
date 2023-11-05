@@ -168,9 +168,10 @@ div[data-testid="stStatusWidget"] {
 .docq-user-menu {
     position: absolute;
     top: 3rem;
-    right: 1rem;
+    right: 2rem;
     width: fit-content;
-    min-width: 200px;
+    min-width: 220px;
+    max-height: 70vh;
     border-radius: 5px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
     display: none;
@@ -179,6 +180,7 @@ div[data-testid="stStatusWidget"] {
     align-items: center;
     padding: 0.5rem 0;
     z-index: 1000;
+    overflow: scroll;
     visibility: hidden;
 }
 
@@ -187,6 +189,15 @@ div[data-testid="stStatusWidget"] {
     display: flex;
 }
 
+.docq-user-menu li {
+    list-style: none;
+}
+
+.docq-user-menu a {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    min-width: 200px;
+}
 
 .docq-user-menu-item {
     all: none;

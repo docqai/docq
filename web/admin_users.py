@@ -1,9 +1,11 @@
 """Page: Admin / Manage Users."""
 
 import logging
+
 import streamlit as st
+from st_components.page_header import create_menu_items
 from st_pages import add_page_title
-from utils.layout import auth_required, create_user_ui, list_users_ui, org_selection_ui
+from utils.layout import auth_required, create_user_ui, list_users_ui, org_selection_ui, run_header_script
 
 auth_required(requiring_admin=True)
 
@@ -14,3 +16,6 @@ with st.sidebar:
 
 create_user_ui()
 list_users_ui()
+
+run_header_script()
+create_menu_items()

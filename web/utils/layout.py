@@ -5,6 +5,7 @@ import re
 from typing import List, Tuple
 
 import docq
+import st_components.page_header as page_header
 import streamlit as st
 from docq import setup
 from docq.access_control.main import SpaceAccessType
@@ -1136,3 +1137,13 @@ def verify_email_ui() -> None:
     else:
         st.error("Email verification failed!")
         st.info("Please try again or contact your administrator.")
+
+
+def run_header_script() -> None:
+    """Run the header script."""
+    page_header.run_script(
+        username="Test User",
+        selected_org="Test Org",
+        avatar_src=handle_get_gravatar_url(),
+        auth_state=True,
+    )

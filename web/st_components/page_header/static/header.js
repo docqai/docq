@@ -73,6 +73,28 @@ avatarContainer.setAttribute("id", "docq-avatar-container");
 
 const avatar = loadAvatar();
 
+// user menu
+const userMenu = document.createElement("div");
+userMenu.setAttribute("id", "docq-user-menu");
+userMenu.setAttribute("class", "docq-user-menu");
+
+// Open user menu on click
+avatar.addEventListener("click", (e) => {
+  e.preventDefault();
+  userMenu.classList.toggle("docq-user-menu-active");
+});
+
+// Close user menu on click outside
+// __parent.addEventListener("click", (e) => {
+//   if (e.target !== avatar) {
+//     userMenu.classList.remove("docq-user-menu-active");
+//   }
+// });
+
+avatarContainer.appendChild(userMenu);
+
+// End user menu
+
 if (authState === "authenticated" && !matchParamNotSet.test(avatarSrc)) {
   avatarContainer.appendChild(avatar);
 }
