@@ -21,6 +21,8 @@ def _get_script(logo_url: Optional[str] = None) -> str:
 
 
 
+
+
 def run_script(logo_url: Optional[str] = None) -> None:
     """Run the script."""
     components.html(f"""

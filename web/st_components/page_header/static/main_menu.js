@@ -3,7 +3,6 @@
  */
 
 const __document = window.parent.document || window.document;
-console.log("main-menu-script", __document);
 
 const mainMenu = __document.querySelectorAll('div[data-testid="main-menu-popover"]')[0];
 const sideBar = __document.querySelectorAll('section[data-testid="stSidebar"]')[0];
@@ -56,17 +55,6 @@ function createUsermenuItems () {
         userMenuUL.appendChild(item.cloneNode(true));
       }
     });
-
-
-    const orgSelectorClone = cloneOrgSelector("docq-org-selector");
-    const prevSelector = __document.getElementById("docq-org-selector");
-    if (prevSelector) {
-      prevSelector.remove();
-    }
-    if (orgSelectorClone) {
-      userMenuUL.appendChild(orgSelectorClone);
-    }
-    
 
 
     const prevUL = __document.getElementById("docq-user-menu-ul");

@@ -46,28 +46,30 @@ docqLogoContainer.setAttribute(
 );
 
 // === Close button ==================================
-const closeIcon = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor" xmlns="http://www.w3.org/2000/svg" color="inherit" class="e1ugi8lo1 css-fblp2m ex0cdmw0"><path fill="none" d="M0 0h24v24H0V0z"></path><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"></path></svg>`;
-const closeButton = document.createElement("button");
-closeButton.setAttribute("id", "docq-close-button");
-closeButton.setAttribute(
-  "style",
-  "position: absolute; right: 10px; top: 10px; background-color: transparent; border: none; outline: none; cursor: pointer;"
+
+const closeBtnOld = __parent.querySelector(
+  'section[data-testid="stSidebar"][aria-expanded="true"] button[kind="header"]'
 );
-closeButton.innerHTML = closeIcon;
 
-// Close sidebar on click
-closeButton.addEventListener("click", () => {
-  const closeBtn = __parent.querySelector(
-    'section[data-testid="stSidebar"][aria-expanded="true"] button[kind="header"]'
-  );
-  if (closeBtn) {
-    closeBtn.click();
-  } else {
-    console.log("Close button not found", closeBtn);
-  }
-});
+if (closeBtnOld) {
+  const __cloneBtn = closeBtnOld.parentNode;
+  const __class = __cloneBtn.getAttribute("class");
 
-docqLogoContainer.appendChild(closeButton);
+  const cloneBtnContainer = document.createElement("div");
+  cloneBtnContainer.setAttribute("class", __class);
+
+  const cloneBtn = closeBtnOld.cloneNode(true);
+  cloneBtn.setAttribute("kind", "btn-clone")
+
+  cloneBtn.addEventListener("click", () => {
+    __close = __parent.querySelectorAll(
+      'section[data-testid="stSidebar"] button[kind="header"]'
+    )[0];
+    __close && __close.click();
+  });
+  cloneBtnContainer.appendChild(cloneBtn);
+  docqLogoContainer.appendChild(cloneBtnContainer);
+}
 
 // === Logo ================================================
 const docqLogo = document.createElement("img");

@@ -806,3 +806,12 @@ def handle_public_session() -> None:
             space_group_id=-1,
             public_session_id=-1,
         )
+
+
+def handle_get_current_user_info() -> tuple[str, str]:
+    """Get current user info."""
+    name = get_auth_session().get(SessionKeyNameForAuth.NAME.name)
+    list_orgs = handle_list_orgs()
+    selected_org_id = get_selected_org_id()
+    selected_org_name = [x[1] for x in list_orgs if x[0] == selected_org_id][0]
+    return name if name else "", selected_org_name

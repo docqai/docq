@@ -1,5 +1,7 @@
 """Page: Home (no auth required)."""
 
+import importlib.metadata as _metadata
+
 import docq
 import streamlit as st
 from st_pages import Page, Section, add_page_title, show_pages
@@ -11,7 +13,7 @@ from utils.layout import (
     production_layout,
     public_access,
 )
-import importlib.metadata as _metadata 
+
 init_with_pretty_error_ui()
 
 configure_top_right_menu()

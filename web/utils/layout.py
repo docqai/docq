@@ -6,6 +6,7 @@ from typing import List, Tuple
 
 import docq
 import st_components.page_header as page_header
+import st_components.sidebar_header as sidebar_header
 import streamlit as st
 from docq import setup
 from docq.access_control.main import SpaceAccessType
@@ -52,6 +53,7 @@ from .handlers import (
     handle_delete_document,
     handle_delete_space_group,
     handle_delete_user_group,
+    handle_get_current_user_info,
     handle_get_gravatar_url,
     handle_list_documents,
     handle_list_orgs,
@@ -225,7 +227,8 @@ def __embed_page_config() -> None:
 
 def __always_hidden_pages() -> None:
     """These pages are always hidden whether the user is an admin or not."""
-    hide_pages(["widget", "signup", "verify"])
+    hide_pages(["widget", "signup", "verify", "ML Engineering", "Visualise Index"])
+    __no_admin_menu()
 
 
 def configure_top_right_menu() -> None:
@@ -1139,11 +1142,20 @@ def verify_email_ui() -> None:
         st.info("Please try again or contact your administrator.")
 
 
-def run_header_script() -> None:
+def setup_page_scripts() -> None:
+    """Run the setup script."""
+    pass
+
+
+def run_page_scripts() -> None:
     """Run the header script."""
+    name, selected_org = handle_get_current_user_info()
+    sidebar_header.run_script()
     page_header.run_script(
-        username="Test User",
-        selected_org="Test Org",
+        username=name,
+        selected_org=selected_org,
         avatar_src=handle_get_gravatar_url(),
-        auth_state=True,
+        auth_state=bool(name and selected_org),
     )
+
+    page_header.create_menu_items()

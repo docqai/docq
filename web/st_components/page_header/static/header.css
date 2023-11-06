@@ -81,7 +81,7 @@ div.appview-container div.row-widget.stButton button[kind="primary"] {
 
 #docq-header-left {
     justify-content: flex-end;
-    margin-right: 3rem;
+    margin-right: 1.5rem;
 }
 
 #docq-header-center {
@@ -97,6 +97,10 @@ div.appview-container div.row-widget.stButton button[kind="primary"] {
     height: 20px;
     border-radius: 50%;
     cursor: pointer;
+}
+
+#docq-img-avatar:hover {
+    opacity: 0.5;
 }
 
 
@@ -176,9 +180,8 @@ div[data-testid="stStatusWidget"] {
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
     display: none;
     flex-direction: column;
-    justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 0;
+    padding: 1rem 0;
     z-index: 1000;
     overflow: scroll;
     visibility: hidden;
@@ -197,6 +200,10 @@ div[data-testid="stStatusWidget"] {
     margin-left: 0 !important;
     margin-right: 0 !important;
     min-width: 200px;
+}
+
+.docq-user-menu::-webkit-scrollbar {
+    display: none;
 }
 
 .docq-user-menu-item {
@@ -235,15 +242,31 @@ div[data-testid="stStatusWidget"] {
     display: flex;
     justify-content: flex-start;
     align-items: center;
-    flex-direction: row;
-    gap: 0.5rem;
+    flex-direction: column;
+}
+
+.docq-user-menu-profile-name {
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.docq-user-menu-profile #docq-img-avatar {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50%;
+    margin-bottom: 0.5rem;
 }
 
 .docq-user-menu-divider {
     width: 100%;
     height: 1px;
-    background-color: #e31010;
-    margin: 0.5rem 0;
+    background-color: #e31010 !important;
+    margin: 0.5rem 0 !important;
 }
 
 .docq-iframe-container {

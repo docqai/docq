@@ -10,6 +10,10 @@ script_path = os.path.join(parent_dir, "static", "header.js")
 css_path = os.path.join(parent_dir, "static", "header.css")
 main_menu_script = os.path.join(parent_dir, "static", "main_menu.js")
 
+
+
+
+
 # Run this at the start of each page
 def _setup_page_script(auth_state: bool) -> None:
     """Setup page script."""
@@ -28,6 +32,9 @@ def _setup_page_script(auth_state: bool) -> None:
         """,
         height=0
     )
+
+
+
 
 
 def run_script(auth_state: bool, username: str, avatar_src: str, selected_org: str) -> None:

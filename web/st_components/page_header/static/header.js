@@ -85,11 +85,26 @@ avatar.addEventListener("click", (e) => {
 });
 
 // Close user menu on click outside
-// __parent.addEventListener("click", (e) => {
-//   if (e.target !== avatar) {
-//     userMenu.classList.remove("docq-user-menu-active");
-//   }
-// });
+__parent.addEventListener("click", (e) => {
+  if (!avatarContainer.contains(e.target)) {
+    userMenu.classList.remove("docq-user-menu-active");
+  }
+});
+
+// Create a profile and add it to the user menu
+const profile = document.createElement("div");
+profile.setAttribute("class", "docq-user-menu-profile");
+profile.innerHTML = `
+  <div class="docq-user-menu-profile-avatar">
+    ${avatar.outerHTML}
+  </div>
+  <div class="docq-user-menu-profile-name">
+    <span>${username}</span>
+  </div>
+`;
+
+userMenu.appendChild(profile);
+userMenu.appendChild(createHorizontalDivider());
 
 avatarContainer.appendChild(userMenu);
 
