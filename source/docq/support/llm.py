@@ -28,6 +28,7 @@ from llama_index.node_parser.extractors import (
     MetadataExtractor,
 )
 from llama_index.response.schema import RESPONSE_TYPE
+from opentelemetry import trace
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
@@ -40,6 +41,8 @@ from ..model_selection.main import (
 from .metadata_extractors import DocqEntityExtractor, DocqMetadataExtractor
 from .node_parsers import AsyncSimpleNodeParser
 from .store import get_index_dir, get_models_dir
+
+trace = trace.get_tracer("docq.api.support.llm")
 
 # PROMPT_CHAT_SYSTEM = """
 # You are an AI assistant helping a human to find information.
@@ -77,7 +80,7 @@ ERROR: {error}
 # def _get_model() -> OpenAI:
 #     return OpenAI(temperature=0, model_name="text-davinci-003")
 
-
+@trace.start_as_current_span(name="_init_local_models")
 def _init_local_models() -> None:
     """Initialize local models."""
     for model_collection in LLM_MODEL_COLLECTIONS.values():
@@ -91,7 +94,7 @@ def _init_local_models() -> None:
                         model_dir,
                     )
 
-
+@trace.start_as_current_span(name="_get_chat_model_using_langchain")
 def _get_chat_model_using_langchain(model_settings_collection: ModelUsageSettingsCollection) -> LLM | None:
     model = None
     if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.CHAT]:
@@ -129,7 +132,7 @@ def _get_chat_model_using_langchain(model_settings_collection: ModelUsageSetting
 
         return LangChainLLM(model)
 
-
+@trace.start_as_current_span(name="_get_embed_model_using_langchain")
 def _get_embed_model_using_langchain(model_settings_collection: ModelUsageSettingsCollection) -> LLM | None:
     embedding_model = None
     if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]:
@@ -162,16 +165,16 @@ def _get_embed_model_using_langchain(model_settings_collection: ModelUsageSettin
             embedding_model = LangchainEmbedding(OpenAIEmbeddings())
     return LangChainLLM(embedding_model)
 
-
+@trace.start_as_current_span(name="_get_default_storage_context")
 def _get_default_storage_context() -> StorageContext:
     return StorageContext.from_defaults()
 
 
-
+@trace.start_as_current_span(name="_get_storage_context")
 def _get_storage_context(space: SpaceKey) -> StorageContext:
     return StorageContext.from_defaults(persist_dir=get_index_dir(space))
 
-
+@trace.start_as_current_span(name="_get_service_context")
 def _get_service_context(model_settings_collection: ModelUsageSettingsCollection) -> ServiceContext:
     log.debug(
         "EXPERIMENTS['INCLUDE_EXTRACTED_METADATA']['enabled']: %s", EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]
@@ -191,7 +194,7 @@ def _get_service_context(model_settings_collection: ModelUsageSettingsCollection
         embed_model=_get_embed_model_using_langchain(model_settings_collection),
     )
 
-
+@trace.start_as_current_span(name="_get_node_parser")
 def _get_node_parser(model_settings_collection: ModelUsageSettingsCollection) -> SimpleNodeParser:
     metadata_extractor = MetadataExtractor(
         extractors=[
@@ -210,7 +213,7 @@ def _get_node_parser(model_settings_collection: ModelUsageSettingsCollection) ->
 
     return node_parser
 
-
+@trace.start_as_current_span(name="_get_async_node_parser")
 def _get_async_node_parser(model_settings_collection: ModelUsageSettingsCollection) -> AsyncSimpleNodeParser:
 
     metadata_extractor = DocqMetadataExtractor(
@@ -229,6 +232,7 @@ def _get_async_node_parser(model_settings_collection: ModelUsageSettingsCollecti
     return node_parser
 
 
+@trace.start_as_current_span(name="_load_index_from_storage")
 def _load_index_from_storage(space: SpaceKey, model_settings_collection: ModelUsageSettingsCollection) -> BaseIndex:
     # set service context explicitly for multi model compatibility
 
@@ -236,7 +240,7 @@ def _load_index_from_storage(space: SpaceKey, model_settings_collection: ModelUs
         storage_context=_get_storage_context(space), service_context=_get_service_context(model_settings_collection)
     )
 
-
+@trace.start_as_current_span(name="run_chat")
 def run_chat(input_: str, history: str, model_settings_collection: ModelUsageSettingsCollection) -> BaseMessage:
     """Chat directly with a LLM with history."""
     # prompt = ChatPromptTemplate.from_messages(
@@ -320,12 +324,12 @@ def run_ask(
 
     return output
 
-
+@trace.start_as_current_span(name="_default_response")
 def _default_response() -> Response:
     """A default response incase of any failure."""
     return Response("I don't know.")
 
-
+@trace.start_as_current_span(name="query_error")
 def query_error(error: Exception, model_settings_collection: ModelUsageSettingsCollection) -> Response:
     """Query for a response to an error message."""
     try:  # Try re-prompting with the AI

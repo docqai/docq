@@ -6,9 +6,10 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import asdict
 from enum import Enum
-from typing import List
+from typing import List, Self
 
 from llama_index import Document
+from opentelemetry import trace
 
 from ..domain import ConfigKey, DocumentListItem, SpaceKey
 from ..support.store import get_index_dir
@@ -26,14 +27,17 @@ class DocumentMetadata(Enum):
     SOURCE_URI = "Source URI"
 
 
+trace = trace.get_tracer("docq.api.data_source")
+
+
 class SpaceDataSource(ABC):
     """Abstract definition of the data source for a space. To be extended by concrete data sources."""
 
-    def __init__(self, name: str) -> None:
+    def __init__(self: Self, name: str) -> None:
         """Initialize the data source."""
         self.name = name
 
-    def get_name(self) -> str:
+    def get_name(self: Self) -> str:
         """Get the name of the data source."""
         return self.name
 
@@ -43,11 +47,13 @@ class SpaceDataSource(ABC):
         pass
 
     @abstractmethod
+    @trace.start_as_current_span("SpaceDataSource.load")
     def load(self, space: SpaceKey, configs: dict) -> List[Document]:
         """Load the documents from the data source."""
         pass
 
     @abstractmethod
+    @trace.start_as_current_span("SpaceDataSource.get_document_list")
     def get_document_list(self, space: SpaceKey, configs: dict) -> List[DocumentListItem]:
         """Returns a list of tuples containing the name, creation time, and size (Mb) of each document in the specified space's cnfigured data source.
 
@@ -71,6 +77,7 @@ class SpaceDataSourceFileBased(SpaceDataSource):
         persist_path = get_index_dir(space)
         return self._load_document_list(persist_path, self._DOCUMENT_LIST_FILENAME)
 
+    @trace.start_as_current_span("SpaceDataSourceFileBased._save_document_list")
     def _save_document_list(self, document_list: List[DocumentListItem], persist_path: str, filename: str) -> None:
         path = os.path.join(persist_path, filename)
         try:
@@ -86,6 +93,7 @@ class SpaceDataSourceFileBased(SpaceDataSource):
         except Exception as e:
             log.error("Failed to save space index document list to '%s': %s", path, e, stack_info=True)
 
+    @trace.start_as_current_span("SpaceDataSourceFileBased._load_document_list")
     def _load_document_list(self, persist_path: str, filename: str) -> List[DocumentListItem]:
         path = os.path.join(persist_path, filename)
         with open(path, "r") as f:
@@ -94,6 +102,7 @@ class SpaceDataSourceFileBased(SpaceDataSource):
             document_list = [DocumentListItem(**item) for item in data]
             return document_list
 
+    @trace.start_as_current_span("SpaceDataSourceFileBased._add_exclude_metadata_keys")
     def _add_exclude_metadata_keys(
         self, documents: List[Document], embed_keys: List[str], llm_keys: List[str]
     ) -> List[Document]:

@@ -9,6 +9,7 @@ from typing import List, Optional, Tuple
 
 from llama_index import Document, DocumentSummaryIndex, VectorStoreIndex
 from llama_index.indices.base import BaseIndex
+from opentelemetry import trace
 
 from .access_control.main import SpaceAccessor, SpaceAccessType
 from .config import SpaceType
@@ -17,6 +18,8 @@ from .domain import DocumentListItem, SpaceKey
 from .model_selection.main import ModelUsageSettingsCollection, get_saved_model_settings_collection
 from .support.llm import _get_default_storage_context, _get_service_context
 from .support.store import get_index_dir, get_sqlite_system_file
+
+trace = trace.get_tracer("docq.api.manage_spaces")
 
 SQL_CREATE_SPACES_TABLE = """
 CREATE TABLE IF NOT EXISTS spaces (
@@ -43,7 +46,7 @@ CREATE TABLE IF NOT EXISTS space_access (
 )
 """
 
-
+@trace.start_as_current_span("manage_spaces._init")
 def _init() -> None:
     """Initialize the database."""
     with closing(
@@ -53,7 +56,7 @@ def _init() -> None:
         cursor.execute(SQL_CREATE_SPACE_ACCESS_TABLE)
         connection.commit()
 
-
+@trace.start_as_current_span("manage_spaces._create_index")
 def _create_index(
     documents: List[Document], model_settings_collection: ModelUsageSettingsCollection
 ) -> VectorStoreIndex:
@@ -64,7 +67,7 @@ def _create_index(
         service_context=_get_service_context(model_settings_collection),
     )
 
-
+@trace.start_as_current_span("manage_spaces._create_document_summary_index")
 def _create_document_summary_index(
     documents: List[Document], model_settings_collection: ModelUsageSettingsCollection
 ) -> DocumentSummaryIndex:
@@ -75,12 +78,12 @@ def _create_document_summary_index(
         service_context=_get_service_context(model_settings_collection),
     )
 
-
+@trace.start_as_current_span("manage_spaces._persist_index")
 def _persist_index(index: BaseIndex, space: SpaceKey) -> None:
     """Persist an Space datasource index to disk."""
     index.storage_context.persist(persist_dir=get_index_dir(space))
 
-
+@trace.start_as_current_span("manage_spaces.reindex")
 def reindex(space: SpaceKey) -> None:
     """Reindex documents in a space from scratch. If an index already exists, it will be overwritten."""
     try:
@@ -108,7 +111,7 @@ def reindex(space: SpaceKey) -> None:
     finally:
         log.debug("reindex(): Complete")
 
-
+@trace.start_as_current_span("manage_spaces.list_documents")
 def list_documents(space: SpaceKey) -> List[DocumentListItem]:
     """Return a list of tuples containing the filename, creation time, and size of each file in the space."""
     _space_data_source = get_space_data_source(space)
@@ -135,7 +138,7 @@ def list_documents(space: SpaceKey) -> List[DocumentListItem]:
 
     return documents_list
 
-
+@trace.start_as_current_span("manage_spaces.get_document")
 def get_space_data_source(space: SpaceKey) -> tuple[str, dict] | None:
     """Returns the data source type and configuration for the given space.
 
@@ -156,7 +159,7 @@ def get_space_data_source(space: SpaceKey) -> tuple[str, dict] | None:
 
     return ds_type, ds_configs
 
-
+@trace.start_as_current_span("manage_spaces.get_shared_space")
 def get_shared_space(id_: int, org_id: int) -> tuple[int, int, str, str, bool, str, dict, datetime, datetime] | None:
     """Get a shared space."""
     log.debug("get_shared_space(): Getting space with id=%d", id_)
@@ -172,7 +175,7 @@ def get_shared_space(id_: int, org_id: int) -> tuple[int, int, str, str, bool, s
             (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8]) if row else None
         )
 
-
+@trace.start_as_current_span("manage_spaces.get_shared_spaces")
 def get_shared_spaces(space_ids: List[int]) -> List[Tuple[int, int, str, str, bool, str, dict, datetime, datetime]]:
     """Get a shared spaces by ids.
 
@@ -193,7 +196,7 @@ def get_shared_spaces(space_ids: List[int]) -> List[Tuple[int, int, str, str, bo
             (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8]) for row in rows
         ]
 
-
+@trace.start_as_current_span("manage_spaces.update_shared_space")
 def update_shared_space(
     id_: int,
     org_id: int,
@@ -236,7 +239,7 @@ def update_shared_space(
         log.debug("Updated space %d", id_)
         return True
 
-
+@trace.start_as_current_span("manage_spaces.create_shared_space")
 def create_shared_space(
     org_id: int, name: str, summary: str, datasource_type: str, datasource_configs: dict
 ) -> SpaceKey:
@@ -268,7 +271,7 @@ def create_shared_space(
 
     return space
 
-
+@trace.start_as_current_span("manage_spaces.list_shared_spaces")
 def list_shared_spaces(
     org_id: int, user_id: Optional[int] = None
 ) -> list[tuple[int, int, str, str, bool, str, dict, datetime, datetime]]:
@@ -285,7 +288,7 @@ def list_shared_spaces(
             (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8]) for row in rows
         ]
 
-
+@trace.start_as_current_span("manage_spaces.list_public_spaces")
 def list_public_spaces(space_group_id: int) -> list[tuple[int, int, str, str, bool, str, dict, datetime, datetime]]:
     """List all public spaces from a given space group."""
     with closing(
@@ -308,7 +311,7 @@ def list_public_spaces(space_group_id: int) -> list[tuple[int, int, str, str, bo
             (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8]) for row in rows
         ]
 
-
+@trace.start_as_current_span("manage_spaces.get_shared_space_permissions")
 def get_shared_space_permissions(id_: int, org_id: int) -> List[SpaceAccessor]:
     """Get the permissions for a shared space."""
     log.debug("get_shared_space_permissions(): Getting permissions for space with id=%d", id_)
@@ -333,7 +336,7 @@ def get_shared_space_permissions(id_: int, org_id: int) -> List[SpaceAccessor]:
                 results.append(SpaceAccessor(SpaceAccessType.GROUP, row[3], row[4]))
         return results
 
-
+@trace.start_as_current_span("manage_spaces.update_shared_space_permissions")
 def update_shared_space_permissions(id_: int, accessors: List[SpaceAccessor]) -> bool:
     """Update the permissions for a shared space."""
     log.debug("update_shared_space_permissions(): Updating permissions for space with id=%d", id_)
