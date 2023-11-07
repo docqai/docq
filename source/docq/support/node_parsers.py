@@ -10,11 +10,14 @@ from llama_index.node_parser import SimpleNodeParser
 from llama_index.node_parser.node_utils import get_nodes_from_node
 from llama_index.schema import BaseNode, Document, TextNode
 from llama_index.utils import get_tqdm_iterable
+from opentelemetry import trace
 
+trace = trace.get_tracer(__name__)
 
 class AsyncSimpleNodeParser(SimpleNodeParser):
     """Simple node parser with async node splitting."""
 
+    @trace.start_as_current_span(name="AsyncSimpleNodeParser.get_nodes_from_documents")
     def get_nodes_from_documents(
         self,
         documents: Sequence[Document],
@@ -51,6 +54,7 @@ class AsyncSimpleNodeParser(SimpleNodeParser):
             event.on_end(payload={EventPayload.NODES: all_nodes})
         return all_nodes
 
+    @trace.start_as_current_span(name="AsyncSimpleNodeParser._async_get_nodes_from_node")
     async def _async_get_nodes_from_node(self, document: Document) -> List[TextNode]:
         return get_nodes_from_node(
             document,

@@ -11,6 +11,8 @@ from llama_index import Document, DocumentSummaryIndex, VectorStoreIndex
 from llama_index.indices.base import BaseIndex
 from opentelemetry import trace
 
+import docq
+
 from .access_control.main import SpaceAccessor, SpaceAccessType
 from .config import SpaceType
 from .data_source.list import SpaceDataSources
@@ -19,7 +21,7 @@ from .model_selection.main import ModelUsageSettingsCollection, get_saved_model_
 from .support.llm import _get_default_storage_context, _get_service_context
 from .support.store import get_index_dir, get_sqlite_system_file
 
-trace = trace.get_tracer("docq.api.manage_spaces")
+trace = trace.get_tracer("docq.api.manage_spaces", str(docq.__version__))
 
 SQL_CREATE_SPACES_TABLE = """
 CREATE TABLE IF NOT EXISTS spaces (
