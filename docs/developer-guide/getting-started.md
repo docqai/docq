@@ -50,102 +50,113 @@ This Project depends on the following projects.
 
 Some useful examples of how this project can be used:
 
-- Install requirements
+### Install requirements
 
   ```sh
   poe install-dev
   ```
 
-- Run tests
+### Run tests
   
-  - Unit tests
+- Unit tests
+
+```sh
+poe test
+``` 
+
+- Integration tests
+
+ - Prepare env vars by supplying a pytest.env file required for the integration tests
+
+   ```sh
+   cp misc/pytest.env.template pytest.env
+   ## Make edits on pytest.env with the correct values for the test environment then run the tests
+   ```
+
+```sh
+poe test-integration
+```
+
+### Run the project
+
+- Prepare env vars by supplying a Streamlit secrets file
 
   ```sh
-  poe test
-  ``` 
-
-  - Integration tests
-  
-    - Prepare env vars by supplying a pytest.env file required for the integration tests
-
-      ```sh
-      cp misc/pytest.env.template pytest.env
-      ## Make edits on pytest.env with the correct values for the test environment then run the tests
-      ```
-  
-  ```sh
-  poe test-integration
+  cp misc/secrets.toml.template .streamlit/secrets.toml
+  ## Make edits on .streamlit/secrets.toml
+  ## Customise other files in .streamlit/ directory to influence Streamlit behaviour
   ```
 
-- Run the project
+- TIP: Make sure `.streamlit` directory is in the `.gitignore` file so it isn't checked in with secrets.
 
-  - Prepare env vars by supplying a Streamlit secrets file
+- Run the application and it will be available at http://localhost:8501
 
-    ```sh
-    cp misc/secrets.toml.template .streamlit/secrets.toml
-    ## Make edits on .streamlit/secrets.toml
-    ## Customise other files in .streamlit/ directory to influence Streamlit behaviour
-    ```
+  ```sh
+  poe run
+  ```
 
-  - TIP: Make sure `.streamlit` directory is in the `.gitignore` file so it isn't checked in with secrets.
+- To change the port number
 
-  - Run the application
+  ```sh
+  poe run --port PORT
+  ```
 
-    ```sh
-    poe run
-    ```
+### Run with OpenTelemetry (OTel) Instrumentation
 
-  and it will be available at http://localhost:8501
+This runs the `poe run` task above with the `opentelemetry-instrument` command which auto instruments several libraries with tracing and sends traces to the configured exporter. Honeycomb env vars see the `/misc/secrets.toml.template`
 
-  - To change the port number
+- `poe run-otel`
+  
 
-    ```sh
-    poe run --port PORT
-    ```
-
-- Run doc site locally
+### Run doc site locally
 
   ```sh
   poe doc
   ```
 
-- Generate doc site
+### Generate doc site
 
   ```sh
   poe doc-html
   ```
 
-- Build a docker image for tests
+### Build a docker image for tests
+
+- `poe docker-build --target test --build-tag 3.10-alpine --test true`
+- `poe docker-run --target test`
+  
+### Build a container image to run the root files only without running any test
+
+- Build image
 
   ```sh
-  poe docker-build --target test --build-tag 3.10-alpine --test true
-  poe docker-run --target test
+  poe docker-build
   ```
 
-- Build a docker image to run the root files only without running any test
+- Set env vars
 
-  - Build image
+  ```sh
+  cp misc/docker.env.template docker.env
+  ## Make edits on docker.env
+  ```
 
-    ```sh
-    poe docker-build
-    ```
+- TIP: Make sure `docker.env` is in the `.gitignore` file so it isn't checked in with secrets. It's also safer if you only have the environment variable name for secrets and set the value in your shell with `export`.
 
-  - Set env vars
+### Build a container image with cached dependencies
 
-    ```sh
-    cp misc/docker.env.template docker.env
-    ## Make edits on docker.env
-    ```
+This is useful when iterating on the dockerfile itself
 
-  - TIP: Make sure `docker.env` is in the `.gitignore` file so it isn't checked in with secrets. It's also safer if you only have the environment variable name for secrets and set the value in your shell with `export`.
+  ```sh
+  poe docker-build-pipcached
+  ```
 
-  - Run container
+### Run container
 
-    ```sh
-    poe docker-run
-    ```
+  ```sh
+  poe docker-run
+  ```
 
-- Release
+### Release
 
   Bump the version number in `pyproject.toml` (we follow [SemVer](https://semver.org/))
   Switch to `main` branch locally and run
