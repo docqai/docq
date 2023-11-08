@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List
 
 from llama_index import Document, SimpleDirectoryReader
+from opentelemetry import trace
 
 from ..domain import ConfigKey, DocumentListItem, SpaceKey
 from ..support.store import get_upload_dir

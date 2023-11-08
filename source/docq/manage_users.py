@@ -9,6 +9,9 @@ from typing import List, Tuple
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError
+from opentelemetry import trace
+
+import docq
 
 from . import manage_documents as mdocuments
 from . import manage_organisations
@@ -16,6 +19,8 @@ from . import manage_settings as msettings
 from .config import SpaceType
 from .domain import SpaceKey
 from .support.store import get_sqlite_system_file
+
+trace = trace.get_tracer(__name__, str(docq.__version__))
 
 SQL_CREATE_USERS_TABLE = """
 CREATE TABLE IF NOT EXISTS users (
@@ -50,7 +55,7 @@ DEFAULT_ADMIN_FULLNAME = "Docq Admin"
 
 PH = PasswordHasher()
 
-
+@trace.start_as_current_span(name="manage_users._init")
 def _init() -> None:
     """Initialize the database."""
     with closing(
@@ -60,7 +65,7 @@ def _init() -> None:
         cursor.execute(SQL_CREATE_ORG_MEMBERS_TABLE)
         connection.commit()
 
-
+@trace.start_as_current_span(name="manage_users._init_admin_if_necessary")
 def _init_admin_if_necessary() -> bool:
     created = False
     with closing(
@@ -87,16 +92,17 @@ def _init_admin_if_necessary() -> bool:
 
     return created
 
-
+@trace.start_as_current_span(name="manage_users._init_user_data")
 def _init_user_data(user_id: int) -> None:
     msettings._init(user_id)
     log.info("Initialised user data for user: %d", user_id)
 
 
+@trace.start_as_current_span(name="manage_users._reindex_user_docs")
 def _reindex_user_docs(user_id: int, org_id: int) -> None:
     mdocuments.reindex(SpaceKey(SpaceType.PERSONAL, user_id, org_id))
 
-
+@trace.start_as_current_span(name="manage_users.authenticate")
 def authenticate(username: str, password: str) -> Tuple[int, str, bool, str]:
     """Authenticate a user.
 
@@ -141,7 +147,7 @@ def authenticate(username: str, password: str) -> Tuple[int, str, bool, str]:
         else:
             return None
 
-
+@trace.start_as_current_span(name="manage_users.get_user")
 def get_user(user_id: int = None, username: str = None) -> Tuple[int, str, str, bool, bool, datetime, datetime] | None:
     """Get a user.
 
@@ -174,7 +180,7 @@ def get_user(user_id: int = None, username: str = None) -> Tuple[int, str, str, 
             tuple(params),
         ).fetchone()
 
-
+@trace.start_as_current_span(name="manage_users.list_users")
 def list_users(username_match: str = None) -> List[Tuple[int, str, str, bool, bool, datetime, datetime]]:
     """List users.
 
@@ -193,7 +199,7 @@ def list_users(username_match: str = None) -> List[Tuple[int, str, str, bool, bo
             (f"%{username_match}%" if username_match else "%",),
         ).fetchall()
 
-
+@trace.start_as_current_span(name="manage_users.list_users_by_org")
 def list_users_by_org(
     org_id: int, username_match: str = None, org_admin_match: bool = None
 ) -> List[Tuple[int, int, str, str, bool, bool, bool, datetime, datetime]]:
@@ -226,7 +232,7 @@ def list_users_by_org(
     ) as connection, closing(connection.cursor()) as cursor:
         return cursor.execute(query, tuple(params)).fetchall()
 
-
+@trace.start_as_current_span(name="manage_users.list_selected_users")
 def list_selected_users(ids_: List[int]) -> List[Tuple[int, str, str, bool, bool, datetime, datetime]]:
     """List selected users by their ids.
 
@@ -246,7 +252,7 @@ def list_selected_users(ids_: List[int]) -> List[Tuple[int, str, str, bool, bool
             )
         ).fetchall()
 
-
+@trace.start_as_current_span(name="manage_users.update_user")
 def update_user(
     id_: int,
     username: str = None,
@@ -306,7 +312,7 @@ def update_user(
         connection.commit()
         return True
 
-
+@trace.start_as_current_span(name="manage_users.create_user")
 def create_user(
     username: str,
     password: str,
@@ -382,7 +388,7 @@ def create_user(
 
     return user_id
 
-
+@trace.start_as_current_span(name="manage_users.set_user_as_verified")
 def set_user_as_verified(id_: int) -> bool:
     """Verify a user."""
     log.debug("Verifying user: %d", id_)
@@ -400,7 +406,7 @@ def set_user_as_verified(id_: int) -> bool:
         connection.commit()
         return True
 
-
+@trace.start_as_current_span(name="manage_users.check_account_activated")
 def check_account_activated(username: str) -> bool:
     """Check if a user's account is activated.
 
@@ -419,7 +425,7 @@ def check_account_activated(username: str) -> bool:
             is not None
         )
 
-
+@trace.start_as_current_span(name="manage_users.reset_password")
 def reset_password(id_: int, password: str) -> bool:
     """Reset a user's password.
 
@@ -446,7 +452,7 @@ def reset_password(id_: int, password: str) -> bool:
         connection.commit()
         return True
 
-
+@trace.start_as_current_span(name="manage_users.archive_user")
 def archive_user(id_: int) -> bool:
     """Archive a user.
 
@@ -470,7 +476,7 @@ def archive_user(id_: int) -> bool:
         connection.commit()
         return True
 
-
+@trace.start_as_current_span(name="manage_users._add_organisation_member_sql")
 def _add_organisation_member_sql(
     connection_cursor: sqlite3.Cursor, org_id: int, user_id: int, org_admin: bool = False
 ) -> sqlite3.Cursor:
@@ -481,7 +487,7 @@ def _add_organisation_member_sql(
     )
     return connection_cursor
 
-
+@trace.start_as_current_span(name="manage_users.add_organisation_member")
 def add_organisation_member(org_id: int, user_id: int, org_admin: bool = False) -> bool:
     """Add a user to an org as a member.
 
@@ -504,7 +510,7 @@ def add_organisation_member(org_id: int, user_id: int, org_admin: bool = False) 
             )
     return success
 
-
+@trace.start_as_current_span(name="manage_users.user_is_org_member")
 def user_is_org_member(org_id: int, user_id: int) -> bool:
     """Check if a user is a member of an org.
 
@@ -527,7 +533,7 @@ def user_is_org_member(org_id: int, user_id: int) -> bool:
             is not None
         )
 
-
+@trace.start_as_current_span(name="manage_users.update_organisation_members")
 def update_organisation_members(org_id: int, users: List[Tuple[int, bool]]) -> bool:
     """Update org members.
 

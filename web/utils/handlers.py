@@ -28,6 +28,7 @@ from docq.domain import DocumentListItem, SpaceKey
 from docq.model_selection.main import get_saved_model_settings_collection
 from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
+from opentelemetry import trace
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -53,7 +54,9 @@ from .sessions import (
     set_settings_session,
 )
 
+tracer = trace.get_tracer("docq.web.handler")
 
+@tracer.start_as_current_span("_set_session_state_configs")
 def _set_session_state_configs(
     user_id: int,
     selected_org_id: int,
@@ -124,6 +127,7 @@ def _set_session_state_configs(
     )
 
 
+@tracer.start_as_current_span("_default_org_id")
 def _default_org_id(
     member_orgs: List[Tuple[int, str, List[Tuple[int, str, bool]], datetime, datetime]],
     authd_user: Tuple[int, str, bool, str],
@@ -139,6 +143,11 @@ def _default_org_id(
     return result
 
 
+
+
+# ...
+
+@tracer.start_as_current_span("handle_login")
 def handle_login(username: str, password: str) -> bool:
     """Handle login."""
     reset_session_state()
@@ -462,6 +471,7 @@ def list_space_groups(name_match: str = None) -> List[Tuple]:
     return manage_space_groups.list_space_groups(org_id, name_match)
 
 
+@tracer.start_as_current_span("query_chat_history")
 def query_chat_history(feature: domain.FeatureKey) -> None:
     curr_cutoff = get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF)
     thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
@@ -474,6 +484,7 @@ def query_chat_history(feature: domain.FeatureKey) -> None:
     set_chat_session(history[0][3] if history else curr_cutoff, feature.type_, SessionKeyNameForChat.CUTOFF)
 
 
+@tracer.start_as_current_span("_get_chat_spaces")
 def _get_chat_spaces(feature: domain.FeatureKey) -> tuple[Optional[SpaceKey], List[SpaceKey]]:
     """Get chat spaces."""
     select_org_id = get_selected_org_id()
@@ -502,6 +513,7 @@ def _get_chat_spaces(feature: domain.FeatureKey) -> tuple[Optional[SpaceKey], Li
     return personal_space, shared_spaces
 
 
+@tracer.start_as_current_span("handle_chat_input")
 def handle_chat_input(feature: domain.FeatureKey) -> None:
     """Handle chat input."""
     req = st.session_state[f"chat_input_{feature.value()}"]
