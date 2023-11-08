@@ -147,6 +147,7 @@ Some useful examples of how this project can be used:
 
 - Release
 
+  Bump the version number in `pyproject.toml` (we follow [SemVer](https://semver.org/))
   Switch to `main` branch locally and run
 
   ```sh

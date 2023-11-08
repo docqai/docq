@@ -151,11 +151,13 @@ lint-black = "black **/*.py"
 lint = ["lint-black", "lint-ruff"]
 doc = "mkdocs serve --use-directory-urls --livereload --watch-theme --watch mkdocs.yaml"
 doc-html = "mkdocs build --site-dir ./_site"
+run-otel = "opentelemetry-instrument --logs_exporter none poe run"
 
 [tool.poe.tasks.run]
-cmd = "opentelemetry-instrument --logs_exporter none streamlit run web/index.py --server.port $port --browser.gatherUsageStats false"
+cmd = "streamlit run web/index.py --server.port $port --browser.gatherUsageStats false"
 args = [{ name = "port", default = 8501, type = "integer" }]
 env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${POE_PWD}/web/:${POE_PWD}/source/" }
+
 
 [tool.poe.tasks.docker-build]
 cmd = """
