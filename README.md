@@ -98,9 +98,12 @@ Project Link: [https://github.com/docqai/docq/](https://github.com/docqai/docq/)
 
 <!-- LICENSE -->
 
-## License
+## Licenses
 
-Distributed under the AGPLv3 License. See [`LICENSE`](https://github.com/docqai/docq/blob/main/LICENSE) for more information.
+Distributed under multiple licenses:
+
+- AGPLv3 See [`LICENSE`](https://github.com/docqai/docq/blob/main/LICENSE) for more information.
+- Commercial licenses available
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
