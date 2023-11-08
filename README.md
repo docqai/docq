@@ -98,9 +98,14 @@ Project Link: [https://github.com/docqai/docq/](https://github.com/docqai/docq/)
 
 <!-- LICENSE -->
 
-## License
+## Licenses
 
-Distributed under the AGPLv3 License. See [`LICENSE`](https://github.com/docqai/docq/blob/main/LICENSE) for more information.
+Distributed under multiple licenses:
+
+- AGPLv3 See [`LICENSE`](https://github.com/docqai/docq/blob/main/LICENSE) for more information.
+- Commercial licenses available
+
+Copyright (C) 2023 FABR Ltd t/a Docq.AI
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
@@ -114,4 +119,4 @@ Distributed under the AGPLv3 License. See [`LICENSE`](https://github.com/docqai/
 [issues-shield]: https://img.shields.io/github/issues/docqai/docq.svg?style=for-the-badge
 [issues-url]: https://github.com/docqai/docq/issues
 [license-shield]: https://img.shields.io/badge/license-AGPL_3.0-green?style=for-the-badge
-[license-url]: https://github.com/docqai/docq/blob/main/LICENSE
+[license-url]: https://github.com/docqai/docq/blob/main/LICENSE.AGPL3
