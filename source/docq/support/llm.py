@@ -249,9 +249,9 @@ def _get_async_node_parser(model_settings_collection: ModelUsageSettingsCollecti
 @tracer.start_as_current_span(name="_load_index_from_storage")
 def _load_index_from_storage(space: SpaceKey, model_settings_collection: ModelUsageSettingsCollection) -> BaseIndex:
     # set service context explicitly for multi model compatibility
-
+    sc = _get_service_context(model_settings_collection)
     return load_index_from_storage(
-        storage_context=_get_storage_context(space), service_context=_get_service_context(model_settings_collection)
+        storage_context=_get_storage_context(space), service_context=sc, callback_manager=sc.callback_manager
     )
 
 @tracer.start_as_current_span(name="run_chat")

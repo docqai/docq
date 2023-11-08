@@ -1,6 +1,5 @@
 import logging
 import uuid
-from multiprocessing import context
 from typing import Any, Dict, List, Optional, Self
 
 import llama_index
@@ -38,6 +37,8 @@ class OtelCallbackHandler(BaseCallbackHandler):
         **kwargs: Any,
     ) -> str:
         """Run when an event starts and return id of event."""
+        trace.get_current_span().add_event(name=f"{event_type.value}_started", attributes=payload)
+        #logging.debug("Starting event %s, %s", event_type, event_id)
         return event_id
 
     def on_event_end(
@@ -48,12 +49,14 @@ class OtelCallbackHandler(BaseCallbackHandler):
         **kwargs: Any,
     ) -> None:
         """Run when an event ends."""
-        pass
+        trace.get_current_span().add_event(name=f"{event_type.value}_ended", attributes=payload)
+        
 
     def start_trace(self: Self, trace_id: Optional[str] = None) -> None:
         """Run when an overall trace is launched."""
         trace_id = trace_id or str(uuid.uuid4())
-        self._tracer.start_as_current_span(name=trace_id)
+        with self._tracer.start_as_current_span(name=trace_id):
+            pass
         logging.debug("Starting trace %s", trace_id)
 
     def end_trace(
