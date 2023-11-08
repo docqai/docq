@@ -14,7 +14,7 @@ from .support import auth_utils, llm, metadata_extractors, store
 
 def _config_logging() -> None:
     """Configure logging."""
-    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(process)d %(levelname)s %(message)s")
+    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(process)d %(levelname)s %(message)s", force=True) # force over rides Otel (or other) logging config with this.
 
 
 def init() -> None:

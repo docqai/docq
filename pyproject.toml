@@ -153,7 +153,7 @@ doc = "mkdocs serve --use-directory-urls --livereload --watch-theme --watch mkdo
 doc-html = "mkdocs build --site-dir ./_site"
 
 [tool.poe.tasks.run]
-cmd = "opentelemetry-instrument streamlit run web/index.py --server.port $port --browser.gatherUsageStats false"
+cmd = "opentelemetry-instrument --logs_exporter none streamlit run web/index.py --server.port $port --browser.gatherUsageStats false"
 args = [{ name = "port", default = 8501, type = "integer" }]
 env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${POE_PWD}/web/:${POE_PWD}/source/" }
 
