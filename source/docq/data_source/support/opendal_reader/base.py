@@ -159,6 +159,7 @@ class OpendalReader(BaseReader):
         return dl
 
 
+# TODO: Tobe removed once opendal starts supporting Google Drive.
 class GoogleDriveReader(BaseReader):
     """Google Drive reader."""
 
