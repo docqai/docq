@@ -6,10 +6,9 @@ from typing import List, Self
 
 from llama_index import Document
 
-from ..config import ConfigKeyHandlers, ConfigKeyOptions
 from ..domain import ConfigKey, SpaceKey
 from ..support.store import get_index_dir
-from .main import DocumentMetadata, SpaceDataSourceFileBased
+from .main import DocumentMetadata, FileStorageServiceKeys, SpaceDataSourceFileBased
 from .support.opendal_reader.base import GoogleDriveReader, OpendalReader
 
 
@@ -24,15 +23,14 @@ class GDrive(SpaceDataSourceFileBased):
         """Get the config keys for google drive."""
         return [
             ConfigKey(
-                ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name,
+                f"{FileStorageServiceKeys.GOOGLE_DRIVE}-credential",
                 "Credential",
-                is_hidden=True,
-                input_element="credential_request",
+                is_secret=True,
+                ref_link="https://docqai.github.io/docq/user-guide/config-spaces/#data-source-google-drive",
             ),
             ConfigKey(
-                ConfigKeyOptions.GET_GDRIVE_OPTIONS.name,
+                f"{FileStorageServiceKeys.GOOGLE_DRIVE}-root_path",
                 "Select a folder",
-                input_element="selectbox",
                 ref_link="https://docqai.github.io/docq/user-guide/config-spaces/#data-source-google-drive",
             ),
         ]
@@ -51,11 +49,11 @@ class GDrive(SpaceDataSourceFileBased):
                 str(DocumentMetadata.INDEXED_ON.name).lower(): datetime.timestamp(datetime.now().utcnow()),
             }
 
-        drive_options = configs[ConfigKeyOptions.GET_GDRIVE_OPTIONS.name]
+        root_path = configs[f"{FileStorageServiceKeys.GOOGLE_DRIVE}-root_path"]
 
         options = {
-            "root": drive_options["name"],
-            "access_token": json.dumps(configs[ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name]),
+            "root": root_path["name"],
+            "access_token": json.dumps(configs[f"{FileStorageServiceKeys.GOOGLE_DRIVE}-credential"]),
         }
 
         try:
@@ -68,9 +66,9 @@ class GDrive(SpaceDataSourceFileBased):
             log.error("Failed to load google drive with opendal reader: %s", e)
             loader = GoogleDriveReader(
                 file_metadata=lambda_metadata,
-                root=drive_options["name"],
-                access_token=configs[ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name],
-                selected_folder_id=drive_options["id"]
+                root=root_path["name"],
+                access_token=configs[f"{FileStorageServiceKeys.GOOGLE_DRIVE}-credential"],
+                selected_folder_id=root_path["id"]
             )
 
         documents = loader.load_data()

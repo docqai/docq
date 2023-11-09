@@ -6,7 +6,7 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import asdict
 from enum import Enum
-from typing import List, Self
+from typing import Any, Callable, List, Literal, Self
 
 from llama_index import Document
 from opentelemetry import trace
@@ -27,6 +27,15 @@ class DocumentMetadata(Enum):
     SOURCE_URI = "Source URI"
 
 
+class FileStorageServiceKeys(Enum):
+    """File storage service keys."""
+
+    GOOGLE_DRIVE = "Google Drive"
+    ONEDRIVE = "OneDrive"
+    DROPBOX = "Dropbox"
+    BOX = "Box"
+
+
 trace = trace.get_tracer("docq.api.data_source")
 
 
@@ -42,19 +51,19 @@ class SpaceDataSource(ABC):
         return self.name
 
     @abstractmethod
-    def get_config_keys(self) -> List[ConfigKey]:
+    def get_config_keys(self: Self) -> List[ConfigKey]:
         """Get the list of config keys."""
         pass
 
     @abstractmethod
     @trace.start_as_current_span("SpaceDataSource.load")
-    def load(self, space: SpaceKey, configs: dict) -> List[Document]:
+    def load(self: Self, space: SpaceKey, configs: dict) -> List[Document]:
         """Load the documents from the data source."""
         pass
 
     @abstractmethod
     @trace.start_as_current_span("SpaceDataSource.get_document_list")
-    def get_document_list(self, space: SpaceKey, configs: dict) -> List[DocumentListItem]:
+    def get_document_list(self: Self, space: SpaceKey, configs: dict) -> List[DocumentListItem]:
         """Returns a list of tuples containing the name, creation time, and size (Mb) of each document in the specified space's cnfigured data source.
 
         Args:
@@ -72,13 +81,13 @@ class SpaceDataSourceFileBased(SpaceDataSource):
 
     _DOCUMENT_LIST_FILENAME = "document_list.json"
 
-    def get_document_list(self, space: SpaceKey, configs: dict) -> List[DocumentListItem]:
+    def get_document_list(self: Self, space: SpaceKey, configs: dict) -> List[DocumentListItem]:
         """Get the list of documents."""
         persist_path = get_index_dir(space)
         return self._load_document_list(persist_path, self._DOCUMENT_LIST_FILENAME)
 
     @trace.start_as_current_span("SpaceDataSourceFileBased._save_document_list")
-    def _save_document_list(self, document_list: List[DocumentListItem], persist_path: str, filename: str) -> None:
+    def _save_document_list(self: Self, document_list: List[DocumentListItem], persist_path: str, filename: str) -> None:
         path = os.path.join(persist_path, filename)
         try:
             data = [asdict(item) for item in document_list]
@@ -94,7 +103,7 @@ class SpaceDataSourceFileBased(SpaceDataSource):
             log.error("Failed to save space index document list to '%s': %s", path, e, stack_info=True)
 
     @trace.start_as_current_span("SpaceDataSourceFileBased._load_document_list")
-    def _load_document_list(self, persist_path: str, filename: str) -> List[DocumentListItem]:
+    def _load_document_list(self: Self, persist_path: str, filename: str) -> List[DocumentListItem]:
         path = os.path.join(persist_path, filename)
         with open(path, "r") as f:
             data = json.load(f)
@@ -104,7 +113,7 @@ class SpaceDataSourceFileBased(SpaceDataSource):
 
     @trace.start_as_current_span("SpaceDataSourceFileBased._add_exclude_metadata_keys")
     def _add_exclude_metadata_keys(
-        self, documents: List[Document], embed_keys: List[str], llm_keys: List[str]
+        self: Self, documents: List[Document], embed_keys: List[str], llm_keys: List[str]
     ) -> List[Document]:
         """Exclude metadata keys from embedding and LLM."""
         if documents is None:
@@ -118,3 +127,36 @@ class SpaceDataSourceFileBased(SpaceDataSource):
 
 class SpaceDataSourceWebBased(SpaceDataSourceFileBased):
     """Abstract definition of a web-based data source for a space. To be extended by concrete data sources."""
+
+
+class SetFSHandler:
+    """Set file storage handler."""
+
+    __handlers: dict[Literal["credential", "root_path"], Callable] = {}
+    __supported_keys: list[Literal["credential", "root_path"]] = ["credential", "root_path"]
+
+    def __init__(self: Self, credential: Callable, root_path: Callable) -> None:
+        """Initialize the handler."""
+        self.__handlers = {"credential": credential, "root_path": root_path}
+
+    def __call__(self: Self, key: str, *args: Any, **kwargs: Any) -> Callable | None:
+        """Call the handler."""
+        if key in self.__supported_keys:
+            return self.__handlers[key](*args, **kwargs)
+
+
+class FileStorageServiceHandlers:
+    """File storage service handlers."""
+
+    __handlers: dict[FileStorageServiceKeys, SetFSHandler] = {}
+
+    def __init__(self: Self, handlers: dict[FileStorageServiceKeys, SetFSHandler]) -> None:
+        """Initialize the handlers."""
+        for key, handler in handlers.items():
+            if key in FileStorageServiceKeys:
+                self.__handlers[key] = handler
+
+    def __getitem__(self: Self, key: str) -> Callable | None:
+        """Get the handler."""
+        if key in self.__handlers:
+            return self.__handlers[key]
