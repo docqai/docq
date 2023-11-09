@@ -747,6 +747,14 @@ def get_enabled_org_features() -> list[domain.FeatureKey]:  # noqa: D103
         raise ValueError("Enabled features has to be a list of domain.FeatueKey.")
     return result
 
+def get_enabled_system_features() -> list[domain.FeatureKey]:  # noqa: D103
+    result = manage_settings.get_system_settings(
+        key=config.SystemSettingsKey.ENABLED_FEATURES
+    )
+    if not isinstance(result, list):
+        raise ValueError("Enabled features has to be a list of domain.FeatueKey.")
+    return result
+
 @tracer.start_as_current_span("handle_update_system_settings")
 def handle_update_system_settings() -> None:  # noqa: D103
     manage_settings.update_system_settings(

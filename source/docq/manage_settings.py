@@ -80,8 +80,6 @@ def _init(user_id: Optional[int] = None) -> None:
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_SETTINGS_TABLE)
         connection.commit()
-    _init_default_system_settings()
-    _init_default_org_settings(DEFAULT_ORG_ID)
 
 def _get_sqlite_file(user_id: Optional[int] = None) -> str:
     """Get the sqlite file for the given user."""

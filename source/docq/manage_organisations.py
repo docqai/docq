@@ -46,6 +46,8 @@ def _init_default_org_if_necessary() -> bool:
                 (DEFAULT_ORG_ID, DEFAULT_ORG_NAME, datetime.now(), datetime.now()),
             )
             connection.commit()
+            manage_settings._init_default_system_settings()
+            manage_settings._init_default_org_settings(DEFAULT_ORG_ID)
             created = True
 
     return created

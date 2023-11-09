@@ -25,7 +25,7 @@ def _config_logging() -> None:
 
 def init() -> None:
     """Initialize Docq."""
-    with tracer.start_as_current_span("docq.init.setup") as span:
+    with tracer.start_as_current_span("docq.setup.init") as span:
         _config_logging()
         extensions._extensions_init()
         manage_space_groups._init()

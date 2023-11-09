@@ -18,7 +18,6 @@ from docq.config import (
 )
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
 from docq.extensions import ExtensionContext
-from docq.manage_settings import get_system_settings
 from docq.model_selection.main import (
     ModelUsageSettingsCollection,
     get_model_settings_collection,
@@ -30,7 +29,6 @@ from docq.support.auth_utils import (
     verify_cookie_hmac_session_id,
 )
 from opentelemetry import trace
-from requests import get
 from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
@@ -41,6 +39,7 @@ from .formatters import format_archived, format_datetime, format_filesize, forma
 from .handlers import (
     _set_session_state_configs,
     get_enabled_org_features,
+    get_enabled_system_features,
     get_max_number_of_documents,
     get_organisation_settings,
     get_shared_space,
@@ -268,7 +267,9 @@ def __resend_verification_ui(username: str, form: str,  ) -> None:
 @tracer.start_as_current_span("render __login_form")
 def __login_form() -> None:
     __no_admin_menu()
-    st.markdown('Dont have an account? signup <a href="/signup" target="_self">here</a>', unsafe_allow_html=True)
+    if system_feature_enabled(SystemFeatureType.FREE_USER_SIGNUP, show_message=False):
+        st.markdown('Dont have an account? signup <a href="/signup" target="_self">here</a>', unsafe_allow_html=True)
+
     st.markdown("### Please login to continue")
     form_validator, form_name = st.empty(), "login-form"
     username = st.text_input("Username", value="", key="login_username")
@@ -379,13 +380,30 @@ def public_session_setup() -> None:
 def org_feature_enabled(feature: OrganisationFeatureType) -> bool:
     """Check if a org level feature is enabled."""
     feats = get_enabled_org_features()
-    # Note that we are checking `feats` first and then using `not in` here because we want to allow the features to be enabled by default.
     if feats and feature.name not in feats:
         st.error("This organisation level feature is not enabled.")
         st.info("Please contact your administrator to enable this feature.")
         st.stop()
         return False
     return True
+
+@tracer.start_as_current_span("system_feature_enabled")
+def system_feature_enabled(feature: SystemFeatureType, show_message:bool = True) -> bool:
+    """Check if a system level feature is enabled."""
+    span = trace.get_current_span()
+    feats = get_enabled_system_features()
+    span.add_event("loaded enabled features", attributes={"enabled_features": str(feats)})
+    feat_enabled = False
+    if feats and feature.name in feats:
+        feat_enabled = True
+
+    if not feat_enabled and show_message:
+        st.error("This system level feature is not enabled.")
+        st.info("Please contact your administrator to enable this feature.")
+        st.stop()
+
+    span.set_attributes({"system_feature.name": feature.name, "system_feature.enabled": feat_enabled})
+    return feat_enabled
 
 
 def public_space_enabled(feature: OrganisationFeatureType) -> None:
@@ -1152,44 +1170,46 @@ def signup_ui() -> None:
     qs_email = qs["email"][0] if "email" in qs else None
     qs_name = qs["name"][0] if "name" in qs else ""
 
-    _ctx = ExtensionContext(data={"qs_email": qs_email, "qs_name": qs_name})
+    if system_feature_enabled(SystemFeatureType.FREE_USER_SIGNUP, show_message=False) or qs_email:
 
-    handle_fire_extensions_callbacks("webui.signup_ui.render_started", _ctx)
+        _ctx = ExtensionContext(data={"qs_email": qs_email, "qs_name": qs_name})
 
-    _disable_sidebar()
-    handle_logout()
-    st.title("Docq Signup")
-    st.markdown('Already have an account? Login <a href="/" target="_self">here</a>.', unsafe_allow_html=True)
+        handle_fire_extensions_callbacks("webui.signup_ui.render_started", _ctx)
 
-    if not handle_check_mailer_ready():
-        log.error("Mailer service not available due to a config problem. User self signup disabled. All the following env vars needs to be set: DOCQ_SMTP_SERVER, DOCQ_SMTP_PORT, DOCQ_SMTP_LOGIN, DOCQ_SMTP_KEY, DOCQ_SMTP_FROM, DOCQ_SERVER_ADDRESS. Refer to he `misc/secrets.toml.template` in the repo for details.")
-        st.error("Unable to create personal accounts.")
-        st.info("Please contact your administrator to help you create an account.")
-        st.stop()
+        _disable_sidebar()
+        handle_logout()
+        st.title("Docq Signup")
+        st.markdown('Already have an account? Login <a href="/" target="_self">here</a>.', unsafe_allow_html=True)
 
-    form = "user-signup"
-    st.session_state[f"{form}-validator"] = st.empty()
+        if not handle_check_mailer_ready():
+            log.error("Mailer service not available due to a config problem. User self signup disabled. All the following env vars needs to be set: DOCQ_SMTP_SERVER, DOCQ_SMTP_PORT, DOCQ_SMTP_LOGIN, DOCQ_SMTP_KEY, DOCQ_SMTP_FROM, DOCQ_SERVER_ADDRESS. Refer to he `misc/secrets.toml.template` in the repo for details.")
+            st.error("Unable to create personal accounts.")
+            st.info("Please contact your administrator to help you create an account.")
+            st.stop()
 
-    with st.form(key=form):
-        st.text_input("Name", placeholder="Bob Smith", key=f"{form}-name", value=qs_name)
-        st.text_input("Email", placeholder="bob.smith@acme.com", key=f"{form}-email", value=qs_email, disabled=qs_email is not None)
-        st.text_input(
-            "Password",
-            type="password",
-            key=f"{form}-password",
-            help="Password must be at least 8 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number and 1 special character."
-        )
-        submit = st.form_submit_button("Signup")
-        if submit:
-            handle_fire_extensions_callbacks("webui.sign_ui.form.submitted", _ctx)
-            validate_signup_form()
-            handle_user_signup()
+        form = "user-signup"
+        st.session_state[f"{form}-validator"] = st.empty()
 
-    if st.session_state.get(f"{form}-resend-verification-email", False):
-            with st.session_state[f"{form}-validator"].container():
-                __resend_verification_ui(st.session_state[f"{form}-email"], form)
+        with st.form(key=form):
+            st.text_input("Name", placeholder="Bob Smith", key=f"{form}-name", value=qs_name)
+            st.text_input("Email", placeholder="bob.smith@acme.com", key=f"{form}-email", value=qs_email, disabled=qs_email is not None)
+            st.text_input(
+                "Password",
+                type="password",
+                key=f"{form}-password",
+                help="Password must be at least 8 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number and 1 special character."
+            )
+            submit = st.form_submit_button("Signup")
+            if submit:
+                handle_fire_extensions_callbacks("webui.sign_ui.form.submitted", _ctx)
+                validate_signup_form()
+                handle_user_signup()
 
-    handle_fire_extensions_callbacks("webui.sign_ui.render_completed", _ctx)
+        if st.session_state.get(f"{form}-resend-verification-email", False):
+                with st.session_state[f"{form}-validator"].container():
+                    __resend_verification_ui(st.session_state[f"{form}-email"], form)
+
+        handle_fire_extensions_callbacks("webui.sign_ui.render_completed", _ctx)
 
 
 def verify_email_ui() -> None:
