@@ -25,7 +25,7 @@ from docq import (
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
-from docq.extensions import _registered_extensions
+from docq.extensions import ExtensionContext, _registered_extensions
 from docq.model_selection.main import get_saved_model_settings_collection
 from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
@@ -187,12 +187,23 @@ def handle_logout() -> None:
 
 
 
-def handle_fire_extensions_callbacks(event_name: str, _context: Any) -> None:
-    """Handle fire extensions callbacks."""
+def handle_fire_extensions_callbacks(event_name: str, _context: Optional[ExtensionContext] = None) -> None:
+    """Handle fire extensions callbacks.
+
+    This function can be called form anywhere in the web code base to fire callbacks event that extensions can hook into.
+
+    Args:
+        event_name (str): The name of the event. format <webui|webapi|dal><thing>.<action as past tense verb>
+        _context (ExtensionContext): The context of the event.
+    """
     log.debug("fire_extensions_callbacks() called with event: %s", event_name)
-    for ext_cls in _registered_extensions:
+
+    ctx = _context or ExtensionContext()
+    ctx.extension_register = _registered_extensions
+    log.debug("About the call callback_handler() for '%s' extensions", len(_registered_extensions.keys()))
+    for _, ext_cls in _registered_extensions.items():
         log.debug("%s", ext_cls.class_name())
-        ext_cls.callback_handler(event_name, _context)
+        ext_cls.callback_handler(event_name, ctx)
 
 def handle_create_user() -> int:
     """Handle create user. If the user already exists, just adds the user to the currently selected org else create and add.
@@ -295,16 +306,21 @@ def handle_user_signup() -> bool:
             password=st.session_state[f"{form}-password"],
             fullname=fullname,
         )
+        user_orgs = manage_organisations.list_organisations(user_id=user_id)
+
+        _ctx = ExtensionContext(data={"username": username, "fullname": fullname, "user_id": user_id, "org_id": user_orgs[0][0]})
+        handle_fire_extensions_callbacks("webui.handle_user_signup.user_created", _ctx)
         if user_id:
             send_verification_email(username, fullname, user_id)
             validator.success(
                 "A verification email has been sent to your email address. Please verify your email before logging in."
             )
         log.info("User signup result: %s", user_id)
+        handle_fire_extensions_callbacks("webui.handle_user_signup.verification_email_sent", _ctx)
         return True
     except Exception as e:
         validator.error("Failed to create user.")
-        log.error("handle_user_signup() error: %s", e)
+        log.error("handle_user_signup() error: %s", e, stack_info=True)
         return False
 
 
