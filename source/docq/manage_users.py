@@ -48,8 +48,6 @@ CREATE TABLE IF NOT EXISTS org_members (
 )
 """
 
-DIGEST_SIZE = 32
-
 PH = PasswordHasher()
 
 @tracer.start_as_current_span(name="manage_users._init")
