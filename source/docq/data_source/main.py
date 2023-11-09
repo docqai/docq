@@ -139,21 +139,21 @@ class SetFSHandler:
         """Initialize the handler."""
         self.__handlers = {"credential": credential, "root_path": root_path}
 
-    def __call__(self: Self, key: str, *args: Any, **kwargs: Any) -> Callable | None:
+    def __call__(self: Self, operation: str, *args: Any, **kwargs: Any) -> Callable | None:
         """Call the handler."""
-        if key in self.__supported_keys:
-            return self.__handlers[key](*args, **kwargs)
+        if operation in self.__supported_keys:
+            return self.__handlers[operation](*args, **kwargs)
 
 
 class FileStorageServiceHandlers:
     """File storage service handlers."""
 
-    __handlers: dict[FileStorageServiceKeys, SetFSHandler] = {}
+    __handlers: dict[str, SetFSHandler] = {}
 
-    def __init__(self: Self, handlers: dict[FileStorageServiceKeys, SetFSHandler]) -> None:
+    def __init__(self: Self, handlers: dict[str, SetFSHandler]) -> None:
         """Initialize the handlers."""
         for key, handler in handlers.items():
-            if key in FileStorageServiceKeys:
+            if key in FileStorageServiceKeys.__members__:
                 self.__handlers[key] = handler
 
     def __getitem__(self: Self, key: str) -> Callable | None:

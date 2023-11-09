@@ -23,13 +23,13 @@ class GDrive(SpaceDataSourceFileBased):
         """Get the config keys for google drive."""
         return [
             ConfigKey(
-                f"{FileStorageServiceKeys.GOOGLE_DRIVE}-credential",
+                f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-credential",
                 "Credential",
                 is_secret=True,
                 ref_link="https://docqai.github.io/docq/user-guide/config-spaces/#data-source-google-drive",
             ),
             ConfigKey(
-                f"{FileStorageServiceKeys.GOOGLE_DRIVE}-root_path",
+                f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-root_path",
                 "Select a folder",
                 ref_link="https://docqai.github.io/docq/user-guide/config-spaces/#data-source-google-drive",
             ),
@@ -49,11 +49,11 @@ class GDrive(SpaceDataSourceFileBased):
                 str(DocumentMetadata.INDEXED_ON.name).lower(): datetime.timestamp(datetime.now().utcnow()),
             }
 
-        root_path = configs[f"{FileStorageServiceKeys.GOOGLE_DRIVE}-root_path"]
+        root_path = configs[f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-root_path"]
 
         options = {
             "root": root_path["name"],
-            "access_token": json.dumps(configs[f"{FileStorageServiceKeys.GOOGLE_DRIVE}-credential"]),
+            "access_token": json.dumps(configs[f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-credential"]),
         }
 
         try:
@@ -67,7 +67,7 @@ class GDrive(SpaceDataSourceFileBased):
             loader = GoogleDriveReader(
                 file_metadata=lambda_metadata,
                 root=root_path["name"],
-                access_token=configs[f"{FileStorageServiceKeys.GOOGLE_DRIVE}-credential"],
+                access_token=configs[f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-credential"],
                 selected_folder_id=root_path["id"]
             )
 

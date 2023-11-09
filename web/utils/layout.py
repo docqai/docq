@@ -8,9 +8,10 @@ from urllib.parse import quote_plus, unquote_plus
 
 import docq
 import streamlit as st
-from docq import config, services, setup
+from docq import services, setup
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SpaceType, SystemSettingsKey
+from docq.data_source.main import FileStorageServiceHandlers, FileStorageServiceKeys, SetFSHandler
 from docq.domain import ConfigKey, DocumentListItem, FeatureKey, SpaceKey
 from docq.model_selection.main import (
     ModelUsageSettingsCollection,
@@ -799,6 +800,28 @@ def system_settings_ui() -> None:
                 st.divider()
 
 
+def render_dynamic_options(func: Callable) -> Callable:
+    """Renders the dynamic options for a config key."""
+
+    def _drop_down_selector(*args: Any, **kwargs: Any) -> None:
+        """Streamlit selectbox for rendering dynamic options."""
+        options, fmt, disabled = func(*args, **kwargs)
+        configs: dict = kwargs.get("configs", {})
+        configkey: ConfigKey = kwargs.get("configkey", None)
+        key: str = kwargs.get("key", None)
+        selected = configs.get(configkey.key) if configs else None
+        st.selectbox(
+            f"{configkey.name}{'' if configkey.is_optional else ' *'}",
+            options=options,
+            key=key,
+            format_func=fmt,
+            help=configkey.ref_link,
+            disabled=disabled,
+            index=options.index(selected) if bool(selected and options) else 0,
+        )
+    return _drop_down_selector
+
+
 def _get_create_space_config_input_values() -> str:
     """Get values for space creation from session state."""
     space_name = st.session_state.get("create_space_name", "")
@@ -812,7 +835,7 @@ def _get_random_key(prefix: str) -> str:
     return prefix + str(random.randint(0, 1000000)) # noqa E501
 
 
-def _render_gdrive_credential_request(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
+def render_gdrive_credential_request(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
     """Renders the Google Drive credential request input field with an action burron."""
     creds = configs.get(configkey.key) if configs else st.session_state.get(key, None)
     creds = services.google_drive.validate_credentials(creds)
@@ -869,7 +892,9 @@ def _render_gdrive_credential_request(configkey: ConfigKey, key: str, configs: O
         st.stop()
 
 
-def _list_gdrive_folders(**kwargs: Any) -> tuple[list, Callable, bool]:
+@render_dynamic_options
+def list_gdrive_folders(**kwargs: Any) -> tuple[list, Callable, bool]:
+    """List Google Drive folders."""
     configs: dict = kwargs.get("configs", {})
     configkey: ConfigKey = kwargs.get("configkey", None)
     saved_settings = configs.get(configkey.key) if configs else None
@@ -878,7 +903,7 @@ def _list_gdrive_folders(**kwargs: Any) -> tuple[list, Callable, bool]:
         return [saved_settings], lambda x: x["name"], True
 
     # Make API call to Google Drive to get folders if creating space, i.e No saved settings.
-    credential_key = config.ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name
+    credential_key = f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-credential"
     __creds = configs.get(credential_key) if configs else st.session_state.get(credential_key, None)
     creds = services.google_drive.validate_credentials(__creds)
 
@@ -886,41 +911,32 @@ def _list_gdrive_folders(**kwargs: Any) -> tuple[list, Callable, bool]:
 
 
 def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: str, configs: Optional[dict] = None) -> None:
-    config_key_handlers = {
-        config.ConfigKeyHandlers.GET_GDRIVE_CREDENTIAL.name: _render_gdrive_credential_request,
-    }
-    get_config_key_options = {
-        config.ConfigKeyOptions.GET_GDRIVE_OPTIONS.name: _list_gdrive_folders,
-    }
+    fs_handlers = FileStorageServiceHandlers(
+        {
+            FileStorageServiceKeys.GOOGLE_DRIVE.name: SetFSHandler(
+                credential=render_gdrive_credential_request,
+                root_path=list_gdrive_folders,
+            )
+        }
+    )
 
     config_key_list: List[ConfigKey] = data_source[2]
 
-    for key in config_key_list:
-        _input_key = prefix + "ds_config_" + key.key
-        if key.input_element == "credential_request":
-            config_key_handlers[key.key](key, _input_key, configs)
-
-        elif key.input_element == "selectbox":
-            options, fmt, disabled = get_config_key_options[key.key](configkey=key, key=_input_key, configs=configs)
-            selected = configs.get(key.key) if configs else None
-            st.selectbox(
-                f"{key.name}{'' if key.is_optional else ' *'}",
-                options=options,
-                key=_input_key,
-                format_func=fmt,
-                help=key.ref_link,
-                disabled=disabled,
-                index=options.index(selected) if bool(selected and options) else 0,
-            )
+    for configkey in config_key_list:
+        _input_key = prefix + "ds_config_" + configkey.key
+        service, operation = configkey.key.split("-")
+        handler = fs_handlers[service]
+        if handler is not None:
+            handler(operation, configkey=configkey, key=_input_key, configs=configs)
 
         else:
-            input_type = "password" if key.is_secret else "default"
+            input_type = "password" if configkey.is_secret else "default"
             st.text_input(
-                f"{key.name}{'' if key.is_optional else ' *'}",
-                value=configs.get(key.key) if configs else "",
+                f"{configkey.name}{'' if configkey.is_optional else ' *'}",
+                value=configs.get(configkey.key) if configs else "",
                 key=_input_key,
                 type=input_type,
-                help=key.ref_link,
+                help=configkey.ref_link,
                 autocomplete="off",  # disable autofill by password manager etc.
             )
 
