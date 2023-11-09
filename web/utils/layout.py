@@ -51,6 +51,7 @@ from .handlers import (
     handle_delete_document,
     handle_delete_space_group,
     handle_delete_user_group,
+    handle_fire_extensions_callbacks,
     handle_get_gravatar_url,
     handle_list_documents,
     handle_list_orgs,
@@ -1093,10 +1094,18 @@ def _disable_sidebar() -> None:
 
 def signup_ui() -> None:
     """Render signup UI."""
+    handle_fire_extensions_callbacks("signup_ui.render_started", st)
+
     _disable_sidebar()
     handle_logout()
     st.title("Docq Signup")
     st.markdown('Already have an account? Login <a href="/" target="_self">here</a>.', unsafe_allow_html=True)
+
+    qs = st.experimental_get_query_params()
+
+    qs_email = qs["email"][0] if "email" in qs else None
+    qs_name = qs["name"][0] if "name" in qs else ""
+
 
     if not handle_check_mailer_ready():
         log.error("Mailer service not available due to a config problem. User self signup disabled. All the following env vars needs to be set: DOCQ_SMTP_SERVER, DOCQ_SMTP_PORT, DOCQ_SMTP_LOGIN, DOCQ_SMTP_KEY, DOCQ_SMTP_FROM, DOCQ_SERVER_ADDRESS. Refer to he `misc/secrets.toml.template` in the repo for details.")
@@ -1108,8 +1117,8 @@ def signup_ui() -> None:
     st.session_state[f"{form}-validator"] = st.empty()
 
     with st.form(key=form):
-        st.text_input("Name", placeholder="John Doe", key=f"{form}-name")
-        st.text_input("Email", placeholder="johndoe@mail.com", key=f"{form}-email")
+        st.text_input("Name", placeholder="Bob Smith", key=f"{form}-name", value=qs_name)
+        st.text_input("Email", placeholder="bob.smith@acme.com", key=f"{form}-email", value=qs_email, disabled=qs_email is not None)
         st.text_input(
             "Password",
             type="password",
@@ -1118,12 +1127,15 @@ def signup_ui() -> None:
         )
         submit = st.form_submit_button("Signup")
         if submit:
+            handle_fire_extensions_callbacks("sign_ui.form.submitted", st)
             validate_signup_form()
             handle_user_signup()
 
     if st.session_state.get(f"{form}-resend-verification-email", False):
             with st.session_state[f"{form}-validator"].container():
                 __resend_verification_ui(st.session_state[f"{form}-email"], form)
+
+    handle_fire_extensions_callbacks("sign_ui.render_completed", st)
 
 
 def verify_email_ui() -> None:
