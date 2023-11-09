@@ -10,6 +10,7 @@ from docq import setup
 from docq.access_control.main import SpaceAccessType
 from docq.config import FeatureType, LogType, SpaceType, SystemSettingsKey
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
+from docq.extensions import ExtensionContext
 from docq.model_selection.main import (
     ModelUsageSettingsCollection,
     get_model_settings_collection,
@@ -1001,7 +1002,7 @@ def init_with_pretty_error_ui() -> None:
         setup.init()
     except Exception as e:
         st.error("Something went wrong starting Docq.")
-        log.fatal("Error: setup.init() failed with %s", e)
+        log.fatal("Error: setup.init() failed with: %s", e, exc_info=True)
         st.stop()
 
 
@@ -1094,18 +1095,18 @@ def _disable_sidebar() -> None:
 
 def signup_ui() -> None:
     """Render signup UI."""
-    handle_fire_extensions_callbacks("signup_ui.render_started", st)
+    qs = st.experimental_get_query_params()
+    qs_email = qs["email"][0] if "email" in qs else None
+    qs_name = qs["name"][0] if "name" in qs else ""
+
+    _ctx = ExtensionContext(data={"qs_email": qs_email, "qs_name": qs_name})
+
+    handle_fire_extensions_callbacks("webui.signup_ui.render_started", _ctx)
 
     _disable_sidebar()
     handle_logout()
     st.title("Docq Signup")
     st.markdown('Already have an account? Login <a href="/" target="_self">here</a>.', unsafe_allow_html=True)
-
-    qs = st.experimental_get_query_params()
-
-    qs_email = qs["email"][0] if "email" in qs else None
-    qs_name = qs["name"][0] if "name" in qs else ""
-
 
     if not handle_check_mailer_ready():
         log.error("Mailer service not available due to a config problem. User self signup disabled. All the following env vars needs to be set: DOCQ_SMTP_SERVER, DOCQ_SMTP_PORT, DOCQ_SMTP_LOGIN, DOCQ_SMTP_KEY, DOCQ_SMTP_FROM, DOCQ_SERVER_ADDRESS. Refer to he `misc/secrets.toml.template` in the repo for details.")
@@ -1127,7 +1128,7 @@ def signup_ui() -> None:
         )
         submit = st.form_submit_button("Signup")
         if submit:
-            handle_fire_extensions_callbacks("sign_ui.form.submitted", st)
+            handle_fire_extensions_callbacks("webui.sign_ui.form.submitted", _ctx)
             validate_signup_form()
             handle_user_signup()
 
@@ -1135,7 +1136,7 @@ def signup_ui() -> None:
             with st.session_state[f"{form}-validator"].container():
                 __resend_verification_ui(st.session_state[f"{form}-email"], form)
 
-    handle_fire_extensions_callbacks("sign_ui.render_completed", st)
+    handle_fire_extensions_callbacks("webui.sign_ui.render_completed", _ctx)
 
 
 def verify_email_ui() -> None:
