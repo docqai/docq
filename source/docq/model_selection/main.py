@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Optional
 
-from ..config import SystemSettingsKey
+from ..config import OrganisationSettingsKey
 from ..manage_settings import get_organisation_settings
 
 
@@ -154,7 +154,7 @@ def get_model_settings_collection(model_settings_collection_key: str) -> ModelUs
 
 def get_saved_model_settings_collection(org_id: int) -> ModelUsageSettingsCollection:
     """Get the settings for the saved model."""
-    saved_setting = get_organisation_settings(org_id, SystemSettingsKey.MODEL_COLLECTION)
+    saved_setting = get_organisation_settings(org_id, OrganisationSettingsKey.MODEL_COLLECTION)
 
     if saved_setting is None:
         log.error("No saved model settings collection found for organisation: '%s'", org_id)

@@ -4,7 +4,7 @@ import tempfile
 from typing import TypeVar
 
 import pytest
-from docq.config import FeatureType, SpaceType
+from docq.config import OrganisationFeatureType, SpaceType
 from docq.domain import SpaceKey
 from docq.support.store import (
     get_history_table_name,
@@ -78,11 +78,11 @@ class TestGetPath:
 @pytest.mark.parametrize(
     ("type_", "expected"),
     [
-        (FeatureType.ASK_SHARED, "history_ask_shared"),
-        (FeatureType.ASK_PERSONAL, "history_ask_personal"),
-        (FeatureType.CHAT_PRIVATE, "history_chat_private"),
+        (OrganisationFeatureType.ASK_SHARED, "history_ask_shared"),
+        (OrganisationFeatureType.ASK_PERSONAL, "history_ask_personal"),
+        (OrganisationFeatureType.CHAT_PRIVATE, "history_chat_private"),
     ],
 )
-def test_get_history_table_name(type_: FeatureType, expected: str) -> None:
+def test_get_history_table_name(type_: OrganisationFeatureType, expected: str) -> None:
     """Test get history table name."""
     assert get_history_table_name(type_) == expected

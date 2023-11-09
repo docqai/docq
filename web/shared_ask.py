@@ -1,17 +1,19 @@
 """Page: Shared / Ask Shared Documents."""
 
-from docq.config import FeatureType
+from docq.config import OrganisationFeatureType
 from docq.domain import FeatureKey
 from st_pages import add_page_title
-from utils.layout import auth_required, chat_ui, feature_enabled
+from utils.layout import auth_required, chat_ui, org_feature_enabled
+from utils.observability import baggage_as_attributes, tracer
 from utils.sessions import get_authenticated_user_id
 
-auth_required()
+with tracer().start_as_current_span("ask_shared_page", attributes=baggage_as_attributes()):
+  auth_required()
 
-feature_enabled(FeatureType.ASK_SHARED)
+  org_feature_enabled(OrganisationFeatureType.ASK_SHARED)
 
-add_page_title()
+  add_page_title()
 
-feature = FeatureKey(FeatureType.ASK_SHARED, get_authenticated_user_id())
+  feature = FeatureKey(OrganisationFeatureType.ASK_SHARED, get_authenticated_user_id())
 
-chat_ui(feature)
+  chat_ui(feature)

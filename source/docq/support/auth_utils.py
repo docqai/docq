@@ -8,12 +8,16 @@ from datetime import datetime, timedelta
 from secrets import token_hex
 from typing import Dict, Optional
 
+import docq
 from cachetools import TTLCache
 from cryptography.fernet import Fernet
+from opentelemetry import trace
 from streamlit.components.v1 import html
 from streamlit.web.server.websocket_headers import _get_websocket_headers
 
 from ..config import ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY, SESSION_COOKIE_NAME
+
+tracer = trace.get_tracer(__name__, docq.__version_str__)
 
 TTL_HOURS = 1
 TTL_SEC = 60 * 60 * TTL_HOURS
@@ -127,7 +131,7 @@ def _get_cookie_session_id() -> str | None:
         log.error("Failed to get session id: %s", e)
         return None
 
-
+@tracer.start_as_current_span("verify_cookie_hmac_session_id")
 def verify_cookie_hmac_session_id() -> str | None:
     """Verify the encrypted session_id from the cookie.
 
@@ -208,7 +212,7 @@ def set_cache_auth_session(val: dict) -> None:
     except Exception as e:
         log.error("Error caching auth session: %s", e)
 
-
+@tracer.start_as_current_span("get_cache_auth_session")
 def get_cache_auth_session() -> dict | None:
     """Verify the session auth token and get the cached session state for the current session. The current session is identified by a session_id wrapped in a auth token in a browser session cookie."""
     try:

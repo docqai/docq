@@ -8,7 +8,7 @@ from typing import Optional
 
 from docq.model_selection.main import ModelUsageSettingsCollection
 
-from .config import FeatureType
+from .config import OrganisationFeatureType
 from .domain import FeatureKey, SpaceKey
 from .manage_documents import format_document_sources
 from .support.llm import query_error, run_ask, run_chat
@@ -52,7 +52,7 @@ def _save_messages(data: list[tuple[str, bool, datetime, int]], feature: Feature
     thread_tablename = get_history_thread_table_name(feature.type_)
     usage_file = (
         get_sqlite_usage_file(feature.id_)
-        if feature.type_ != FeatureType.ASK_PUBLIC
+        if feature.type_ != OrganisationFeatureType.ASK_PUBLIC
         else get_public_sqlite_usage_file(feature.id_)
     )
     with closing(sqlite3.connect(usage_file, detect_types=sqlite3.PARSE_DECLTYPES)) as connection, closing(
@@ -81,7 +81,7 @@ def _retrieve_messages(
     thread_tablename = get_history_thread_table_name(feature.type_)
     usage_file = (
         get_sqlite_usage_file(feature.id_)
-        if feature.type_ != FeatureType.ASK_PUBLIC
+        if feature.type_ != OrganisationFeatureType.ASK_PUBLIC
         else get_public_sqlite_usage_file(feature.id_)
     )
     rows = None
@@ -172,7 +172,7 @@ def query(
         spaces,
     )
     data = [(input_, True, datetime.now(), thread_id)]
-    is_chat = feature.type_ == FeatureType.CHAT_PRIVATE
+    is_chat = feature.type_ == OrganisationFeatureType.CHAT_PRIVATE
 
     history = _retrieve_last_n_history(feature, thread_id)
     log.debug("is_chat: %s", is_chat)

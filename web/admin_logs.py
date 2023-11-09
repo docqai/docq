@@ -5,7 +5,7 @@ from docq.config import LogType
 from st_pages import add_page_title
 from utils.layout import auth_required, list_logs_ui
 
-auth_required(requiring_admin=True)
+auth_required(requiring_selected_org_admin=True)
 
 add_page_title()
 
