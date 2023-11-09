@@ -6,7 +6,7 @@ Think of Docq as **your employees' private and secure ChatGPT, a second-brain th
 
 Docq is Open Source Software (OSS AGPLv3) that is self-hosted "on-premises" within your cloud provider account (Azure/AWS/GCP). That means all systems, including machine learning models and data, lives within your boundary of control.
 
-For the developers and other tech-savvy audience, Docq is like **WordPress for generative AI**. Out-of-the-box you get a private ChatGPT and a platform that can be customised and built upon using a plugin system and APIs (coming soon).
+For the developers and other tech-savvy audience, Docq is like **WordPress for generative AI**. Out-of-the-box you get a private ChatGPT and a platform that can be customised and built upon using a plugin system (see [extensions](./developer-guide/extensions.md)) and APIs (coming soon).
 
 ## Learn More
 
