@@ -8,9 +8,17 @@ import docq
 import streamlit as st
 from docq import setup
 from docq.access_control.main import SpaceAccessType
-from docq.config import FeatureType, LogType, SpaceType, SystemSettingsKey
+from docq.config import (
+    LogType,
+    OrganisationFeatureType,
+    OrganisationSettingsKey,
+    SpaceType,
+    SystemFeatureType,
+    SystemSettingsKey,
+)
 from docq.domain import DocumentListItem, FeatureKey, SpaceKey
 from docq.extensions import ExtensionContext
+from docq.manage_settings import get_system_settings
 from docq.model_selection.main import (
     ModelUsageSettingsCollection,
     get_model_settings_collection,
@@ -21,6 +29,8 @@ from docq.support.auth_utils import (
     reset_cache_and_cookie_auth_session,
     verify_cookie_hmac_session_id,
 )
+from opentelemetry import trace
+from requests import get
 from st_pages import hide_pages
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
@@ -30,13 +40,13 @@ from .error_ui import _handle_error_state_ui
 from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
 from .handlers import (
     _set_session_state_configs,
-    get_enabled_features,
+    get_enabled_org_features,
     get_max_number_of_documents,
+    get_organisation_settings,
     get_shared_space,
     get_shared_space_permissions,
     get_space_data_source,
     get_space_data_source_choice_by_type,
-    get_system_settings,
     handle_archive_org,
     handle_chat_input,
     handle_check_account_activated,
@@ -54,6 +64,7 @@ from .handlers import (
     handle_delete_user_group,
     handle_fire_extensions_callbacks,
     handle_get_gravatar_url,
+    handle_get_system_settings,
     handle_list_documents,
     handle_list_orgs,
     handle_login,
@@ -64,6 +75,7 @@ from .handlers import (
     handle_reindex_space,
     handle_resend_email_verification,
     handle_update_org,
+    handle_update_organisation_settings,
     handle_update_space_details,
     handle_update_space_group,
     handle_update_system_settings,
@@ -93,6 +105,9 @@ from .sessions import (
     reset_session_state,
     session_state_exists,
 )
+
+tracer = trace.get_tracer(__name__, docq.__version_str__)
+
 
 _chat_ui_script = """
 <script>
@@ -183,7 +198,7 @@ def __no_staff_menu() -> None:
         ]
     )
 
-
+@tracer.start_as_current_span("__no_admin_menu")
 def __no_admin_menu() -> None:
     hide_pages(
         [
@@ -250,7 +265,7 @@ def __resend_verification_ui(username: str, form: str,  ) -> None:
         msg.success("Verification email sent. Please check your email.")
     st.stop()
 
-
+@tracer.start_as_current_span("render __login_form")
 def __login_form() -> None:
     __no_admin_menu()
     st.markdown('Dont have an account? signup <a href="/signup" target="_self">here</a>', unsafe_allow_html=True)
@@ -282,7 +297,7 @@ def __logout_button() -> None:
 
 
 def __not_authorised() -> None:
-    st.error("You are not authorized to access this page.")
+    st.error("You are not authorized to access this page / section.")
     st.info(
         f"You're logged in as `{get_auth_session()[SessionKeyNameForAuth.NAME.name]}`. Please login as a different user with correct permissions to try again."
     )
@@ -295,24 +310,29 @@ def public_access() -> None:
     __no_admin_menu()
     __always_hidden_pages()
 
-
-def auth_required(show_login_form: bool = True, requiring_admin: bool = False, show_logout_button: bool = True) -> bool:
+@tracer.start_as_current_span("auth_required")
+def auth_required(show_login_form: bool = True, requiring_selected_org_admin: bool = False, show_logout_button: bool = True) -> bool:
     """Decide layout based on current user's access."""
     log.debug("auth_required() called")
+    span = trace.get_current_span()
+    span.add_event("Checking authorisation")
     auth = None
     __always_hidden_pages()
 
     session_state_existed = session_state_exists()
     log.debug("auth_required(): session_state_existed: %s", session_state_existed)
+    span.add_event("session state existed", {"result": session_state_existed})
     if session_state_existed:
         auth = get_auth_session()
     elif verify_cookie_hmac_session_id() is not None:
         # there's a valid auth session token. Let's get session state from cache.
         auth = get_cache_auth_session()
         log.debug("auth_required(): Got auth session state from cache: %s", auth)
+        span.add_event("Got auth session state from cache")
 
     if auth:
         log.debug("auth_required(): Valid auth session found: %s", auth)
+        span.add_event("Valid auth session found")
         if not session_state_existed:
             # the user probably refreshed the page resetting Streamlit session state because it's bound to a browser session connection.
             _set_session_state_configs(
@@ -330,41 +350,48 @@ def auth_required(show_login_form: bool = True, requiring_admin: bool = False, s
 
         if not auth.get(SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name, False):
             __no_admin_menu()
-            if requiring_admin:
+            if requiring_selected_org_admin:
                 __not_authorised()
                 return False
-
         return True
     else:
         log.debug("auth_required(): No valid auth session found. User needs to re-authenticate.")
+        span.add_event("No valid auth session found")
         reset_session_state()
         reset_cache_and_cookie_auth_session()
         if show_login_form:
             __login_form()
         return False
 
+def is_super_admin() -> bool:
+    """Check if the current user is a super admin. auth_required() must be called before this."""
+    auth = get_auth_session()
+    is_super_admin = auth.get(SessionKeyNameForAuth.SUPER_ADMIN.name, False)
+    if not is_super_admin:
+        __not_authorised()
+    return is_super_admin
 
 def public_session_setup() -> None:
     """Initialize session state for the public pages."""
     handle_public_session()
 
 
-def feature_enabled(feature: FeatureType) -> bool:
-    """Check if a feature is enabled."""
-    feats = get_enabled_features()
+def org_feature_enabled(feature: OrganisationFeatureType) -> bool:
+    """Check if a org level feature is enabled."""
+    feats = get_enabled_org_features()
     # Note that we are checking `feats` first and then using `not in` here because we want to allow the features to be enabled by default.
     if feats and feature.name not in feats:
-        st.error("This feature is not enabled.")
+        st.error("This organisation level feature is not enabled.")
         st.info("Please contact your administrator to enable this feature.")
         st.stop()
         return False
     return True
 
 
-def public_space_enabled(feature: FeatureType) -> None:
+def public_space_enabled(feature: OrganisationFeatureType) -> None:
     """Check if public space is ready."""
     __embed_page_config()
-    feature_enabled(feature)
+    org_feature_enabled(feature)
     space_group_id = get_public_space_group_id()
     session_id = get_public_session_id()
     feature_is_ready, spaces = (space_group_id != -1 or session_id != -1), None
@@ -602,7 +629,7 @@ def chat_ui(feature: FeatureKey) -> None:
         unsafe_allow_html=True,
     )
     with st.container():
-        if feature.type_ == FeatureType.ASK_SHARED:
+        if feature.type_ == OrganisationFeatureType.ASK_SHARED:
             _personal_ask_style()
             with st.expander("Including these shared spaces:", True):
                 spaces = list_shared_spaces()
@@ -711,36 +738,62 @@ def chat_settings_ui(feature: FeatureKey) -> None:
     """Chat settings."""
     st.info("Settings for general chat are coming soon.")
 
-
+@tracer.start_as_current_span("system_settings_ui")
 def system_settings_ui() -> None:
     """System settings."""
-    settings = get_system_settings()
-    log.debug("saved settings raw: %s", settings)
+    span = trace.get_current_span()
+    settings = handle_get_system_settings()
+    log.debug("saved system settings raw: %s", settings)
+
+    span.add_event("loaded saved system settings", attributes={"settings.system": settings.__str__()})
+    st.write("**System Settings**")
     with st.form(key="system_settings"):
+        enabled_system_features_container = st.container()
+
+        st.form_submit_button(
+            label="Save",
+            on_click=handle_update_system_settings,
+        )
+        default_selection = [SystemFeatureType.__members__[k] for k in settings[SystemSettingsKey.ENABLED_FEATURES.name]] if settings else [] #[f for f in SystemFeatureType],
+        enabled_system_features_container.multiselect(
+            SystemSettingsKey.ENABLED_FEATURES.value,
+            options=[f for f in SystemFeatureType],
+            format_func=lambda x: x.value,
+            default=default_selection,
+            key=f"system_settings_{SystemSettingsKey.ENABLED_FEATURES.name}",
+        )
+
+@tracer.start_as_current_span("organisation_settings_ui")
+def organisation_settings_ui() -> None:
+    """Org settings."""
+    span = trace.get_current_span()
+    settings = get_organisation_settings()
+    log.debug("saved org settings raw: %s", settings)
+    span.add_event("loaded saved org settings", attributes={"settings.organisation": settings.__str__()})
+    st.write("**Organisation Settings**")
+    with st.form(key="org_settings"):
         enabled_features_container = st.container()
 
         model_settings_container = st.container()
 
         st.form_submit_button(
             label="Save",
-            on_click=handle_update_system_settings,
+            on_click=handle_update_organisation_settings,
         )
-
+        default_selection = [OrganisationFeatureType.__members__[k] for k in settings[OrganisationSettingsKey.ENABLED_FEATURES.name]] if settings else []
         enabled_features_container.multiselect(
-            SystemSettingsKey.ENABLED_FEATURES.value,
-            options=[f for f in FeatureType],
+            OrganisationSettingsKey.ENABLED_FEATURES.value,
+            options=[f for f in OrganisationFeatureType],
             format_func=lambda x: x.value,
-            default=[FeatureType.__members__[k] for k in settings[SystemSettingsKey.ENABLED_FEATURES.name]]
-            if settings
-            else [f for f in FeatureType],
-            key=f"system_settings_{SystemSettingsKey.ENABLED_FEATURES.name}",
+            default=default_selection,
+            key=f"org_settings_{OrganisationSettingsKey.ENABLED_FEATURES.name}",
         )
 
         available_models = list_available_model_settings_collections()
         log.debug("available models %s", available_models)
         saved_model = (
-            settings[SystemSettingsKey.MODEL_COLLECTION.name]
-            if SystemSettingsKey.MODEL_COLLECTION.name in settings
+            settings[OrganisationSettingsKey.MODEL_COLLECTION.name]
+            if OrganisationSettingsKey.MODEL_COLLECTION.name in settings
             else None
         )
 
@@ -753,17 +806,17 @@ def system_settings_ui() -> None:
             options=available_models.items(),
             format_func=lambda x: x[1],
             index=saved_model_index,
-            key=f"system_settings_default_{SystemSettingsKey.MODEL_COLLECTION.name}",
+            key=f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}",
         )
         log.debug(
             "selected model in session state: %s",
-            st.session_state[f"system_settings_default_{SystemSettingsKey.MODEL_COLLECTION.name}"][0],
+            st.session_state[f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}"][0],
         )
         log.debug("selected model: %s", selected_model[0])
         selected_model_settings: ModelUsageSettingsCollection = get_model_settings_collection(selected_model[0])
 
         with model_settings_container.expander("Model details"):
-            for key, model_settings in selected_model_settings.model_usage_settings.items():
+            for _, model_settings in selected_model_settings.model_usage_settings.items():
                 st.write(f"{model_settings.model_capability.value} model: ")
                 st.write(f"- Model Vendor: `{model_settings.model_vendor.value}`")
                 st.write(f"- Model Name: `{model_settings.model_name}`")
@@ -1092,7 +1145,7 @@ def _disable_sidebar() -> None:
         unsafe_allow_html=True,
     )
 
-
+@tracer.start_as_current_span("signup_ui")
 def signup_ui() -> None:
     """Render signup UI."""
     qs = st.experimental_get_query_params()

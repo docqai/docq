@@ -26,10 +26,10 @@ from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions
-from docq.model_selection.main import get_saved_model_settings_collection
+from docq.model_selection.main import ModelUsageSettingsCollection, get_saved_model_settings_collection
 from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
-from opentelemetry import trace
+from opentelemetry import baggage, trace
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -56,6 +56,7 @@ from .sessions import (
 )
 
 tracer = trace.get_tracer("docq.web.handler")
+
 
 @tracer.start_as_current_span("_set_session_state_configs")
 def _set_session_state_configs(
@@ -144,19 +145,16 @@ def _default_org_id(
     return result
 
 
-
-
-# ...
-
 @tracer.start_as_current_span("handle_login")
 def handle_login(username: str, password: str) -> bool:
     """Handle login."""
+    span = trace.get_current_span()
     reset_session_state()
     reset_cache_and_cookie_auth_session()
     result = manage_users.authenticate(username, password)
-
     if result:
         current_user_id = result[0]
+        span.add_event("authenticated", {"result": "successful", "username": username, "user_id": current_user_id})
         member_orgs = manage_organisations.list_organisations(
             user_id=current_user_id
         )  # we can't use handle_list_orgs() here
@@ -172,10 +170,23 @@ def handle_login(username: str, password: str) -> bool:
             super_admin=result[2],
             selected_org_admin=selected_org_admin,
         )
+        baggage.set_baggage("current_user_id", str(current_user_id))
+        baggage.set_baggage("selected_org_id", str(default_org_id))
+        baggage.set_baggage("selected_org_admin", str(selected_org_admin))
+        baggage.set_baggage("username", username)
+        span.set_attributes(
+            {
+                "auth.selected_org_id": str(default_org_id),
+                "auth.selected_org_admin": str(selected_org_admin),
+                "auth.user_id": str(current_user_id),
+                "auth.username": username,
+            }
+        )
         log.info(st.session_state["_docq"])
         log.debug("auth session: %s", get_auth_session())
         return True
     else:
+        span.add_event("authenticated", {"result": "failed", "username": username})
         return False
 
 
@@ -184,7 +195,6 @@ def handle_logout() -> None:
     reset_session_state()
     reset_cache_and_cookie_auth_session()
     log.info("Logout")
-
 
 
 def handle_fire_extensions_callbacks(event_name: str, _context: Optional[ExtensionContext] = None) -> None:
@@ -204,6 +214,7 @@ def handle_fire_extensions_callbacks(event_name: str, _context: Optional[Extensi
     for _, ext_cls in _registered_extensions.items():
         log.debug("%s", ext_cls.class_name())
         ext_cls.callback_handler(event_name, ctx)
+
 
 def handle_create_user() -> int:
     """Handle create user. If the user already exists, just adds the user to the currently selected org else create and add.
@@ -308,7 +319,9 @@ def handle_user_signup() -> bool:
         )
         user_orgs = manage_organisations.list_organisations(user_id=user_id)
 
-        _ctx = ExtensionContext(data={"username": username, "fullname": fullname, "user_id": user_id, "org_id": user_orgs[0][0]})
+        _ctx = ExtensionContext(
+            data={"username": username, "fullname": fullname, "user_id": user_id, "org_id": user_orgs[0][0]}
+        )
         handle_fire_extensions_callbacks("webui.handle_user_signup.user_created", _ctx)
         if user_id:
             send_verification_email(username, fullname, user_id)
@@ -519,7 +532,7 @@ def _get_chat_spaces(feature: domain.FeatureKey) -> tuple[Optional[SpaceKey], Li
         [s_[0] for s_ in st.session_state[f"chat_shared_spaces_{feature.value()}"]]
     )
 
-    if feature.type_ == config.FeatureType.ASK_SHARED:
+    if feature.type_ == config.OrganisationFeatureType.ASK_SHARED:
         if not st.session_state["chat_personal_space"]:
             personal_space = None
         shared_spaces = [
@@ -529,7 +542,7 @@ def _get_chat_spaces(feature: domain.FeatureKey) -> tuple[Optional[SpaceKey], Li
         ]
         return personal_space, shared_spaces
 
-    if feature.type_ == config.FeatureType.ASK_PUBLIC:
+    if feature.type_ == config.OrganisationFeatureType.ASK_PUBLIC:
         personal_space = None
         shared_spaces = [domain.SpaceKey(config.SpaceType.SHARED, s_[0], select_org_id) for s_ in list_public_spaces()]
         return personal_space, shared_spaces
@@ -543,7 +556,7 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
     """Handle chat input."""
     req = st.session_state[f"chat_input_{feature.value()}"]
     space, spaces = None, None
-    if feature.type_ is not config.FeatureType.CHAT_PRIVATE:
+    if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
         space, spaces = _get_chat_spaces(feature)
 
     thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
@@ -698,37 +711,50 @@ def get_space_data_source_choice_by_type(type_: str) -> Tuple[str, str, List[dom
     )
 
 
-def get_system_settings() -> dict:
+def get_organisation_settings() -> dict:  # noqa: D103
     current_org_id = get_selected_org_id()
-    return manage_settings.get_organisation_settings(org_id=current_org_id)
+    if not current_org_id:
+        raise ValueError("Selected Org ID cannot be none.")
+    result = manage_settings.get_organisation_settings(org_id=current_org_id)
+    if not isinstance(result, dict):
+        raise ValueError("Organisation settings has to be a dict.")
+    return result
 
 
-def handle_get_selected_model_settings() -> str:
+def handle_get_system_settings() -> dict[str, str]:  # noqa: D103
+    result = manage_settings.get_system_settings()
+    if not isinstance(result, dict):
+        raise ValueError("System settings has to be a dict.")
+    return result
+
+
+def handle_get_selected_model_settings() -> ModelUsageSettingsCollection:
     """Handle getting the settings for the saved model."""
     current_org_id = get_selected_org_id()
+    if not current_org_id:
+        raise ValueError("Selected Org ID cannot be none.")
     return get_saved_model_settings_collection(current_org_id)
 
 
-def get_enabled_features() -> list[domain.FeatureKey]:
+def get_enabled_org_features() -> list[domain.FeatureKey]:  # noqa: D103
     current_org_id = get_selected_org_id()
-    return manage_settings.get_organisation_settings(
-        org_id=current_org_id, key=config.SystemSettingsKey.ENABLED_FEATURES
+    if not current_org_id:
+        raise ValueError("Selected Org ID cannot be none.")
+    result = manage_settings.get_organisation_settings(
+        org_id=current_org_id, key=config.OrganisationSettingsKey.ENABLED_FEATURES
     )
+    if not isinstance(result, list):
+        raise ValueError("Enabled features has to be a list of domain.FeatueKey.")
+    return result
 
-
-def handle_update_system_settings() -> None:
-    current_org_id = get_selected_org_id()
-
-    manage_settings.update_organisation_settings(
+@tracer.start_as_current_span("handle_update_system_settings")
+def handle_update_system_settings() -> None:  # noqa: D103
+    manage_settings.update_system_settings(
         {
             config.SystemSettingsKey.ENABLED_FEATURES.name: [
                 f.name for f in st.session_state[f"system_settings_{config.SystemSettingsKey.ENABLED_FEATURES.name}"]
             ],
-            config.SystemSettingsKey.MODEL_COLLECTION.name: st.session_state[
-                f"system_settings_default_{config.SystemSettingsKey.MODEL_COLLECTION.name}"
-            ][0],
         },
-        org_id=current_org_id,
     )
     set_settings_session(
         {
@@ -737,6 +763,31 @@ def handle_update_system_settings() -> None:
             ],
         },
         SessionKeyNameForSettings.SYSTEM,
+    )
+
+
+def handle_update_organisation_settings() -> None:  # noqa: D103
+    current_org_id = get_selected_org_id()
+    if not current_org_id:
+        raise ValueError("Selected Org ID cannot be none.")
+    manage_settings.update_organisation_settings(
+        {
+            config.OrganisationSettingsKey.ENABLED_FEATURES.name: [
+                f.name for f in st.session_state[f"org_settings_{config.OrganisationSettingsKey.ENABLED_FEATURES.name}"]
+            ],
+            config.OrganisationSettingsKey.MODEL_COLLECTION.name: st.session_state[
+                f"org_settings_default_{config.OrganisationSettingsKey.MODEL_COLLECTION.name}"
+            ][0],
+        },
+        org_id=current_org_id,
+    )
+    set_settings_session(
+        {
+            config.OrganisationSettingsKey.ENABLED_FEATURES.name: [
+                f.name for f in st.session_state[f"org_settings_{config.OrganisationSettingsKey.ENABLED_FEATURES.name}"]
+            ],
+        },
+        SessionKeyNameForSettings.ORG,
     )
 
 
