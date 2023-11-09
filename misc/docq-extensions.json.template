@@ -1,0 +1,7 @@
+{
+  "docq_extensions": {
+    "name": "friendly name",
+    "module_name": "fully qualified module name ref",
+    "source": "path to module *.py file. relative to 'docq' repo root"
+  }
+}

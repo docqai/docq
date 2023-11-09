@@ -1,6 +1,8 @@
 """Initialize Docq."""
 import logging
 
+from docq import extensions
+
 from . import (
     manage_organisations,
     manage_settings,
@@ -20,6 +22,7 @@ def _config_logging() -> None:
 def init() -> None:
     """Initialize Docq."""
     _config_logging()
+    extensions._extensions_init()
     manage_space_groups._init()
     manage_organisations._init()
     manage_user_groups._init()

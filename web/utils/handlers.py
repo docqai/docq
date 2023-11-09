@@ -25,6 +25,7 @@ from docq import (
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
+from docq.extensions import _registered_extensions
 from docq.model_selection.main import get_saved_model_settings_collection
 from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
@@ -184,6 +185,14 @@ def handle_logout() -> None:
     reset_cache_and_cookie_auth_session()
     log.info("Logout")
 
+
+
+def handle_fire_extensions_callbacks(event_name: str, _context: Any) -> None:
+    """Handle fire extensions callbacks."""
+    log.debug("fire_extensions_callbacks() called with event: %s", event_name)
+    for ext_cls in _registered_extensions:
+        log.debug("%s", ext_cls.class_name())
+        ext_cls.callback_handler(event_name, _context)
 
 def handle_create_user() -> int:
     """Handle create user. If the user already exists, just adds the user to the currently selected org else create and add.
