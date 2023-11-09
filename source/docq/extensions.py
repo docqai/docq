@@ -70,7 +70,7 @@ class DocqDalExtension(DocqExtension):
 
 
 
-DEFAULT_EXTENSION_JSON_PATH =  os.path.join(Path(__file__).cwd(), "docq-extensions.json")
+DEFAULT_EXTENSION_JSON_PATH =  os.path.join(Path(__file__).cwd(), ".docq-extensions.json")
 
 _registered_extensions: dict[str, DocqExtension] = {}
 

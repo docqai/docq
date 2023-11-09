@@ -193,4 +193,4 @@ docker.env
 .infisical.json
 
 # ignore default docq extensions
-docq-extensions.json
+.docq-extensions.json
