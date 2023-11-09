@@ -100,16 +100,9 @@ from .sessions import (
 _chat_ui_script = """
 <script>
     parent = window.parent.document || window.document
-    const [themeKey, themeKey1] = ['stActiveTheme-/Ask_Shared_Documents-v1', 'stActiveTheme-/-v1']
-    const activeTheme = localStorage.getItem('stActiveTheme-/Ask_Shared_Documents-v1') || localStorage.getItem('stActiveTheme-/-v1')
-    const theme = JSON.parse(activeTheme)
     const spaceSelector = parent.getElementsByClassName('streamlit-expander')[0]
     const spaceSelectorPresent = spaceSelector && spaceSelector.parentNode && spaceSelector.parentNode.parentNode
 
-    const setTheme = (theme) => {
-        localStorage.setItem(themeKey, JSON.stringify(theme))
-        localStorage.setItem(themeKey1, JSON.stringify(theme))
-    }
 
     /* Space Selector. */
 
@@ -122,27 +115,21 @@ _chat_ui_script = """
         }
     };
 
-    const formatSpaceSelector = (theme = null) => {
+    const formatSpaceSelector = () => {
         resizeSelector(spaceSelector)
-
+        const bodyColor = window.getComputedStyle(parent.body, null).getPropertyValue('background-color');
         // Set background color to the space selector based on active theme.
-        if (theme && theme === 'Light' && spaceSelector) {
-            spaceSelector.setAttribute('style', 'background-color: #fff;');
-        } else if (theme && theme === 'Dark' && spaceSelector) {
-            spaceSelector.setAttribute('style', 'background-color: #1f1f1f;');
-        } else if (spaceSelector) {
-            // Default to browsers theme preference if no theme is set.
-            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                setTheme({name: 'Dark'})
-                spaceSelector.setAttribute('style', 'background-color: #1f1f1f;');
-            } else {
-                setTheme({name: 'Light'})
-                spaceSelector.setAttribute('style', 'background-color: #fff;');
-            }
+        if (spaceSelector) {
+            spaceSelector.setAttribute('style', `background-color: ${bodyColor} !important;`);
         }
     }
 
-    formatSpaceSelector(theme?.name)
+    formatSpaceSelector()
+
+    // Observe body for background color change
+    const observer = new MutationObserver(formatSpaceSelector);
+    observer.observe(parent.body, { attributes: true, attributeFilter: ['style'] });
+
 
     /* Gravatar */
     const all = parent.querySelectorAll('[alt="user avatar"]')
@@ -158,19 +145,9 @@ _chat_ui_script = """
             }
     })})
 
-    // Update space selector theme automatically on theme change
-    window.onstorage = (e) => {
-        if (e.key === 'stActiveTheme-/Ask_Shared_Documents-v1' || e.key === 'stActiveTheme-/-v1') {
-            const activeTheme = localStorage.getItem('stActiveTheme-/Ask_Shared_Documents-v1') || localStorage.getItem('stActiveTheme-/-v1')
-            const theme = JSON.parse(activeTheme)
-            formatSpaceSelector(theme.name)
-        }
-    }
 
-    // Format Logout button and listen for resize event.
+    // Auto resize space selector on window resize.
     if (spaceSelectorPresent) {
-      const logoutBtn = parent.querySelectorAll('button[kind="secondary"]')[0]
-      logoutBtn.setAttribute('style', 'margin-top: 1rem !important;');
       const resizeObserver = new ResizeObserver(() => resizeSelector(spaceSelector))
       resizeObserver.observe(spaceSelector.parentNode.parentNode)
     }
@@ -630,7 +607,7 @@ def chat_ui(feature: FeatureKey) -> None:
     with st.container():
         if feature.type_ == FeatureType.ASK_SHARED:
             _personal_ask_style()
-            with st.expander("Including these shared spaces:"):
+            with st.expander("Including these shared spaces:", True):
                 spaces = list_shared_spaces()
                 st.multiselect(
                     "Including these shared spaces:",
