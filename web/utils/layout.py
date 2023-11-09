@@ -602,7 +602,7 @@ def chat_ui(feature: FeatureKey) -> None:
     with st.container():
         if feature.type_ == FeatureType.ASK_SHARED:
             _personal_ask_style()
-            with st.expander("Including these shared spaces:"):
+            with st.expander("Including these shared spaces:", True):
                 spaces = list_shared_spaces()
                 st.multiselect(
                     "Including these shared spaces:",
