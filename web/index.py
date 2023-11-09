@@ -1,7 +1,12 @@
 """Page: Home (no auth required)."""
 
-import docq
+import importlib.util
+import logging
+from importlib.machinery import ModuleSpec
+
 import streamlit as st
+
+#from docq_extensions.web.layout import subscriptions
 from st_pages import Page, Section, add_page_title, show_pages
 from utils.layout import (
     auth_required,
@@ -11,7 +16,7 @@ from utils.layout import (
     production_layout,
     public_access,
 )
-import importlib.metadata as _metadata 
+
 init_with_pretty_error_ui()
 
 configure_top_right_menu()
