@@ -4,14 +4,14 @@ import logging as log
 import sys
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Optional, Self
 
 from .config import FeatureType, SpaceType
 
 _SEPARATOR_FOR_STR = ":"
 _SEPARATOR_FOR_VALUE = "_"
 _DEFAULT_SEPARATOR = _SEPARATOR_FOR_STR
-InputElementType = Literal["text_input", "selectbox", "credential_request"]
+ValueType = Literal["text/password", "dynamic-options", "ui-interaction"]
 
 
 def _join_properties(separator: str = _DEFAULT_SEPARATOR, *args: Optional[Any]) -> str:
@@ -25,10 +25,12 @@ class FeatureKey:
     type_: FeatureType
     id_: int
 
-    def __str__(self) -> str:
+    def __str__(self: Self) -> str:
+        """Returns the string representation of the feature key."""
         return _join_properties(_SEPARATOR_FOR_STR, self.type_.name, self.id_)
 
-    def value(self) -> str:
+    def value(self: Self) -> str:
+        """Feature key value."""
         return _join_properties(_SEPARATOR_FOR_VALUE, self.type_.name, self.id_)
 
 
@@ -42,10 +44,12 @@ class SpaceKey:
     summary: Optional[str] = None
     """The organisation ID that owns the space."""
 
-    def __str__(self) -> str:
+    def __str__(self: Self) -> str:
+        """Returns the string representation of the space key."""
         return _join_properties(_SEPARATOR_FOR_STR, self.type_.name, self.org_id, self.id_)
 
-    def value(self) -> str:
+    def value(self: Self) -> str:
+        """Space key value."""
         return _join_properties(_SEPARATOR_FOR_VALUE, self.type_.name, self.org_id, self.id_)
 
 
