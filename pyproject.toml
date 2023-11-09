@@ -152,10 +152,14 @@ lint-black = "black **/*.py"
 lint = ["lint-black", "lint-ruff"]
 doc = "mkdocs serve --use-directory-urls --livereload --watch-theme --watch mkdocs.yaml"
 doc-html = "mkdocs build --site-dir ./_site"
-run-otel = "opentelemetry-instrument --logs_exporter none poe run"
 
 [tool.poe.tasks.run]
 cmd = "streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.runOnSave true --server.fileWatcherType auto"
+args = [{ name = "port", default = 8501, type = "integer" }]
+env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${PWD}/web/:${PWD}/source/:${PWD}/../docq-extensions/source/" }
+
+[tool.poe.tasks.run-otel]
+cmd = "opentelemetry-instrument --logs_exporter none streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.runOnSave true --server.fileWatcherType auto"
 args = [{ name = "port", default = 8501, type = "integer" }]
 env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${PWD}/web/:${PWD}/source/:${PWD}/../docq-extensions/source/" }
 
