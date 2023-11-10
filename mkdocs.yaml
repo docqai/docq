@@ -9,7 +9,7 @@ repo_url: https://github.com/docqai/docq
 
 plugins:
   - search
-  - mkapi
+  # - mkapi # doesn't work with python 3.11. project not maintained
   - awesome-pages
   - social
   - gen-files:
@@ -103,6 +103,7 @@ nav:
       - "Getting Started": developer-guide/getting-started.md
       - "Architecture": developer-guide/architecture.md
       - "Contributing": developer-guide/contributing.md
+      - "Extensions": developer-guide/extensions.md
       - "FAQ": developer-guide/faq.md
   #- ... | glob=readme.md
   #- ... | regex=scenarios/.+.md

@@ -17,10 +17,11 @@ from . import manage_documents as mdocuments
 from . import manage_organisations
 from . import manage_settings as msettings
 from .config import SpaceType
+from .constants import DEFAULT_ADMIN_FULLNAME, DEFAULT_ADMIN_ID, DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_USERNAME
 from .domain import SpaceKey
 from .support.store import get_sqlite_system_file
 
-trace = trace.get_tracer(__name__, str(docq.__version__))
+tracer = trace.get_tracer(__name__, docq.__version_str__)
 
 SQL_CREATE_USERS_TABLE = """
 CREATE TABLE IF NOT EXISTS users (
@@ -47,15 +48,9 @@ CREATE TABLE IF NOT EXISTS org_members (
 )
 """
 
-DIGEST_SIZE = 32
-DEFAULT_ADMIN_ID = 1000
-DEFAULT_ADMIN_USERNAME = "docq"
-DEFAULT_ADMIN_PASSWORD = "Docq.AI"
-DEFAULT_ADMIN_FULLNAME = "Docq Admin"
-
 PH = PasswordHasher()
 
-@trace.start_as_current_span(name="manage_users._init")
+@tracer.start_as_current_span(name="manage_users._init")
 def _init() -> None:
     """Initialize the database."""
     with closing(
@@ -65,7 +60,7 @@ def _init() -> None:
         cursor.execute(SQL_CREATE_ORG_MEMBERS_TABLE)
         connection.commit()
 
-@trace.start_as_current_span(name="manage_users._init_admin_if_necessary")
+@tracer.start_as_current_span(name="manage_users._init_admin_if_necessary")
 def _init_admin_if_necessary() -> bool:
     created = False
     with closing(
@@ -92,18 +87,18 @@ def _init_admin_if_necessary() -> bool:
 
     return created
 
-@trace.start_as_current_span(name="manage_users._init_user_data")
+@tracer.start_as_current_span(name="manage_users._init_user_data")
 def _init_user_data(user_id: int) -> None:
     msettings._init(user_id)
     log.info("Initialised user data for user: %d", user_id)
 
 
-@trace.start_as_current_span(name="manage_users._reindex_user_docs")
+@tracer.start_as_current_span(name="manage_users._reindex_user_docs")
 def _reindex_user_docs(user_id: int, org_id: int) -> None:
     mdocuments.reindex(SpaceKey(SpaceType.PERSONAL, user_id, org_id))
 
-@trace.start_as_current_span(name="manage_users.authenticate")
-def authenticate(username: str, password: str) -> Tuple[int, str, bool, str]:
+@tracer.start_as_current_span(name="manage_users.authenticate")
+def authenticate(username: str, password: str) -> Tuple[int, str, bool, str] | None:
     """Authenticate a user.
 
     Args:
@@ -114,6 +109,7 @@ def authenticate(username: str, password: str) -> Tuple[int, str, bool, str]:
         tuple[int, str, bool, str]: The [user's id, fullname, super_admin status, username] if authenticated, `None` otherwise.
     """
     log.debug("Authenticating user: %s", username)
+    span = trace.get_current_span()
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
@@ -123,18 +119,22 @@ def authenticate(username: str, password: str) -> Tuple[int, str, bool, str]:
         ).fetchone()
         if selected:
             log.debug("User found: %s", selected)
+            span.add_event("User found")
             (id_, saved_password, fullname, super_admin, verified) = selected
             if not verified:
                 log.warning("User: %s is not verified", username)
+                span.add_event("User not verified", {"username": username})
                 return None
             try:
                 result = (id_, fullname, super_admin, username) if PH.verify(saved_password, password) else None
             except VerificationError as e:
                 log.warning("Failing to authenticate user: %s for [%s]", username, e)
+                span.add_event("Authentication failed", {"username": username})
                 return None
 
             if PH.check_needs_rehash(saved_password):
                 log.info("Rehashing password for user: %s", username)
+                span.add_event("Rehashing password", {"username": username})
                 cursor.execute(
                     "UPDATE users SET password = ?, updated_at = ? WHERE id = ?",
                     (PH.hash(password), datetime.now(), id_),
@@ -147,7 +147,7 @@ def authenticate(username: str, password: str) -> Tuple[int, str, bool, str]:
         else:
             return None
 
-@trace.start_as_current_span(name="manage_users.get_user")
+@tracer.start_as_current_span(name="manage_users.get_user")
 def get_user(user_id: int = None, username: str = None) -> Tuple[int, str, str, bool, bool, datetime, datetime] | None:
     """Get a user.
 
@@ -180,7 +180,7 @@ def get_user(user_id: int = None, username: str = None) -> Tuple[int, str, str, 
             tuple(params),
         ).fetchone()
 
-@trace.start_as_current_span(name="manage_users.list_users")
+@tracer.start_as_current_span(name="manage_users.list_users")
 def list_users(username_match: str = None) -> List[Tuple[int, str, str, bool, bool, datetime, datetime]]:
     """List users.
 
@@ -199,7 +199,7 @@ def list_users(username_match: str = None) -> List[Tuple[int, str, str, bool, bo
             (f"%{username_match}%" if username_match else "%",),
         ).fetchall()
 
-@trace.start_as_current_span(name="manage_users.list_users_by_org")
+@tracer.start_as_current_span(name="manage_users.list_users_by_org")
 def list_users_by_org(
     org_id: int, username_match: str = None, org_admin_match: bool = None
 ) -> List[Tuple[int, int, str, str, bool, bool, bool, datetime, datetime]]:
@@ -232,7 +232,7 @@ def list_users_by_org(
     ) as connection, closing(connection.cursor()) as cursor:
         return cursor.execute(query, tuple(params)).fetchall()
 
-@trace.start_as_current_span(name="manage_users.list_selected_users")
+@tracer.start_as_current_span(name="manage_users.list_selected_users")
 def list_selected_users(ids_: List[int]) -> List[Tuple[int, str, str, bool, bool, datetime, datetime]]:
     """List selected users by their ids.
 
@@ -252,7 +252,7 @@ def list_selected_users(ids_: List[int]) -> List[Tuple[int, str, str, bool, bool
             )
         ).fetchall()
 
-@trace.start_as_current_span(name="manage_users.update_user")
+@tracer.start_as_current_span(name="manage_users.update_user")
 def update_user(
     id_: int,
     username: str = None,
@@ -312,7 +312,7 @@ def update_user(
         connection.commit()
         return True
 
-@trace.start_as_current_span(name="manage_users.create_user")
+@tracer.start_as_current_span(name="manage_users.create_user")
 def create_user(
     username: str,
     password: str,
@@ -384,11 +384,11 @@ def create_user(
             raise ValueError("Error creating user. DB Transaction rolled back.") from e
 
         if personal_org_id:
-            msettings._init_org_settings(personal_org_id)
+            msettings._init_default_org_settings(personal_org_id)
 
     return user_id
 
-@trace.start_as_current_span(name="manage_users.set_user_as_verified")
+@tracer.start_as_current_span(name="manage_users.set_user_as_verified")
 def set_user_as_verified(id_: int) -> bool:
     """Verify a user."""
     log.debug("Verifying user: %d", id_)
@@ -406,7 +406,7 @@ def set_user_as_verified(id_: int) -> bool:
         connection.commit()
         return True
 
-@trace.start_as_current_span(name="manage_users.check_account_activated")
+@tracer.start_as_current_span(name="manage_users.check_account_activated")
 def check_account_activated(username: str) -> bool:
     """Check if a user's account is activated.
 
@@ -425,7 +425,7 @@ def check_account_activated(username: str) -> bool:
             is not None
         )
 
-@trace.start_as_current_span(name="manage_users.reset_password")
+@tracer.start_as_current_span(name="manage_users.reset_password")
 def reset_password(id_: int, password: str) -> bool:
     """Reset a user's password.
 
@@ -452,7 +452,7 @@ def reset_password(id_: int, password: str) -> bool:
         connection.commit()
         return True
 
-@trace.start_as_current_span(name="manage_users.archive_user")
+@tracer.start_as_current_span(name="manage_users.archive_user")
 def archive_user(id_: int) -> bool:
     """Archive a user.
 
@@ -476,7 +476,7 @@ def archive_user(id_: int) -> bool:
         connection.commit()
         return True
 
-@trace.start_as_current_span(name="manage_users._add_organisation_member_sql")
+@tracer.start_as_current_span(name="manage_users._add_organisation_member_sql")
 def _add_organisation_member_sql(
     connection_cursor: sqlite3.Cursor, org_id: int, user_id: int, org_admin: bool = False
 ) -> sqlite3.Cursor:
@@ -487,7 +487,7 @@ def _add_organisation_member_sql(
     )
     return connection_cursor
 
-@trace.start_as_current_span(name="manage_users.add_organisation_member")
+@tracer.start_as_current_span(name="manage_users.add_organisation_member")
 def add_organisation_member(org_id: int, user_id: int, org_admin: bool = False) -> bool:
     """Add a user to an org as a member.
 
@@ -510,7 +510,7 @@ def add_organisation_member(org_id: int, user_id: int, org_admin: bool = False) 
             )
     return success
 
-@trace.start_as_current_span(name="manage_users.user_is_org_member")
+@tracer.start_as_current_span(name="manage_users.user_is_org_member")
 def user_is_org_member(org_id: int, user_id: int) -> bool:
     """Check if a user is a member of an org.
 
@@ -533,7 +533,7 @@ def user_is_org_member(org_id: int, user_id: int) -> bool:
             is not None
         )
 
-@trace.start_as_current_span(name="manage_users.update_organisation_members")
+@tracer.start_as_current_span(name="manage_users.update_organisation_members")
 def update_organisation_members(org_id: int, users: List[Tuple[int, bool]]) -> bool:
     """Update org members.
 

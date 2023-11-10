@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import List, Tuple
 
 from . import manage_settings, manage_users
+from .constants import DEFAULT_ORG_ID, DEFAULT_ORG_NAME
 from .support.store import get_sqlite_system_file
 
 SQL_CREATE_ORGS_TABLE = """
@@ -18,13 +19,6 @@ CREATE TABLE IF NOT EXISTS orgs (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """
-
-
-# organisations
-
-DEFAULT_ORG_ID = 1000
-DEFAULT_ORG_NAME = "Docq Org"
-
 
 def _init() -> None:
     """Initialize the database."""
@@ -52,6 +46,8 @@ def _init_default_org_if_necessary() -> bool:
                 (DEFAULT_ORG_ID, DEFAULT_ORG_NAME, datetime.now(), datetime.now()),
             )
             connection.commit()
+            manage_settings._init_default_system_settings()
+            manage_settings._init_default_org_settings(DEFAULT_ORG_ID)
             created = True
 
     return created
@@ -154,7 +150,7 @@ def create_organisation(name: str, creating_user_id: int) -> int | None:
             log.error("Error creating organization with member, rolled back: %s", e)
             raise Exception("Error creating organization with member. DB Transaction rolled back.", e) from e
     if org_id:
-        manage_settings._init_org_settings(org_id)
+        manage_settings._init_default_org_settings(org_id)
     return org_id
 
 

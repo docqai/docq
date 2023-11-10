@@ -21,7 +21,7 @@ from .model_selection.main import ModelUsageSettingsCollection, get_saved_model_
 from .support.llm import _get_default_storage_context, _get_service_context
 from .support.store import get_index_dir, get_sqlite_system_file
 
-trace = trace.get_tracer("docq.api.manage_spaces", str(docq.__version__))
+trace = trace.get_tracer(__name__, docq.__version_str__)
 
 SQL_CREATE_SPACES_TABLE = """
 CREATE TABLE IF NOT EXISTS spaces (

@@ -17,8 +17,14 @@ class SpaceType(Enum):
     PUBLIC = "public"
 
 
-class FeatureType(Enum):
-    """Feature types."""
+class SystemFeatureType(Enum):
+    """System level feature types."""
+
+    FREE_USER_SIGNUP = "Free User Signup"
+
+
+class OrganisationFeatureType(Enum):
+    """Organisation level feature types."""
 
     ASK_PERSONAL = "Ask Your Documents"
     ASK_SHARED = "Ask Shared Documents"
@@ -34,12 +40,16 @@ class LogType(Enum):
 
 
 class SystemSettingsKey(Enum):
-    """System settings keys."""
+    """System level settings keys."""
 
-    # TODO: rename to OrgSettingsKey
+    ENABLED_FEATURES = "Enabled Features"
+
+
+class OrganisationSettingsKey(Enum):
+    """Organisation level settings keys."""
+
     ENABLED_FEATURES = "Enabled Features"
     MODEL_COLLECTION = "Model Collection"
-
 
 class UserSettingsKey(Enum):
     """User settings keys."""

@@ -8,7 +8,7 @@ from contextlib import suppress
 from enum import Enum
 from threading import Timer
 
-from ..config import ENV_VAR_DOCQ_DATA, FeatureType, SpaceType
+from ..config import ENV_VAR_DOCQ_DATA, OrganisationFeatureType, SpaceType
 from ..domain import SpaceKey
 
 
@@ -116,13 +116,13 @@ def get_sqlite_system_file() -> str:
     return _get_path(store=_StoreSubdir.SQLITE, type_=SpaceType.SHARED, filename=_SqliteFilename.SYSTEM.value)
 
 
-def get_history_table_name(type_: FeatureType) -> str:
+def get_history_table_name(type_: OrganisationFeatureType) -> str:
     """Get the history table name for a feature."""
     # Note that because it's used for database table name, `lower()` is used to ensure it's all lowercase.
     return HISTORY_TABLE_NAME.format(feature=type_.name.lower())
 
 
-def get_history_thread_table_name(type_: FeatureType) -> str:
+def get_history_thread_table_name(type_: OrganisationFeatureType) -> str:
     """Get the history table name for a feature."""
     # Note that because it's used for database table name, `lower()` is used to ensure it's all lowercase.
     return HISTORY_THREAD_TABLE_NAME.format(feature=type_.name.lower())

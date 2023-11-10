@@ -16,7 +16,7 @@ from st_pages import _add_page_title
 from utils.layout import auth_required
 from utils.sessions import get_selected_org_id
 
-auth_required(requiring_admin=True)
+auth_required(requiring_selected_org_admin=True)
 
 _add_page_title()
 

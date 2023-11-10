@@ -195,3 +195,6 @@ docker.env
 # ignore google drive api credentials
 credentials.json
 token.json
+
+# ignore default docq extensions
+.docq-extensions.json

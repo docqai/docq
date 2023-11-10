@@ -10,6 +10,7 @@ for item in _pkg_metadata["project_url"]:
 
 # data from pyproject.toml
 __version__ = _pkg_metadata["version"] # version field
+__version_str__ = str(__version__)
 __summary__ = _pkg_metadata["summary"] # description field
 __description__ = _pkg_metadata["description"] # readme field
 __homepage_url__ = _pkg_metadata["home_page"] # homepage field

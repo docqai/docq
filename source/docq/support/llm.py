@@ -47,7 +47,7 @@ from .metadata_extractors import DocqEntityExtractor, DocqMetadataExtractor
 from .node_parsers import AsyncSimpleNodeParser
 from .store import get_index_dir, get_models_dir
 
-tracer = trace.get_tracer("docq.api.support.llm", str(docq.__version__))
+tracer = trace.get_tracer("docq.api.support.llm", docq.__version_str__)
 
 # PROMPT_CHAT_SYSTEM = """
 # You are an AI assistant helping a human to find information.

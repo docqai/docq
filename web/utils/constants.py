@@ -33,7 +33,7 @@ class SessionKeyNameForAuth(Enum):
 
 class SessionKeyNameForSettings(Enum):
     """Third-level names for session keys in settings."""
-
+    ORG = "org"
     SYSTEM = "system"
     USER = "user"
 

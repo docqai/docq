@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional, Self
 
-from .config import FeatureType, SpaceType
+from .config import OrganisationFeatureType, SpaceType
 
 _SEPARATOR_FOR_STR = ":"
 _SEPARATOR_FOR_VALUE = "_"
@@ -21,7 +21,7 @@ def _join_properties(separator: str = _DEFAULT_SEPARATOR, *args: Optional[Any]) 
 class FeatureKey:
     """Feature key."""
 
-    type_: FeatureType
+    type_: OrganisationFeatureType
     id_: int
 
     def __str__(self: Self) -> str:
