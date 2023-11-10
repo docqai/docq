@@ -10,10 +10,23 @@ import json
 import logging as log
 import sqlite3
 from contextlib import closing
-from typing import Any
+from typing import Any, Optional
 
-from .config import FeatureType, SystemSettingsKey, UserSettingsKey
+from opentelemetry import trace
+
+import docq
+
+from .config import (
+    OrganisationFeatureType,
+    OrganisationSettingsKey,
+    SystemFeatureType,
+    SystemSettingsKey,
+    UserSettingsKey,
+)
+from .constants import DEFAULT_ORG_ID
 from .support.store import get_sqlite_system_file, get_sqlite_usage_file
+
+tracer = trace.get_tracer(__name__, docq.__version_str__)
 
 SQL_CREATE_SETTINGS_TABLE = """
 CREATE TABLE IF NOT EXISTS settings (
@@ -27,9 +40,40 @@ CREATE TABLE IF NOT EXISTS settings (
 
 
 USER_ID_AS_SYSTEM = 0
+ORG_ID_AS_SYSTEM = 0
 
 
-def _init(user_id: int = None) -> None:
+
+
+@tracer.start_as_current_span("_init_org_settings")
+def _init_default_org_settings(org_id: int) -> None:
+    """Initialise org settings with defaults."""
+    update_organisation_settings(
+        {
+            OrganisationSettingsKey.ENABLED_FEATURES.name: [
+                OrganisationFeatureType.ASK_PERSONAL.name,
+                OrganisationFeatureType.ASK_PUBLIC.name,
+                OrganisationFeatureType.ASK_SHARED.name,
+                OrganisationFeatureType.CHAT_PRIVATE.name,
+            ],
+            OrganisationSettingsKey.MODEL_COLLECTION.name: "azure_openai_with_local_embedding",
+        },
+        org_id=org_id,
+    )
+    log.debug("Org setting initialised with defaults for org_id: %s", org_id)
+
+@tracer.start_as_current_span("_init_default_system_settings")
+def _init_default_system_settings() -> None:
+    """Initialise system settings with defaults."""
+    update_system_settings(
+        {
+            SystemSettingsKey.ENABLED_FEATURES.name: [SystemFeatureType.FREE_USER_SIGNUP.name],
+        },
+    )
+    log.debug("System setting initialised with defaults")
+
+@tracer.start_as_current_span("manage_settings._init")
+def _init(user_id: Optional[int] = None) -> None:
     """Initialize the database."""
     with closing(
         sqlite3.connect(_get_sqlite_file(user_id), detect_types=sqlite3.PARSE_DECLTYPES)
@@ -37,45 +81,26 @@ def _init(user_id: int = None) -> None:
         cursor.execute(SQL_CREATE_SETTINGS_TABLE)
         connection.commit()
 
-
-def _init_org_settings(org_id: int) -> None:
-    """Initialise org settings with defaults."""
-    update_organisation_settings(
-        {
-            SystemSettingsKey.ENABLED_FEATURES.name: [
-                FeatureType.ASK_PERSONAL.name,
-                FeatureType.ASK_PUBLIC.name,
-                FeatureType.ASK_SHARED.name,
-                FeatureType.CHAT_PRIVATE.name,
-            ],
-            SystemSettingsKey.MODEL_COLLECTION.name: "azure_openai_with_local_embedding",
-        },
-        org_id=org_id,
-    )
-    log.debug("Org setting initialised with defaults for org_id: %s", org_id)
-
-
-def _get_sqlite_file(user_id: int = None) -> str:
+def _get_sqlite_file(user_id: Optional[int] = None) -> str:
     """Get the sqlite file for the given user."""
     return get_sqlite_usage_file(user_id) if user_id else get_sqlite_system_file()
 
 
-def _get_settings(org_id: int, user_id: int = None) -> dict:
+def _get_settings(org_id: int, user_id: int) -> dict[str, str]:
     log.debug("Getting settings for user '%s'", str(user_id))
     with closing(
         sqlite3.connect(_get_sqlite_file(user_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        id_ = user_id or USER_ID_AS_SYSTEM
         rows = cursor.execute(
             "SELECT key, val FROM settings WHERE user_id = ? AND org_id = ?",
-            (id_, org_id),
+            (user_id, org_id),
         ).fetchall()
         if rows:
             return {key: json.loads(val) for key, val in rows}
         return {}
 
 
-def _update_settings(settings: dict, org_id: int, user_id: int = None) -> bool:
+def _update_settings(settings: dict, org_id: int, user_id: Optional[int] = None) -> bool:
     with closing(
         sqlite3.connect(_get_sqlite_file(user_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
@@ -89,12 +114,26 @@ def _update_settings(settings: dict, org_id: int, user_id: int = None) -> bool:
         return True
 
 
-def get_organisation_settings(org_id: int, key: SystemSettingsKey = None) -> Any | None:
+
+def get_system_settings(key: Optional[SystemSettingsKey] = None) -> dict | str | None:
     """Get the system settings. Applies to all users in an org."""
-    return _get_settings(org_id=org_id) if key is None else _get_settings(org_id=org_id).get(key.name)
+    return (
+        _get_settings(org_id=ORG_ID_AS_SYSTEM, user_id=USER_ID_AS_SYSTEM)
+        if key is None
+        else _get_settings(org_id=ORG_ID_AS_SYSTEM, user_id=USER_ID_AS_SYSTEM).get(key.name)
+    )
 
 
-def get_user_settings(org_id: int, user_id: int, key: UserSettingsKey = None) -> Any | None:
+def get_organisation_settings(org_id: int, key: Optional[OrganisationSettingsKey] = None) -> dict | str | None:
+    """Get the system settings. Applies to all users in an org."""
+    return (
+        _get_settings(org_id=org_id, user_id=USER_ID_AS_SYSTEM)
+        if key is None
+        else _get_settings(org_id=org_id, user_id=USER_ID_AS_SYSTEM).get(key.name)
+    )
+
+
+def get_user_settings(org_id: int, user_id: int, key: Optional[UserSettingsKey] = None) -> dict | str | None:
     """Get the user settings scoped to an org."""
     return (
         _get_settings(org_id=org_id, user_id=user_id)
@@ -103,11 +142,15 @@ def get_user_settings(org_id: int, user_id: int, key: UserSettingsKey = None) ->
     )
 
 
+def update_system_settings(settings: dict) -> bool:
+    """Update the system settings."""
+    return _update_settings(settings=settings, org_id=ORG_ID_AS_SYSTEM, user_id=USER_ID_AS_SYSTEM)
+
 def update_organisation_settings(settings: dict, org_id: int) -> bool:
     """Update the system settings. Applies to all users in an org."""
-    return _update_settings(org_id=org_id, settings=settings)
+    return _update_settings(settings=settings, org_id=org_id, user_id=USER_ID_AS_SYSTEM)
 
 
 def update_user_settings(user_id: int, settings: dict, org_id: int) -> bool:
     """Update the user settings."""
-    return _update_settings(settings, org_id, user_id)
+    return _update_settings(settings=settings, org_id=org_id, user_id=user_id)

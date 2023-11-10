@@ -1,7 +1,12 @@
 """Page: Home (no auth required)."""
 
-import docq
+import importlib.util
+import logging
+from importlib.machinery import ModuleSpec
+
 import streamlit as st
+
+#from docq_extensions.web.layout import subscriptions
 from st_pages import Page, Section, add_page_title, show_pages
 from utils.layout import (
     auth_required,
@@ -11,77 +16,79 @@ from utils.layout import (
     production_layout,
     public_access,
 )
-import importlib.metadata as _metadata 
-init_with_pretty_error_ui()
+from utils.observability import baggage_as_attributes, tracer
 
-configure_top_right_menu()
+with tracer().start_as_current_span("home_page", attributes=baggage_as_attributes()):
+    init_with_pretty_error_ui()
 
-production_layout()
+    configure_top_right_menu()
 
-with st.sidebar:
-    org_selection_ui()
+    production_layout()
 
-show_pages(
-    [
-        Page("web/index.py", "Home", "🏠"),
-        Page("web/signup.py", "signup"),
-        Page("web/verify.py", "verify"),
-        Section("Your_Space", icon="📁"),
-        Page("web/personal_chat.py", "General_Chat"),
-        Page("web/personal_ask.py", "Ask_Your_Documents"),
-        Page("web/personal_docs.py", "Manage_Your_Documents"),
-        Section("Shared_Spaces", icon="💼"),
-        Page("web/shared_ask.py", "Ask_Shared_Documents"),
-        Page("web/shared_spaces.py", "List_Shared_Spaces"),
-        Page("web/embed.py", "widget"),
-        Section("Admin", icon="💂"),
-        Page("web/admin_settings.py", "Admin_Settings"),
-        Page("web/admin_spaces.py", "Admin_Spaces"),
-        Page("web/admin_space_groups.py", "Admin_Space_Groups"),
-        Page("web/admin_users.py", "Admin_Users"),
-        Page("web/admin_user_groups.py", "Admin_User_Groups"),
-        Page("web/admin_orgs.py", "Admin_Orgs"),
-        Page("web/admin_logs.py", "Admin_Logs"),
-        Section("ML Engineering", icon="💻"),
-        Page("web/ml_eng_tools/visualise_index.py", "Visualise Index"),
-    ]
-)
+    with st.sidebar:
+        org_selection_ui()
 
-public_access()
+    show_pages(
+        [
+            Page("web/index.py", "Home", "🏠"),
+            Page("web/signup.py", "signup"),
+            Page("web/verify.py", "verify"),
+            Section("Your_Space", icon="📁"),
+            Page("web/personal_chat.py", "General_Chat"),
+            Page("web/personal_ask.py", "Ask_Your_Documents"),
+            Page("web/personal_docs.py", "Manage_Your_Documents"),
+            Section("Shared_Spaces", icon="💼"),
+            Page("web/shared_ask.py", "Ask_Shared_Documents"),
+            Page("web/shared_spaces.py", "List_Shared_Spaces"),
+            Page("web/embed.py", "widget"),
+            Section("Admin", icon="💂"),
+            Page("web/admin_settings.py", "Admin_Settings"),
+            Page("web/admin_spaces.py", "Admin_Spaces"),
+            Page("web/admin_space_groups.py", "Admin_Space_Groups"),
+            Page("web/admin_users.py", "Admin_Users"),
+            Page("web/admin_user_groups.py", "Admin_User_Groups"),
+            Page("web/admin_orgs.py", "Admin_Orgs"),
+            Page("web/admin_logs.py", "Admin_Logs"),
+            Section("ML Engineering", icon="💻"),
+            Page("web/ml_eng_tools/visualise_index.py", "Visualise Index"),
+        ]
+    )
 
-add_page_title()
+    public_access()
 
-login_container = st.container()
+    add_page_title()
 
-st.subheader("Welcome to Docq - Private & Secure AI Knowledge Insight, your second brain.")
+    login_container = st.container()
 
-st.markdown(
+    st.subheader("Welcome to Docq - Private & Secure AI Knowledge Insight, your second brain.")
+
+    st.markdown(
+        """
+    - Click on the _General Chat_ link to use Docq like ChatGPT.
+    - Click on the _Ask Your Documents_ link to ask questions and get answers from your own documents. You can also _Manage Your Documents_.
+    - Click on the _Ask Shared Documents_ link to ask questions and get answers from documents shared within your organisation.
     """
-- Click on the _General Chat_ link to use Docq like ChatGPT.
-- Click on the _Ask Your Documents_ link to ask questions and get answers from your own documents. You can also _Manage Your Documents_.
-- Click on the _Ask Shared Documents_ link to ask questions and get answers from documents shared within your organisation.
-"""
-)
+    )
 
-st.subheader("Tips & Tricks")
-st.markdown(
+    st.subheader("Tips & Tricks")
+    st.markdown(
+        """
+    - Always ask questions in plain English and try to be as specific as possible.
+    - You can manage the documents in your space which sets the context for your questions.
+    - Your access to shared spaces is subject to permissions set by your organisation.
+    - For any questions or feedback, please contact your organisation's Docq administrator.
+
+    Enjoy Docq!
     """
-- Always ask questions in plain English and try to be as specific as possible.
-- You can manage the documents in your space which sets the context for your questions.
-- Your access to shared spaces is subject to permissions set by your organisation.
-- For any questions or feedback, please contact your organisation's Docq administrator.
-
-Enjoy Docq!
-"""
-)
+    )
 
 
-st.markdown(
-    """
-[Website](https://docq.ai) | [Docs](https://docqai.github.io/docq/) | [Github](https://github.com/docqai) | [Twitter](https://twitter.com/docqai)
-    """
-)
+    st.markdown(
+        """
+    [Website](https://docq.ai) | [Docs](https://docqai.github.io/docq/) | [Github](https://github.com/docqai) | [Twitter](https://twitter.com/docqai)
+        """
+    )
 
 
-with login_container:
-    auth_required(show_login_form=True, requiring_admin=False, show_logout_button=True)
+    with login_container:
+        auth_required(show_login_form=True, requiring_selected_org_admin=False, show_logout_button=True)

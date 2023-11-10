@@ -3,9 +3,11 @@
 import logging
 from typing import Any
 
+import docq
 import streamlit as st
 from docq import config, manage_users
 from docq.support.auth_utils import set_cache_auth_session
+from opentelemetry import trace
 
 from .constants import (
     SESSION_KEY_NAME_DOCQ,
@@ -15,6 +17,8 @@ from .constants import (
     SessionKeySubName,
 )
 
+tracer = trace.get_tracer(__name__, docq.__version_str__)
+
 
 def _init_session_state() -> None:
     if SESSION_KEY_NAME_DOCQ not in st.session_state:
@@ -22,11 +26,11 @@ def _init_session_state() -> None:
     for n in SessionKeySubName:
         if n.name not in st.session_state[SESSION_KEY_NAME_DOCQ]:
             st.session_state[SESSION_KEY_NAME_DOCQ][n.name] = {}
-    for n in config.FeatureType:
+    for n in config.OrganisationFeatureType:
         if n.name not in st.session_state[SESSION_KEY_NAME_DOCQ][SessionKeySubName.CHAT.name]:
             st.session_state[SESSION_KEY_NAME_DOCQ][SessionKeySubName.CHAT.name][n.name] = {}
 
-
+@tracer.start_as_current_span("session_state_exists")
 def session_state_exists() -> bool:
     """Check if any session state exists."""
     return SESSION_KEY_NAME_DOCQ in st.session_state
@@ -59,7 +63,7 @@ def _set_session_value(val: Any | None, name: SessionKeySubName, key: str = None
         st.session_state[SESSION_KEY_NAME_DOCQ][name.name][key][subkey] = val
 
 
-def get_chat_session(type_: config.FeatureType = None, key_: SessionKeyNameForChat = None) -> Any | None:
+def get_chat_session(type_: config.OrganisationFeatureType = None, key_: SessionKeyNameForChat = None) -> Any | None:
     """Get the chat session value."""
     _init_session_state()
     return _get_session_value(
@@ -69,7 +73,7 @@ def get_chat_session(type_: config.FeatureType = None, key_: SessionKeyNameForCh
     )
 
 
-def set_chat_session(val: Any | None, type_: config.FeatureType = None, key_: SessionKeyNameForChat = None) -> None:
+def set_chat_session(val: Any | None, type_: config.OrganisationFeatureType = None, key_: SessionKeyNameForChat = None) -> None:
     """Set the chat session value."""
     _init_session_state()
     _set_session_value(
@@ -87,7 +91,7 @@ def set_auth_session(val: dict = None, cache: bool = False) -> None:
         # this persists the auth session across browser session in Streamlit i.e. when the user hits refresh.
         set_cache_auth_session(val)
 
-
+@tracer.start_as_current_span("get_auth_session")
 def get_auth_session() -> dict:
     """Get the auth session value."""
     return _get_session_value(SessionKeySubName.AUTH)

@@ -27,9 +27,9 @@ def get_sample_file() -> bytes:
 def get_features(user_id: int) -> dict[str, domain.FeatureKey]:
     """Get chat and ask features."""
     return {
-        config.FeatureType.ASK_PERSONAL.name: domain.FeatureKey(config.FeatureType.ASK_PERSONAL, user_id),
-        config.FeatureType.ASK_SHARED.name: domain.FeatureKey(config.FeatureType.ASK_SHARED, user_id),
-        config.FeatureType.CHAT_PRIVATE.name: domain.FeatureKey(config.FeatureType.CHAT_PRIVATE, user_id)
+        config.OrganisationFeatureType.ASK_PERSONAL.name: domain.FeatureKey(config.OrganisationFeatureType.ASK_PERSONAL, user_id),
+        config.OrganisationFeatureType.ASK_SHARED.name: domain.FeatureKey(config.OrganisationFeatureType.ASK_SHARED, user_id),
+        config.OrganisationFeatureType.CHAT_PRIVATE.name: domain.FeatureKey(config.OrganisationFeatureType.CHAT_PRIVATE, user_id)
     }
 
 

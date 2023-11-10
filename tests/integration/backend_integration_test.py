@@ -92,10 +92,10 @@ def _update_organisation_settings(auth_results: dict) -> None:
     """Update organisation settings."""
     manage_settings.update_organisation_settings(
         {
-            config.SystemSettingsKey.ENABLED_FEATURES.name: [
-                f.name for f in config.FeatureType
+            config.OrganisationSettingsKey.ENABLED_FEATURES.name: [
+                f.name for f in config.OrganisationFeatureType
             ],
-            config.SystemSettingsKey.MODEL_COLLECTION.name: "openai_latest",
+            config.OrganisationSettingsKey.MODEL_COLLECTION.name: "openai_latest",
         },
         org_id=auth_results[SessionKeyNameForAuth.SELECTED_ORG_ID.name],
     )
@@ -142,7 +142,7 @@ def test_chat_private_feature(features: domain.FeatureKey, saved_model_settings:
     # Run the query
     results = run_queries.query(
         prompt.format(input="Test 1"),
-        features[config.FeatureType.CHAT_PRIVATE.name],
+        features[config.OrganisationFeatureType.CHAT_PRIVATE.name],
         thread_id,
         model_settings_collection=saved_model_settings,
     )
@@ -163,7 +163,7 @@ def test_ask_personal_docs_feature(
     # Run the query
     results = run_queries.query(
         prompt,
-        features[config.FeatureType.ASK_PERSONAL.name],
+        features[config.OrganisationFeatureType.ASK_PERSONAL.name],
         thread_id,
         model_settings_collection=saved_model_settings,
         space=personal_space,

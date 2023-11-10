@@ -1,6 +1,6 @@
 """Domain tests."""
 import pytest
-from docq.config import FeatureType, SpaceType
+from docq.config import OrganisationFeatureType, SpaceType
 from docq.domain import FeatureKey, SpaceKey
 
 
@@ -21,12 +21,12 @@ def test_space_key(type_: SpaceType, id_: int, org_id: int, expected_str: str, e
 @pytest.mark.parametrize(
     ("type_", "id_", "expected_str", "expected_value"),
     [
-        (FeatureType.ASK_PERSONAL, 9876, "ASK_PERSONAL:9876", "ASK_PERSONAL_9876"),
-        (FeatureType.ASK_SHARED, 9999, "ASK_SHARED:9999", "ASK_SHARED_9999"),
-        (FeatureType.CHAT_PRIVATE, 8888, "CHAT_PRIVATE:8888", "CHAT_PRIVATE_8888"),
+        (OrganisationFeatureType.ASK_PERSONAL, 9876, "ASK_PERSONAL:9876", "ASK_PERSONAL_9876"),
+        (OrganisationFeatureType.ASK_SHARED, 9999, "ASK_SHARED:9999", "ASK_SHARED_9999"),
+        (OrganisationFeatureType.CHAT_PRIVATE, 8888, "CHAT_PRIVATE:8888", "CHAT_PRIVATE_8888"),
     ],
 )
-def test_feature_key(type_: FeatureType, id_: int, expected_str: str, expected_value: str) -> None:
+def test_feature_key(type_: OrganisationFeatureType, id_: int, expected_str: str, expected_value: str) -> None:
     """Test feature key."""
     key = FeatureKey(type_, id_)
     assert str(key) == expected_str
