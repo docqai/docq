@@ -886,7 +886,7 @@ def _get_random_key(prefix: str) -> str:
 
 
 def render_gdrive_credential_request(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
-    """Renders the Google Drive credential request input field with an action burron."""
+    """Renders the Google Drive credential request input field with an action button."""
     creds = configs.get(configkey.key) if configs else st.session_state.get(key, None)
     creds = services.google_drive.validate_credentials(creds)
     info_container = st.empty()
