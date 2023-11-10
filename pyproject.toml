@@ -62,7 +62,6 @@ mkapi = "^1.0.14"
 pillow = "^9.5.0"
 cairosvg = "^2.7.0"
 python-dotenv = "^1.0.0"
-docq-extensions = { path = "../docq-extensions", develop = true }
 
 [tool.poetry.scripts]
 -c = "poethepoet:main"

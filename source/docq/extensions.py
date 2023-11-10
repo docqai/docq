@@ -8,9 +8,15 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from importlib.machinery import ModuleSpec
 from pathlib import Path
-from typing import Any, List, Optional, Self, Type
+from typing import Optional, Self, Type
+
+from opentelemetry import trace
+
+import docq
 
 from .support import store
+
+tracer = trace.get_tracer(__name__, docq.__version_str__)
 
 
 @dataclass
@@ -74,8 +80,8 @@ DEFAULT_EXTENSION_JSON_PATH =  os.path.join(Path(__file__).cwd(), ".docq-extensi
 
 _registered_extensions: dict[str, DocqExtension] = {}
 
-
-def _import_extensions(extensions_config_path: str = DEFAULT_EXTENSION_JSON_PATH) -> list[Type[DocqExtension]]:
+@tracer.start_as_current_span("_import_extensions")
+def _import_extensions(extensions_config_path: str = DEFAULT_EXTENSION_JSON_PATH) -> list[type[DocqExtension]]:
     """Import or download extension modules.
 
     Args:
@@ -84,35 +90,43 @@ def _import_extensions(extensions_config_path: str = DEFAULT_EXTENSION_JSON_PATH
     Returns:
         The extension module.
     """
-    extension_cls: list[DocqExtension] = []
+    extension_cls: list[type[DocqExtension]] = []
     path = extensions_config_path
+    extension_config_exists = os.path.exists(path)
+    span = trace.get_current_span()
+    span.add_event("extension_config_exists checked", {"extension_config_exists": extension_config_exists})
+    if extension_config_exists:
+        try:
+            with open(file=path, mode="r") as f:
+                extensions_json = json.load(f)
+                for key in extensions_json:
+                    module_name = str(extensions_json[key]["module_name"])
+                    module_source = str(extensions_json[key]["source"])
+                    class_name = str(extensions_json[key]["class_name"])
 
-    try:
-        with open(file=path, mode="r") as f:
-            extensions_json = json.load(f)
-            for key in extensions_json:
-                module_name = str(extensions_json[key]["module_name"])
-                module_source = str(extensions_json[key]["source"])
-                class_name = str(extensions_json[key]["class_name"])
-
-                _spec: ModuleSpec | None = importlib.util.spec_from_file_location(module_name, module_source)
-                if _spec:
-                    module = importlib.util.module_from_spec(_spec)
-                    if _spec.loader:
-                        _spec.loader.exec_module(module)
-                        extension_cls.append(getattr(module, class_name))
+                    span.add_event("extension importlib.util.spec_from_file_location starting", {"module_name": module_name, "module_source": module_source, "class_name": class_name})
+                    _spec: ModuleSpec | None = importlib.util.spec_from_file_location(module_name, module_source)
+                    if _spec:
+                        module = importlib.util.module_from_spec(_spec)
+                        if _spec.loader:
+                            _spec.loader.exec_module(module)
+                            extension_cls.append(getattr(module, class_name))
+                            span.add_event("extension module loaded", {"module_name": module_name, "module_source": module_source, "class_name": class_name})
+                        else:
+                            span.add_event("extension module load failed", {"module_name": module_name, "module_source": module_source, "class_name": class_name})
+                            raise Exception(f"Could not load extension module '{module_name}' at '{module_source}'")
                     else:
-                        raise Exception(f"Could not load extension module '{module_name}' at '{module_source}'")
-                else:
-                    logging.error("Error loading extension. Skipping... could not find extension module '%s' at '%s'.", module_name, module_source)
-    except Exception as e:
-        logging.error("_import_extensions() failed hard!")
-        logging.error(e)
-        raise e
+                        span.add_event("importlib.spec_from_file_location() for extension failed", {"module_name": module_name, "module_source": module_source, "class_name": class_name})
+                        logging.error("importlib.spec_from_file_location() for extension failed. Skipping... could not find extension module '%s' at '%s'.", module_name, module_source)
+        except Exception as e:
+            span.set_status(status=trace.StatusCode.ERROR, description=str(e))
+            logging.error("_import_extensions() failed hard!")
+            logging.error(e)
+            raise e
 
     return extension_cls
 
-def register_extensions(extension_classes: list[DocqExtension]) -> None:
+def register_extensions(extension_classes: list[type[DocqExtension]]) -> None:
     """Register callback handlers for all registered extensions."""
     for cls in extension_classes:
         if issubclass(cls, DocqWebUiExtension):
