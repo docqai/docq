@@ -7,7 +7,6 @@ To run this project locally, you will need to install the prerequisites and foll
 This Project depends on the following projects.
 
 - Poetry
-
   ```sh
   pip install --user --upgrade poetry
   ```
@@ -20,26 +19,19 @@ This Project depends on the following projects.
 ### Installation
 
 1. Clone the repo
-
    ```sh
    git clone https://github.com/docqai/docq
    cd docq
    ```
-
 2. Install Poe the Poet and Poetry
-
    ```sh
    pip install --user --upgrade poethepoet poetry
    ```
-
 3. Install requirements for development
-
    ```sh
    poe install-dev
    ```
-
 4. Run tests
-
    ```sh
    poe test
    ```
@@ -58,20 +50,20 @@ Some useful examples of how this project can be used:
 
 ### Run tests
   
-- Unit tests
+#### Unit tests
 
 ```sh
 poe test
-``` 
+```
 
-- Integration tests
+#### Integration tests
 
- - Prepare env vars by supplying a pytest.env file required for the integration tests
+Prepare env vars by supplying a pytest.env file required for the integration tests
 
-   ```sh
-   cp misc/pytest.env.template pytest.env
-   ## Make edits on pytest.env with the correct values for the test environment then run the tests
-   ```
+```sh
+cp misc/pytest.env.template pytest.env
+## Make edits on pytest.env with the correct values for the test environment then run the tests
+```
 
 ```sh
 poe test-integration
@@ -80,23 +72,17 @@ poe test-integration
 ### Run the project
 
 - Prepare env vars by supplying a Streamlit secrets file
-
   ```sh
   cp misc/secrets.toml.template .streamlit/secrets.toml
   ## Make edits on .streamlit/secrets.toml
   ## Customise other files in .streamlit/ directory to influence Streamlit behaviour
   ```
-
 - TIP: Make sure `.streamlit` directory is in the `.gitignore` file so it isn't checked in with secrets.
-
 - Run the application and it will be available at http://localhost:8501
-
   ```sh
   poe run
   ```
-
 - To change the port number
-
   ```sh
   poe run --port PORT
   ```
@@ -105,8 +91,9 @@ poe test-integration
 
 This runs the `poe run` task above with the `opentelemetry-instrument` command which auto instruments several libraries with tracing and sends traces to the configured exporter. Honeycomb env vars see the `/misc/secrets.toml.template`
 
-- `poe run-otel`
-  
+```sh
+poe run-otel
+```
 
 ### Run doc site locally
 
@@ -122,24 +109,25 @@ This runs the `poe run` task above with the `opentelemetry-instrument` command w
 
 ### Build a docker image for tests
 
-- `poe docker-build --target test --build-tag 3.10-alpine --test true`
-- `poe docker-run --target test`
+```sh
+poe docker-build --target test --build-tag 3.10-alpine --test true
+```
+
+```sh
+poe docker-run --target test
+```
   
 ### Build a container image to run the root files only without running any test
 
 - Build image
-
   ```sh
   poe docker-build
   ```
-
 - Set env vars
-
   ```sh
   cp misc/docker.env.template docker.env
   ## Make edits on docker.env
   ```
-
 - TIP: Make sure `docker.env` is in the `.gitignore` file so it isn't checked in with secrets. It's also safer if you only have the environment variable name for secrets and set the value in your shell with `export`.
 
 ### Build a container image with cached dependencies
