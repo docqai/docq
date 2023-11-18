@@ -892,7 +892,7 @@ def _render_file_storage_credential_request(configkey: ConfigKey, key: str, conf
 
     new_credentials, auth_url = None, None
 
-    if not saved_credentials:
+    if saved_credentials is None:
         params = _get_credential_request_params()
         handler = configkey.options.get("handler", None) if configkey.options else None
         response = handler(params) if handler else {}
@@ -909,8 +909,8 @@ def _render_file_storage_credential_request(configkey: ConfigKey, key: str, conf
     )
 
     btn.button(
-        "Signin with Google",
-        disabled=bool(new_credentials or saved_credentials),
+        configkey.options.get("btn_label", "Get Credential") if configkey.options else "Get Credentials",
+        disabled=bool(saved_credentials or new_credentials),
         key=_get_random_key("_btn_key"),
         on_click=lambda: handle_redirect_to_url(auth_url, "gdrive") if auth_url else None,
     )
@@ -919,22 +919,31 @@ def _render_file_storage_credential_request(configkey: ConfigKey, key: str, conf
         st.stop()
 
     if new_credentials is not None:
-        st.session_state[key] = new_credentials
-        st.session_state[configkey.key] = new_credentials
+        st.session_state[key] = new_credentials or saved_credentials
+        st.session_state[configkey.key] = new_credentials or saved_credentials
         st.experimental_set_query_params()
 
 
-@st.cache_data(ttl=60)
-def fetch_file_storage_root_folders(_configkey: ConfigKey, configs: Optional[dict]) -> tuple[list, Callable, bool]:
+def fetch_file_storage_root_folders(_configkey: ConfigKey, configs: Optional[dict]) -> tuple[list[dict], bool]:
     """List File Storage System root foldesrs."""
     saved_settings = configs.get(_configkey.key) if configs else None
     options = _configkey.options if _configkey.options else {}
     if saved_settings is not None:
-        return [saved_settings], options.get("format_func", lambda x: x), True
+        return [saved_settings], True
 
     else:
-        handler: Callable = options.get("handler", None)
-        return handler(configs, st.session_state) if handler else [], lambda x: x, False
+        with st.spinner("Loading Options..."):
+            handler: Callable = options.get("handler", None)
+            if handler:
+                return handler(configs, st.session_state)
+            return [], False
+
+
+def _set_options(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
+    st.session_state[key] = (
+        *fetch_file_storage_root_folders(configkey, configs),
+        configs.get(configkey.key) if configs else None
+    )
 
 
 def _render_file_storage_root_path_options(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
@@ -942,17 +951,20 @@ def _render_file_storage_root_path_options(configkey: ConfigKey, key: str, confi
     temp_key = f"{key}_temp"
 
     if temp_key not in st.session_state:
-        st.session_state[temp_key] = (
-            *fetch_file_storage_root_folders(configkey, configs),
-            configs.get(configkey.key) if configs else None
-        )
+        _set_options(configkey, temp_key, configs)
 
-    options, fmt, disabled, selected = st.session_state[temp_key]
+    options, disabled, selected = st.session_state[temp_key]
+    if not options:
+        _set_options(configkey, temp_key, configs)
+        options, disabled, selected = st.session_state[temp_key]
+
+    fmt_func = configkey.options.get("format_function", None) if configkey.options else None
+
     st.selectbox(
         f"{configkey.name}{'' if configkey.is_optional else ' *'}",
         options=options,
         key=key,
-        format_func=fmt,
+        format_func= fmt_func if fmt_func else lambda x: x,
         help=configkey.ref_link,
         disabled=disabled,
         index=options.index(selected) if bool(selected and options) else 0,
