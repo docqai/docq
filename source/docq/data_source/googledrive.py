@@ -2,7 +2,7 @@
 import json
 import logging as log
 from datetime import datetime
-from typing import Any, Callable, List, Self
+from typing import Any, List, Self
 
 from llama_index import Document
 
@@ -22,15 +22,12 @@ class GDrive(SpaceDataSourceFileBased):
         self.credential = f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-credential"
         self.root_path = f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-root_path"
 
-    def list_folders(self: Self, configs: Any, state: dict) -> tuple[list, Callable, bool]:
+    def list_folders(self: Self, configs: Any, state: dict) -> tuple[list, bool]:
         """List google drive folders."""
         __creds = configs.get(self.credential) if configs else state.get(self.credential, None)
         creds = services.google_drive.validate_credentials(__creds)
 
-        return (
-            services.google_drive.list_folders(creds),
-            services.google_drive.format_func, False
-        ) if creds else ([], lambda x: x, False)
+        return (services.google_drive.list_folders(creds), False) if creds else ([], False)
 
     def get_config_keys(self: Self) -> List[ConfigKey]:
         """Get the config keys for google drive."""
@@ -43,6 +40,7 @@ class GDrive(SpaceDataSourceFileBased):
                 options={
                     "type": "credential",
                     "handler": services.google_drive.get_auth_url,
+                    "btn_label": "Sign in with Google",
                 }
             ),
             ConfigKey(
@@ -52,7 +50,7 @@ class GDrive(SpaceDataSourceFileBased):
                 options={
                     "type": "root_path",
                     "handler": self.list_folders,
-                    "format_func": services.google_drive.format_func,
+                    "format_function": lambda x: x['name'],
                 }
             ),
         ]

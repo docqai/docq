@@ -53,7 +53,7 @@ def get_flow() -> InstalledAppFlow:
     return flow
 
 
-def get_credentials(creds: dict) -> CREDENTIALS:
+def get_credentials(creds: Optional[dict]) -> CREDENTIALS:
     """Get credentials from user info."""
     _creds =  Credentials.from_authorized_user_info(creds, SCOPES)
     if _creds.expired and _creds.refresh_token:
