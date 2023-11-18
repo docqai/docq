@@ -2,10 +2,11 @@
 import json
 import logging as log
 from datetime import datetime
-from typing import List, Self
+from typing import Any, Callable, List, Self
 
 from llama_index import Document
 
+from .. import services
 from ..domain import ConfigKey, SpaceKey
 from ..support.store import get_index_dir
 from .main import DocumentMetadata, FileStorageServiceKeys, SpaceDataSourceFileBased
@@ -18,20 +19,41 @@ class GDrive(SpaceDataSourceFileBased):
     def __init__(self: Self) -> None:
         """Initialize the data source."""
         super().__init__("Google Drive")
+        self.credential = f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-credential"
+        self.root_path = f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-root_path"
+
+    def list_folders(self: Self, configs: Any, state: dict) -> tuple[list, Callable, bool]:
+        """List google drive folders."""
+        __creds = configs.get(self.credential) if configs else state.get(self.credential, None)
+        creds = services.google_drive.validate_credentials(__creds)
+
+        return (
+            services.google_drive.list_folders(creds),
+            services.google_drive.format_func, False
+        ) if creds else ([], lambda x: x, False)
 
     def get_config_keys(self: Self) -> List[ConfigKey]:
         """Get the config keys for google drive."""
         return [
             ConfigKey(
-                f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-credential",
+                self.credential,
                 "Credential",
                 is_secret=True,
                 ref_link="https://docqai.github.io/docq/user-guide/config-spaces/#data-source-google-drive",
+                options={
+                    "type": "credential",
+                    "handler": services.google_drive.get_auth_url,
+                }
             ),
             ConfigKey(
-                f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-root_path",
+                self.root_path,
                 "Select a folder",
                 ref_link="https://docqai.github.io/docq/user-guide/config-spaces/#data-source-google-drive",
+                options={
+                    "type": "root_path",
+                    "handler": self.list_folders,
+                    "format_func": services.google_drive.format_func,
+                }
             ),
         ]
 
@@ -49,11 +71,11 @@ class GDrive(SpaceDataSourceFileBased):
                 str(DocumentMetadata.INDEXED_ON.name).lower(): datetime.timestamp(datetime.now().utcnow()),
             }
 
-        root_path = configs[f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-root_path"]
+        root_path = configs[self.root_path]
 
         options = {
             "root": root_path["name"],
-            "access_token": json.dumps(configs[f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-credential"]),
+            "access_token": json.dumps(configs[self.credential]),
         }
 
         try:
@@ -67,7 +89,7 @@ class GDrive(SpaceDataSourceFileBased):
             loader = GoogleDriveReader(
                 file_metadata=lambda_metadata,
                 root=root_path["name"],
-                access_token=configs[f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-credential"],
+                access_token=configs[self.credential],
                 selected_folder_id=root_path["id"]
             )
 

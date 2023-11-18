@@ -61,6 +61,7 @@ class ConfigKey:
     is_optional: bool = False
     is_secret: bool = False
     ref_link: Optional[str] = None
+    options: Optional[dict] = None
 
 
 @dataclass

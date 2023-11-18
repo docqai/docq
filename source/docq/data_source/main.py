@@ -127,36 +127,3 @@ class SpaceDataSourceFileBased(SpaceDataSource):
 
 class SpaceDataSourceWebBased(SpaceDataSourceFileBased):
     """Abstract definition of a web-based data source for a space. To be extended by concrete data sources."""
-
-
-class SetFSHandler:
-    """Set file storage handler."""
-
-    __handlers: dict[Literal["credential", "root_path"], Callable] = {}
-    __supported_keys: list[Literal["credential", "root_path"]] = ["credential", "root_path"]
-
-    def __init__(self: Self, credential: Callable, root_path: Callable) -> None:
-        """Initialize the handler."""
-        self.__handlers = {"credential": credential, "root_path": root_path}
-
-    def __call__(self: Self, operation: str, *args: Any, **kwargs: Any) -> Callable | None:
-        """Call the handler."""
-        if operation in self.__supported_keys:
-            return self.__handlers[operation](*args, **kwargs)
-
-
-class FileStorageServiceHandlers:
-    """File storage service handlers."""
-
-    __handlers: dict[str, SetFSHandler] = {}
-
-    def __init__(self: Self, handlers: dict[str, SetFSHandler]) -> None:
-        """Initialize the handlers."""
-        for key, handler in handlers.items():
-            if key in FileStorageServiceKeys.__members__:
-                self.__handlers[key] = handler
-
-    def __getitem__(self: Self, key: str) -> Callable | None:
-        """Get the handler."""
-        if key in self.__handlers:
-            return self.__handlers[key]
