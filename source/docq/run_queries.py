@@ -100,6 +100,39 @@ def _retrieve_messages(
     return rows
 
 
+def list_thread_history(feature: FeatureKey) -> list[tuple[int, str, int]]:
+    """List the history of threads."""
+    tablename = get_history_thread_table_name(feature.type_)
+    rows = None
+    with closing(
+        sqlite3.connect(get_sqlite_usage_file(feature.id_), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(
+            SQL_CREATE_THREAD_TABLE.format(
+                table=tablename,
+            )
+        )
+        rows = cursor.execute(f"SELECT id, topic, created_at FROM {tablename} ORDER BY created_at DESC").fetchall()  # noqa: S608
+        rows.reverse()
+
+    return rows
+
+
+def update_thread_topic(topic: str, feature: FeatureKey, thread_id: int) -> None:
+    """Update the topic of a thread."""
+    tablename = get_history_thread_table_name(feature.type_)
+    with closing(
+        sqlite3.connect(get_sqlite_usage_file(feature.id_), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(
+            SQL_CREATE_THREAD_TABLE.format(
+                table=tablename,
+            )
+        )
+        cursor.execute(f"UPDATE {tablename} SET topic = ? WHERE id = ?", (topic, thread_id))  # noqa: S608
+        connection.commit()
+
+
 def _retrieve_last_n_history(feature: FeatureKey, thread_id: int) -> str:
     return ("\n").join(
         map(

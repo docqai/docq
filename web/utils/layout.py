@@ -3,7 +3,7 @@ import base64
 import logging as log
 import random
 import re
-from typing import Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 from urllib.parse import quote_plus, unquote_plus
 
 import docq
@@ -25,6 +25,7 @@ from docq.model_selection.main import (
     get_model_settings_collection,
     list_available_model_settings_collections,
 )
+from docq.run_queries import list_thread_history, update_thread_topic
 from docq.support.auth_utils import (
     get_cache_auth_session,
     reset_cache_and_cookie_auth_session,
@@ -617,6 +618,41 @@ def _personal_ask_style() -> None:
     )
 
 
+def _show_chat_histories(feature: FeatureKey) -> None:
+    st.markdown("""
+      <style>
+        .streamlit-expanderContent button[kind="secondary"] {
+            border: none !important;
+            width: 100%;
+            text-align: left !important;
+            justify-content: flex-start;
+            padding: 0px 1rem;
+            opacity: 0.8;
+            min-height: unset !important;
+            height: 24px;
+            line-height: 1.5rem;
+            border-radius: 3px;
+        }
+        .streamlit-expanderContent button[kind="secondary"]:not(:hover):not(:focus):not(:active) {
+            background-color: transparent;
+        }
+        .streamlit-expanderContent button[kind="secondary"] p {
+            display: inline-block !important;
+        }
+        .streamlit-expanderContent div[data-testid="stVerticalBlock"] {
+            gap: 2px !important;
+        }
+      </style>
+    """, unsafe_allow_html=True
+    )
+    with st.sidebar.expander("Chat History"):
+        chat_threads = list_thread_history(feature)
+        test_defalt_thread = r"New Thread \d+"
+        for x in chat_threads:
+            topic = x[1]
+            st.button(topic[:35], key=topic, on_click=lambda: print(f"\x1b[31mChat history button clicked{chat_threads}\x1b[0m"))
+
+
 def chat_ui(feature: FeatureKey) -> None:
     """Chat UI layout."""
     prepare_for_chat(feature)
@@ -689,6 +725,7 @@ def chat_ui(feature: FeatureKey) -> None:
         on_submit=handle_chat_input,
         args=(feature,),
     )
+    _show_chat_histories(feature)
 
 
 def _render_document_upload(space: SpaceKey, documents: List) -> None:
