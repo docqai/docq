@@ -22,7 +22,6 @@ from docq import (
     manage_user_groups,
     manage_users,
     run_queries,
-    services,
 )
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.data_source.list import SpaceDataSources
@@ -31,7 +30,6 @@ from docq.extensions import ExtensionContext, _registered_extensions
 from docq.model_selection.main import ModelUsageSettingsCollection, get_saved_model_settings_collection
 from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
-from google_auth_oauthlib.flow import InstalledAppFlow
 from opentelemetry import baggage, trace
 from streamlit.components.v1 import html
 
@@ -927,37 +925,6 @@ def handle_get_user_email() -> Optional[str]:
     if handle_check_str_is_email(_email):
         return _email
     return None
-
-
-def handle_get_gdrive_authurl(state: Optional[str]) -> tuple[str, Optional[str]]:
-    """Get google drive authurl."""
-    user_email = handle_get_user_email()
-
-    code = st.experimental_get_query_params().get("code", [None])[0]
-
-    try:
-        flow = services.google_drive.get_flow()
-
-        if code:
-            flow.fetch_token(code=code)
-            creds = flow.credentials
-            authorized_email = services.google_drive.get_gdrive_authorized_email(creds)
-            if user_email and (authorized_email != user_email):
-                auth_url = str(flow.authorization_url(
-                    **services.google_drive.get_auth_url_params(user_email, state=state))[0]
-                )
-                return services.google_drive.AUTH_WRONG_EMAIL, auth_url
-            else:
-                return services.google_drive.VALID_CREDENTIALS, creds.to_json()
-
-        else:
-            auth_url = str(flow.authorization_url(
-                **services.google_drive.get_auth_url_params(user_email, state=state))[0]
-            )
-            return services.google_drive.AUTH_URL, auth_url
-    except Exception as e:
-        log.exception("Error getting google drive auth url: %s", e)
-        return services.google_drive.AUTH_ERROR, None
 
 
 def handle_redirect_to_url(url: str, key: str) -> None:
