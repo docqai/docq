@@ -3,12 +3,12 @@ import base64
 import logging as log
 import random
 import re
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 from urllib.parse import quote_plus, unquote_plus
 
 import docq
 import streamlit as st
-from docq import services, setup
+from docq import setup
 from docq.access_control.main import SpaceAccessType
 from docq.config import (
     LogType,
@@ -18,7 +18,6 @@ from docq.config import (
     SystemFeatureType,
     SystemSettingsKey,
 )
-from docq.data_source.main import FileStorageServiceHandlers, FileStorageServiceKeys, SetFSHandler
 from docq.domain import ConfigKey, DocumentListItem, FeatureKey, SpaceKey
 from docq.extensions import ExtensionContext
 from docq.model_selection.main import (
@@ -65,9 +64,9 @@ from .handlers import (
     handle_delete_space_group,
     handle_delete_user_group,
     handle_fire_extensions_callbacks,
-    handle_get_gdrive_authurl,
     handle_get_gravatar_url,
     handle_get_system_settings,
+    handle_get_user_email,
     handle_list_documents,
     handle_list_orgs,
     handle_login,
@@ -850,28 +849,6 @@ def organisation_settings_ui() -> None:
                 st.divider()
 
 
-def render_dynamic_options(func: Callable) -> Callable:
-    """Renders the dynamic options for a config key."""
-
-    def _drop_down_selector(*args: Any, **kwargs: Any) -> None:
-        """Streamlit selectbox for rendering dynamic options."""
-        options, fmt, disabled = func(*args, **kwargs)
-        configs: dict = kwargs.get("configs", {})
-        configkey: ConfigKey = kwargs.get("configkey", None)
-        key: str = kwargs.get("key", None)
-        selected = configs.get(configkey.key) if configs else None
-        st.selectbox(
-            f"{configkey.name}{'' if configkey.is_optional else ' *'}",
-            options=options,
-            key=key,
-            format_func=fmt,
-            help=configkey.ref_link,
-            disabled=disabled,
-            index=options.index(selected) if bool(selected and options) else 0,
-        )
-    return _drop_down_selector
-
-
 def _get_create_space_config_input_values() -> str:
     """Get values for space creation from session state."""
     space_name = st.session_state.get("create_space_name", "")
@@ -885,13 +862,19 @@ def _get_random_key(prefix: str) -> str:
     return prefix + str(random.randint(0, 1000000)) # noqa E501
 
 
-def render_gdrive_credential_request(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
-    """Renders the Google Drive credential request input field with an action burron."""
-    creds = configs.get(configkey.key) if configs else st.session_state.get(key, None)
-    creds = services.google_drive.validate_credentials(creds)
-    info_container = st.empty()
+def _get_credential_request_params() -> dict:
+    return {
+        "code": st.experimental_get_query_params().get("code", [None])[0],
+        "email": handle_get_user_email(),
+        "state": _get_create_space_config_input_values()
+    }
+
+
+def _render_file_storage_credential_request(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
+    """Renders the credential request input field with an action button."""
+    saved_credentials = configs.get(configkey.key) if configs else st.session_state.get(key, None)
     global opacity
-    opacity = 0.4 if creds else 1.0
+    opacity = 0.4 if saved_credentials else 1.0
     st.markdown(f"""
     <style>
       div.element-container .stMarkdown div[data-testid="stMarkdownContainer"] p {{
@@ -907,77 +890,100 @@ def render_gdrive_credential_request(configkey: ConfigKey, key: str, configs: Op
     st.write(f"{configkey.name}{'' if configkey.is_optional else ' *'}")
     text_box, btn = st.columns([3, 1])
 
-    state, resp, auth = None, None, None
+    new_credentials, auth_url = None, None
 
-    if not creds:
-        state = _get_create_space_config_input_values()
-        resp, auth = handle_get_gdrive_authurl(state)
+    if not saved_credentials:
+        params = _get_credential_request_params()
+        handler = configkey.options.get("handler", None) if configkey.options else None
+        response = handler(params) if handler else {}
+        new_credentials = response.get("credential") if response else None
+        auth_url = response.get("auth_url") if response else None
 
-    credential_present = bool(creds or resp == services.google_drive.VALID_CREDENTIALS)
-    opacity = 0.4 if credential_present else 1.0
-    _input_value = '*' * 64 if credential_present else ""
+    opacity = 0.4 if bool(new_credentials or saved_credentials) else 1.0
 
     text_box.text_input(
         configkey.name,
-        value=_input_value,
+        value='*' * 64 if bool(new_credentials or saved_credentials) else "",
         key=_get_random_key("_input_key"),
         disabled=True, label_visibility="collapsed"
     )
 
     btn.button(
         "Signin with Google",
-        disabled=credential_present,
+        disabled=bool(new_credentials or saved_credentials),
         key=_get_random_key("_btn_key"),
-        on_click=lambda: handle_redirect_to_url(auth, "gdrive") if auth else None,
+        on_click=lambda: handle_redirect_to_url(auth_url, "gdrive") if auth_url else None,
     )
 
-    if resp == services.google_drive.VALID_CREDENTIALS:
-        st.session_state[key] = auth
-        st.session_state[configkey.key] = auth
-
-    if resp == services.google_drive.AUTH_WRONG_EMAIL:
-        info_container.error("You must authenticate google drive using the same email address for your Docq.AI account")
-
-    if not bool(st.session_state.get(key, None) or creds):
+    if not bool(saved_credentials or new_credentials):
         st.stop()
 
+    if new_credentials is not None:
+        st.session_state[key] = new_credentials
+        st.session_state[configkey.key] = new_credentials
+        st.experimental_set_query_params()
 
-@render_dynamic_options
-def list_gdrive_folders(**kwargs: Any) -> tuple[list, Callable, bool]:
-    """List Google Drive folders."""
-    configs: dict = kwargs.get("configs", {})
-    configkey: ConfigKey = kwargs.get("configkey", None)
-    saved_settings = configs.get(configkey.key) if configs else None
 
-    if saved_settings:
-        return [saved_settings], lambda x: x["name"], True
+@st.cache_data(ttl=60)
+def fetch_file_storage_root_folders(_configkey: ConfigKey, configs: Optional[dict]) -> tuple[list, Callable, bool]:
+    """List File Storage System root foldesrs."""
+    saved_settings = configs.get(_configkey.key) if configs else None
+    options = _configkey.options if _configkey.options else {}
+    if saved_settings is not None:
+        return [saved_settings], options.get("format_func", lambda x: x), True
 
-    # Make API call to Google Drive to get folders if creating space, i.e No saved settings.
-    credential_key = f"{FileStorageServiceKeys.GOOGLE_DRIVE.name}-credential"
-    __creds = configs.get(credential_key) if configs else st.session_state.get(credential_key, None)
-    creds = services.google_drive.validate_credentials(__creds)
+    else:
+        handler: Callable = options.get("handler", None)
+        return handler(configs, st.session_state) if handler else [], lambda x: x, False
 
-    return (services.google_drive.list_folders(creds), lambda x: x["name"], False) if creds else ([], lambda x: x, False)
+
+def _render_file_storage_root_path_options(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
+    """Renders the dynamic options for a config key."""
+    temp_key = f"{key}_temp"
+
+    if temp_key not in st.session_state:
+        st.session_state[temp_key] = (
+            *fetch_file_storage_root_folders(configkey, configs),
+            configs.get(configkey.key) if configs else None
+        )
+
+    options, fmt, disabled, selected = st.session_state[temp_key]
+    st.selectbox(
+        f"{configkey.name}{'' if configkey.is_optional else ' *'}",
+        options=options,
+        key=key,
+        format_func=fmt,
+        help=configkey.ref_link,
+        disabled=disabled,
+        index=options.index(selected) if bool(selected and options) else 0,
+    )
+
+
+def _handle_custom_input_field(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
+    """Handle Ui interactions."""
+    if configkey.options and configkey.options.get("type") == "credential":
+        _render_file_storage_credential_request(
+            configkey,
+            key,
+            configs
+        )
+    elif configkey.options and configkey.options.get("type") == "root_path":
+        _render_file_storage_root_path_options(
+            configkey,
+            key,
+            configs
+        )
+    else:
+        log.error("Unknown custom input field type: %s", str(configkey.options))
 
 
 def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: str, configs: Optional[dict] = None) -> None:
-    fs_handlers = FileStorageServiceHandlers(
-        {
-            FileStorageServiceKeys.GOOGLE_DRIVE.name: SetFSHandler(
-                credential=render_gdrive_credential_request,
-                root_path=list_gdrive_folders,
-            )
-        }
-    )
-
     config_key_list: List[ConfigKey] = data_source[2]
 
     for configkey in config_key_list:
         _input_key = prefix + "ds_config_" + configkey.key
-        service, operation = configkey.key.split("-")
-        handler = fs_handlers[service]
-        if handler is not None:
-            handler(operation, configkey=configkey, key=_input_key, configs=configs)
+        if configkey.options and configkey.options.get("type", None):
+            _handle_custom_input_field(configkey, _input_key, configs)
 
         else:
             input_type = "password" if configkey.is_secret else "default"

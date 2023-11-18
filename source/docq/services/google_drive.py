@@ -140,3 +140,31 @@ def download_file(service: Any, file_id: str, file_name: str, mime: str) -> bool
     except Exception as e:
         log.error("Failed to download file: %s", e)
         return False
+
+
+def get_auth_url(data: dict) -> Optional[dict]:
+    """Get auth url for google drive api."""
+    try:
+        flow = get_flow()
+        code = data.get("code", None)
+        if code is not None:
+            flow.fetch_token(code=code)
+            creds = flow.credentials
+            return {"credential": creds.to_json()}
+        else:
+            email = data.get("email", None)
+            state = data.get("state", None)
+            authorization_params = get_auth_url_params(email, state)
+            authorization_url, state = flow.authorization_url(
+                **authorization_params,
+            )
+            return {"auth_url": authorization_url }
+    except Exception as e:
+        log.error("Failed to get auth url: %s", e)
+        return None
+
+
+def format_func(x: dict) -> dict:
+    """Format function."""
+    return x["name"]
+
