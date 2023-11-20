@@ -603,16 +603,11 @@ def _personal_ask_style() -> None:
     st.write(
         """
     <style>
-        [data-testid="stExpander"] {
+        section[tabindex="0"] [data-testid="stExpander"] {
             z-index: 1000;
             position: fixed;
             top: 46px;
         }
-
-        [data-testid="stExpander"] .row-widget.stMultiSelect label {
-            display: none !important;
-        }
-
     </style>
     """,
         unsafe_allow_html=True,
@@ -706,6 +701,7 @@ def chat_ui(feature: FeatureKey) -> None:
                     default=spaces,
                     format_func=lambda x: x[2],
                     key=f"chat_shared_spaces_{feature.value()}",
+                    label_visibility="collapsed",
                 )
                 st.checkbox("Including your documents", value=True, key="chat_personal_space")
 
