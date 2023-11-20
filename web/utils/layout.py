@@ -1009,7 +1009,7 @@ def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: st
             )
 
 
-def _get_space_defaults() -> Tuple[str, str, str]:
+def _get_create_space_form_values() -> Tuple[str, str, str]:
     """Get default values for space creation from query string."""
     space_config = st.experimental_get_query_params().get("state", [None])[0]
     if space_config:
@@ -1026,7 +1026,7 @@ def _get_space_defaults() -> Tuple[str, str, str]:
 def create_space_ui(expanded: bool = False) -> None:
     """Create a new space."""
     data_sources = list_space_data_source_choices()
-    space_name, space_summary, ds_type = _get_space_defaults()
+    space_name, space_summary, ds_type = _get_create_space_form_values()
     _prefill_form = bool(space_name or space_summary or ds_type)
     with st.expander("### + New Space", expanded=expanded or _prefill_form):
         st.text_input("Name", value=space_name if space_name else "", key="create_space_name")
