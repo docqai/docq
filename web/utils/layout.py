@@ -37,7 +37,7 @@ from streamlit.delta_generator import DeltaGenerator
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .error_ui import _handle_error_state_ui
-from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
+from .formatters import format_archived, format_datetime, format_duration, format_filesize, format_timestamp
 from .handlers import (
     _set_session_state_configs,
     get_enabled_org_features,
@@ -623,22 +623,24 @@ def _show_chat_histories(feature: FeatureKey) -> None:
     st.markdown("""
       <style>
         .streamlit-expanderContent button[kind="secondary"] {
-           /*border: none !important;*/
             width: 100%;
             text-align: left !important;
             justify-content: flex-start;
             padding: 0px 1rem;
             opacity: 0.8;
             min-height: unset !important;
-            height: 24px;
-            line-height: 1.5rem;
+            max-height: 2rem !important;
+            height: 2rem;
             border-radius: 3px;
+            overflow: hidden;
         }
-        /*
-        .streamlit-expanderContent button[kind="secondary"]:not(:hover):not(:focus):not(:active) {
-            background-color: transparent;
-        }*/
+        .streamlit-expanderContent h4 {
+            margin-bottom: 0.5rem;
+        }
         .streamlit-expanderContent button[kind="secondary"] p {
+            padding-top: 0.3rem;
+            max-height: 1.6rem;
+            overflow: hidden;
             display: inline-block !important;
         }
         .streamlit-expanderContent div[data-testid="stVerticalBlock"] {
@@ -649,9 +651,15 @@ def _show_chat_histories(feature: FeatureKey) -> None:
     )
     with st.sidebar.expander("Chat History"):
         chat_threads = handle_get_chat_history_threads(feature)
+        day = None
         for x in chat_threads:
-            topic = x[1]
-            st.button(topic[:35], key=f"{topic}-{x[0]}", on_click=handle_click_chat_history_thread, args=(feature, x[0],))
+            if day is None:
+                day = format_duration(x[2])
+                st.markdown(f"#### {day}")
+            if format_duration(x[2]) != day:
+                day = format_duration(x[2])
+                st.markdown(f"#### {day}")
+            st.button(x[1], key=f"{x[1]}-{x[0]}", on_click=handle_click_chat_history_thread, args=(feature, x[0],))
 
 
 def chat_ui(feature: FeatureKey) -> None:

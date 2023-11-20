@@ -942,3 +942,29 @@ def handle_redirect_to_url(url: str, key: str) -> None:
         </script>
         """, height=0
     )
+
+
+def _create_topic_summery(topic: str, feature: domain.FeatureKey, thread_id: int) -> str:
+    """Create a topic summary."""
+    default_topic = r"New thread \d+"
+    if re.match(default_topic, topic):
+        thread_summery = run_queries.get_chat_summerised_history(feature, thread_id)        # TODO: Generate topic from summery using AI
+        if len(thread_summery) > 0:
+            first_query = thread_summery[0][1]
+            topic = first_query[:100]
+            run_queries.update_thread_topic(topic, feature, thread_id)
+    return topic
+
+
+def handle_get_chat_history_threads(feature: domain.FeatureKey) -> List[Tuple[int, str, datetime]]:
+    """Get chat history threads."""
+    threads = run_queries.list_thread_history(feature)
+    return [ (t[0], _create_topic_summery(t[1], feature, t[0]), t[2]) for t in threads ] # type: ignore
+
+
+def handle_click_chat_history_thread(feature: domain.FeatureKey, thread_id: int) -> None:
+    """Set chat history thread."""
+    set_chat_session(thread_id, feature.type_, SessionKeyNameForChat.THREAD)
+    set_chat_session(datetime.now(), feature.type_, SessionKeyNameForChat.CUTOFF)
+    set_chat_session([], feature.type_, SessionKeyNameForChat.HISTORY)
+    query_chat_history(feature)
