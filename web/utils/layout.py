@@ -3,7 +3,7 @@ import base64
 import logging as log
 import random
 import re
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 from urllib.parse import quote_plus, unquote_plus
 
 import docq
@@ -25,7 +25,6 @@ from docq.model_selection.main import (
     get_model_settings_collection,
     list_available_model_settings_collections,
 )
-from docq.run_queries import list_thread_history, update_thread_topic
 from docq.support.auth_utils import (
     get_cache_auth_session,
     reset_cache_and_cookie_auth_session,
@@ -54,6 +53,7 @@ from .handlers import (
     handle_check_account_activated,
     handle_check_mailer_ready,
     handle_check_user_exists,
+    handle_click_chat_history_thread,
     handle_create_new_chat,
     handle_create_org,
     handle_create_space,
@@ -65,6 +65,7 @@ from .handlers import (
     handle_delete_space_group,
     handle_delete_user_group,
     handle_fire_extensions_callbacks,
+    handle_get_chat_history_threads,
     handle_get_gravatar_url,
     handle_get_system_settings,
     handle_get_user_email,
@@ -622,7 +623,7 @@ def _show_chat_histories(feature: FeatureKey) -> None:
     st.markdown("""
       <style>
         .streamlit-expanderContent button[kind="secondary"] {
-            border: none !important;
+           /*border: none !important;*/
             width: 100%;
             text-align: left !important;
             justify-content: flex-start;
@@ -633,9 +634,10 @@ def _show_chat_histories(feature: FeatureKey) -> None:
             line-height: 1.5rem;
             border-radius: 3px;
         }
+        /*
         .streamlit-expanderContent button[kind="secondary"]:not(:hover):not(:focus):not(:active) {
             background-color: transparent;
-        }
+        }*/
         .streamlit-expanderContent button[kind="secondary"] p {
             display: inline-block !important;
         }
@@ -646,11 +648,10 @@ def _show_chat_histories(feature: FeatureKey) -> None:
     """, unsafe_allow_html=True
     )
     with st.sidebar.expander("Chat History"):
-        chat_threads = list_thread_history(feature)
-        test_defalt_thread = r"New Thread \d+"
+        chat_threads = handle_get_chat_history_threads(feature)
         for x in chat_threads:
             topic = x[1]
-            st.button(topic[:35], key=topic, on_click=lambda: print(f"\x1b[31mChat history button clicked{chat_threads}\x1b[0m"))
+            st.button(topic[:35], key=f"{topic}-{x[0]}", on_click=handle_click_chat_history_thread, args=(feature, x[0],))
 
 
 def chat_ui(feature: FeatureKey) -> None:

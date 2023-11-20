@@ -53,7 +53,7 @@ def _save_messages(data: list[tuple[str, bool, datetime, int]], feature: Feature
     usage_file = (
         get_sqlite_usage_file(feature.id_)
         if feature.type_ != OrganisationFeatureType.ASK_PUBLIC
-        else get_public_sqlite_usage_file(feature.id_)
+        else get_public_sqlite_usage_file(str(feature.id_))
     )
     with closing(sqlite3.connect(usage_file, detect_types=sqlite3.PARSE_DECLTYPES)) as connection, closing(
         connection.cursor()
@@ -67,7 +67,7 @@ def _save_messages(data: list[tuple[str, bool, datetime, int]], feature: Feature
 
         for x in data:
             log.debug("Saving message: %s", x)
-            cursor.execute(f"INSERT INTO {tablename} (message, human, timestamp, thread_id) VALUES (?, ?, ?, ?)", x)
+            cursor.execute(f"INSERT INTO {tablename} (message, human, timestamp, thread_id) VALUES (?, ?, ?, ?)", x)  # noqa: S608
             rows.append((cursor.lastrowid, x[0], x[1], x[2], x[3]))
         connection.commit()
 
@@ -75,14 +75,14 @@ def _save_messages(data: list[tuple[str, bool, datetime, int]], feature: Feature
 
 
 def _retrieve_messages(
-    cutoff: datetime, size: int, feature: FeatureKey, thread_id: int
+    cutoff: datetime, size: int, feature: FeatureKey, thread_id: int, invert: bool = False
 ) -> list[tuple[int, str, bool, datetime, int]]:
     tablename = get_history_table_name(feature.type_)
     thread_tablename = get_history_thread_table_name(feature.type_)
     usage_file = (
         get_sqlite_usage_file(feature.id_)
         if feature.type_ != OrganisationFeatureType.ASK_PUBLIC
-        else get_public_sqlite_usage_file(feature.id_)
+        else get_public_sqlite_usage_file(str(feature.id_))
     )
     rows = None
     with closing(sqlite3.connect(usage_file, detect_types=sqlite3.PARSE_DECLTYPES)) as connection, closing(
@@ -91,11 +91,17 @@ def _retrieve_messages(
         cursor.execute(SQL_CREATE_THREAD_TABLE.format(table=thread_tablename))
         cursor.execute(SQL_CREATE_MESSAGE_TABLE.format(table=tablename, thread_table=thread_tablename))
         log.debug("Retrieving message params: thread_id=%s, cutoff=%s, size=%s", thread_id, cutoff, size)
-        rows = cursor.execute(
-            f"SELECT id, message, human, timestamp, thread_id FROM {tablename} WHERE thread_id = ? AND timestamp < ? ORDER BY timestamp DESC LIMIT ?",
-            (thread_id, cutoff, size),
-        ).fetchall()
-        rows.reverse()
+        if invert:
+            rows = cursor.execute(
+                f"SELECT id, message, human, timestamp, thread_id FROM {tablename} WHERE thread_id = ? AND timestamp < ? ORDER BY timestamp LIMIT ?",  # noqa: S608
+                (thread_id, cutoff, size),
+            ).fetchall()
+        else:
+            rows = cursor.execute(
+                f"SELECT id, message, human, timestamp, thread_id FROM {tablename} WHERE thread_id = ? AND timestamp < ? ORDER BY timestamp DESC LIMIT ?",  # noqa: S608
+                (thread_id, cutoff, size),
+            ).fetchall()
+            rows.reverse()
 
     return rows
 
@@ -113,7 +119,6 @@ def list_thread_history(feature: FeatureKey) -> list[tuple[int, str, int]]:
             )
         )
         rows = cursor.execute(f"SELECT id, topic, created_at FROM {tablename} ORDER BY created_at DESC").fetchall()  # noqa: S608
-        rows.reverse()
 
     return rows
 
@@ -131,6 +136,13 @@ def update_thread_topic(topic: str, feature: FeatureKey, thread_id: int) -> None
         )
         cursor.execute(f"UPDATE {tablename} SET topic = ? WHERE id = ?", (topic, thread_id))  # noqa: S608
         connection.commit()
+
+
+def get_chat_summerised_history(feature: FeatureKey, thread_id: int) -> list[tuple[int, str, bool]]:
+    """Retrieve the top messages for a chat thread."""
+    return [
+        (x[:3]) for x in _retrieve_messages(datetime.now(), NUMBER_OF_MESSAGES_IN_HISTORY, feature, thread_id)
+    ]
 
 
 def _retrieve_last_n_history(feature: FeatureKey, thread_id: int) -> str:
