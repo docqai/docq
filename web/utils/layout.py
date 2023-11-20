@@ -617,7 +617,7 @@ def _personal_ask_style() -> None:
 def _show_chat_histories(feature: FeatureKey) -> None:
     st.markdown("""
       <style>
-        .streamlit-expanderContent button[kind="secondary"] {
+        section[data-testid="stSidebar"] .streamlit-expanderContent button[kind="secondary"] {
             width: 100%;
             text-align: left !important;
             justify-content: flex-start;
@@ -629,16 +629,16 @@ def _show_chat_histories(feature: FeatureKey) -> None:
             border-radius: 3px;
             overflow: hidden;
         }
-        .streamlit-expanderContent h4 {
+        section[data-testid="stSidebar"] .streamlit-expanderContent h4 {
             margin-bottom: 0.5rem;
         }
-        .streamlit-expanderContent button[kind="secondary"] p {
+        section[data-testid="stSidebar"] .streamlit-expanderContent button[kind="secondary"] p {
             padding-top: 0.3rem;
             max-height: 1.6rem;
             overflow: hidden;
             display: inline-block !important;
         }
-        .streamlit-expanderContent div[data-testid="stVerticalBlock"] {
+        section[data-testid="stSidebar"] .streamlit-expanderContent div[data-testid="stVerticalBlock"] {
             gap: 2px !important;
         }
       </style>
