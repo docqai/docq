@@ -8,11 +8,12 @@ from datetime import datetime
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Optional
 from urllib.parse import quote_plus
 
 SENDER_EMAIL_KEY = "DOCQ_SMTP_LOGIN"
 SMTP_PORT_KEY = "DOCQ_SMTP_PORT"
-SMTP_PASSWORD_KEY = "DOCQ_SMTP_KEY"
+SMTP_LOGIN_KEY = "DOCQ_SMTP_KEY"
 SMTP_SERVER_KEY = "DOCQ_SMTP_SERVER"
 SERVER_ADDRESS_KEY = "DOCQ_SERVER_ADDRESS"
 SMTP_SENDER_EMAIL_KEY = "DOCQ_SMTP_FROM"
@@ -23,9 +24,9 @@ VERIFICATION_EMAIL_TEMPLATE = """
 """
 
 
-def _get_verification_email_template(**kwargs: dict) -> str:
+def _get_verification_email_template(**kwargs: str) -> str:
     """Get email template."""
-    template = VERIFICATION_EMAIL_TEMPLATE
+    template:str = VERIFICATION_EMAIL_TEMPLATE
     for key, value in kwargs.items():
         template = template.replace("{{ " + key + " }}", value)
     return template
@@ -40,7 +41,7 @@ def _send_email(
     smtp_port: int,
     username: str,
     password: str,
-    attachments: list[str] = None,
+    attachments: Optional[list[str]] = None,
 ) -> None:
     """Send an email."""
     try:
@@ -78,11 +79,11 @@ def _generate_verification_url(user_id: int) -> str:
 
 def send_verification_email(reciever_email: str, name: str, user_id: int) -> None:
     """Send verification email."""
-    username = os.environ.get(SENDER_EMAIL_KEY)
-    smtp_port = os.environ.get(SMTP_PORT_KEY)
-    smtp_password = os.environ.get(SMTP_PASSWORD_KEY)
-    smtp_server = os.environ.get(SMTP_SERVER_KEY)
-    sender_email = os.environ.get(SMTP_SENDER_EMAIL_KEY)
+    username: str = os.environ.get(SENDER_EMAIL_KEY, "")
+    smtp_port: int = int(os.environ.get(SMTP_PORT_KEY, 0))
+    smtp_password: str = os.environ.get(SMTP_LOGIN_KEY, "")
+    smtp_server: str = os.environ.get(SMTP_SERVER_KEY, "")
+    sender_email: str = os.environ.get(SMTP_SENDER_EMAIL_KEY, "")
 
     subject = "Docq.AI Sign-up - Email Verification"
     message = _get_verification_email_template(
@@ -109,7 +110,7 @@ def mailer_ready() -> bool:
         [
             os.environ.get(SENDER_EMAIL_KEY),
             os.environ.get(SMTP_PORT_KEY),
-            os.environ.get(SMTP_PASSWORD_KEY),
+            os.environ.get(SMTP_LOGIN_KEY),
             os.environ.get(SMTP_SERVER_KEY),
             os.environ.get(SERVER_ADDRESS_KEY),
             os.environ.get(SMTP_SENDER_EMAIL_KEY),

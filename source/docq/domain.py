@@ -4,7 +4,7 @@ import logging as log
 import sys
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, Self
 
 from .config import OrganisationFeatureType, SpaceType
 
@@ -24,10 +24,12 @@ class FeatureKey:
     type_: OrganisationFeatureType
     id_: int
 
-    def __str__(self) -> str:
+    def __str__(self: Self) -> str:
+        """Returns the string representation of the feature key."""
         return _join_properties(_SEPARATOR_FOR_STR, self.type_.name, self.id_)
 
-    def value(self) -> str:
+    def value(self: Self) -> str:
+        """Feature key value."""
         return _join_properties(_SEPARATOR_FOR_VALUE, self.type_.name, self.id_)
 
 
@@ -41,10 +43,12 @@ class SpaceKey:
     summary: Optional[str] = None
     """The organisation ID that owns the space."""
 
-    def __str__(self) -> str:
+    def __str__(self: Self) -> str:
+        """Returns the string representation of the space key."""
         return _join_properties(_SEPARATOR_FOR_STR, self.type_.name, self.org_id, self.id_)
 
-    def value(self) -> str:
+    def value(self: Self) -> str:
+        """Space key value."""
         return _join_properties(_SEPARATOR_FOR_VALUE, self.type_.name, self.org_id, self.id_)
 
 
@@ -57,6 +61,7 @@ class ConfigKey:
     is_optional: bool = False
     is_secret: bool = False
     ref_link: Optional[str] = None
+    options: Optional[dict] = None
 
 
 @dataclass

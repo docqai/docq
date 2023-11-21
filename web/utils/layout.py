@@ -1,8 +1,10 @@
 """Layout components for the web app."""
-
+import base64
 import logging as log
+import random
 import re
-from typing import List, Tuple
+from typing import Callable, List, Optional, Tuple
+from urllib.parse import quote_plus, unquote_plus
 
 import docq
 import streamlit as st
@@ -16,7 +18,7 @@ from docq.config import (
     SystemFeatureType,
     SystemSettingsKey,
 )
-from docq.domain import DocumentListItem, FeatureKey, SpaceKey
+from docq.domain import ConfigKey, DocumentListItem, FeatureKey, SpaceKey
 from docq.extensions import ExtensionContext
 from docq.model_selection.main import (
     ModelUsageSettingsCollection,
@@ -64,6 +66,7 @@ from .handlers import (
     handle_fire_extensions_callbacks,
     handle_get_gravatar_url,
     handle_get_system_settings,
+    handle_get_user_email,
     handle_list_documents,
     handle_list_orgs,
     handle_login,
@@ -71,6 +74,7 @@ from .handlers import (
     handle_manage_space_permissions,
     handle_org_selection_change,
     handle_public_session,
+    handle_redirect_to_url,
     handle_reindex_space,
     handle_resend_email_verification,
     handle_update_org,
@@ -845,34 +849,199 @@ def organisation_settings_ui() -> None:
                 st.divider()
 
 
-def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: str, configs: dict = None) -> None:
-    for key in data_source[2]:
-        input_type = "password" if key.is_secret else "default"
-        st.text_input(
-            f"{key.name}{'' if key.is_optional else ' *'}",
-            value=configs.get(key.key) if configs else "",
-            key=prefix + "ds_config_" + key.key,
-            type=input_type,
-            help=key.ref_link,
-            autocomplete="off",  # disable autofill by password manager etc.
+def _get_create_space_config_input_values() -> str:
+    """Get values for space creation from session state."""
+    space_name = st.session_state.get("create_space_name", "")
+    space_summary = st.session_state.get("create_space_summary", "")
+    ds_type = st.session_state.get("create_space_ds_type", ["", ""])
+    space_configs = f"{space_name}::{space_summary}::{ds_type[1]}"
+    return quote_plus(base64.b64encode(space_configs.encode()))
+
+
+def _get_random_key(prefix: str) -> str:
+    return prefix + str(random.randint(0, 1000000)) # noqa E501
+
+
+def _get_credential_request_params() -> dict:
+    return {
+        "code": st.experimental_get_query_params().get("code", [None])[0],
+        "email": handle_get_user_email(),
+        "state": _get_create_space_config_input_values()
+    }
+
+
+def _render_file_storage_credential_request(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
+    """Renders the credential request input field with an action button."""
+    saved_credentials = configs.get(configkey.key) if configs else st.session_state.get(key, None)
+    global opacity
+    opacity = 0.4 if saved_credentials else 1.0
+    st.markdown(f"""
+    <style>
+      div.element-container .stMarkdown div[data-testid="stMarkdownContainer"] p {{
+        margin-bottom: 8px !important;
+        font-size: 14px !important;
+        opacity: {opacity} !important;
+      }}
+      div.element-container .stMarkdown div[data-testid="stMarkdownContainer"] style {{
+        display: none !important;
+      }}
+    </style>
+    """, unsafe_allow_html=True)
+    st.write(f"{configkey.name}{'' if configkey.is_optional else ' *'}")
+    text_box, btn = st.columns([3, 1])
+
+    new_credentials, auth_url = None, None
+
+    if saved_credentials is None:
+        params = _get_credential_request_params()
+        handler = configkey.options.get("handler", None) if configkey.options else None
+        response = handler(params) if handler else {}
+        new_credentials = response.get("credential") if response else None
+        auth_url = response.get("auth_url") if response else None
+
+    opacity = 0.4 if bool(new_credentials or saved_credentials) else 1.0
+
+    text_box.text_input(
+        configkey.name,
+        value='*' * 64 if bool(new_credentials or saved_credentials) else "",
+        key=_get_random_key("_input_key"),
+        disabled=True, label_visibility="collapsed"
+    )
+
+    btn.button(
+        configkey.options.get("btn_label", "Get Credential") if configkey.options else "Get Credentials",
+        disabled=bool(saved_credentials or new_credentials),
+        key=_get_random_key("_btn_key"),
+        on_click=lambda: handle_redirect_to_url(auth_url, "gdrive") if auth_url else None,
+    )
+
+    if not bool(saved_credentials or new_credentials):
+        st.stop()
+
+    if new_credentials is not None:
+        st.session_state[key] = new_credentials or saved_credentials
+        st.session_state[configkey.key] = new_credentials or saved_credentials
+        st.experimental_set_query_params()
+
+
+def fetch_file_storage_root_folders(_configkey: ConfigKey, configs: Optional[dict]) -> tuple[list[dict], bool]:
+    """List File Storage System root foldesrs."""
+    saved_settings = configs.get(_configkey.key) if configs else None
+    options = _configkey.options if _configkey.options else {}
+    if saved_settings is not None:
+        return [saved_settings], True
+
+    else:
+        with st.spinner("Loading Options..."):
+            handler: Callable = options.get("handler", None)
+            if handler:
+                return handler(configs, st.session_state)
+            return [], False
+
+
+def _set_options(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
+    st.session_state[key] = (
+        *fetch_file_storage_root_folders(configkey, configs),
+        configs.get(configkey.key) if configs else None
+    )
+
+
+def _render_file_storage_root_path_options(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
+    """Renders the dynamic options for a config key."""
+    temp_key = f"{key}_temp"
+
+    if temp_key not in st.session_state:
+        _set_options(configkey, temp_key, configs)
+
+    options, disabled, selected = st.session_state[temp_key]
+    if not options:
+        _set_options(configkey, temp_key, configs)
+        options, disabled, selected = st.session_state[temp_key]
+
+    fmt_func = configkey.options.get("format_function", None) if configkey.options else None
+
+    st.selectbox(
+        f"{configkey.name}{'' if configkey.is_optional else ' *'}",
+        options=options,
+        key=key,
+        format_func= fmt_func if fmt_func else lambda x: x,
+        help=configkey.ref_link,
+        disabled=disabled,
+        index=options.index(selected) if bool(selected and options) else 0,
+    )
+
+
+def _handle_custom_input_field(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
+    """Handle Ui interactions."""
+    if configkey.options and configkey.options.get("type") == "credential":
+        _render_file_storage_credential_request(
+            configkey,
+            key,
+            configs
         )
+    elif configkey.options and configkey.options.get("type") == "root_path":
+        _render_file_storage_root_path_options(
+            configkey,
+            key,
+            configs
+        )
+    else:
+        log.error("Unknown custom input field type: %s", str(configkey.options))
+
+
+def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: str, configs: Optional[dict] = None) -> None:
+    config_key_list: List[ConfigKey] = data_source[2]
+
+    for configkey in config_key_list:
+        _input_key = prefix + "ds_config_" + configkey.key
+        if configkey.options and configkey.options.get("type", None):
+            _handle_custom_input_field(configkey, _input_key, configs)
+
+        else:
+            input_type = "password" if configkey.is_secret else "default"
+            st.text_input(
+                f"{configkey.name}{'' if configkey.is_optional else ' *'}",
+                value=configs.get(configkey.key) if configs else "",
+                key=_input_key,
+                type=input_type,
+                help=configkey.ref_link,
+                autocomplete="off",  # disable autofill by password manager etc.
+            )
+
+
+def _get_create_space_form_values() -> Tuple[str, str, str]:
+    """Get default values for space creation from query string."""
+    space_config = st.experimental_get_query_params().get("state", [None])[0]
+    if space_config:
+        try:
+            space_config = unquote_plus(space_config)
+            space_name, space_summary, ds_type = base64.b64decode(space_config).decode("utf-8").split("::")
+            st.session_state["create_space_defaults"] = (space_name, space_summary, ds_type)
+        except Exception as e:
+            st.session_state["create_space_defaults"] = ("", "", "")
+            log.error("Error parsing space config from query string: %s", e)
+    return st.session_state.get("create_space_defaults", ("", "", ""))
 
 
 def create_space_ui(expanded: bool = False) -> None:
     """Create a new space."""
     data_sources = list_space_data_source_choices()
-    with st.expander("### + New Space", expanded=expanded):
-        st.text_input("Name", value="", key="create_space_name")
-        st.text_input("Summary", value="", key="create_space_summary")
+    space_name, space_summary, ds_type = _get_create_space_form_values()
+    _prefill_form = bool(space_name or space_summary or ds_type)
+    with st.expander("### + New Space", expanded=expanded or _prefill_form):
+        st.text_input("Name", value=space_name if space_name else "", key="create_space_name")
+        st.text_input("Summary", value=space_summary if space_summary else "", key="create_space_summary")
         ds = st.selectbox(
             "Data Source",
             options=data_sources,
             key="create_space_ds_type",
             format_func=lambda x: x[1],
+            index=[x[1] for x in data_sources].index(ds_type) if ds_type else 0,
         )
         if ds:
             _render_space_data_source_config_input_fields(ds, "create_space_")
         if st.button("Create Space"):
+            st.session_state["create_space_defaults"] = ("", "", "")
             handle_create_space()
 
 
@@ -900,7 +1069,7 @@ def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> No
     has_edit_perm = org_id == get_selected_org_id()
 
     if has_edit_perm:
-        with st.form(key=f"update_space_details_{id_}"):
+        with st.expander("Edit space", expanded=True):
             st.text_input("Name", value=name, key=f"update_space_details_{id_}_name")
             st.text_input("Summary", value=summary, key=f"update_space_details_{id_}_summary")
             st.checkbox("Is Archived", value=archived, key=f"update_space_details_{id_}_archived")
@@ -913,7 +1082,8 @@ def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> No
                 format_func=lambda x: x[1],
             )
             _render_space_data_source_config_input_fields(data_source, f"update_space_details_{id_}_", ds_configs)
-            st.form_submit_button("Save", on_click=handle_update_space_details, args=(id_,))
+            if st.button("Save", key=_get_random_key("_save_btn_key")):
+                handle_update_space_details(id_)
 
 
 def _render_edit_space_details(space_data: Tuple, data_source: Tuple) -> None:
@@ -930,7 +1100,7 @@ def _render_manage_space_permissions_form(space_data: Tuple) -> None:
     if has_edit_perm:
         permissions = get_shared_space_permissions(id_)
 
-        with st.form(key=f"manage_space_permissions_{id_}"):
+        with st.expander("Manage Space Permissions", expanded=True):
             st.checkbox(
                 "Public Access",
                 value=permissions[SpaceAccessType.PUBLIC],
@@ -950,7 +1120,8 @@ def _render_manage_space_permissions_form(space_data: Tuple) -> None:
                 key=f"manage_space_permissions_{id_}_{SpaceAccessType.GROUP.name}",
                 format_func=lambda x: x[1],
             )
-            st.form_submit_button("Save", on_click=handle_manage_space_permissions, args=(id_,))
+            if st.button("Save"):
+                handle_manage_space_permissions(id_)
 
 
 def _render_manage_space_permissions(space_data: Tuple) -> None:
@@ -1014,7 +1185,7 @@ def _editor_view(q_param: str) -> None:
                 _render_manage_space_permissions_form(s)
 
 
-def admin_docs_ui(q_param: str = None) -> None:
+def admin_docs_ui(q_param: Optional[str] = None) -> None:
     """Manage Documents UI."""
     spaces = list_shared_spaces()
     if spaces:
@@ -1038,9 +1209,10 @@ def admin_docs_ui(q_param: str = None) -> None:
             index=default_sid if default_sid else 0,
         )
 
-        if selected:
+        if selected and q_param:
             st.experimental_set_query_params(**{q_param: selected[0]})
-        _editor_view(q_param)
+        if q_param:
+            _editor_view(q_param)
 
 
 def org_selection_ui() -> None:
@@ -1135,11 +1307,11 @@ def _validate_password(password: str, generator: DeltaGenerator) -> bool:
         return True
 
 
-def validate_signup_form(form: str = "user-signup") -> None:
+def validate_signup_form(form: str = "user-signup") ->bool:
     """Handle validation of the signup form."""
-    name = st.session_state.get(f"{form}-name", None)
-    email = st.session_state.get(f"{form}-email", None)
-    password = st.session_state.get(f"{form}-password", None)
+    name: str = st.session_state.get(f"{form}-name", None)
+    email: str = st.session_state.get(f"{form}-email", None)
+    password: str = st.session_state.get(f"{form}-password", None)
     validator = st.session_state[f"{form}-validator"]
 
     if not _validate_name(name, validator):

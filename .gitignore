@@ -192,5 +192,9 @@ docker.env
 # ignore Infisical config file
 .infisical.json
 
+# ignore google drive api credentials
+credentials.json
+token.json
+
 # ignore default docq extensions
 .docq-extensions.json

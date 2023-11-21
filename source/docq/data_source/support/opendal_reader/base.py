@@ -30,7 +30,7 @@ import logging as log
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Type, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Self, Type, Union, cast
 
 import opendal
 from llama_index.readers.base import BaseReader
@@ -43,8 +43,9 @@ from llama_index.readers.file.mbox_reader import MboxReader
 from llama_index.readers.file.slides_reader import PptxReader
 from llama_index.readers.file.tabular_reader import PandasCSVReader
 from llama_index.readers.file.video_audio_reader import VideoAudioReader
-from llama_index.readers.schema.base import Document
+from llama_index.schema import Document
 
+from .... import services
 from ....domain import DocumentListItem
 
 DEFAULT_FILE_READER_CLS: Dict[str, Type[BaseReader]] = {
@@ -63,17 +64,39 @@ DEFAULT_FILE_READER_CLS: Dict[str, Type[BaseReader]] = {
     ".ipynb": IPYNBReader,
 }
 
+FILE_MIME_EXTENSION_MAP: Dict[str, str] = {
+    "application/pdf": ".pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+    "application/vnd.google-apps.document": ".gdoc",
+    "application/vnd.google-apps.presentation": ".gslides",
+    "application/vnd.google-apps.spreadsheet": ".gsheet",
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/jpg": ".jpg",
+    "audio/mpeg": ".mp3",
+    "audio/mp3": ".mp3",
+    "video/mp4": ".mp4",
+    "video/mpeg": ".mp4",
+    "text/csv": ".csv",
+    "application/epub+zip": ".epub",
+    "text/markdown": ".md",
+    "application/x-ipynb+json": ".ipynb",
+    "application/mbox": ".mbox",
+}
+
 
 class OpendalReader(BaseReader):
     """General reader for any opendal operator."""
 
     def __init__(
-        self,
+        self: Self,
         scheme: str,
         path: str = "/",
         file_extractor: Optional[Dict[str, Union[str, BaseReader]]] = None,
         file_metadata: Optional[Callable[[str], Dict]] = None,
-        **kwargs: Optional[dict[str, any]],
+        **kwargs: Optional[dict[str, Any]],
     ) -> None:
         """Initialize opendal operator, along with credentials if needed.
 
@@ -102,7 +125,7 @@ class OpendalReader(BaseReader):
 
         self.documents: List[Document] = []
 
-    def load_data(self) -> List[Document]:
+    def load_data(self: Self) -> List[Document]:
         """Load file(s) from OpenDAL."""
         # TODO: think about the private and secure aspect of this temp folder.
         # NOTE: the following code cleans up the temp folder when existing the context.
@@ -124,7 +147,7 @@ class OpendalReader(BaseReader):
 
         return self.documents
 
-    def get_document_list(self) -> List[DocumentListItem]:
+    def get_document_list(self: Self) -> List[DocumentListItem]:
         """Get a list of all documents in the index. A document is a list are 1:1 with a file."""
         dl: List[DocumentListItem] = []
         try:
@@ -136,6 +159,101 @@ class OpendalReader(BaseReader):
         return dl
 
 
+# TODO: Tobe removed once opendal starts supporting Google Drive.
+class GoogleDriveReader(BaseReader):
+    """Google Drive reader."""
+
+    def __init__(
+        self: Self,
+        access_token: dict,
+        root: str,
+        selected_folder_id: Optional[str] = None,
+        path: str = "/",
+        file_extractor: Optional[Dict[str, Union[str, BaseReader]]] = None,
+        file_metadata: Optional[Callable[[str], Dict]] = None,
+    ) -> None:
+        """Initialize Google Drive reader.
+
+        Args:
+            path (str): the path of the data. If none is provided,
+                this loader will iterate through the entire bucket. If path is endswith `/`, this loader will iterate through the entire dir. Otherwise, this loader will load the file.
+            access_token (dict): the access token for the google drive service
+            root (str): the root folder to start the iteration
+            selected_folder_id (Optional[str] = None): the selected folder id
+            file_extractor (Optional[Dict[str, BaseReader]]): A mapping of file
+                extension to a BaseReader class that specifies how to convert that file
+                to text. NOTE: this isn't implemented yet.
+            file_metadata (Optional[Callable[[str], Dict]]): A function that takes a source file path and returns a dictionary of metadata to be added to the Document object.
+        """
+        super().__init__()
+        self.path = path
+        self.file_extractor = file_extractor if file_extractor is not None else {}
+        self.supported_suffix = list(DEFAULT_FILE_READER_CLS.keys())
+        self.access_token = access_token
+        self.root = root
+        self.file_metadata = file_metadata
+        self.selected_folder_id = selected_folder_id
+        self.documents: List[Document] = []
+        self.downloaded_files = []
+
+    def load_data(self: Self) -> List[Document]:
+        """Load file(s) from Google Drive."""
+        service = services.google_drive.get_drive_service(self.access_token)
+        id_ = self.selected_folder_id if self.selected_folder_id is not None else "root"
+        folder_content = service.files().list(
+            q=f"'{id_}' in parents and trashed=false",
+            fields="files(id, name, parents, mimeType, modifiedTime, webViewLink, webContentLink, size, fullFileExtension)",
+        ).execute()
+        files = folder_content.get("files", [])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.downloaded_files = asyncio.run(
+                download_from_gdrive(files, temp_dir, service)
+            )
+
+            self.documents = asyncio.run(
+                extract_files(
+                    self.downloaded_files, file_extractor=self.file_extractor, file_metadata=self.file_metadata
+                )
+            )
+
+        return self.documents
+
+    def get_document_list(self: Self) -> List[DocumentListItem]:
+        """Get a list of all documents in the index. A document is a list are 1:1 with a file."""
+        dl: List[DocumentListItem] = []
+        try:
+            for df in self.downloaded_files:
+                dl.append(DocumentListItem(link=df[0], indexed_on=df[2], size=df[3]))
+        except Exception as e:
+            log.exception("Converting Document list to DocumentListItem list failed: %s", e)
+
+        return dl
+
+
+async def download_from_gdrive(files: List[dict], temp_dir: str, service: Any,) -> List[tuple[str, str, int, int]]:
+    """Download files from Google Drive."""
+    downloaded_files: List[tuple[str, str, int, int]] = []
+
+    for file in files:
+        if file["mimeType"] == "application/vnd.google-apps.folder":
+            # TODO: Implement recursive folder download
+            continue
+        suffix = FILE_MIME_EXTENSION_MAP.get(file["mimeType"], None)
+        if suffix not in DEFAULT_FILE_READER_CLS:
+            continue
+
+        file_path = f"{temp_dir}/{file['name']}"
+        indexed_on = datetime.timestamp(datetime.now().utcnow())
+        await asyncio.to_thread(
+            services.google_drive.download_file, service, file["id"], file_path, file["mimeType"]
+        )
+        downloaded_files.append(
+            (file["webViewLink"], file_path, int(indexed_on), int(file["size"]))
+        )
+
+    return downloaded_files
+
+
 async def download_file_from_opendal(op: Any, temp_dir: str, path: str) -> tuple[str, int, int]:
     """Download file from OpenDAL."""
     import opendal
@@ -144,7 +262,7 @@ async def download_file_from_opendal(op: Any, temp_dir: str, path: str) -> tuple
     op = cast(opendal.AsyncOperator, op)
 
     suffix = Path(path).suffix
-    filepath = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
+    filepath = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}" # type: ignore
     file_size = 0
     indexed_on = datetime.timestamp(datetime.now().utcnow())
     async with op.open_reader(path) as r:
@@ -153,7 +271,7 @@ async def download_file_from_opendal(op: Any, temp_dir: str, path: str) -> tuple
             w.write(b)
             file_size = len(b)
 
-    return (filepath, indexed_on, file_size)
+    return (filepath, int(indexed_on), file_size)
 
 
 async def download_dir_from_opendal(

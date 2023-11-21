@@ -5,6 +5,7 @@ import hashlib
 import logging as log
 import math
 import random
+import re
 from datetime import datetime
 from typing import Any, List, Optional, Tuple
 from urllib.parse import unquote_plus
@@ -30,6 +31,7 @@ from docq.model_selection.main import ModelUsageSettingsCollection, get_saved_mo
 from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
 from opentelemetry import baggage, trace
+from streamlit.components.v1 import html
 
 from .constants import (
     MAX_NUMBER_OF_PERSONAL_DOCS,
@@ -650,6 +652,7 @@ def _prepare_space_data_source(prefix: str) -> Tuple[str, dict]:
 
 
 def handle_update_space_details(id_: int) -> bool:
+    """Update space details."""
     ds_type, ds_configs = _prepare_space_data_source(f"update_space_details_{id_}_")
     org_id = get_selected_org_id()
     result = manage_spaces.update_shared_space(
@@ -697,9 +700,10 @@ def get_space_data_source(space: SpaceKey) -> Tuple[str, dict]:
 
 
 def list_space_data_source_choices() -> List[Tuple[str, str, List[domain.ConfigKey]]]:
+    """List space data source choices."""
     return [
         (key, value.value.get_name(), value.value.get_config_keys())
-        for key, value in SpaceDataSources.__members__.items()
+        for key, value in SpaceDataSources.__members__.items() if not value.value.disabled
     ]
 
 
@@ -875,6 +879,14 @@ def get_query_param(key: str, type_: type = int) -> Any | None:
         return None
 
 
+def handle_check_str_is_email(str_: Optional[str]) -> bool:
+    """Check if a string is a valid email."""
+    if str_ is None:
+        return False
+    email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+    return bool(re.match(email_regex, str_))
+
+
 def handle_public_session() -> None:
     """Handle public session."""
     session_id = get_query_param("session_id", str)
@@ -902,3 +914,31 @@ def handle_public_session() -> None:
             space_group_id=-1,
             public_session_id=-1,
         )
+
+
+def handle_get_user_email() -> Optional[str]:
+    """Handle get username and check if it is an email.
+
+    Returns:
+        Optional[str]: The username if it is an email, otherwise None.
+    """
+    _email =  get_username()
+    if handle_check_str_is_email(_email):
+        return _email
+    return None
+
+
+def handle_redirect_to_url(url: str, key: str) -> None:
+    """Redirect to url."""
+    html(f"""
+        <script>
+            const gotoPage = document.createElement('script');
+            gotoPage.type = 'text/javascript';
+            gotoPage.id = 'docq-gotoPage-script-{key}';
+            gotoPage.innerHTML = `window.location.href = "{url}";`;
+            const prevScript = window.parent.document.getElementById('docq-gotoPage-script-{key}');
+            if (prevScript) prevScript.remove();
+            window.parent.document.body.appendChild(gotoPage);
+        </script>
+        """, height=0
+    )

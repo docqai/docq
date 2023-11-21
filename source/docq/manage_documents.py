@@ -5,6 +5,7 @@ import shutil
 import unicodedata
 from datetime import datetime
 from mimetypes import guess_type
+from typing import Optional
 
 from llama_index.schema import NodeWithScore
 from streamlit import runtime
@@ -42,10 +43,17 @@ def delete_all(space: SpaceKey) -> None:
 
     reindex(space)
 
+def _is_web_address(uri: str) -> bool:
+    """Return true if the uri is a web address."""
+    return uri.startswith("http://") or uri.startswith("https://")
+
 
 def _get_download_link(filename: str, path: str) -> str:
     """Return the download link for the file if runtime exists, otherwise return an empty string."""
-    if runtime.exists() and os.path.isfile(path):
+    if _is_web_address(path):
+        return path
+
+    elif runtime.exists() and os.path.isfile(path):
         return runtime.get_instance().media_file_mgr.add(
             path_or_data=path,
             mimetype=guess_type(path)[0] or "application/octet-stream",
@@ -68,8 +76,8 @@ def _parse_metadata(metadata: dict) -> tuple:
     s_type = metadata.get(str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower())
     uri = metadata.get(str(DocumentMetadata.SOURCE_URI.name).lower())
     if s_type == "SpaceDataSourceWebBased":
-        website = _remove_ascii_control_characters(metadata.get("source_website"))
-        page_title = _remove_ascii_control_characters(metadata.get("page_title"))
+        website = _remove_ascii_control_characters(metadata.get("source_website", ""))
+        page_title = _remove_ascii_control_characters(metadata.get("page_title", ""))
         return website, page_title, uri, s_type
     else:
         file_name = metadata.get("file_name")
@@ -77,7 +85,7 @@ def _parse_metadata(metadata: dict) -> tuple:
         return file_name, page_label, uri, s_type
 
 
-def _classify_file_sources(name: str, uri: str, page: str, sources: dict = None) -> str:
+def _classify_file_sources(name: str, uri: str, page: str, sources: Optional[dict] = None) -> dict:
     """Classify file sources for easy grouping."""
     if sources is None:
         sources = {}
@@ -88,7 +96,7 @@ def _classify_file_sources(name: str, uri: str, page: str, sources: dict = None)
     return sources
 
 
-def _classify_web_sources(website: str, uri: str, page_title: str, sources: dict = None) -> str:
+def _classify_web_sources(website: str, uri: str, page_title: str, sources: Optional[dict] = None) -> dict:
     """Classify web sources for easy grouping."""
     if sources is None:
         sources = {}
