@@ -4,7 +4,7 @@ import logging as log
 import sqlite3
 from contextlib import closing
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from docq.model_selection.main import ModelUsageSettingsCollection
 
@@ -75,7 +75,7 @@ def _save_messages(data: list[tuple[str, bool, datetime, int]], feature: Feature
 
 
 def _retrieve_messages(
-    cutoff: datetime, size: int, feature: FeatureKey, thread_id: int, invert: bool = False
+    cutoff: datetime, size: int, feature: FeatureKey, thread_id: int, sort_order: Literal["ASC", "DESC"] = "DESC"
 ) -> list[tuple[int, str, bool, datetime, int]]:
     tablename = get_history_table_name(feature.type_)
     thread_tablename = get_history_thread_table_name(feature.type_)
@@ -91,7 +91,7 @@ def _retrieve_messages(
         cursor.execute(SQL_CREATE_THREAD_TABLE.format(table=thread_tablename))
         cursor.execute(SQL_CREATE_MESSAGE_TABLE.format(table=tablename, thread_table=thread_tablename))
         log.debug("Retrieving message params: thread_id=%s, cutoff=%s, size=%s", thread_id, cutoff, size)
-        if invert:
+        if sort_order == "ASC":
             rows = cursor.execute(
                 f"SELECT id, message, human, timestamp, thread_id FROM {tablename} WHERE thread_id = ? AND timestamp < ? ORDER BY timestamp LIMIT ?",  # noqa: S608
                 (thread_id, cutoff, size),
@@ -138,10 +138,12 @@ def update_thread_topic(topic: str, feature: FeatureKey, thread_id: int) -> None
         connection.commit()
 
 
-def get_chat_summerised_history(feature: FeatureKey, thread_id: int) -> list[tuple[int, str, bool]]:
+def get_chat_summerised_history(feature: FeatureKey, thread_id: int, size: Optional[int] = None) -> list[tuple[int, str, bool]]:
     """Retrieve the top messages for a chat thread."""
+    if size is None:
+        size = NUMBER_OF_MESSAGES_IN_HISTORY
     return [
-        (x[:3]) for x in _retrieve_messages(datetime.now(), NUMBER_OF_MESSAGES_IN_HISTORY, feature, thread_id)
+        (x[:3]) for x in _retrieve_messages(datetime.now(), size, feature, thread_id, sort_order="ASC")
     ]
 
 
@@ -166,7 +168,7 @@ def create_history_thread(topic: str, feature: FeatureKey) -> int:
             )
         )
 
-        cursor.execute(f"INSERT INTO {tablename} (topic) VALUES (?)", (topic,))
+        cursor.execute(f"INSERT INTO {tablename} (topic) VALUES (?)", (topic,)) # noqa: S608
 
         id_ = cursor.lastrowid
         connection.commit()
@@ -193,7 +195,7 @@ def get_latest_thread(feature: FeatureKey) -> tuple[int, str, int] | None:
             )
         )
         rows = cursor.execute(
-            f"SELECT id, topic, created_at FROM {tablename} ORDER BY created_at DESC LIMIT 1"
+            f"SELECT id, topic, created_at FROM {tablename} ORDER BY created_at DESC LIMIT 1" # noqa: S608
         ).fetchall()
         rows.reverse()
 
