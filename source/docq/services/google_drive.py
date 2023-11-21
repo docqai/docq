@@ -4,7 +4,6 @@ import json
 import logging as log
 import os
 from typing import Any, Optional, Union
-from urllib.parse import urlencode
 
 from google.auth.external_account_authorized_user import Credentials as ExtCredentials
 from google.auth.transport.requests import Request
@@ -37,11 +36,11 @@ CREDENTIALS = Union[Credentials,  ExtCredentials]
 def _init() -> None:
     """Initialize."""
     if not GOOGLE_APPLICATION_CREDS_PATH:
-        raise Exception("Google application credentials not found.")
+        return log.info("services.google_drive -- Google application credentials not found. API disabled.")
     if not os.path.exists(GOOGLE_APPLICATION_CREDS_PATH):
-        raise Exception("Google application credentials not found.")
+        return log.info("services.google_drive -- Google application credentials file not found. API disabled.")
     if not FLOW_REDIRECT_URI:
-        raise Exception("Google auth redirect url not found.")
+        return log.info("services.google_drive -- Google auth redirect url not found. API disabled.")
 
 
 def get_flow() -> InstalledAppFlow:
@@ -164,7 +163,11 @@ def get_auth_url(data: dict) -> Optional[dict]:
         return None
 
 
-def format_func(x: dict) -> dict:
-    """Format function."""
-    return x["name"]
-
+def api_enabled() -> bool:
+    """Check if google drive API is enabled."""
+    credentials_path = os.environ.get(CREDENTIALS_KEY)
+    return credentials_path is not None and os.path.isfile(
+        credentials_path) and all([
+        credentials_path,
+        os.environ.get(REDIRECT_URL_KEY)
+    ])

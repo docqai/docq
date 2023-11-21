@@ -700,9 +700,10 @@ def get_space_data_source(space: SpaceKey) -> Tuple[str, dict]:
 
 
 def list_space_data_source_choices() -> List[Tuple[str, str, List[domain.ConfigKey]]]:
+    """List space data source choices."""
     return [
         (key, value.value.get_name(), value.value.get_config_keys())
-        for key, value in SpaceDataSources.__members__.items()
+        for key, value in SpaceDataSources.__members__.items() if not value.value.disabled
     ]
 
 

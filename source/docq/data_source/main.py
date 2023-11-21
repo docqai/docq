@@ -50,6 +50,11 @@ class SpaceDataSource(ABC):
         """Get the name of the data source."""
         return self.name
 
+    @property
+    def disabled(self: Self) -> bool:
+        """Disable the data source."""
+        return False
+
     @abstractmethod
     def get_config_keys(self: Self) -> List[ConfigKey]:
         """Get the list of config keys."""

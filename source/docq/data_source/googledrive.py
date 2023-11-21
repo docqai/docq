@@ -29,6 +29,11 @@ class GDrive(SpaceDataSourceFileBased):
 
         return (services.google_drive.list_folders(creds), False) if creds else ([], False)
 
+    @property
+    def disabled(self: Self) -> bool:
+        """Disable the data source."""
+        return not services.google_drive.api_enabled()
+
     def get_config_keys(self: Self) -> List[ConfigKey]:
         """Get the config keys for google drive."""
         return [
