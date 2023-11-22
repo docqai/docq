@@ -24,7 +24,10 @@ class OneDrive(SpaceDataSourceFileBased):
 
     def list_folders(self: Self, configs: Any, state: dict) -> tuple[list, bool]:
         """List onedrive drive folders."""
-        pass
+        __token = configs.get(self.credential) if configs else state.get(self.credential, None)
+        token = services.ms_onedrive.validate_token(__token)
+
+        return (services.ms_onedrive.list_folders(token), False) if token else ([], False)
 
     def get_config_keys(self: Self) -> List[ConfigKey]:
         """Get the config keys for onedrive."""
@@ -47,7 +50,7 @@ class OneDrive(SpaceDataSourceFileBased):
                 options={
                     "type": "root_path",
                     "handler": self.list_folders,
-                    "format_function": lambda x: x['name'],
+                    "format_function": lambda x: x["name"],
                 }
             ),
         ]

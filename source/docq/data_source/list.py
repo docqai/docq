@@ -7,6 +7,7 @@ from .azure_blob import AzureBlob
 from .googledrive import GDrive
 from .knowledge_base_scraper import KnowledgeBaseScraper
 from .manual_upload import ManualUpload
+from .onedrive import OneDrive
 from .web_scraper import WebScraper
 
 
@@ -19,3 +20,4 @@ class SpaceDataSources(Enum):
     WEB_SCRAPER = WebScraper()
     KNOWLEDGE_BASE_SCRAPER = KnowledgeBaseScraper()
     GOOGLE_DRIVE = GDrive()
+    ONEDRIVE = OneDrive()
