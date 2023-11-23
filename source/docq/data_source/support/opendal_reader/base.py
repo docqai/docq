@@ -159,9 +159,8 @@ class OpendalReader(BaseReader):
         return dl
 
 
-# TODO: Tobe removed once opendal starts supporting Google Drive.
-class GoogleDriveReader(BaseReader):
-    """Google Drive reader."""
+class FileStorageBaseReader(BaseReader):
+    """File storage reader."""
 
     def __init__(
         self: Self,
@@ -171,8 +170,9 @@ class GoogleDriveReader(BaseReader):
         path: str = "/",
         file_extractor: Optional[Dict[str, Union[str, BaseReader]]] = None,
         file_metadata: Optional[Callable[[str], Dict]] = None,
-    ) -> None:
-        """Initialize Google Drive reader.
+        **kwargs: Optional[dict[str, Any]],
+        ) -> None:
+        """Initialize File storage service reader.
 
         Args:
             path (str): the path of the data. If none is provided,
@@ -184,6 +184,7 @@ class GoogleDriveReader(BaseReader):
                 extension to a BaseReader class that specifies how to convert that file
                 to text. NOTE: this isn't implemented yet.
             file_metadata (Optional[Callable[[str], Dict]]): A function that takes a source file path and returns a dictionary of metadata to be added to the Document object.
+            kwargs (Optional dict[str, any]): Additional arguments to pass to the specific file storage service.
         """
         super().__init__()
         self.path = path
@@ -194,7 +195,47 @@ class GoogleDriveReader(BaseReader):
         self.file_metadata = file_metadata
         self.selected_folder_id = selected_folder_id
         self.documents: List[Document] = []
-        self.downloaded_files = []
+        self.kwargs = kwargs
+        self.downloaded_files: List[tuple[str, str, int, int]] = []
+
+    def load_data(self: Self) -> List[Document]:
+        """Load file(s) from file storage."""
+        raise NotImplementedError
+
+    def get_document_list(self: Self) -> List[DocumentListItem]:
+        """Get a list of all documents in the index. A document is a list are 1:1 with a file."""
+        dl: List[DocumentListItem] = []
+        try:
+            for df in self.downloaded_files:
+                dl.append(DocumentListItem(link=df[0], indexed_on=df[2], size=df[3]))
+        except Exception as e:
+            log.exception("Converting Document list to DocumentListItem list failed: %s", e)
+
+        return dl
+
+
+# TODO: Tobe removed once opendal starts supporting Google Drive.
+class GoogleDriveReader(FileStorageBaseReader):
+    """Google Drive reader."""
+
+    def __init__(
+        self: Self,
+        access_token: dict,
+        root: str,
+        selected_folder_id: Optional[str] = None,
+        path: str = "/",
+        file_extractor: Optional[Dict[str, Union[str, BaseReader]]] = None,
+        file_metadata: Optional[Callable[[str], Dict]] = None,
+    ) -> None:
+        """Initialize Google Drive reader."""
+        super().__init__(
+            access_token=access_token,
+            root=root,
+            selected_folder_id=selected_folder_id,
+            path=path,
+            file_extractor=file_extractor,
+            file_metadata=file_metadata,
+        )
 
     def load_data(self: Self) -> List[Document]:
         """Load file(s) from Google Drive."""
