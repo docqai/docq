@@ -29,6 +29,11 @@ class OneDrive(SpaceDataSourceFileBased):
 
         return (services.ms_onedrive.list_folders(token), False) if token else ([], False)
 
+    @property
+    def disabled(self: Self) -> bool:
+        """Disable the data source."""
+        return not services.ms_onedrive.api_enabled()
+
     def get_config_keys(self: Self) -> List[ConfigKey]:
         """Get the config keys for onedrive."""
         return [
@@ -40,7 +45,7 @@ class OneDrive(SpaceDataSourceFileBased):
                 options={
                     "type": "credential",
                     "handler": services.ms_onedrive.get_auth_url,
-                    "btn_label": "Sign into OneDrive",
+                    "btn_label": "Sign-in with Microsoft",
                 }
             ),
             ConfigKey(
