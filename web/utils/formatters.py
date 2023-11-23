@@ -13,6 +13,21 @@ def format_datetime(dt: datetime) -> str:
     return dt.strftime("%d %b %Y %H:%M")
 
 
+def format_duration(dt: datetime) -> str:
+    """Format time duration to human-friendly value."""
+    now = datetime.now().day
+    if now == dt.date().day:
+        return "Today"
+    elif now - dt.date().day == 1:
+        return "Yesterday"
+    elif now - dt.date().day < 7:
+        return "Previous 7 days"
+    elif now - dt.date().day < 30:
+        return "Previous 30 days"
+    else:
+        return dt.strftime("%B %Y")
+
+
 def format_filesize(size: int) -> str:
     """Format filesize to human-friendly sizing string with unit."""
     if size > 1024 * 1024:

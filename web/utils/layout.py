@@ -37,7 +37,7 @@ from streamlit.delta_generator import DeltaGenerator
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .error_ui import _handle_error_state_ui
-from .formatters import format_archived, format_datetime, format_filesize, format_timestamp
+from .formatters import format_archived, format_datetime, format_duration, format_filesize, format_timestamp
 from .handlers import (
     _set_session_state_configs,
     get_enabled_org_features,
@@ -53,6 +53,7 @@ from .handlers import (
     handle_check_account_activated,
     handle_check_mailer_ready,
     handle_check_user_exists,
+    handle_click_chat_history_thread,
     handle_create_new_chat,
     handle_create_org,
     handle_create_space,
@@ -64,6 +65,7 @@ from .handlers import (
     handle_delete_space_group,
     handle_delete_user_group,
     handle_fire_extensions_callbacks,
+    handle_get_chat_history_threads,
     handle_get_gravatar_url,
     handle_get_system_settings,
     handle_get_user_email,
@@ -601,20 +603,58 @@ def _personal_ask_style() -> None:
     st.write(
         """
     <style>
-        [data-testid="stExpander"] {
+        section[tabindex="0"] [data-testid="stExpander"] {
             z-index: 1000;
             position: fixed;
             top: 46px;
         }
-
-        [data-testid="stExpander"] .row-widget.stMultiSelect label {
-            display: none !important;
-        }
-
     </style>
     """,
         unsafe_allow_html=True,
     )
+
+
+def _show_chat_histories(feature: FeatureKey) -> None:
+    st.markdown("""
+      <style>
+        section[data-testid="stSidebar"] .streamlit-expanderContent button[kind="secondary"] {
+            width: 100%;
+            text-align: left !important;
+            justify-content: flex-start;
+            padding: 0px 1rem;
+            opacity: 0.8;
+            min-height: unset !important;
+            max-height: 2rem !important;
+            height: 2rem;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        section[data-testid="stSidebar"] .streamlit-expanderContent h4 {
+            margin-bottom: 0.5rem;
+        }
+        section[data-testid="stSidebar"] .streamlit-expanderContent button[kind="secondary"] p {
+            padding-top: 0.3rem;
+            max-height: 1.6rem;
+            overflow: hidden;
+            display: inline-block !important;
+        }
+        section[data-testid="stSidebar"] .streamlit-expanderContent div[data-testid="stVerticalBlock"] {
+            gap: 2px !important;
+        }
+      </style>
+    """, unsafe_allow_html=True
+    )
+    with st.sidebar.expander("Chat History"):
+        chat_threads = handle_get_chat_history_threads(feature)
+        day = None
+        for x in chat_threads:
+            if day is None:
+                day = format_duration(x[2])
+                st.markdown(f"#### {day}")
+            if format_duration(x[2]) != day:
+                day = format_duration(x[2])
+                st.markdown(f"#### {day}")
+            st.button(x[1], key=f"{x[1]}-{x[0]}", on_click=handle_click_chat_history_thread, args=(feature, x[0],))
 
 
 def chat_ui(feature: FeatureKey) -> None:
@@ -661,6 +701,7 @@ def chat_ui(feature: FeatureKey) -> None:
                     default=spaces,
                     format_func=lambda x: x[2],
                     key=f"chat_shared_spaces_{feature.value()}",
+                    label_visibility="collapsed",
                 )
                 st.checkbox("Including your documents", value=True, key="chat_personal_space")
 
@@ -689,6 +730,7 @@ def chat_ui(feature: FeatureKey) -> None:
         on_submit=handle_chat_input,
         args=(feature,),
     )
+    _show_chat_histories(feature)
 
 
 def _render_document_upload(space: SpaceKey, documents: List) -> None:
