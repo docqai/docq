@@ -10,7 +10,7 @@ from .. import services
 from ..domain import ConfigKey, SpaceKey
 from ..support.store import get_index_dir
 from .main import DocumentMetadata, FileStorageServiceKeys, SpaceDataSourceFileBased
-from .support.opendal_reader.base import OpendalReader
+from .support.opendal_reader.base import OneDriveReader, OpendalReader
 
 
 class OneDrive(SpaceDataSourceFileBased):
@@ -82,12 +82,18 @@ class OneDrive(SpaceDataSourceFileBased):
                 file_metadata=lambda_metadata,
                 **options,
             )
-            documents = loader.load_data()
-            file_list = loader.get_document_list()
-            log.debug("Loaded %s documents from onedrive", len(file_list))
-            persist_path = get_index_dir(space)
-            self._save_document_list(file_list, persist_path, self._DOCUMENT_LIST_FILENAME)
-            return documents
-
         except Exception as e:
             log.error("Failed to load onedrive with opendal reader: %s", e)
+            loader = OneDriveReader(
+                file_metadata=lambda_metadata,
+                root=root_path["name"],
+                access_token=configs[self.credential],
+                selected_folder_id=root_path["id"]
+            )
+
+        documents = loader.load_data()
+        file_list = loader.get_document_list()
+        log.debug("Loaded %s documents from onedrive", len(file_list))
+        persist_path = get_index_dir(space)
+        self._save_document_list(file_list, persist_path, self._DOCUMENT_LIST_FILENAME)
+        return documents

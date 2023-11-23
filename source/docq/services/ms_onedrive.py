@@ -74,13 +74,23 @@ def list_folders(token: dict) -> list[dict]:
         log.error("services.ms_onedrive -- list_folders -- Error: %s", e)
         return []
 
-
-def download_file(client: Client, file_id: str) -> Optional[bytes]:
+def _download_file(client: Client, file_id: str) -> Optional[bytes]:
     """Download a file from Microsoft OneDrive."""
     try:
         response = client.files.drive_download_contents(file_id)
         _temp_logger(response.data)
         return response.data
+    except Exception as e:
+        log.error("services.ms_onedrive -- download_file -- Error: %s", e)
+
+
+def download_file(client: Client, file_id: str, file_path: str) -> None:
+    """Download a file from Microsoft OneDrive."""
+    try:
+        with open(file_path, "wb") as file:
+            data = _download_file(client, file_id)
+            if data is not None:
+                file.write(data)
     except Exception as e:
         log.error("services.ms_onedrive -- download_file -- Error: %s", e)
 
