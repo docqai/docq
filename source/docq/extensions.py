@@ -103,7 +103,7 @@ def _import_extensions(extensions_config_path: str = DEFAULT_EXTENSION_JSON_PATH
                 for key in extensions_json:
                     module_name = str(extensions_json[key]["module_name"])
                     module_source = str(extensions_json[key]["source"])
-                    class_name = str(extensions_json[key]["class_name"]) if "class_name" in extensions_json[key] else None
+                    class_name = str(extensions_json[key]["class_name"]) if "class_name" in extensions_json[key] else ""
 
                     span.add_event("extension importlib.util.spec_from_file_location starting", {"module_name": module_name, "module_source": module_source, "class_name": class_name})
                     _spec: ModuleSpec | None = importlib.util.spec_from_file_location(module_name, module_source)
@@ -113,7 +113,7 @@ def _import_extensions(extensions_config_path: str = DEFAULT_EXTENSION_JSON_PATH
                         if _spec.loader:
                             _spec.loader.exec_module(module)
                             span.add_event("extension module loaded", {"module_name": module_name, "module_source": module_source, "class_name": class_name})
-                            if class_name:
+                            if class_name != "":
                                 extension_cls.append(getattr(module, class_name))
                                 #span.add_event("extension class registered", {"module_name": module_name, "module_source": module_source, "class_name": class_name})
                         else:
