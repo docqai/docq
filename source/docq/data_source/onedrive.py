@@ -25,7 +25,7 @@ class OneDrive(SpaceDataSourceFileBased):
     def list_folders(self: Self, configs: Any, state: dict) -> tuple[list, bool]:
         """List onedrive drive folders."""
         __token = configs.get(self.credential) if configs else state.get(self.credential, None)
-        token = services.ms_onedrive.validate_token(__token)
+        token = services.ms_onedrive.validate_credentials(__token)
 
         return (services.ms_onedrive.list_folders(token), False) if token else ([], False)
 
@@ -41,17 +41,17 @@ class OneDrive(SpaceDataSourceFileBased):
                 self.credential,
                 "Credential",
                 is_secret=True,
-                ref_link="https://docqai.github.io/docq/user-guide/config-spaces/#data-source-google-drive",
+                ref_link="https://docqai.github.io/docq/user-guide/config-spaces/#data-source-onedrive",
                 options={
                     "type": "credential",
                     "handler": services.ms_onedrive.get_auth_url,
-                    "btn_label": "Sign-in with Microsoft",
+                    "btn_label": "Signin with Microsoft",
                 }
             ),
             ConfigKey(
                 self.root_path,
                 "Select a folder",
-                ref_link="https://docqai.github.io/docq/user-guide/config-spaces/#data-source-google-drive",
+                ref_link="https://docqai.github.io/docq/user-guide/config-spaces/#data-source-onedrive",
                 options={
                     "type": "root_path",
                     "handler": self.list_folders,
