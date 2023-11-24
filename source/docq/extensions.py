@@ -4,6 +4,7 @@ import importlib.util
 import json
 import logging
 import os
+import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from importlib.machinery import ModuleSpec
@@ -102,16 +103,19 @@ def _import_extensions(extensions_config_path: str = DEFAULT_EXTENSION_JSON_PATH
                 for key in extensions_json:
                     module_name = str(extensions_json[key]["module_name"])
                     module_source = str(extensions_json[key]["source"])
-                    class_name = str(extensions_json[key]["class_name"])
+                    class_name = str(extensions_json[key]["class_name"]) if "class_name" in extensions_json[key] else None
 
                     span.add_event("extension importlib.util.spec_from_file_location starting", {"module_name": module_name, "module_source": module_source, "class_name": class_name})
                     _spec: ModuleSpec | None = importlib.util.spec_from_file_location(module_name, module_source)
                     if _spec:
                         module = importlib.util.module_from_spec(_spec)
+                        sys.modules[module_name] = module
                         if _spec.loader:
                             _spec.loader.exec_module(module)
-                            extension_cls.append(getattr(module, class_name))
                             span.add_event("extension module loaded", {"module_name": module_name, "module_source": module_source, "class_name": class_name})
+                            if class_name:
+                                extension_cls.append(getattr(module, class_name))
+                                #span.add_event("extension class registered", {"module_name": module_name, "module_source": module_source, "class_name": class_name})
                         else:
                             span.add_event("extension module load failed", {"module_name": module_name, "module_source": module_source, "class_name": class_name})
                             raise Exception(f"Could not load extension module '{module_name}' at '{module_source}'")
@@ -139,6 +143,7 @@ def register_extensions(extension_classes: list[type[DocqExtension]]) -> None:
 def _extensions_init() -> None:
     """Register extensions."""
     extensions_classes = _import_extensions()
+    logging.info("extension classes: %s", extensions_classes)
     register_extensions(extensions_classes)
     logging.info("Imported %s extension classes", len(extensions_classes))
     logging.info("Registered %s extension(s).",len(_registered_extensions.keys()))
