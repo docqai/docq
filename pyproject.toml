@@ -174,7 +174,7 @@ docker build
 --build-arg BUILDTAG=$build_tag \
 --build-arg BUILDPLATFORM=$build_platform \
 --target $target \
--t docq:$target-$build_tag ."""
+-t docqai/docq:$target-$build_tag ."""
 help = "Build a docker image to test the project in an isolated environment"
 args = [
     { name = "test", default = false, type = "boolean" },

@@ -1,8 +1,5 @@
 """Page: Home (no auth required)."""
 
-import importlib.util
-import logging
-from importlib.machinery import ModuleSpec
 
 import streamlit as st
 
