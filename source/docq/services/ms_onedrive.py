@@ -1,8 +1,9 @@
 """Microsoft OneDrive Service Module."""
+import json
 import logging as log
 import os
 from datetime import datetime
-from typing import Any, Optional, Self
+from typing import Optional, Self
 
 from microsoftgraph.client import Client
 
@@ -17,11 +18,6 @@ SCOPES = [
 ]
 
 
-def _temp_logger(data: Any) -> None:
-    """Temporary logger."""
-    print("\x1b[31mDebug: %s\x1b[0m" % data)
-
-
 class Credential:
     """Microsoft OneDrive Credential."""
 
@@ -32,6 +28,11 @@ class Credential:
         """Initialize the credential."""
         self.__token = token
         self.__created_at = int(datetime.now().timestamp())
+
+    @property
+    def to_json(self: Self) -> str:
+        """Get the token as json."""
+        return json.dumps(self.__token) if not self.expired else json.dumps(refresh_token(self.__token))
 
     @property
     def token(self: Self) -> dict:
@@ -47,7 +48,7 @@ class Credential:
     @property
     def expired(self: Self) -> bool:
         """Token expired status."""
-        return self.__created_at + int(self.token.get("expires_in", 0)) > int(datetime.now().timestamp())
+        return int(datetime.now().timestamp()) > self.__created_at + int(self.token.get("expires_in", 0))
 
 
 def get_client(credential: Optional[Credential] = None) -> Client:
@@ -71,7 +72,7 @@ def get_auth_url(data: dict) -> Optional[dict]:
             code = data.get("code", None)
             if code is not None:
                 response = client.exchange_code(redirect_uri, code)
-                _temp_logger(response.data)
+                log.info("services.ms_onedrive -- get_auth_url -- Response: %s", response.data)
                 return {"credential": Credential(response.data)}
             else:
                 state = data.get("state", None)
