@@ -1,4 +1,5 @@
 """Onedrive drive datasource module."""
+import json
 import logging as log
 from datetime import datetime
 from typing import Any, List, Self
@@ -77,7 +78,7 @@ class OneDrive(SpaceDataSourceFileBased):
 
         options = {
             "root": root_path["name"],
-            "access_token": configs[self.credential].to_json,
+            "access_token": json.dumps(configs[self.credential]),
         }
 
         try:

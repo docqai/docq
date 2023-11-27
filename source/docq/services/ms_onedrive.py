@@ -1,9 +1,8 @@
 """Microsoft OneDrive Service Module."""
-import json
 import logging as log
 import os
-from datetime import datetime
-from typing import Optional, Self
+from datetime import datetime, timedelta
+from typing import Optional
 
 from microsoftgraph.client import Client
 
@@ -18,50 +17,35 @@ SCOPES = [
 ]
 
 
-class Credential:
-    """Microsoft OneDrive Credential."""
-
-    __token = {}
-    __created_at = 0
-
-    def __init__(self: Self, token: dict) -> None:
-        """Initialize the credential."""
-        self.__token = token
-        self.__created_at = int(datetime.now().timestamp())
-
-    @property
-    def to_json(self: Self) -> str:
-        """Get the token as json."""
-        if self.expired:
-            self.token = refresh_token(self.token)
-        return json.dumps(self.token)
-
-    @property
-    def token(self: Self) -> dict:
-        """Get the token."""
-        return self.__token
-
-    @token.setter
-    def token(self: Self, token: dict) -> None:
-        """Set the token."""
-        self.__token = token
-        self.__created_at = int(datetime.now().timestamp())
-
-    @property
-    def expired(self: Self) -> bool:
-        """Token expired status."""
-        return int(datetime.now().timestamp()) > self.__created_at + int(self.token.get("expires_in", 0))
+def _token_expired(token: dict) -> bool:
+    """Check if the token is expired."""
+    return datetime.now() > datetime.fromtimestamp(token["expiry"])
 
 
-def get_client(credential: Optional[Credential] = None) -> Client:
+def _remove_token_expiry(token: dict) -> dict:
+    """Remove the token expiry."""
+    _token = token.copy()
+    _token.pop("expiry", None)
+    return _token
+
+
+def _set_token_expiry(token: dict) -> dict:
+    """Set the token expiry."""
+    expiry = datetime.now() + timedelta(seconds=token["expires_in"])
+    token["expiry"] = expiry.timestamp()
+    return token
+
+
+def get_client(token: Optional[dict] = None) -> Client:
     """Get the Microsoft OneDrive client."""
     client_id = os.environ.get(DOCQ_MS_ONEDRIVE_CLIENT_ID_KEY, "")
     client_secret = os.environ.get(DOCQ_MS_ONEDRIVE_CLIENT_SEC_RET_KEY, "")
     client = Client(client_id, client_secret)
-    if credential is not None:
-        if credential.expired:
-            credential.token = refresh_token(credential.token)
-        client.set_token(credential.token)
+    if token is not None:
+        log.info("services.ms_onedrive -- get_client -- Token: %s", token)
+        if _token_expired(token):
+            token = refresh_token(token)
+        client.set_token(_remove_token_expiry(token))
     return client
 
 
@@ -73,8 +57,9 @@ def get_auth_url(data: dict) -> Optional[dict]:
         code = data.get("code", None)
         if code is not None:
             response = client.exchange_code(redirect_uri, code)
-            log.info("services.ms_onedrive -- get_auth_url -- Response: %s", response.data)
-            return {"credential": Credential(response.data)}
+            token =  _set_token_expiry(response.data)
+            log.info("services.ms_onedrive -- get_auth_url -- Response: %s", token)
+            return {"credential": token}
         else:
             state = data.get("state", None)
             return {"auth_url": client.authorization_url(redirect_uri, SCOPES, state)}
@@ -86,21 +71,23 @@ def refresh_token(token: dict) -> dict:
     """Refresh the Microsoft OneDrive token."""
     client = get_client()
     redirect_uri = os.environ.get(DOCQ_MS_ONEDRIVE_REDIRECT_URI_KEY, "")
-    response = client.refresh_token(token["refresh_token"], redirect_uri)
-    return response.data
+    response = client.refresh_token(redirect_uri=redirect_uri, refresh_token=token["refresh_token"])
+    token = _set_token_expiry(response.data)
+    log.info("services.ms_onedrive -- refresh_token -- Token expiry: %s", token["expiry"])
+    return token
 
 
-def validate_credentials(credential: Credential) -> Credential:
+def validate_credentials(token: dict) -> dict:
     """Validate the Microsoft OneDrive credentials."""
-    if credential.expired:
-        credential.token = refresh_token(credential.token)
-    return credential
+    if _token_expired(token):
+        token = refresh_token(token)
+    return token
 
 
-def list_folders(credential: Credential) -> list[dict]:
+def list_folders(token: dict) -> list[dict]:
     """List the root folders in Microsoft OneDrive."""
     try:
-        client = get_client(credential)
+        client = get_client(token)
         response = client.files.drive_root_children_items({
             "$select": "id,name,folder",
             "$filter": "folder ne null and folder/childCount gt 0",
