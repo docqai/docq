@@ -114,38 +114,28 @@ from .sessions import (
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
 
-_chat_ui_script = """
+__chat_ui_script = """
 <script>
     parent = window.parent.document || window.document
-    const spaceSelector = parent.getElementsByClassName('streamlit-expander')[0]
-    const spaceSelectorPresent = spaceSelector && spaceSelector.parentNode && spaceSelector.parentNode.parentNode
 
+    function setStyle() {
+        const id = 'docq-chat-ui-style-declaration'
+        const previousStyle = parent.getElementById(id)
+        if (previousStyle) previousStyle.remove();
+        const style = document.createElement('style')
+        style.setAttribute('type', 'text/css')
+        style.setAttribute('id', id)
 
-    /* Space Selector. */
+        style.innerHTML = `
+            section[tabindex="0"] [data-testid="stExpander"] {
+                --background-color: ${getComputedStyle(parent.body, null).getPropertyValue('background-color')};
+            }
+        `
+        parent.head.appendChild(style)
+    }; setStyle();
 
-    const resizeSelector = (spaceSelector) => {
-        if (spaceSelectorPresent && spaceSelector) {
-            const _parent = spaceSelector.parentNode.parentNode
-            const _container = spaceSelector.parentNode
-            const parentWidth = _parent.offsetWidth
-            _container.setAttribute('style', `width: ${parentWidth}px;`)
-        }
-    };
-
-    const formatSpaceSelector = () => {
-        resizeSelector(spaceSelector)
-        const bodyColor = window.getComputedStyle(parent.body, null).getPropertyValue('background-color');
-        // Set background color to the space selector based on active theme.
-        if (spaceSelector) {
-            spaceSelector.setAttribute('style', `background-color: ${bodyColor} !important;`);
-        }
-    }
-
-    formatSpaceSelector()
-
-    // Observe body for background color change
-    const observer = new MutationObserver(formatSpaceSelector);
-    observer.observe(parent.body, { attributes: true, attributeFilter: ['style'] });
+    const observer = new MutationObserver(setStyle)
+    observer.observe(parent.body, { attributes: true, attributeFilter: ['style'] })
 
 
     /* Gravatar */
@@ -162,21 +152,13 @@ _chat_ui_script = """
             }
     })})
 
-
-    // Auto resize space selector on window resize.
-    if (spaceSelectorPresent) {
-      const resizeObserver = new ResizeObserver(() => resizeSelector(spaceSelector))
-      resizeObserver.observe(spaceSelector.parentNode.parentNode)
-    }
-
 </script>
 """
 
 
-def chat_ui_script() -> None:
+def _chat_ui_script() -> None:
     """A javascript snippet that runs on the chat UI."""
-    st.write("<style> iframe {min-height: 0; height: 0}</style>", unsafe_allow_html=True)
-    html(_chat_ui_script)
+    html(__chat_ui_script, height=0)
 
 
 def production_layout() -> None:
@@ -607,6 +589,8 @@ def _personal_ask_style() -> None:
             z-index: 1000;
             position: fixed;
             top: 46px;
+            width: inherit;
+            background-color: var(--background-color);
         }
     </style>
     """,
@@ -693,7 +677,7 @@ def chat_ui(feature: FeatureKey) -> None:
     with st.container():
         if feature.type_ == OrganisationFeatureType.ASK_SHARED:
             _personal_ask_style()
-            with st.expander("Including these shared spaces:", True):
+            with st.container().expander("Including these shared spaces:", True):
                 spaces = list_shared_spaces()
                 st.multiselect(
                     "Including these shared spaces:",
@@ -722,7 +706,7 @@ def chat_ui(feature: FeatureKey) -> None:
                 day = format_datetime(x[3])
                 st.markdown(f"#### {day}")
             _chat_message(x[1], x[2])
-        chat_ui_script()
+        _chat_ui_script()
 
     st.chat_input(
         "Type your question here",
