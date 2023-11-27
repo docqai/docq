@@ -32,7 +32,9 @@ class Credential:
     @property
     def to_json(self: Self) -> str:
         """Get the token as json."""
-        return json.dumps(self.__token) if not self.expired else json.dumps(refresh_token(self.__token))
+        if self.expired:
+            self.token = refresh_token(self.token)
+        return json.dumps(self.token)
 
     @property
     def token(self: Self) -> dict:
@@ -66,17 +68,16 @@ def get_client(credential: Optional[Credential] = None) -> Client:
 def get_auth_url(data: dict) -> Optional[dict]:
     """Get the auth url for Microsoft OneDrive."""
     try:
-        redirect_uri = os.environ.get(DOCQ_MS_ONEDRIVE_REDIRECT_URI_KEY)
+        redirect_uri = os.environ.get(DOCQ_MS_ONEDRIVE_REDIRECT_URI_KEY, "")
         client = get_client()
-        if client is not None and redirect_uri is not None:
-            code = data.get("code", None)
-            if code is not None:
-                response = client.exchange_code(redirect_uri, code)
-                log.info("services.ms_onedrive -- get_auth_url -- Response: %s", response.data)
-                return {"credential": Credential(response.data)}
-            else:
-                state = data.get("state", None)
-                return {"auth_url": client.authorization_url(redirect_uri, SCOPES, state)}
+        code = data.get("code", None)
+        if code is not None:
+            response = client.exchange_code(redirect_uri, code)
+            log.info("services.ms_onedrive -- get_auth_url -- Response: %s", response.data)
+            return {"credential": Credential(response.data)}
+        else:
+            state = data.get("state", None)
+            return {"auth_url": client.authorization_url(redirect_uri, SCOPES, state)}
     except Exception as e:
         log.error("services.ms_onedrive -- get_auth_url -- Error: %s", e)
 
@@ -100,35 +101,23 @@ def list_folders(credential: Credential) -> list[dict]:
     """List the root folders in Microsoft OneDrive."""
     try:
         client = get_client(credential)
-        if client is not None:
-            response = client.files.drive_root_children_items({
-                "$select": "id,name,folder",
-                "$filter": "folder ne null and folder/childCount gt 0",
-                "$top": 1000,
-            })
-            return response.data.get("value", [])
-        return []
+        response = client.files.drive_root_children_items({
+            "$select": "id,name,folder",
+            "$filter": "folder ne null and folder/childCount gt 0",
+            "$top": 1000,
+        })
+        return response.data.get("value", [])
     except Exception as e:
         log.error("services.ms_onedrive -- list_folders -- Error: %s", e)
         return []
-
-
-def _download_file(client: Client, file_id: str) -> Optional[bytes]:
-    """Download a file from Microsoft OneDrive."""
-    try:
-        response = client.files.drive_download_contents(file_id)
-        return response.data
-    except Exception as e:
-        log.error("services.ms_onedrive -- download_file -- Error: %s", e)
 
 
 def download_file(client: Client, file_id: str, file_path: str) -> None:
     """Download a file from Microsoft OneDrive."""
     try:
         with open(file_path, "wb") as file:
-            data = _download_file(client, file_id)
-            if data is not None:
-                file.write(data)
+            data = client.files.drive_download_contents(file_id).data
+            file.write(data)
     except Exception as e:
         log.error("services.ms_onedrive -- download_file -- Error: %s", e)
 
