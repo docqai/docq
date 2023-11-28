@@ -118,7 +118,7 @@ def _get_generation_model(model_settings_collection: ModelUsageSettingsCollectio
             model = OpenAI(
                 temperature=chat_model_settings.temperature,
                 model=chat_model_settings.model_name,
-                openai_api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
+                api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
             )
             log.info("Chat model: using OpenAI.")
             _env_missing = not bool(os.getenv("DOCQ_OPENAI_API_KEY"))
