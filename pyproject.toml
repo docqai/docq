@@ -156,15 +156,14 @@ doc = "mkdocs serve --use-directory-urls --livereload --watch-theme --watch mkdo
 doc-html = "mkdocs build --site-dir ./_site"
 
 [tool.poe.tasks.test-integration]
-control.expr = "log"
-args = ["log"]
-
-    [[tool.poe.tasks.test-integration.switch]]
-    case = "true"
-    cmd = "pytest --capture=tee-sys tests/integration"
-
-    [[tool.poe.tasks.test-integration.switch]]
-    cmd = "pytest tests/integration"
+shell ="[ $log = True ] && pytest tests/integration --capture=tee-sys || pytest tests/integration"
+help = "Run integration tests"
+    [[tool.poe.tasks.test-integration.args]]
+    name = "log"
+    default = false
+    type = "boolean"
+    options = ["--log", "-l"]
+    help = "Show all logs including stdout and stderr"
 
 [tool.poe.tasks.run]
 cmd = "streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.runOnSave true --server.fileWatcherType auto"
