@@ -12,6 +12,8 @@
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
 [![AGPLv3 License][license-shield]][license-url]
+[![Slack][slack-shield]][slack-url]
+[![X (formerly Twitter) Follow][twitter-shield]][twitter-url]
 
 # Docq - Private & Secure AI Knowledge Insight
 
@@ -110,13 +112,17 @@ Copyright (C) 2023 FABR Ltd t/a Docq.AI
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 
-[contributors-shield]: https://img.shields.io/github/contributors/docqai/docq.svg?style=for-the-badge
+[contributors-shield]: https://img.shields.io/github/contributors/docqai/docq.svg?style=flat
 [contributors-url]: https://github.com/docqai/docq/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/docqai/docq.svg?style=for-the-badge
+[forks-shield]: https://img.shields.io/github/forks/docqai/docq.svg?style=flat
 [forks-url]: https://github.com/docqai/docq/network/members
-[stars-shield]: https://img.shields.io/github/stars/docqai/docq.svg?style=for-the-badge
+[stars-shield]: https://img.shields.io/github/stars/docqai/docq.svg?style=flat
 [stars-url]: https://github.com/docqai/docq/stargazers
-[issues-shield]: https://img.shields.io/github/issues/docqai/docq.svg?style=for-the-badge
+[issues-shield]: https://img.shields.io/github/issues/docqai/docq.svg?style=flat
 [issues-url]: https://github.com/docqai/docq/issues
-[license-shield]: https://img.shields.io/badge/license-AGPL_3.0-green?style=for-the-badge
+[license-shield]: https://img.shields.io/badge/license-AGPL_3.0-green?style=flat
 [license-url]: https://github.com/docqai/docq/blob/main/LICENSE.AGPL3
+[slack-shield]: https://img.shields.io/badge/Join-orange?style=flat&logo=slack&label=Slack
+[slack-url]: https://join.slack.com/t/docqai/shared_invite/zt-27p17lu6v-6KLJxSmt61vfNqCavSE73A
+[twitter-shield]: https://img.shields.io/twitter/follow/docqai?logo=x&style=flat
+[twitter-url]: https://twitter.com/docqai
