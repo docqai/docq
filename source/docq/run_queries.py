@@ -46,7 +46,7 @@ MESSAGE_WITH_SOURCES_TEMPLATE = "{message}\n{source}"
 NUMBER_OF_MESSAGES_IN_HISTORY = 10
 
 
-def _save_messages(data: list[tuple[str, bool, datetime, int]], feature: FeatureKey) -> list[int]:
+def _save_messages(data: list[tuple[str, bool, datetime, int]], feature: FeatureKey) -> list:
     rows = []
     tablename = get_history_table_name(feature.type_)
     thread_tablename = get_history_thread_table_name(feature.type_)
@@ -209,7 +209,7 @@ def query(
     model_settings_collection: ModelUsageSettingsCollection,
     space: Optional[SpaceKey] = None,
     spaces: Optional[list[SpaceKey]] = None,
-) -> list[int]:
+) -> list:
     """Run the query again documents in the space(s) using a LLM."""
     log.debug(
         "Query: '%s' for feature: '%s' with personal-space: '%s' and shared-spaces: '%s'",

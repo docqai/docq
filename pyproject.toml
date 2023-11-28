@@ -148,13 +148,23 @@ exclude_lines = [
 install = "poetry install --only main"
 install-dev = "poetry install"
 test = "pytest tests/unit"
-test-integration = "pytest tests/integration"
 pre-commit = "pre-commit run --all-files"
 lint-ruff = "ruff check **/*.py --fix"
 lint-black = "black **/*.py"
 lint = ["lint-black", "lint-ruff"]
 doc = "mkdocs serve --use-directory-urls --livereload --watch-theme --watch mkdocs.yaml"
 doc-html = "mkdocs build --site-dir ./_site"
+
+[tool.poe.tasks.test-integration]
+control.expr = "log"
+args = ["log"]
+
+    [[tool.poe.tasks.test-integration.switch]]
+    case = "true"
+    cmd = "pytest --capture=tee-sys tests/integration"
+
+    [[tool.poe.tasks.test-integration.switch]]
+    cmd = "pytest tests/integration"
 
 [tool.poe.tasks.run]
 cmd = "streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.runOnSave true --server.fileWatcherType auto"
