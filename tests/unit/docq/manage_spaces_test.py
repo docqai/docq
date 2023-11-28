@@ -1,12 +1,11 @@
 """Tests for docq.manage_spaces module."""
-import unittest
 from unittest.mock import Mock, patch
 
 from docq.config import SpaceType
 from docq.domain import SpaceKey
 from docq.model_selection.main import get_model_settings_collection
-from llama_index import Document, DocumentSummaryIndex
-
+from llama_index import DocumentSummaryIndex
+from llama_index.schema import Document
 
 # def test_reindex() -> None:
 #     """Test reindex."""
@@ -35,8 +34,8 @@ from llama_index import Document, DocumentSummaryIndex
 #         mock_persist_index.assert_called_once_with(mock_index, arg_space_key)
 
 
-@patch("docq.support.metadata_extractors.DEFAULT_MODEL_PATH")
-def test_reindex_doc_summary_index(mock_DEFAULT_MODEL_PATH) -> None:
+#@patch("docq.support.metadata_extractors.DEFAULT_MODEL_PATH")
+def test_reindex_doc_summary_index() -> None:
     """Test reindex."""
     from docq.manage_spaces import reindex
 
@@ -49,14 +48,14 @@ def test_reindex_doc_summary_index(mock_DEFAULT_MODEL_PATH) -> None:
     ) as mock_ManualUpload_load, patch(  # noqa: N806
         "docq.manage_spaces.get_saved_model_settings_collection"  # note the reference to the file where the function is called, not defined.
     ) as mock_get_saved_model_settings_collection:  # noqa: N806
-        mock_DEFAULT_MODEL_PATH.return_value = "./sfsdf"
+        #mock_DEFAULT_MODEL_PATH.return_value = "./sfsdf"
         mock_index = Mock(DocumentSummaryIndex)
         mock_create_document_summary_index.return_value = mock_index
 
         mock_get_space_data_source.return_value = ("MANUAL_UPLOAD", {})
 
         mock_ManualUpload_load.return_value = [
-            Document(doc_id="testid", text="test", metadata={"source_uri": "https://example.com}"})
+            Document(doc_id="testid", text="test", extra_info={"source_uri": "https://example.com}"})
         ]
         print("hello bla test running")
 
