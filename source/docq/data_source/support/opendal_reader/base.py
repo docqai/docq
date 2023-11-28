@@ -385,7 +385,7 @@ async def extract_file(
         with open(file_path, "r", errors=errors, encoding="utf8") as f:
             data = f.read()
 
-        doc = Document(text=data, metadata=metadata or {})
+        doc = Document(text=data, extra_info=metadata or {})
         if filename_as_id:
             doc.id_ = str(file_path)
 

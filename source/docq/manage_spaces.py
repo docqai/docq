@@ -98,13 +98,14 @@ def reindex(space: SpaceKey) -> None:
         (ds_type, ds_configs) = _space_data_source
         log.debug("reindex(): get datasource instance")
         documents = SpaceDataSources[ds_type].value.load(space, ds_configs)
-        log.debug("reindex(): docs to index, %s", len(documents))
-        log.debug("reindex(): first doc metadata: %s", documents[0].metadata)
-        log.debug("reindex(): first doc text: %s", documents[0].text)
-        # index = _create_index(documents, saved_model_settings)
-        # _persist_index(index, space)
-        summary_index = _create_document_summary_index(documents, saved_model_settings)
-        _persist_index(summary_index, space)
+
+        if documents:
+            log.debug("reindex(): docs to index, %s", len(documents))
+            log.debug("reindex(): first doc metadata: %s", documents[0].metadata)
+            log.debug("reindex(): first doc text: %s", documents[0].text)
+
+            summary_index = _create_document_summary_index(documents, saved_model_settings)
+            _persist_index(summary_index, space)
     except Exception as e:
         if e.__str__().__contains__("No files found"):
             log.info("Reindex skipped. No documents found in space '%s'", space)

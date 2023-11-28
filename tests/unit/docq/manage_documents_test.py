@@ -18,10 +18,10 @@ from unittest.mock import MagicMock, Mock, patch
 class TestManageDocuments(unittest.TestCase):
     """Test manage_documents."""
 
-    @patch("docq.support.metadata_extractors.DEFAULT_MODEL_PATH")
-    def setUp(self: Self, mock_DEFAULT_MODEL_PATH) -> None:
+    #@patch("docq.support.metadata_extractors.DEFAULT_MODEL_PATH")
+    def setUp(self: Self) -> None:
         """Prepare test data."""
-        mock_DEFAULT_MODEL_PATH.return_value = "./sfdsf"
+        #mock_DEFAULT_MODEL_PATH.return_value = "./sfdsf"
         self.web_metadata = {
             "source_website": "https://example.net",
             "page_title": "page_title",

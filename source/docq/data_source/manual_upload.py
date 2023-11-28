@@ -39,7 +39,7 @@ class ManualUpload(SpaceDataSourceFileBased):
                 str(DocumentMetadata.INDEXED_ON.name).lower(): datetime.timestamp(datetime.now().utcnow()),
             }
 
-        _documents = SimpleDirectoryReader(get_upload_dir(space), file_metadata=lambda_metadata).load_data()
+        _documents = SimpleDirectoryReader(input_dir=get_upload_dir(space), file_metadata=lambda_metadata, exclude_hidden=False).load_data()
 
         pdfreader_metadata_keys = ["page_label", "file_name"]
         exclude_embed_metadata_keys_ = [
