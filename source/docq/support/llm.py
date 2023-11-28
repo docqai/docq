@@ -148,7 +148,7 @@ def _get_embed_model(model_settings_collection: ModelUsageSettingsCollection) ->
             elif embedding_model_settings.model_vendor == ModelVendor.OPENAI:
                 embedding_model = OpenAIEmbedding(
                         model=embedding_model_settings.model_name,
-                        openai_api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
+                        api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
                     )
             elif embedding_model_settings.model_vendor == ModelVendor.HUGGINGFACE_OPTIMUM_BAAI:
                 embedding_model = OptimumEmbedding(folder_name=get_models_dir(embedding_model_settings.model_name))
