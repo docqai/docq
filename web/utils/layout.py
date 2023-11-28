@@ -1390,13 +1390,14 @@ def signup_ui() -> None:
         st.session_state[f"{form}-validator"] = st.empty()
 
         with st.form(key=form):
-            st.text_input("Name", placeholder="Bob Smith", key=f"{form}-name", value=qs_name)
-            st.text_input("Email", placeholder="bob.smith@acme.com", key=f"{form}-email", value=qs_email, disabled=qs_email is not None)
+            st.text_input("Name", placeholder="Bob Smith", key=f"{form}-name", value=qs_name, autocomplete="name")
+            st.text_input("Email", placeholder="bob.smith@acme.com", key=f"{form}-email", value=qs_email, disabled=qs_email is not None, autocomplete="email")
             st.text_input(
                 "Password",
                 type="password",
                 key=f"{form}-password",
-                help="Password must be at least 8 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number and 1 special character."
+                help="Password must be at least 8 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number and 1 special character.",
+                autocomplete="new-password",
             )
             submit = st.form_submit_button("Signup")
             if submit:
