@@ -260,22 +260,23 @@ def __login_form() -> None:
 
     st.markdown("### Please login to continue")
     form_validator, form_name = st.empty(), "login-form"
-    username = st.text_input("Username", value="", key="login_username")
-    password = st.text_input("Password", value="", key="login_password", type="password")
-    if st.button("Login"):
-        if handle_login(username, password):
-            st.experimental_rerun()
-        elif not handle_check_account_activated(username):
-            st.session_state[f"{form_name}-resend-verification-email"] = True
-        else:
-            form_validator.error("The Username or the Password you've entered doesn't match what we have.")
-            st.stop()
+    with st.form(key=form_name):
+        username = st.text_input("Username", value="", key="login_username", autocomplete="username")
+        password = st.text_input("Password", value="", key="login_password", type="password", autocomplete="current-password")
+        if st.form_submit_button("Login"):
+            if handle_login(username, password):
+                st.experimental_rerun()
+            elif not handle_check_account_activated(username):
+                st.session_state[f"{form_name}-resend-verification-email"] = True
+            else:
+                form_validator.error("The Username or the Password you've entered doesn't match what we have.")
+                st.stop()
 
-    if st.session_state.get(f"{form_name}-resend-verification-email", False):
-        with form_validator.container():
-            __resend_verification_ui(username, form_name)
-    else:
-        st.stop()
+        if st.session_state.get(f"{form_name}-resend-verification-email", False):
+            with form_validator.container():
+                __resend_verification_ui(username, form_name)
+        else:
+            st.stop()
 
 
 def __logout_button() -> None:
