@@ -602,28 +602,27 @@ def _personal_ask_style() -> None:
 def _show_chat_histories(feature: FeatureKey) -> None:
     st.markdown("""
       <style>
-        section[data-testid="stSidebar"] .streamlit-expanderContent button[kind="secondary"] {
+        section[data-testid="stSidebar"] div[data-testid="stSidebarUserContent"] div[data-testid="stExpander"] button[kind="secondary"] {
             width: 100%;
             text-align: left !important;
             justify-content: flex-start;
             padding: 0px 1rem;
-            opacity: 0.8;
             min-height: unset !important;
             max-height: 2rem !important;
             height: 2rem;
-            border-radius: 3px;
+            border-radius: 5px;
             overflow: hidden;
         }
-        section[data-testid="stSidebar"] .streamlit-expanderContent h4 {
+         section[data-testid="stSidebar"] div[data-testid="stSidebarUserContent"] div[data-testid="stExpander"] h4 {
             margin-bottom: 0.5rem;
         }
-        section[data-testid="stSidebar"] .streamlit-expanderContent button[kind="secondary"] p {
+         section[data-testid="stSidebar"] div[data-testid="stSidebarUserContent"] div[data-testid="stExpander"] button[kind="secondary"] p {
             padding-top: 0.3rem;
             max-height: 1.6rem;
             overflow: hidden;
             display: inline-block !important;
         }
-        section[data-testid="stSidebar"] .streamlit-expanderContent div[data-testid="stVerticalBlock"] {
+        section[data-testid="stSidebar"] div[data-testid="stSidebarUserContent"] div[data-testid="stExpander"] div[data-testid="stVerticalBlock"] {
             gap: 2px !important;
         }
       </style>
