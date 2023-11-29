@@ -900,22 +900,19 @@ def _get_credential_request_params() -> dict:
 def _render_file_storage_credential_request(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
     """Renders the credential request input field with an action button."""
     saved_credentials = configs.get(configkey.key) if configs else st.session_state.get(key, None)
-    global opacity
-    opacity = 0.4 if saved_credentials else 1.0
-    st.markdown(f"""
+    st.markdown("""
     <style>
-      div.element-container .stMarkdown div[data-testid="stMarkdownContainer"] p {{
+      div.element-container .stMarkdown div[data-testid="stMarkdownContainer"] p {
         margin-bottom: 8px !important;
         font-size: 14px !important;
-        opacity: {opacity} !important;
-      }}
-      div.element-container .stMarkdown div[data-testid="stMarkdownContainer"] style {{
+      }
+      div.element-container .stMarkdown div[data-testid="stMarkdownContainer"] style {
         display: none !important;
-      }}
+      }
     </style>
     """, unsafe_allow_html=True)
     st.write(f"{configkey.name}{'' if configkey.is_optional else ' *'}")
-    text_box, btn = st.columns([3, 1])
+    text_box, btn = st.columns([2, 1])
 
     new_credentials, auth_url = None, None
 
@@ -925,8 +922,6 @@ def _render_file_storage_credential_request(configkey: ConfigKey, key: str, conf
         response = handler(params) if handler else {}
         new_credentials = response.get("credential") if response else None
         auth_url = response.get("auth_url") if response else None
-
-    opacity = 0.4 if bool(new_credentials or saved_credentials) else 1.0
 
     text_box.text_input(
         configkey.name,
@@ -959,7 +954,7 @@ def fetch_file_storage_root_folders(_configkey: ConfigKey, configs: Optional[dic
         return [saved_settings], True
 
     else:
-        with st.spinner("Loading Options..."):
+        with st.spinner("Loading Options..."): # noqa E501
             handler: Callable = options.get("handler", None)
             if handler:
                 return handler(configs, st.session_state)
@@ -1069,7 +1064,8 @@ def create_space_ui(expanded: bool = False) -> None:
             _render_space_data_source_config_input_fields(ds, "create_space_")
         if st.button("Create Space"):
             st.session_state["create_space_defaults"] = ("", "", "")
-            handle_create_space()
+            space = handle_create_space()
+            st.experimental_set_query_params(sid=space.id_)
 
 
 def _render_view_space_details_with_container(

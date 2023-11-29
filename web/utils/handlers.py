@@ -681,12 +681,23 @@ def handle_manage_space_permissions(id_: int) -> bool:
     return manage_spaces.update_shared_space_permissions(id_, permissions)
 
 
+def _clear_cached_file_storage_form_values(prefix: str, ds_type: str) -> None:
+    """Clear the cached file storage form values."""
+    template = f"{prefix}ds_config_{ds_type}"
+    for key in [f"{template}-credential", f"{template}-root_path", f"{template}-root_path_temp" ]:
+        st.session_state.pop(key, None)
+
+
 def handle_create_space() -> SpaceKey:
-    ds_type, ds_configs = _prepare_space_data_source("create_space_")
+    """Handle create space."""
+    prefix = "create_space_"
+    ds_type, ds_configs = _prepare_space_data_source(prefix)
     org_id = get_selected_org_id()
     space = manage_spaces.create_shared_space(
         org_id, st.session_state["create_space_name"], st.session_state["create_space_summary"], ds_type, ds_configs
     )
+    if space is not None:
+        _clear_cached_file_storage_form_values(prefix, ds_type)
     return space
 
 
