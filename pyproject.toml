@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "docq"
-version = "0.6.1"
+version = "0.6.2"
 description = "Docq.AI - private and secure knowledge insight on your data."
 authors = ["Docq.AI Team <support@docqai.com>"]
 maintainers = ["Docq.AI Team <support@docqai.com>"]
