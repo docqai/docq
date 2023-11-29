@@ -2,6 +2,7 @@
 
 import logging as log
 import os
+from typing import Any, Dict
 
 import docq
 from llama_index import (
@@ -20,6 +21,7 @@ from llama_index.indices.base import BaseIndex
 from llama_index.indices.composability import ComposableGraph
 from llama_index.llms.azure_openai import AzureOpenAI
 from llama_index.llms.base import LLM
+from llama_index.llms.litellm import LiteLLM
 from llama_index.llms.openai import OpenAI
 from llama_index.node_parser import NodeParser, SentenceSplitter
 from llama_index.response.schema import RESPONSE_TYPE
@@ -97,14 +99,24 @@ def _get_generation_model(model_settings_collection: ModelUsageSettingsCollectio
     if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.CHAT]:
         chat_model_settings = model_settings_collection.model_usage_settings[ModelCapability.CHAT]
         if chat_model_settings.model_vendor == ModelVendor.AZURE_OPENAI:
-            model = AzureOpenAI(
+            # model = AzureOpenAI(
+            #     temperature=chat_model_settings.temperature,
+            #     model=chat_model_settings.model_name,
+            #     deployment_name=chat_model_settings.model_deployment_name, # bug: `azure_deployment` arg hasn't been aliased.
+            #     azure_endpoint=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
+            #     api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
+            #     #openai_api_type="azure",
+            #     api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION") or "",
+            # )
+            _additional_kwargs: Dict[str, Any] = {}
+            _additional_kwargs["api_version"] = os.getenv("DOCQ_AZURE_OPENAI_API_VERSION")
+            model = LiteLLM(
                 temperature=chat_model_settings.temperature,
-                model=chat_model_settings.model_name,
-                deployment_name=chat_model_settings.model_deployment_name, # bug: `azure_deployment` arg hasn't been aliased.
-                azure_endpoint=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
+                model=f"azure/{chat_model_settings.model_deployment_name}",
+                additional_kwargs=_additional_kwargs,
+                api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
                 api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
-                #openai_api_type="azure",
-                api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION") or "",
+                set_verbose=True,
             )
             log.info("Chat model: using Azure OpenAI")
             _env_missing = not bool(
