@@ -10,7 +10,7 @@ from opentelemetry import trace
 
 class OtelCallbackHandler(BaseCallbackHandler):
     """Base callback handler that can be used to track event starts and ends."""
-
+    _spans: dict[str, Any] = {}
     def __init__(
         self: Self,
         tracer_provider: trace.TracerProvider,
@@ -37,8 +37,11 @@ class OtelCallbackHandler(BaseCallbackHandler):
         **kwargs: Any,
     ) -> str:
         """Run when an event starts and return id of event."""
-        trace.get_current_span().add_event(name=f"{event_type.value}_started", attributes=payload)
+        #trace.get_current_span().add_event(name=f"{event_type.value}_started", attributes=payload)
         #logging.debug("Starting event %s, %s", event_type, event_id)
+        
+        self._spans[event_id] = self._tracer.start_span(name=event_type.value, attributes=payload)
+
         return event_id
 
     def on_event_end(
@@ -49,8 +52,9 @@ class OtelCallbackHandler(BaseCallbackHandler):
         **kwargs: Any,
     ) -> None:
         """Run when an event ends."""
-        trace.get_current_span().add_event(name=f"{event_type.value}_ended", attributes=payload)
-        
+        #trace.get_current_span().add_event(name=f"{event_type.value}_ended", attributes=payload)
+        self._spans[event_id].add_attributes(payload)
+        self._spans[event_id].end()
 
     def start_trace(self: Self, trace_id: Optional[str] = None) -> None:
         """Run when an overall trace is launched."""
