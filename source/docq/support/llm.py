@@ -127,7 +127,12 @@ def _get_generation_model(model_settings_collection: ModelUsageSettingsCollectio
             if _env_missing:
                 log.warning("Chat model: env var values missing.")
         elif chat_model_settings.model_vendor == ModelVendor.OPENAI:
-            model = OpenAI(
+            # model = OpenAI(
+            #     temperature=chat_model_settings.temperature,
+            #     model=chat_model_settings.model_name,
+            #     api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
+            # )
+            model = LiteLLM(
                 temperature=chat_model_settings.temperature,
                 model=chat_model_settings.model_name,
                 api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
