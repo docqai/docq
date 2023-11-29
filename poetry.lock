@@ -1698,6 +1698,29 @@ files = [
 referencing = ">=0.28.0"
 
 [[package]]
+name = "litellm"
+version = "1.7.7"
+description = "Library to easily interface with LLM API providers"
+optional = false
+python-versions = ">=3.8,<4.0"
+files = [
+    {file = "litellm-1.7.7-py3-none-any.whl", hash = "sha256:7714170e31c3ada03a76665492d49cff7c8d2f2eed6d45c8ed926d4557360e7d"},
+    {file = "litellm-1.7.7.tar.gz", hash = "sha256:5c9675e3963962abc2b3c3c1f32cb210921f1e350d0cc3eddc85407ff9964bf5"},
+]
+
+[package.dependencies]
+aiohttp = "*"
+appdirs = ">=1.4.4,<2.0.0"
+certifi = ">=2023.7.22,<2024.0.0"
+click = "*"
+importlib-metadata = ">=6.8.0"
+jinja2 = ">=3.1.2,<4.0.0"
+openai = ">=1.0.0"
+python-dotenv = ">=0.2.0"
+tiktoken = ">=0.4.0"
+tokenizers = "*"
+
+[[package]]
 name = "llama-index"
 version = "0.9.8.post1"
 description = "Interface between LLMs and your data"
@@ -5758,4 +5781,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.12"
-content-hash = "86ea40ae9b86d995136e3f6adc1e3f313a604fd1ede5363406c768fa629a8a88"
+content-hash = "8cdb47a61c58e02fda7815cd62b88f33c3b48905febdb207bff9eb3459b78d9e"
