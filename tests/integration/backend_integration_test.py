@@ -3,6 +3,7 @@
 import os
 from contextlib import suppress
 from shutil import rmtree
+from typing import Generator
 
 import pytest
 from docq import config, domain, manage_documents, manage_settings, manage_users, run_queries, setup
@@ -12,6 +13,7 @@ from docq.model_selection.main import (
 )
 
 from tests.utilities import (
+    AI_MODEL_COLLECTION_NAME,
     DOCQ_DATA_KEY,
     TEST_FILE_NAME,
     get_auth_results,
@@ -23,7 +25,7 @@ from web.utils.constants import SessionKeyNameForAuth
 
 
 @pytest.fixture(scope="session" , autouse=True)
-def _setup_and_teardown() -> None:
+def _setup_and_teardown() -> Generator[None, None, None]:
     """Setup and teardown for each test."""
     print("Setup")
     # setup_env()
@@ -35,7 +37,7 @@ def _setup_and_teardown() -> None:
         rmtree(os.environ[DOCQ_DATA_KEY])
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def test_user() -> dict:
     """Get a test user."""
     return get_user()
@@ -43,27 +45,26 @@ def test_user() -> dict:
 ## User actions
 
 # Create user
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def user_id(test_user: dict) -> int:
     """Create a test user."""
-    with suppress(ValueError):
-        return manage_users.create_user(**test_user)
+    return manage_users.create_user(**test_user)
 
 
 # Login
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def auth_results(test_user: dict, user_id: int) -> dict:
     """Authenticate the test user."""
     return get_auth_results(test_user, user_id)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def features(auth_results: dict) -> dict[str, domain.FeatureKey]:
     """Get available features."""
     return get_features(auth_results[SessionKeyNameForAuth.ID.name])
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def personal_space(auth_results: dict) -> domain.SpaceKey:
     """Get personal space."""
     return domain.SpaceKey(
@@ -73,21 +74,21 @@ def personal_space(auth_results: dict) -> domain.SpaceKey:
     )
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def sample_file() -> bytes:
     """Get test file."""
     return get_sample_file()
 
 
 # Upload file to a personal space
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="session")
 def _upload_test_file(sample_file: bytes, personal_space: domain.SpaceKey) -> None:
     """Upload a test file."""
     manage_documents.upload(TEST_FILE_NAME, sample_file, personal_space)
 
 
 # Update organisation settings
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="session")
 def _update_organisation_settings(auth_results: dict) -> None:
     """Update organisation settings."""
     manage_settings.update_organisation_settings(
@@ -95,14 +96,14 @@ def _update_organisation_settings(auth_results: dict) -> None:
             config.OrganisationSettingsKey.ENABLED_FEATURES.name: [
                 f.name for f in config.OrganisationFeatureType
             ],
-            config.OrganisationSettingsKey.MODEL_COLLECTION.name: "openai_latest",
+            config.OrganisationSettingsKey.MODEL_COLLECTION.name: AI_MODEL_COLLECTION_NAME,
         },
         org_id=auth_results[SessionKeyNameForAuth.SELECTED_ORG_ID.name],
     )
 
 
 # Get saved model settings
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def saved_model_settings(auth_results: dict) -> ModelUsageSettingsCollection:
     """Get saved model settings."""
     return get_saved_model_settings_collection(
@@ -123,7 +124,7 @@ def test_the_sample_file_exists(personal_space: domain.SpaceKey) -> None:
     assert file.endswith(TEST_FILE_NAME), "The test file should have the correct name."
 
 
-def test_chat_private_feature(features: domain.FeatureKey, saved_model_settings: ModelUsageSettingsCollection) -> None:
+def test_chat_private_feature(features: dict[str, domain.FeatureKey], saved_model_settings: ModelUsageSettingsCollection) -> None:
     """Run a query against the private chat feature."""
     prompt = """
     You are an AI designed to help humans with their daily activities.
@@ -150,7 +151,7 @@ def test_chat_private_feature(features: domain.FeatureKey, saved_model_settings:
 
 
 def test_ask_personal_docs_feature(
-    features: domain.FeatureKey,
+    features: dict[str, domain.FeatureKey],
     personal_space: domain.SpaceKey,
     saved_model_settings: ModelUsageSettingsCollection
     ) -> None:

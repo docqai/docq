@@ -10,6 +10,7 @@ TEST_FIXTURES = os.environ.get("TEST_FIXTURES_PATH", "tests/integration/fixtures
 DOCQ_DATA_KEY = config.ENV_VAR_DOCQ_DATA
 TEST_FILE_PATH = "misc/test_files/integration_test.pdf"
 TEST_FILE_NAME = "integration_test.pdf"
+AI_MODEL_COLLECTION_NAME = os.environ.get("DOCQ_TEST_AI_MODEL_COLLECTION_NAME", "openai_latest")
 
 
 def get_user() -> dict:
@@ -37,6 +38,8 @@ def get_auth_results(test_user: dict, user_id: int, selected_org_admin: bool = F
     """Authenticate a user and retrive auth results."""
     manage_users.set_user_as_verified(user_id)
     auth_result = manage_users.authenticate(**test_user)
+
+    assert auth_result is not None, "Authentication failed"
     list_orgs = manage_organisations.list_organisations(user_id=auth_result[0])
     default_org_id = list_orgs[0][0] if list_orgs else None
 
