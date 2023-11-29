@@ -1064,7 +1064,8 @@ def create_space_ui(expanded: bool = False) -> None:
             _render_space_data_source_config_input_fields(ds, "create_space_")
         if st.button("Create Space"):
             st.session_state["create_space_defaults"] = ("", "", "")
-            handle_create_space()
+            space = handle_create_space()
+            st.experimental_set_query_params(sid=space.id_)
 
 
 def _render_view_space_details_with_container(
