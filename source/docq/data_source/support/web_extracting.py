@@ -4,7 +4,7 @@ import logging as log
 import re
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Self
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -19,9 +19,9 @@ class BaseTextExtractor(ABC):
     """Abstract base class for webpage text extractors."""
 
     def __init__(
-        self,
-        title_css_selector: str = None,
-        subtitle_css_selector: str = None,
+        self: Self,
+        title_css_selector: Optional[str] = None,
+        subtitle_css_selector: Optional[str] = None,
     ) -> None:
         """Initialize the text extractor."""
         self._title_css_selector = title_css_selector
@@ -29,23 +29,23 @@ class BaseTextExtractor(ABC):
 
     @abstractmethod
     def extract_text(
-        self,
-        soup: any,
+        self: Self,
+        soup: Any,
         page_url: str,
     ) -> str:
         """Extract text from a web page."""
         pass
 
     @abstractmethod
-    def link_extract_selector() -> any:
+    def link_extract_selector() -> Any:
         """Criteria filter specific <a> tags to extract links from. To extract all links, return None."""
         pass
 
-    def extract_title(self, soup: any, css_selector: str = None) -> str:  # noqa: D102
+    def extract_title(self: Self, soup: Any, css_selector: Optional[str] = None) -> str:  # noqa: D102
         """Extract the title from a web page. Defaults to the <h1> tag.
 
         Args:
-            soup (any): The BeautifulSoup object representing the web page.
+            soup (Any): The BeautifulSoup object representing the web page.
             css_selector (str, optional): The CSS selector to use to find the title. BeautifulSoup style. Defaults to None.
         """
         self._title_css_selector = css_selector if css_selector else self._title_css_selector
@@ -59,11 +59,11 @@ class BaseTextExtractor(ABC):
 
         return title_element.get_text() if title_element else "web page"
 
-    def extract_subtitle(self, soup: any, css_selector: str = None) -> str:
+    def extract_subtitle(self: Self, soup: Any, css_selector: Optional[str] = None) -> str:
         """Extract the subtitle from a web page. Defaults to the <h2> tag.
 
         Args:
-            soup (any): The BeautifulSoup object representing the web page.
+            soup (Any): The BeautifulSoup object representing the web page.
             css_selector (str, optional): The CSS selector to use to find the subtitle. BeautifulSoup style. Defaults to None.
 
         Returns:
@@ -77,7 +77,7 @@ class BaseTextExtractor(ABC):
 
         return subtitle_element.get_text() if subtitle_element else ""
 
-    def extract_links(self, soup: any, website_url: str, extract_url: str, include_filter: str = None) -> List[str]:
+    def extract_links(self: Self, soup: Any, website_url: str, extract_url: str, include_filter: Optional[str] = None) -> List[str]:
         """Extract a unique list of links from a website."""
         log.debug("Extract links from root URL: %s", extract_url)
 
@@ -116,10 +116,10 @@ class ReadTheDocsTextExtractor(BaseTextExtractor):
     """Extract text from a ReadTheDocs documentation site."""
 
     def extract_text(
-        self,
-        soup: any,
+        self: Self,
+        soup: Any,
         page_url: str,
-    ) -> str:
+    ) -> Any | None:
         """Extract text from a ReadTheDocs documentation site."""
         try:
             node = soup.find(attrs={"role": "main"})
@@ -131,20 +131,20 @@ class ReadTheDocsTextExtractor(BaseTextExtractor):
 
         return text
 
-    def link_extract_selector(self) -> any:  # noqa: D102
+    def link_extract_selector(self: Self) -> Any:  # noqa: D102
         """Return CSS class names to filter <a> tags. To extract all links, return None."""
         return "reference internal"
 
 
 class GenericTextExtractor(BaseTextExtractor):
-    """Extract text from any website on a best efforts basis, naive implementation. Not recursive."""
+    """Extract text from Any website on a best efforts basis, naive implementation. Not recursive."""
 
     def extract_text(
-        self,
-        soup: any,
+        self: Self,
+        soup: Any,
         page_url: str,
-    ) -> str:
-        """Extract text from any website on a best efforts basis, naive implementation. Not recursive."""
+    ) -> str | None:
+        """Extract text from Any website on a best efforts basis, naive implementation. Not recursive."""
         try:
             tags = soup.find_all("p")
             page_text = ""
@@ -156,7 +156,8 @@ class GenericTextExtractor(BaseTextExtractor):
 
         return page_text
 
-    def link_extract_selector(self) -> any:  # noqa: D102
+    def link_extract_selector(self: Self) -> Any:
+        """Return CSS class names to filter <a> tags. To extract all links, return None."""
         return None
 
 
@@ -164,10 +165,10 @@ class GenericKnowledgeBaseExtractor(BaseTextExtractor):
     """Extract text from a KnowledgeBase documentation site."""
 
     def extract_text(
-        self,
-        soup: any,
+        self: Self,
+        soup: Any,
         page_url: str,
-    ) -> str:
+    ) -> str | None:
         """Extract text from a ReadTheDocs documentation site."""
         content_body = ""
         try:
@@ -183,7 +184,7 @@ class GenericKnowledgeBaseExtractor(BaseTextExtractor):
 
         return content_body
 
-    def link_extract_selector(self) -> any:  # noqa: D102
+    def link_extract_selector(self: Self) -> Any:  # noqa: D102
         return None
 
 
@@ -200,8 +201,8 @@ class BeautifulSoupWebReader(BaseReader):
     """
 
     def __init__(
-        self,
-        website_extractors: Dict[str, BaseTextExtractor] = None,
+        self: Self,
+        website_extractors: Dict[str, BaseTextExtractor],
         website_metadata: Optional[Callable[[str], Dict]] = None,
     ) -> None:
         """Initialize with parameters."""
@@ -210,9 +211,9 @@ class BeautifulSoupWebReader(BaseReader):
         self._document_list: List[DocumentListItem] = []
 
     def load_data(
-        self,
+        self: Self,
         urls: List[str],
-        include_filter: str = None,
+        include_filter: Optional[str] = None,
     ) -> List[Document]:
         """Load data from the urls.
 
@@ -273,9 +274,9 @@ class BeautifulSoupWebReader(BaseReader):
                     if self.website_metadata is not None:
                         metadata.update(self.website_metadata(url))
 
-                    all_documents.append(Document(text=page_text, metadata=metadata))
+                    all_documents.append(Document(text=page_text, extra_info=metadata))
 
-                    self._document_list.append(DocumentListItem.create_instance(page_link, page_text, indexed_on))
+                    self._document_list.append(DocumentListItem.create_instance(page_link, page_text, int(indexed_on)))
 
                 except Exception as e:
                     log.exception("Error requesting web page, skipped: %s, Error: %s", page_link, e)
@@ -283,6 +284,6 @@ class BeautifulSoupWebReader(BaseReader):
 
         return all_documents
 
-    def get_document_list(self) -> List[DocumentListItem]:
+    def get_document_list(self: Self) -> List[DocumentListItem]:
         """Return a list of documents. Can be used for tracking state overtime by implementing persistence and displaying document lists to users."""
         return self._document_list
