@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Optional, Self, Type
 
 from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
 
 import docq
 
@@ -123,7 +124,8 @@ def _import_extensions(extensions_config_path: str = DEFAULT_EXTENSION_JSON_PATH
                         span.add_event("importlib.spec_from_file_location() for extension failed", {"module_name": module_name, "module_source": module_source, "class_name": class_name})
                         logging.error("importlib.spec_from_file_location() for extension failed. Skipping... could not find extension module '%s' at '%s'.", module_name, module_source)
         except Exception as e:
-            span.set_status(status=trace.StatusCode.ERROR, description=str(e))
+            span.set_status(status=Status(StatusCode.ERROR))
+            span.record_exception(e)
             logging.error("_import_extensions() failed hard!")
             logging.error(e)
             raise e

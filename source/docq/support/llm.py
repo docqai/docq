@@ -2,7 +2,6 @@
 
 import logging as log
 import os
-from operator import call
 from typing import Any, Dict
 
 import docq
@@ -20,13 +19,12 @@ from llama_index.embeddings import AzureOpenAIEmbedding, OpenAIEmbedding, Optimu
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.indices.base import BaseIndex
 from llama_index.indices.composability import ComposableGraph
-from llama_index.llms.azure_openai import AzureOpenAI
 from llama_index.llms.base import LLM
 from llama_index.llms.litellm import LiteLLM
-from llama_index.llms.openai import OpenAI
 from llama_index.node_parser import NodeParser, SentenceSplitter
 from llama_index.response.schema import RESPONSE_TYPE
 from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
@@ -42,7 +40,7 @@ from .llamaindex_otel_callbackhandler import OtelCallbackHandler
 # from .node_parsers import AsyncSimpleNodeParser
 from .store import get_index_dir, get_models_dir
 
-tracer = trace.get_tracer("docq.api.support.llm", docq.__version_str__)
+tracer = trace.get_tracer(__name__, docq.__version_str__)
 
 # PROMPT_CHAT_SYSTEM = """
 # You are an AI assistant helping a human to find information.
@@ -261,7 +259,7 @@ def run_chat(input_: str, history: str, model_settings_collection: ModelUsageSet
     log.debug("(Chat) Q: %s, A: %s", input_, output)
     return output
 
-
+@tracer.start_as_current_span(name="run_ask")
 def run_ask(
     input_: str,
     history: str,
@@ -271,6 +269,7 @@ def run_ask(
 ) -> RESPONSE_TYPE | AGENT_CHAT_RESPONSE_TYPE:
     """Ask questions against existing index(es) with history."""
     log.debug("exec: runs_ask()")
+    span = trace.get_current_span()
     if spaces is not None and len(spaces) > 0:
         log.debug("runs_ask(): spaces count: %s", len(spaces))
         # With additional spaces likely to be combining a number of shared spaces.
@@ -295,21 +294,25 @@ def run_ask(
                 continue
 
         log.debug("number summaries: %s", len(summaries))
-        try:
-            graph = ComposableGraph.from_indices(
-                SummaryIndex,
-                indices,
-                index_summaries=summaries,
-                service_context=_get_service_context(model_settings_collection),
-            )
-            output = graph.as_query_engine().query(PROMPT_QUESTION.format(history=history, input=input_))
+        span.set_attribute("number_summaries", len(summaries))
+        with tracer.start_as_current_span(name="ComposableGraph.from_indices") as span:
+            try:
+                graph = ComposableGraph.from_indices(
+                    SummaryIndex,
+                    indices,
+                    index_summaries=summaries,
+                    service_context=_get_service_context(model_settings_collection),
+                )
+                output = graph.as_query_engine().query(PROMPT_QUESTION.format(history=history, input=input_))
 
-            log.debug("(Ask combined spaces %s) Q: %s, A: %s", all_spaces, input_, output)
-        except Exception as e:
-            log.error(
-                "Failed to create ComposableGraph. Maybe there was an issue with one of the Space indexes. Error message: %s",
-                e,
-            )
+                log.debug("(Ask combined spaces %s) Q: %s, A: %s", all_spaces, input_, output)
+            except Exception as e:
+                log.error(
+                    "Failed to create ComposableGraph. Maybe there was an issue with one of the Space indexes. Error message: %s",
+                    e,
+                )
+                span.set_status(status=Status(StatusCode.ERROR))
+                span.record_exception(e)
     else:
         log.debug("runs_ask(): space None or zero. Assuming personal ASK.")
         # No additional spaces i.e. likely to be against a user's documents in their personal space.
