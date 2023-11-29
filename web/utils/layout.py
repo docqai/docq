@@ -260,22 +260,23 @@ def __login_form() -> None:
 
     st.markdown("### Please login to continue")
     form_validator, form_name = st.empty(), "login-form"
-    username = st.text_input("Username", value="", key="login_username")
-    password = st.text_input("Password", value="", key="login_password", type="password")
-    if st.button("Login"):
-        if handle_login(username, password):
-            st.experimental_rerun()
-        elif not handle_check_account_activated(username):
-            st.session_state[f"{form_name}-resend-verification-email"] = True
-        else:
-            form_validator.error("The Username or the Password you've entered doesn't match what we have.")
-            st.stop()
+    with st.form(key=form_name):
+        username = st.text_input("Username", value="", key="login_username", autocomplete="username")
+        password = st.text_input("Password", value="", key="login_password", type="password", autocomplete="current-password")
+        if st.form_submit_button("Login"):
+            if handle_login(username, password):
+                st.experimental_rerun()
+            elif not handle_check_account_activated(username):
+                st.session_state[f"{form_name}-resend-verification-email"] = True
+            else:
+                form_validator.error("The Username or the Password you've entered doesn't match what we have.")
+                st.stop()
 
-    if st.session_state.get(f"{form_name}-resend-verification-email", False):
-        with form_validator.container():
-            __resend_verification_ui(username, form_name)
-    else:
-        st.stop()
+        if st.session_state.get(f"{form_name}-resend-verification-email", False):
+            with form_validator.container():
+                __resend_verification_ui(username, form_name)
+        else:
+            st.stop()
 
 
 def __logout_button() -> None:
@@ -1389,13 +1390,14 @@ def signup_ui() -> None:
         st.session_state[f"{form}-validator"] = st.empty()
 
         with st.form(key=form):
-            st.text_input("Name", placeholder="Bob Smith", key=f"{form}-name", value=qs_name)
-            st.text_input("Email", placeholder="bob.smith@acme.com", key=f"{form}-email", value=qs_email, disabled=qs_email is not None)
+            st.text_input("Name", placeholder="Bob Smith", key=f"{form}-name", value=qs_name, autocomplete="name")
+            st.text_input("Email", placeholder="bob.smith@acme.com", key=f"{form}-email", value=qs_email, disabled=qs_email is not None, autocomplete="email")
             st.text_input(
                 "Password",
                 type="password",
                 key=f"{form}-password",
-                help="Password must be at least 8 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number and 1 special character."
+                help="Password must be at least 8 characters long and contain at least 1 lowercase letter, 1 uppercase letter, 1 number and 1 special character.",
+                autocomplete="new-password",
             )
             submit = st.form_submit_button("Signup")
             if submit:
