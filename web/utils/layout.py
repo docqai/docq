@@ -687,7 +687,6 @@ def chat_ui(feature: FeatureKey) -> None:
                     key=f"chat_shared_spaces_{feature.value()}",
                     label_visibility="collapsed",
                 )
-                st.checkbox("Including your documents", value=True, key="chat_personal_space")
 
         load_history, create_new_chat = st.columns([3, 1])
         with load_history:
@@ -700,13 +699,15 @@ def chat_ui(feature: FeatureKey) -> None:
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
         st.markdown(f"#### {day}")
 
-        for x in get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY):
-            # x = (id, text, is_user, time, thread_id)
-            if format_datetime(x[3]) != day:
-                day = format_datetime(x[3])
-                st.markdown(f"#### {day}")
-            _chat_message(x[1], x[2])
-        _chat_ui_script()
+        chat_history = get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY)
+        if chat_history:
+            for x in chat_history:
+                # x = (id, text, is_user, time, thread_id)
+                if format_datetime(x[3]) != day:
+                    day = format_datetime(x[3])
+                    st.markdown(f"#### {day}")
+                _chat_message(x[1], x[2])
+            _chat_ui_script()
 
     st.chat_input(
         "Type your question here",
