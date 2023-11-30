@@ -7,7 +7,8 @@ from docq.domain import SpaceKey
 from docq.manage_spaces import list_shared_spaces
 from docq.model_selection.main import ModelUsageSettingsCollection, get_saved_model_settings_collection
 from docq.support.llm import _get_service_context, _get_storage_context
-from docq.support.metadata_extractors import DEFAULT_ENTITY_MAP
+
+#from docq.support.metadata_extractors import DEFAULT_ENTITY_MAP
 from llama_index import DocumentSummaryIndex, VectorStoreIndex, load_index_from_storage
 from llama_index.indices.base import BaseIndex
 from llama_index.schema import TextNode
@@ -66,10 +67,10 @@ def visualise_document_summary_index(_index: DocumentSummaryIndex) -> None:
             if "excerpt_keywords" in metadata:
                 keyword_count = len(docs[node_id].to_dict()["metadata"]["excerpt_keywords"].split(", "))
                 st.write(f"Metadata Keyword Count: {keyword_count}")
-            for key, entity_label in DEFAULT_ENTITY_MAP.items():
-                if entity_label in metadata:
-                    x_count = len(metadata[entity_label])
-                    st.write(f"Metadata Entity '{entity_label}' count: {x_count}")
+            # for key, entity_label in DEFAULT_ENTITY_MAP.items():
+            #     if entity_label in metadata:
+            #         x_count = len(metadata[entity_label])
+            #         st.write(f"Metadata Entity '{entity_label}' count: {x_count}")
 
         st.divider()
 
