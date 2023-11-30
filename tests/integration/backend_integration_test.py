@@ -148,26 +148,3 @@ def test_chat_private_feature(features: dict[str, domain.FeatureKey], saved_mode
         model_settings_collection=saved_model_settings,
     )
     assert "Test 1 from docq" in results[1][1], "The query should return the expected response."
-
-
-def test_ask_personal_docs_feature(
-    features: dict[str, domain.FeatureKey],
-    personal_space: domain.SpaceKey,
-    saved_model_settings: ModelUsageSettingsCollection
-    ) -> None:
-    """Run a query against the personal ask feature."""
-    prompt = """
-    What is the official docq website?
-    """
-    thread_id = 0
-
-    # Run the query
-    results = run_queries.query(
-        prompt,
-        features[config.OrganisationFeatureType.ASK_PERSONAL.name],
-        thread_id,
-        model_settings_collection=saved_model_settings,
-        space=personal_space,
-    )
-    ai_response: str = results[1][1]
-    assert "https://docq.ai" in ai_response, "The query should return the expected response."

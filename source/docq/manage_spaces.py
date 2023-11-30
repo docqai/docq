@@ -151,14 +151,10 @@ def get_space_data_source(space: SpaceKey) -> tuple[str, dict] | None:
     Returns:
         tuple[str, dict]: A tuple containing the data source type and configuration.
     """
-    if space.type_ == SpaceType.PERSONAL:
-        ds_type = "MANUAL_UPLOAD"
-        ds_configs = {}
-    else:
-        shared_space = get_shared_space(space.id_, space.org_id)
-        if shared_space is None:
-            raise ValueError(f"No shared space found with id {space.id_} and org_id {space.org_id}")
-        (_, _, _, _, _, ds_type, ds_configs, _, _) = shared_space
+    shared_space = get_shared_space(space.id_, space.org_id)
+    if shared_space is None:
+        raise ValueError(f"No shared space found with id {space.id_} and org_id {space.org_id}")
+    (_, _, _, _, _, ds_type, ds_configs, _, _) = shared_space
 
     return ds_type, ds_configs
 

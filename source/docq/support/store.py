@@ -63,37 +63,25 @@ def get_models_dir(model_group_key: str, makedir: bool = True) -> str:
 
 def get_upload_dir(space: SpaceKey) -> str:
     """Get the upload directory for a space."""
-    return (
-        _get_path(store=_StoreSubdir.UPLOAD, type_=space.type_, subtype=str(space.id_))
-        if space.type_ == SpaceType.PERSONAL
-        else _get_path(
-            store=_StoreSubdir.UPLOAD, type_=space.type_, subtype=os.path.join(str(space.org_id), str(space.id_))
-        )
+    return _get_path(
+        store=_StoreSubdir.UPLOAD, type_=space.type_, subtype=os.path.join(str(space.org_id), str(space.id_))
     )
 
 
 def get_upload_file(space: SpaceKey, filename: str) -> str:
     """Get the uploaded file for a space."""
-    return (
-        _get_path(store=_StoreSubdir.UPLOAD, type_=space.type_, subtype=str(space.id_), filename=filename)
-        if space.type_ == SpaceType.PERSONAL
-        else _get_path(
-            store=_StoreSubdir.UPLOAD,
-            type_=space.type_,
-            subtype=os.path.join(str(space.org_id), str(space.id_)),
-            filename=filename,
-        )
+    return _get_path(
+        store=_StoreSubdir.UPLOAD,
+        type_=space.type_,
+        subtype=os.path.join(str(space.org_id), str(space.id_)),
+        filename=filename,
     )
 
 
 def get_index_dir(space: SpaceKey) -> str:
     """Get the index directory for a space."""
-    return (
-        _get_path(store=_StoreSubdir.INDEX, type_=space.type_, subtype=str(space.id_))
-        if space.type_ == SpaceType.PERSONAL
-        else _get_path(
-            store=_StoreSubdir.INDEX, type_=space.type_, subtype=os.path.join(str(space.org_id), str(space.id_))
-        )
+    return _get_path(
+        store=_StoreSubdir.INDEX, type_=space.type_, subtype=os.path.join(str(space.org_id), str(space.id_))
     )
 
 

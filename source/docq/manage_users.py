@@ -81,10 +81,6 @@ def _init_admin_if_necessary() -> bool:
             add_organisation_member(manage_organisations.DEFAULT_ORG_ID, DEFAULT_ADMIN_ID, True)
             created = True
 
-    # Reindex the user's space for the first time
-    if created:
-        _reindex_user_docs(DEFAULT_ADMIN_ID, manage_organisations.DEFAULT_ORG_ID)
-
     return created
 
 @tracer.start_as_current_span(name="manage_users._init_user_data")
@@ -92,10 +88,6 @@ def _init_user_data(user_id: int) -> None:
     msettings._init(user_id)
     log.info("Initialised user data for user: %d", user_id)
 
-
-@tracer.start_as_current_span(name="manage_users._reindex_user_docs")
-def _reindex_user_docs(user_id: int, org_id: int) -> None:
-    mdocuments.reindex(SpaceKey(SpaceType.PERSONAL, user_id, org_id))
 
 @tracer.start_as_current_span(name="manage_users.authenticate")
 def authenticate(username: str, password: str) -> Tuple[int, str, bool, str] | None:

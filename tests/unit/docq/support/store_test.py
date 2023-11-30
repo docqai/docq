@@ -79,7 +79,6 @@ class TestGetPath:
     ("type_", "expected"),
     [
         (OrganisationFeatureType.ASK_SHARED, "history_ask_shared"),
-        (OrganisationFeatureType.ASK_PERSONAL, "history_ask_personal"),
         (OrganisationFeatureType.CHAT_PRIVATE, "history_chat_private"),
     ],
 )

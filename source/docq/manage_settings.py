@@ -51,7 +51,6 @@ def _init_default_org_settings(org_id: int) -> None:
     update_organisation_settings(
         {
             OrganisationSettingsKey.ENABLED_FEATURES.name: [
-                OrganisationFeatureType.ASK_PERSONAL.name,
                 OrganisationFeatureType.ASK_PUBLIC.name,
                 OrganisationFeatureType.ASK_SHARED.name,
                 OrganisationFeatureType.CHAT_PRIVATE.name,

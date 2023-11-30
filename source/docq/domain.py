@@ -40,8 +40,9 @@ class SpaceKey:
     type_: SpaceType
     id_: int
     org_id: int
-    summary: Optional[str] = None
     """The organisation ID that owns the space."""
+    summary: Optional[str] = None
+
 
     def __str__(self: Self) -> str:
         """Returns the string representation of the space key."""
