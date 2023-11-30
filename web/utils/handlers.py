@@ -34,7 +34,7 @@ from opentelemetry import baggage, trace
 from streamlit.components.v1 import html
 
 from .constants import (
-    MAX_NUMBER_OF_PERSONAL_DOCS,
+    MAX_NUMBER_OF_UPLOAD_DOCS,
     NUMBER_OF_MSGS_TO_LOAD,
     SessionKeyNameForAuth,
     SessionKeyNameForChat,
@@ -822,11 +822,7 @@ def handle_update_organisation_settings() -> None:  # noqa: D103
     )
 
 
-def get_max_number_of_documents(type_: config.SpaceType):
-    match type_:
-        case config.SpaceType.PERSONAL:
-            return MAX_NUMBER_OF_PERSONAL_DOCS
-        case _:
+def get_max_number_of_documents():
             return math.inf
 
 

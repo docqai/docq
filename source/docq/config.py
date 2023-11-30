@@ -10,7 +10,7 @@ SESSION_COOKIE_NAME = "docqai/_docq"
 
 
 class SpaceType(Enum):
-    """Space types."""
+    """Space types. These reflect scope of data access."""
 
     PERSONAL = "personal"
     SHARED = "shared"
@@ -32,7 +32,7 @@ class OrganisationFeatureType(Enum):
 
 
 class LogType(Enum):
-    """Log types."""
+    """Audit log types."""
 
     SYSTEM = "System"
     ACTIVITY = "Activity"
