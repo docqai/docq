@@ -1,5 +1,4 @@
 import json
-import logging
 from typing import cast
 
 import streamlit as st
@@ -11,14 +10,13 @@ from docq.support.llm import _get_service_context, _get_storage_context
 from docq.support.metadata_extractors import DEFAULT_ENTITY_MAP
 from llama_index import DocumentSummaryIndex, VectorStoreIndex, load_index_from_storage
 from llama_index.indices.base import BaseIndex
-from llama_index.schema import MetadataMode, TextNode
-from st_pages import _add_page_title
-from utils.layout import auth_required
+from llama_index.schema import TextNode
+from utils.layout import auth_required, render_page_title_and_favicon
 from utils.sessions import get_selected_org_id
 
+render_page_title_and_favicon()
 auth_required(requiring_selected_org_admin=True)
 
-_add_page_title()
 
 
 def _load_index(

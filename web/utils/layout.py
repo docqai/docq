@@ -31,9 +31,12 @@ from docq.support.auth_utils import (
     verify_cookie_hmac_session_id,
 )
 from opentelemetry import trace
-from st_pages import hide_pages
+from st_pages import add_page_title, hide_pages, translate_icon
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
+from streamlit.errors import StreamlitAPIException
+from streamlit.runtime.scriptrunner import get_script_run_ctx
+from streamlit.source_util import get_pages
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .error_ui import _handle_error_state_ui
@@ -232,19 +235,49 @@ def __always_hidden_pages() -> None:
     hide_pages(["widget", "signup", "verify"])
 
 
-def configure_top_right_menu() -> None:
-    """Configure the Streamlit top right menu."""
-    st.set_page_config(
-        page_icon="/web/favicon.ico",
-        menu_items={
-            "About": f"**{docq.__summary__}** \
-            Version: **{docq.__version__}** | \
-            Homepage: {docq.__homepage_url__} | \
-            Docs: {docq.__documentation_url__} \
-            Twitter: https://twitter.com/docqai \
-            "
-        },
-    )
+def render_page_title_and_favicon(page_display_title: Optional[str] = None) -> None:
+    """Handle setting browser page title and favicon. Separately render in app page title with icon defined in show_pages().
+
+    Args:
+        page_display_title: Optional[str] - override the title rendered on the page and browser tab.
+    """
+    favicon_path = "web/favicon.ico"
+    browser_title_prefix = "Docq.AI"
+    about_menu_content = f"**{docq.__summary__}** \
+            \n\nVersion: **{docq.__version__}** \
+            \nWebsite: {docq.__homepage_url__}  \
+            \nDocs: {docq.__documentation_url__} \
+            \nGitHub (give us a star): {docq.__repository_url__} \
+            \nTwitter: https://twitter.com/docqai"
+
+    pages = get_pages("")
+    ctx = get_script_run_ctx()
+
+    if ctx is None:
+        return
+
+    try:
+        current_page = pages[ctx.page_script_hash]
+    except KeyError:
+        try:
+            current_page = [p for p in pages.values() if p["relative_page_hash"] == ctx.page_script_hash][0]
+        except IndexError:
+            return
+
+    page_slug = current_page["page_name"]  # this is the URL slug defined in show_pages()
+    page_icon = current_page["icon"]  # the optional icon defined in show_pages()
+    _page_display_title = page_display_title or page_slug.replace("_", " ")
+
+    try:
+        ctx._set_page_config_allowed = True
+        st.set_page_config(page_icon=favicon_path, page_title=f"{browser_title_prefix} - {_page_display_title}", menu_items={"About": about_menu_content})
+    except StreamlitAPIException:
+        pass
+
+    if page_icon:
+        st.title(f"{translate_icon(page_icon)} {_page_display_title}")
+    else:
+        st.title(_page_display_title)
 
 
 def __resend_verification_ui(
