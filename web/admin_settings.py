@@ -1,10 +1,8 @@
 """Page: Admin / Manage Settings."""
 
 
-from st_pages import add_page_title
 from utils.layout import (
     auth_required,
-    configure_top_right_menu,
     is_super_admin,
     organisation_settings_ui,
     render_page_title_and_favicon,
