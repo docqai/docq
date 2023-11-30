@@ -10,7 +10,7 @@ SESSION_COOKIE_NAME = "docqai/_docq"
 
 
 class SpaceType(Enum):
-    """Space types."""
+    """Space types. These reflect scope of data access."""
 
     PERSONAL = "personal"
     SHARED = "shared"
@@ -26,14 +26,13 @@ class SystemFeatureType(Enum):
 class OrganisationFeatureType(Enum):
     """Organisation level feature types."""
 
-    ASK_PERSONAL = "Ask Your Documents"
     ASK_SHARED = "Ask Shared Documents"
     ASK_PUBLIC = "Ask Public Documents"
     CHAT_PRIVATE = "General Chat"
 
 
 class LogType(Enum):
-    """Log types."""
+    """Audit log types."""
 
     SYSTEM = "System"
     ACTIVITY = "Activity"

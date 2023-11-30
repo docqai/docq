@@ -34,7 +34,7 @@ from opentelemetry import baggage, trace
 from streamlit.components.v1 import html
 
 from .constants import (
-    MAX_NUMBER_OF_PERSONAL_DOCS,
+    MAX_NUMBER_OF_UPLOAD_DOCS,
     NUMBER_OF_MSGS_TO_LOAD,
     SessionKeyNameForAuth,
     SessionKeyNameForChat,
@@ -513,11 +513,20 @@ def list_space_groups(name_match: str = None) -> List[Tuple]:
 
 @tracer.start_as_current_span("query_chat_history")
 def query_chat_history(feature: domain.FeatureKey) -> None:
+    """Query chat history."""
     curr_cutoff = get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF)
+    if curr_cutoff is None:
+        raise ValueError("Cutoff in session state was None")
     thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
+    if thread_id is None:
+        raise ValueError("Thread id in session state was None")
     history = run_queries.history(curr_cutoff, NUMBER_OF_MSGS_TO_LOAD, feature, thread_id)
+
+    history_from_session = get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY)
+    if history_from_session is None:
+        raise ValueError("History in session state was None")
     set_chat_session(
-        history + get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY),
+        history + history_from_session,
         feature.type_,
         SessionKeyNameForChat.HISTORY,
     )
@@ -525,48 +534,47 @@ def query_chat_history(feature: domain.FeatureKey) -> None:
 
 
 @tracer.start_as_current_span("_get_chat_spaces")
-def _get_chat_spaces(feature: domain.FeatureKey) -> tuple[Optional[SpaceKey], List[SpaceKey]]:
+def _get_chat_spaces(feature: domain.FeatureKey) -> List[SpaceKey]:
     """Get chat spaces."""
     select_org_id = get_selected_org_id()
 
-    personal_space = domain.SpaceKey(config.SpaceType.PERSONAL, feature.id_, select_org_id)
+    if select_org_id is None:
+        raise ValueError("Selected org id was None")
+
     shared_spaces = manage_spaces.get_shared_spaces(
         [s_[0] for s_ in st.session_state[f"chat_shared_spaces_{feature.value()}"]]
     )
-
+    result = []
     if feature.type_ == config.OrganisationFeatureType.ASK_SHARED:
-        if not st.session_state["chat_personal_space"]:
-            personal_space = None
-        shared_spaces = [
+        result = [
             domain.SpaceKey(config.SpaceType.SHARED, s_[0], select_org_id, summary=s_[3])
             # for s_ in st.session_state[f"chat_shared_spaces_{feature.value()}"]
             for s_ in shared_spaces
         ]
-        return personal_space, shared_spaces
+    elif feature.type_ == config.OrganisationFeatureType.ASK_PUBLIC:
 
-    if feature.type_ == config.OrganisationFeatureType.ASK_PUBLIC:
-        personal_space = None
-        shared_spaces = [domain.SpaceKey(config.SpaceType.SHARED, s_[0], select_org_id) for s_ in list_public_spaces()]
-        return personal_space, shared_spaces
+        result = [domain.SpaceKey(config.SpaceType.SHARED, s_[0], select_org_id) for s_ in list_public_spaces()]
 
-    shared_spaces = None
-    return personal_space, shared_spaces
+    return result
 
 
 @tracer.start_as_current_span("handle_chat_input")
 def handle_chat_input(feature: domain.FeatureKey) -> None:
     """Handle chat input."""
     req = st.session_state[f"chat_input_{feature.value()}"]
-    space, spaces = None, None
+    spaces = None
     if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
-        space, spaces = _get_chat_spaces(feature)
+        spaces = _get_chat_spaces(feature)
 
     thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
     if thread_id is None:
         raise ValueError("Thread id in session state was None")
-    saved_model_settings = get_saved_model_settings_collection(get_selected_org_id())
+    select_org_id =get_selected_org_id()
+    if select_org_id is None:
+        raise ValueError("Selected org id was None")
+    saved_model_settings = get_saved_model_settings_collection(select_org_id)
 
-    result = run_queries.query(req, feature, thread_id, saved_model_settings, space, spaces)
+    result = run_queries.query(req, feature, thread_id, saved_model_settings, spaces)
 
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 
@@ -814,11 +822,7 @@ def handle_update_organisation_settings() -> None:  # noqa: D103
     )
 
 
-def get_max_number_of_documents(type_: config.SpaceType):
-    match type_:
-        case config.SpaceType.PERSONAL:
-            return MAX_NUMBER_OF_PERSONAL_DOCS
-        case _:
+def get_max_number_of_documents():
             return math.inf
 
 

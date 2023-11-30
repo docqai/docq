@@ -31,9 +31,12 @@ from docq.support.auth_utils import (
     verify_cookie_hmac_session_id,
 )
 from opentelemetry import trace
-from st_pages import hide_pages
+from st_pages import add_page_title, hide_pages, translate_icon
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
+from streamlit.errors import StreamlitAPIException
+from streamlit.runtime.scriptrunner import get_script_run_ctx
+from streamlit.source_util import get_pages
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .error_ui import _handle_error_state_ui
@@ -185,6 +188,7 @@ def __no_staff_menu() -> None:
         ]
     )
 
+
 @tracer.start_as_current_span("__no_admin_menu")
 def __no_admin_menu() -> None:
     hide_pages(
@@ -231,17 +235,55 @@ def __always_hidden_pages() -> None:
     hide_pages(["widget", "signup", "verify"])
 
 
-def configure_top_right_menu() -> None:
-    """Configure the Streamlit top right menu."""
-    st.set_page_config(menu_items={"About": f"**{docq.__summary__}** \
-                                Version: **{docq.__version__}** | \
-                                Homepage: {docq.__homepage_url__} | \
-                                Docs: {docq.__documentation_url__} \
-                                Twitter: https://twitter.com/docqai \
-                               "})
+def render_page_title_and_favicon(page_display_title: Optional[str] = None) -> None:
+    """Handle setting browser page title and favicon. Separately render in app page title with icon defined in show_pages().
+
+    Args:
+        page_display_title: Optional[str] - override the title rendered on the page and browser tab.
+    """
+    favicon_path = "web/favicon.ico"
+    browser_title_prefix = "Docq.AI"
+    about_menu_content = f"**{docq.__summary__}** \
+            \n\nVersion: **{docq.__version__}** \
+            \nWebsite: {docq.__homepage_url__}  \
+            \nDocs: {docq.__documentation_url__} \
+            \nGitHub (give us a star): {docq.__repository_url__} \
+            \nTwitter: https://twitter.com/docqai"
+
+    pages = get_pages("")
+    ctx = get_script_run_ctx()
+
+    if ctx is None:
+        return
+
+    try:
+        current_page = pages[ctx.page_script_hash]
+    except KeyError:
+        try:
+            current_page = [p for p in pages.values() if p["relative_page_hash"] == ctx.page_script_hash][0]
+        except IndexError:
+            return
+
+    page_slug = current_page["page_name"]  # this is the URL slug defined in show_pages()
+    page_icon = current_page["icon"]  # the optional icon defined in show_pages()
+    _page_display_title = page_display_title or page_slug.replace("_", " ")
+
+    try:
+        ctx._set_page_config_allowed = True
+        st.set_page_config(page_icon=favicon_path, page_title=f"{browser_title_prefix} - {_page_display_title}", menu_items={"About": about_menu_content})
+    except StreamlitAPIException:
+        pass
+
+    if page_icon:
+        st.title(f"{translate_icon(page_icon)} {_page_display_title}")
+    else:
+        st.title(_page_display_title)
 
 
-def __resend_verification_ui(username: str, form: str,  ) -> None:
+def __resend_verification_ui(
+    username: str,
+    form: str,
+) -> None:
     """Resend email verification UI."""
     msg = st.empty()
     msg.error("Your account is not activated. Please check your email for the activation link.")
@@ -251,6 +293,7 @@ def __resend_verification_ui(username: str, form: str,  ) -> None:
         st.session_state[f"{form}-resend-verification-email"] = False
         msg.success("Verification email sent. Please check your email.")
     st.stop()
+
 
 @tracer.start_as_current_span("render __login_form")
 def __login_form() -> None:
@@ -262,7 +305,9 @@ def __login_form() -> None:
     form_validator, form_name = st.empty(), "login-form"
     with st.form(key=form_name):
         username = st.text_input("Username", value="", key="login_username", autocomplete="username")
-        password = st.text_input("Password", value="", key="login_password", type="password", autocomplete="current-password")
+        password = st.text_input(
+            "Password", value="", key="login_password", type="password", autocomplete="current-password"
+        )
         if st.form_submit_button("Login"):
             if handle_login(username, password):
                 st.experimental_rerun()
@@ -300,8 +345,11 @@ def public_access() -> None:
     __no_admin_menu()
     __always_hidden_pages()
 
+
 @tracer.start_as_current_span("auth_required")
-def auth_required(show_login_form: bool = True, requiring_selected_org_admin: bool = False, show_logout_button: bool = True) -> bool:
+def auth_required(
+    show_login_form: bool = True, requiring_selected_org_admin: bool = False, show_logout_button: bool = True
+) -> bool:
     """Decide layout based on current user's access."""
     log.debug("auth_required() called")
     span = trace.get_current_span()
@@ -353,6 +401,7 @@ def auth_required(show_login_form: bool = True, requiring_selected_org_admin: bo
             __login_form()
         return False
 
+
 def is_super_admin() -> bool:
     """Check if the current user is a super admin. auth_required() must be called before this."""
     auth = get_auth_session()
@@ -360,6 +409,7 @@ def is_super_admin() -> bool:
     if not is_super_admin:
         __not_authorised()
     return is_super_admin
+
 
 def public_session_setup() -> None:
     """Initialize session state for the public pages."""
@@ -376,8 +426,9 @@ def org_feature_enabled(feature: OrganisationFeatureType) -> bool:
         return False
     return True
 
+
 @tracer.start_as_current_span("system_feature_enabled")
-def system_feature_enabled(feature: SystemFeatureType, show_message:bool = True) -> bool:
+def system_feature_enabled(feature: SystemFeatureType, show_message: bool = True) -> bool:
     """Check if a system level feature is enabled."""
     span = trace.get_current_span()
     feats = get_enabled_system_features()
@@ -600,7 +651,8 @@ def _personal_ask_style() -> None:
 
 
 def _show_chat_histories(feature: FeatureKey) -> None:
-    st.markdown("""
+    st.markdown(
+        """
       <style>
         section[data-testid="stSidebar"] div[data-testid="stSidebarUserContent"] div[data-testid="stExpander"] button[kind="secondary"] {
             width: 100%;
@@ -626,7 +678,8 @@ def _show_chat_histories(feature: FeatureKey) -> None:
             gap: 2px !important;
         }
       </style>
-    """, unsafe_allow_html=True
+    """,
+        unsafe_allow_html=True,
     )
     with st.sidebar.expander("Chat History"):
         chat_threads = handle_get_chat_history_threads(feature)
@@ -638,7 +691,15 @@ def _show_chat_histories(feature: FeatureKey) -> None:
             if format_duration(x[2]) != day:
                 day = format_duration(x[2])
                 st.markdown(f"#### {day}")
-            st.button(x[1], key=f"{x[1]}-{x[0]}", on_click=handle_click_chat_history_thread, args=(feature, x[0],))
+            st.button(
+                x[1],
+                key=f"{x[1]}-{x[0]}",
+                on_click=handle_click_chat_history_thread,
+                args=(
+                    feature,
+                    x[0],
+                ),
+            )
 
 
 def chat_ui(feature: FeatureKey) -> None:
@@ -687,7 +748,6 @@ def chat_ui(feature: FeatureKey) -> None:
                     key=f"chat_shared_spaces_{feature.value()}",
                     label_visibility="collapsed",
                 )
-                st.checkbox("Including your documents", value=True, key="chat_personal_space")
 
         load_history, create_new_chat = st.columns([3, 1])
         with load_history:
@@ -700,13 +760,15 @@ def chat_ui(feature: FeatureKey) -> None:
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
         st.markdown(f"#### {day}")
 
-        for x in get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY):
-            # x = (id, text, is_user, time, thread_id)
-            if format_datetime(x[3]) != day:
-                day = format_datetime(x[3])
-                st.markdown(f"#### {day}")
-            _chat_message(x[1], x[2])
-        _chat_ui_script()
+        chat_history = get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY)
+        if chat_history:
+            for x in chat_history:
+                # x = (id, text, is_user, time, thread_id)
+                if format_datetime(x[3]) != day:
+                    day = format_datetime(x[3])
+                    st.markdown(f"#### {day}")
+                _chat_message(x[1], x[2])
+            _chat_ui_script()
 
     st.chat_input(
         "Type your question here",
@@ -718,7 +780,7 @@ def chat_ui(feature: FeatureKey) -> None:
 
 
 def _render_document_upload(space: SpaceKey, documents: List) -> None:
-    max_size = get_max_number_of_documents(space.type_)
+    max_size = get_max_number_of_documents()
     if len(documents) < max_size:
         with st.form("Upload", clear_on_submit=True):
             st.file_uploader(
@@ -734,8 +796,8 @@ def _render_document_upload(space: SpaceKey, documents: List) -> None:
 
 def documents_ui(space: SpaceKey) -> None:
     """Displays the UI for managing documents in a space."""
-    permisssion = get_shared_space_permissions(space.id_)
-    if permisssion.get(SpaceAccessType.PUBLIC, False):
+    permission = get_shared_space_permissions(space.id_)
+    if permission.get(SpaceAccessType.PUBLIC, False):
         st.warning("This is a public space, Do not add any sensitive information.")
 
     documents: List[DocumentListItem] = handle_list_documents(space)
@@ -786,6 +848,7 @@ def chat_settings_ui(feature: FeatureKey) -> None:
     """Chat settings."""
     st.info("Settings for general chat are coming soon.")
 
+
 @tracer.start_as_current_span("system_settings_ui")
 def system_settings_ui() -> None:
     """System settings."""
@@ -802,7 +865,11 @@ def system_settings_ui() -> None:
             label="Save",
             on_click=handle_update_system_settings,
         )
-        default_selection = [SystemFeatureType.__members__[k] for k in settings[SystemSettingsKey.ENABLED_FEATURES.name]] if settings else [] #[f for f in SystemFeatureType],
+        default_selection = (
+            [SystemFeatureType.__members__[k] for k in settings[SystemSettingsKey.ENABLED_FEATURES.name]]
+            if settings
+            else []
+        )  # [f for f in SystemFeatureType],
         enabled_system_features_container.multiselect(
             SystemSettingsKey.ENABLED_FEATURES.value,
             options=[f for f in SystemFeatureType],
@@ -810,6 +877,7 @@ def system_settings_ui() -> None:
             default=default_selection,
             key=f"system_settings_{SystemSettingsKey.ENABLED_FEATURES.name}",
         )
+
 
 @tracer.start_as_current_span("organisation_settings_ui")
 def organisation_settings_ui() -> None:
@@ -828,7 +896,11 @@ def organisation_settings_ui() -> None:
             label="Save",
             on_click=handle_update_organisation_settings,
         )
-        default_selection = [OrganisationFeatureType.__members__[k] for k in settings[OrganisationSettingsKey.ENABLED_FEATURES.name]] if settings else []
+        default_selection = (
+            [OrganisationFeatureType.__members__[k] for k in settings[OrganisationSettingsKey.ENABLED_FEATURES.name]]
+            if settings
+            else []
+        )
         enabled_features_container.multiselect(
             OrganisationSettingsKey.ENABLED_FEATURES.value,
             options=[f for f in OrganisationFeatureType],
@@ -869,7 +941,9 @@ def organisation_settings_ui() -> None:
                 st.write(f"- Model Vendor: `{model_settings.model_vendor.value}`")
                 st.write(f"- Model Name: `{model_settings.model_name}`")
                 st.write(f"- Temperature: `{model_settings.temperature}`")
-                st.write(f"- Deployment Name: `{model_settings.model_deployment_name if model_settings.model_deployment_name else 'n/a'}`")
+                st.write(
+                    f"- Deployment Name: `{model_settings.model_deployment_name if model_settings.model_deployment_name else 'n/a'}`"
+                )
                 st.write(f"- License: `{model_settings.license_ if model_settings.license_ else 'unknown'}`")
                 st.write(f"- Citation: `{model_settings.citation}`")
                 st.divider()
@@ -885,14 +959,14 @@ def _get_create_space_config_input_values() -> str:
 
 
 def _get_random_key(prefix: str) -> str:
-    return prefix + str(random.randint(0, 1000000)) # noqa E501
+    return prefix + str(random.randint(0, 1000000))  # noqa E501
 
 
 def _get_credential_request_params() -> dict:
     return {
         "code": st.experimental_get_query_params().get("code", [None])[0],
         "email": handle_get_user_email(),
-        "state": _get_create_space_config_input_values()
+        "state": _get_create_space_config_input_values(),
     }
 
 
@@ -909,7 +983,9 @@ def _render_file_storage_credential_request(configkey: ConfigKey, key: str, conf
         display: none !important;
       }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
     st.write(f"{configkey.name}{'' if configkey.is_optional else ' *'}")
     text_box, btn = st.columns([2, 1])
 
@@ -924,9 +1000,10 @@ def _render_file_storage_credential_request(configkey: ConfigKey, key: str, conf
 
     text_box.text_input(
         configkey.name,
-        value='*' * 64 if bool(new_credentials or saved_credentials) else "",
+        value="*" * 64 if bool(new_credentials or saved_credentials) else "",
         key=_get_random_key("_input_key"),
-        disabled=True, label_visibility="collapsed"
+        disabled=True,
+        label_visibility="collapsed",
     )
 
     btn.button(
@@ -963,7 +1040,7 @@ def fetch_file_storage_root_folders(_configkey: ConfigKey, configs: Optional[dic
 def _set_options(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
     st.session_state[key] = (
         *fetch_file_storage_root_folders(configkey, configs),
-        configs.get(configkey.key) if configs else None
+        configs.get(configkey.key) if configs else None,
     )
 
 
@@ -985,7 +1062,7 @@ def _render_file_storage_root_path_options(configkey: ConfigKey, key: str, confi
         f"{configkey.name}{'' if configkey.is_optional else ' *'}",
         options=options,
         key=key,
-        format_func= fmt_func if fmt_func else lambda x: x,
+        format_func=fmt_func if fmt_func else lambda x: x,
         help=configkey.ref_link,
         disabled=disabled,
         index=options.index(selected) if bool(selected and options) else 0,
@@ -995,22 +1072,16 @@ def _render_file_storage_root_path_options(configkey: ConfigKey, key: str, confi
 def _handle_custom_input_field(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
     """Handle Ui interactions."""
     if configkey.options and configkey.options.get("type") == "credential":
-        _render_file_storage_credential_request(
-            configkey,
-            key,
-            configs
-        )
+        _render_file_storage_credential_request(configkey, key, configs)
     elif configkey.options and configkey.options.get("type") == "root_path":
-        _render_file_storage_root_path_options(
-            configkey,
-            key,
-            configs
-        )
+        _render_file_storage_root_path_options(configkey, key, configs)
     else:
         log.error("Unknown custom input field type: %s", str(configkey.options))
 
 
-def _render_space_data_source_config_input_fields(data_source: Tuple, prefix: str, configs: Optional[dict] = None) -> None:
+def _render_space_data_source_config_input_fields(
+    data_source: Tuple, prefix: str, configs: Optional[dict] = None
+) -> None:
     config_key_list: List[ConfigKey] = data_source[2]
 
     for configkey in config_key_list:
@@ -1310,7 +1381,9 @@ def _validate_password(password: str, generator: DeltaGenerator) -> bool:
         generator.error("Password is required!")
         return False
     elif len(password) < 8:
-        generator.error("Password must be at least 8 characters long and contain atleast 1 of the following: 1 uppercase, 1 lowercase, 1 number and 1 special character.")
+        generator.error(
+            "Password must be at least 8 characters long and contain atleast 1 of the following: 1 uppercase, 1 lowercase, 1 number and 1 special character."
+        )
         return False
     else:
         password_fmt = {
@@ -1329,7 +1402,7 @@ def _validate_password(password: str, generator: DeltaGenerator) -> bool:
         return True
 
 
-def validate_signup_form(form: str = "user-signup") ->bool:
+def validate_signup_form(form: str = "user-signup") -> bool:
     """Handle validation of the signup form."""
     name: str = st.session_state.get(f"{form}-name", None)
     email: str = st.session_state.get(f"{form}-email", None)
@@ -1357,6 +1430,7 @@ def _disable_sidebar() -> None:
         unsafe_allow_html=True,
     )
 
+
 @tracer.start_as_current_span("signup_ui")
 def signup_ui() -> None:
     """Render signup UI."""
@@ -1365,7 +1439,6 @@ def signup_ui() -> None:
     qs_name = qs["name"][0] if "name" in qs else ""
 
     if system_feature_enabled(SystemFeatureType.FREE_USER_SIGNUP, show_message=False) or qs_email:
-
         _ctx = ExtensionContext(data={"qs_email": qs_email, "qs_name": qs_name})
 
         handle_fire_extensions_callbacks("webui.signup_ui.render_started", _ctx)
@@ -1376,7 +1449,9 @@ def signup_ui() -> None:
         st.markdown('Already have an account? Login <a href="/" target="_self">here</a>.', unsafe_allow_html=True)
 
         if not handle_check_mailer_ready():
-            log.error("Mailer service not available due to a config problem. User self signup disabled. All the following env vars needs to be set: DOCQ_SMTP_SERVER, DOCQ_SMTP_PORT, DOCQ_SMTP_LOGIN, DOCQ_SMTP_KEY, DOCQ_SMTP_FROM, DOCQ_SERVER_ADDRESS. Refer to he `misc/secrets.toml.template` in the repo for details.")
+            log.error(
+                "Mailer service not available due to a config problem. User self signup disabled. All the following env vars needs to be set: DOCQ_SMTP_SERVER, DOCQ_SMTP_PORT, DOCQ_SMTP_LOGIN, DOCQ_SMTP_KEY, DOCQ_SMTP_FROM, DOCQ_SERVER_ADDRESS. Refer to he `misc/secrets.toml.template` in the repo for details."
+            )
             st.error("Unable to create personal accounts.")
             st.info("Please contact your administrator to help you create an account.")
             st.stop()
@@ -1386,7 +1461,14 @@ def signup_ui() -> None:
 
         with st.form(key=form):
             st.text_input("Name", placeholder="Bob Smith", key=f"{form}-name", value=qs_name, autocomplete="name")
-            st.text_input("Email", placeholder="bob.smith@acme.com", key=f"{form}-email", value=qs_email, disabled=qs_email is not None, autocomplete="email")
+            st.text_input(
+                "Email",
+                placeholder="bob.smith@acme.com",
+                key=f"{form}-email",
+                value=qs_email,
+                disabled=qs_email is not None,
+                autocomplete="email",
+            )
             st.text_input(
                 "Password",
                 type="password",
@@ -1401,8 +1483,8 @@ def signup_ui() -> None:
                 handle_user_signup()
 
         if st.session_state.get(f"{form}-resend-verification-email", False):
-                with st.session_state[f"{form}-validator"].container():
-                    __resend_verification_ui(st.session_state[f"{form}-email"], form)
+            with st.session_state[f"{form}-validator"].container():
+                __resend_verification_ui(st.session_state[f"{form}-email"], form)
 
         handle_fire_extensions_callbacks("webui.sign_ui.render_completed", _ctx)
 

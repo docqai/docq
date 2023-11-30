@@ -18,7 +18,7 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
 
     def test_get_document_list(self: Self) -> None:
         """Test the get_document_list method."""
-        space = SpaceKey(SpaceType.PERSONAL, 123, 345)
+        space = SpaceKey(SpaceType.SHARED, 123, 345)
         configs = {}
 
         with patch("os.scandir") as mock_scandir, patch("docq.data_source.manual_upload.get_upload_dir"), patch(
@@ -47,7 +47,7 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
 
     def test_load(self: Self) -> None:
         """Test the load method including the metadata fields."""
-        space = SpaceKey(SpaceType.PERSONAL, 123, 345)
+        space = SpaceKey(SpaceType.SHARED, 123, 345)
         configs = {}
 
         with patch("docq.data_source.manual_upload.get_upload_dir") as mock_get_upload_dir:
@@ -57,7 +57,7 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
 
             assert len(documents) == 11
             assert documents[0].metadata[str(DocumentMetadata.SPACE_ID.name).lower()] == 123
-            assert documents[0].metadata[str(DocumentMetadata.SPACE_TYPE.name).lower()] == "PERSONAL"
+            assert documents[0].metadata[str(DocumentMetadata.SPACE_TYPE.name).lower()] == "SHARED"
             assert documents[0].metadata[str(DocumentMetadata.DATA_SOURCE_NAME.name).lower()] == "Manual Upload"
             assert (
                 documents[0].metadata[str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower()] == "SpaceDataSourceFileBased"

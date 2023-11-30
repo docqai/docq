@@ -207,15 +207,13 @@ def query(
     feature: FeatureKey,
     thread_id: int,
     model_settings_collection: ModelUsageSettingsCollection,
-    space: Optional[SpaceKey] = None,
     spaces: Optional[list[SpaceKey]] = None,
 ) -> list:
     """Run the query again documents in the space(s) using a LLM."""
     log.debug(
-        "Query: '%s' for feature: '%s' with personal-space: '%s' and shared-spaces: '%s'",
+        "Query: '%s' for feature: '%s' with shared-spaces: '%s'",
         input_,
         feature,
-        space,
         spaces,
     )
     data = [(input_, True, datetime.now(), thread_id)]
@@ -227,7 +225,7 @@ def query(
         response = (
             run_chat(input_, history, model_settings_collection)
             if is_chat
-            else run_ask(input_, history, model_settings_collection, space, spaces)
+            else run_ask(input_, history, model_settings_collection, spaces)
         )
         log.debug("Response: %s", response)
 

@@ -264,28 +264,33 @@ def run_ask(
     input_: str,
     history: str,
     model_settings_collection: ModelUsageSettingsCollection,
-    space: SpaceKey | None = None,
     spaces: list[SpaceKey] | None = None,
 ) -> RESPONSE_TYPE | AGENT_CHAT_RESPONSE_TYPE:
     """Ask questions against existing index(es) with history."""
     log.debug("exec: runs_ask()")
     span = trace.get_current_span()
+
     if spaces is not None and len(spaces) > 0:
-        log.debug("runs_ask(): spaces count: %s", len(spaces))
+        span.set_attribute("spaces_count", len(spaces))
+        #log.debug("runs_ask(): spaces count: %s", len(spaces))
         # With additional spaces likely to be combining a number of shared spaces.
         indices = []
         summaries = []
         output = _default_response()
-        all_spaces = spaces + ([space] if space else [])
-        for s_ in all_spaces:
+
+        for s_ in spaces:
             try:
                 index_ = _load_index_from_storage(s_, model_settings_collection)
 
                 log.debug("run_chat(): %s, %s", index_.index_id, s_.summary)
                 indices.append(index_)
-                summaries.append(s_.summary) if s_.summary else summaries.append("")
-
+                span.add_event(name="index_appended", attributes={"index_id": index_.index_id, "index_struct_cls": index_.index_struct_cls.__name__})
+                s_text = s_.summary if s_.summary else ""
+                summaries.append(s_text)
+                span.add_event(name="summary_appended", attributes={"index_summary": s_text})
             except Exception as e:
+                span.set_status(status=Status(StatusCode.ERROR))
+                span.record_exception(e)
                 log.warning(
                     "Index for space '%s' failed to load, skipping. Maybe the index isn't created yet. Error message: %s",
                     s_,
@@ -304,9 +309,11 @@ def run_ask(
                     service_context=_get_service_context(model_settings_collection),
                 )
                 output = graph.as_query_engine().query(PROMPT_QUESTION.format(history=history, input=input_))
-
-                log.debug("(Ask combined spaces %s) Q: %s, A: %s", all_spaces, input_, output)
+                span.add_event(name="ask_combined_spaces", attributes={"question": input_, "answer": str(output), "spaces_count": len(spaces)})
+                log.debug("(Ask combined spaces %s) Q: %s, A: %s", spaces, input_, output)
             except Exception as e:
+                span.set_status(status=Status(StatusCode.ERROR))
+                span.record_exception(e)
                 log.error(
                     "Failed to create ComposableGraph. Maybe there was an issue with one of the Space indexes. Error message: %s",
                     e,
@@ -314,21 +321,22 @@ def run_ask(
                 span.set_status(status=Status(StatusCode.ERROR))
                 span.record_exception(e)
     else:
+        span.set_attribute("spaces_count", 0)
         log.debug("runs_ask(): space None or zero. Assuming personal ASK.")
         # No additional spaces i.e. likely to be against a user's documents in their personal space.
-        if space is None:
-            log.debug("runs_ask(): space is None. executing run_chat(), not ASK.")
-            output = run_chat(input_=input_, history=history, model_settings_collection=model_settings_collection)
-        else:
-            index = _load_index_from_storage(space=space, model_settings_collection=model_settings_collection)
-            engine = index.as_chat_engine(
-                verbose=True,
-                similarity_top_k=3,
-                vector_store_query_mode="default",
-                chat_mode=ChatMode.CONDENSE_QUESTION,
-            )
-            output = engine.chat(input_)
-            log.debug("(Ask %s w/o shared spaces) Q: %s, A: %s", space, input_, output)
+
+        log.debug("runs_ask(): space is None. executing run_chat(), not ASK.")
+        output = run_chat(input_=input_, history=history, model_settings_collection=model_settings_collection)
+        span.add_event(name="ask_without_spaces", attributes={"question": input_, "answer": str(output)})
+            # index = _load_index_from_storage(space=space, model_settings_collection=model_settings_collection)
+            # engine = index.as_chat_engine(
+            #     verbose=True,
+            #     similarity_top_k=3,
+            #     vector_store_query_mode="default",
+            #     chat_mode=ChatMode.CONDENSE_QUESTION,
+            # )
+            # output = engine.chat(input_)
+            # log.debug("(Ask %s w/o shared spaces) Q: %s, A: %s", space, input_, output)
 
     return output
 

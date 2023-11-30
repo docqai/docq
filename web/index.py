@@ -4,22 +4,20 @@
 import streamlit as st
 
 #from docq_extensions.web.layout import subscriptions
-from st_pages import Page, Section, add_page_title, show_pages
+from st_pages import Page, Section, show_pages
 from utils.layout import (
     auth_required,
-    configure_top_right_menu,
     init_with_pretty_error_ui,
     org_selection_ui,
     production_layout,
     public_access,
+    render_page_title_and_favicon,
 )
 from utils.observability import baggage_as_attributes, tracer
 
 with tracer().start_as_current_span("home_page", attributes=baggage_as_attributes()):
+    render_page_title_and_favicon()
     init_with_pretty_error_ui()
-
-    configure_top_right_menu()
-
     production_layout()
 
     with st.sidebar:
@@ -30,11 +28,11 @@ with tracer().start_as_current_span("home_page", attributes=baggage_as_attribute
             Page("web/index.py", "Home", "🏠"),
             Page("web/signup.py", "signup"),
             Page("web/verify.py", "verify"),
-            Section("Your_Space", icon="📁"),
+            #Section("Your_Space", icon="📁"),
             Page("web/personal_chat.py", "General_Chat"),
-            Page("web/personal_ask.py", "Ask_Your_Documents"),
-            Page("web/personal_docs.py", "Manage_Your_Documents"),
-            Section("Shared_Spaces", icon="💼"),
+            #Page("web/personal_ask.py", "Ask_Your_Documents"),
+            #Page("web/personal_docs.py", "Manage_Your_Documents"),
+            #Section("Shared_Spaces", icon="💼"),
             Page("web/shared_ask.py", "Ask_Shared_Documents"),
             Page("web/shared_spaces.py", "List_Shared_Spaces"),
             Page("web/embed.py", "widget"),
@@ -52,8 +50,6 @@ with tracer().start_as_current_span("home_page", attributes=baggage_as_attribute
     )
 
     public_access()
-
-    add_page_title()
 
     login_container = st.container()
 
