@@ -30,7 +30,6 @@ class TestGetPath:
         ("type_", "id_", "org_id", "expected"),
         [
             (SpaceType.SHARED, 88, 5555, DATA_DIR + "/upload/SHARED/5555/88"),
-            (SpaceType.PERSONAL, 9999, 5555, DATA_DIR + "/upload/PERSONAL/9999"),
         ],
     )
     def test_get_upload_dir(self: Self, type_: SpaceType, id_: int, org_id: int, expected: str) -> None:
@@ -41,7 +40,7 @@ class TestGetPath:
         ("type_", "id_", "org_id", "filename", "expected"),
         [
             (SpaceType.SHARED, 1, 234, "useful.pdf", DATA_DIR + "/upload/SHARED/234/1/useful.pdf"),
-            (SpaceType.PERSONAL, 2, 234, "not-quite.jpeg", DATA_DIR + "/upload/PERSONAL/2/not-quite.jpeg"),
+            (SpaceType.SHARED, 2, 234, "not-quite.jpeg", DATA_DIR + "/upload/SHARED/234/2/not-quite.jpeg"),
         ],
     )
     def test_get_upload_file(self: Self, type_: SpaceType, id_: int, org_id: int, filename: str, expected: str) -> None:
@@ -52,7 +51,6 @@ class TestGetPath:
         ("type_", "id_", "org_id", "expected"),
         [
             (SpaceType.SHARED, 19, 345, DATA_DIR + "/index/SHARED/345/19"),
-            (SpaceType.PERSONAL, 27, 345, DATA_DIR + "/index/PERSONAL/27"),
         ],
     )
     def test_get_index_dir(self: Self, type_: SpaceType, id_: int, org_id: int, expected: str) -> None:

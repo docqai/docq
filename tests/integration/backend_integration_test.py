@@ -65,10 +65,10 @@ def features(auth_results: dict) -> dict[str, domain.FeatureKey]:
 
 
 @pytest.fixture(scope="session")
-def personal_space(auth_results: dict) -> domain.SpaceKey:
+def shared_space(auth_results: dict) -> domain.SpaceKey:
     """Get personal space."""
     return domain.SpaceKey(
-        domain.SpaceType.PERSONAL,
+        domain.SpaceType.SHARED,
         auth_results[SessionKeyNameForAuth.ID.name],
         auth_results[SessionKeyNameForAuth.SELECTED_ORG_ID.name]
     )
@@ -82,9 +82,9 @@ def sample_file() -> bytes:
 
 # Upload file to a personal space
 @pytest.fixture(autouse=True, scope="session")
-def _upload_test_file(sample_file: bytes, personal_space: domain.SpaceKey) -> None:
+def _upload_test_file(sample_file: bytes, shared_space: domain.SpaceKey) -> None:
     """Upload a test file."""
-    manage_documents.upload(TEST_FILE_NAME, sample_file, personal_space)
+    manage_documents.upload(TEST_FILE_NAME, sample_file, shared_space)
 
 
 # Update organisation settings
@@ -117,18 +117,18 @@ def test_user_exists(test_user: dict) -> None:
     assert manage_users.authenticate(**test_user) is not None, "The test user should exist."
 
 
-def test_the_sample_file_exists(personal_space: domain.SpaceKey) -> None:
+def test_the_sample_file_exists(shared_space: domain.SpaceKey) -> None:
     """Test that the test file exists."""
-    file = manage_documents.get_file(TEST_FILE_NAME, personal_space)
+    file = manage_documents.get_file(TEST_FILE_NAME, shared_space)
     assert os.path.isfile(file), "The test file should exist."
     assert file.endswith(TEST_FILE_NAME), "The test file should have the correct name."
 
 
 def test_chat_private_feature(features: dict[str, domain.FeatureKey], saved_model_settings: ModelUsageSettingsCollection) -> None:
-    """Run a query against the private chat feature."""
+    """Run a query against the private chat feature i.e. directly with the LLM no RAG."""
     prompt = """
     You are an AI designed to help humans with their daily activities.
-    You are currently in a test enviroment to gauge whether this functionality works as expected.
+    You are currently in a test environment to gauge whether this functionality works as expected.
     For this test, all you need to do is to echo back the input and append from docq at the end of it.
 
     Below is a sample expected input (SampleInput) and output (SampleOutput).
@@ -147,4 +147,4 @@ def test_chat_private_feature(features: dict[str, domain.FeatureKey], saved_mode
         thread_id,
         model_settings_collection=saved_model_settings,
     )
-    assert "Test 1 from docq" in results[1][1], "The query should return the expected response."
+    assert "Test 1 from docq" in results[1][1], f"The query didn't return the expected response. Returned: '{results[1][1]}', expected: 'Test 1 from docq'"
