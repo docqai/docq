@@ -1,27 +1,16 @@
 """Test manage_documents.py."""
+import os
+import tempfile
 import unittest
 from typing import Self
 from unittest.mock import MagicMock, Mock, patch
-
-# from docq.manage_documents import (
-#     _classify_file_sources,
-#     _classify_web_sources,
-#     _generate_file_markdown,
-#     _generate_web_markdown,
-#     _get_download_link,
-#     _parse_metadata,
-#     _remove_ascii_control_characters,
-#     format_document_sources,
-# )
 
 
 class TestManageDocuments(unittest.TestCase):
     """Test manage_documents."""
 
-    #@patch("docq.support.metadata_extractors.DEFAULT_MODEL_PATH")
     def setUp(self: Self) -> None:
         """Prepare test data."""
-        #mock_DEFAULT_MODEL_PATH.return_value = "./sfdsf"
         self.web_metadata = {
             "source_website": "https://example.net",
             "page_title": "page_title",
@@ -45,6 +34,83 @@ class TestManageDocuments(unittest.TestCase):
         file_node.metadata = self.file_metadata
         self.file_source_node.append(Mock(node=file_node, score=1))
         self.source_template = "\n##### Source:\n{file_sources}"
+
+    @patch("docq.manage_documents.reindex")
+    @patch("docq.manage_documents.get_upload_file")
+    def test_upload(self: Self, get_upload_file: Mock, reindex: Mock) -> None:
+        """Test upload."""
+        with tempfile.NamedTemporaryFile() as temp_file:
+            from docq.manage_documents import upload
+
+            get_upload_file.return_value = temp_file.name
+            space = Mock()
+            file_content = bytes("test", "utf-8")
+            upload(temp_file.name, file_content, space)
+
+            reindex.assert_called_once_with(space)
+            get_upload_file.assert_called_once_with(space, temp_file.name)
+            assert os.path.exists(temp_file.name), f"Path {temp_file.name} should exist"
+            assert os.path.isfile(temp_file.name), f"File {temp_file.name} should be a file"
+            assert os.path.getsize(temp_file.name) == len(file_content), f"File {temp_file.name} should have content"
+
+    @patch("docq.manage_documents.get_upload_file")
+    def test_get_file(self: Self, get_upload_file: Mock) -> None:
+        """Test get_file."""
+        from docq.manage_documents import get_file
+
+        space = Mock()
+        file_name = "file_name"
+        get_upload_file.return_value = file_name
+        assert get_file(file_name, space) == file_name, "File name should match"
+        get_upload_file.assert_called_once_with(space, file_name)
+
+    @patch("docq.manage_documents.get_upload_file")
+    def test_delete(self: Self, get_upload_file: Mock) -> None:
+        """Test delete."""
+        from docq.manage_documents import delete
+
+        space = Mock()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_name = os.path.join(temp_dir, "file_name")
+            ctrl_file_name = os.path.join(temp_dir, ".file_name")
+            open(file_name, "w").close()
+            open(ctrl_file_name, "w").close()
+
+            assert os.path.exists(file_name), f"File {file_name} should exist"
+            get_upload_file.return_value = file_name
+            delete(file_name, space)
+
+            assert not os.path.exists(file_name), f"File {file_name} should not exist"
+            assert os.path.exists(ctrl_file_name), f"Control file {ctrl_file_name} should exist"
+            get_upload_file.assert_called_once_with(space, file_name)
+
+    @patch("docq.manage_documents.reindex")
+    @patch("docq.manage_documents.get_upload_dir")
+    def test_delete_all(self: Self, get_upload_dir: Mock, reindex: Mock) -> None:
+        """Test delete_all."""
+        from docq.manage_documents import delete_all
+
+        space = Mock()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            upload_dir = os.path.join(temp_dir, "upload")
+            os.mkdir(upload_dir)
+
+            assert os.path.exists(upload_dir), f"Directory path {upload_dir} should exist"
+            assert os.path.isdir(upload_dir), f"Directory {upload_dir} should be a directory"
+            get_upload_dir.return_value = temp_dir
+            delete_all(space)
+
+            assert not os.path.exists(upload_dir), f"Directory {temp_dir} should not exist"
+            get_upload_dir.assert_called_once_with(space)
+            reindex.assert_called_once_with(space)
+
+    def test_is_web_address(self: Self) -> None:
+        """Test _is_web_address."""
+        from docq.manage_documents import _is_web_address
+
+        assert _is_web_address("http://example.net"), "http://example.net should pass as web address"
+        assert _is_web_address("https://example.net"), "https://example.net should pass as web address"
+        assert not _is_web_address("example.net"), "example.net should not pass as web address"
 
     def test_remove_ascii_control_characters(self: Self) -> None:
         """Test _remove_ascii_control_characters."""
@@ -86,6 +152,8 @@ class TestManageDocuments(unittest.TestCase):
 
         sources = _classify_web_sources("website", "uri", "page_title")
         assert sources == {"website": [("page_title", "uri")]}
+        sources = _classify_web_sources("website", "uri", "page_title", sources)
+        assert sources == {"website": [("page_title", "uri"), ("page_title", "uri")]}
 
     @patch("docq.manage_documents._get_download_link")
     def test_generate_file_markdown(self: Self, download_link: Mock) -> None:
@@ -104,11 +172,27 @@ class TestManageDocuments(unittest.TestCase):
         sources = {"website": [("page_title", "uri"), ("page_title", "uri")]}
         assert _generate_web_markdown(sources) == "\n> ###### website\n>- [page_title](uri)\n\n"
 
-    def test_get_download_link(self: Self) -> None:
+    @patch("docq.manage_documents.runtime")
+    def test_get_download_link(self: Self, runtime: Mock) -> None:
         """Test _get_download_link."""
         from docq.manage_documents import _get_download_link
 
-        assert _get_download_link("name", "uri") == "#"
+        web_address = "https://example.net"
+
+        assert _get_download_link("name", web_address) == web_address, "Web address should return the same address"
+
+        runtime.exists = MagicMock(return_value=False)
+        assert _get_download_link("name", "uri") == "#", "Download link should return '#' if runtime does not exist"
+
+        add = MagicMock(return_value="https://some_link.host")
+        get_instance = MagicMock(
+            return_value=Mock(media_file_mgr=Mock(add=add))
+        )
+
+        runtime.exists = MagicMock(return_value=True)
+        runtime.get_instance = get_instance
+        with tempfile.NamedTemporaryFile() as temp_file:
+            assert _get_download_link("name", temp_file.name) == "https://some_link.host", "Download link should be returned if runtime exists."
 
     @patch("docq.manage_documents._get_download_link")
     def test_format_document_sources(self: Self, file_link: Mock) -> None:
@@ -124,4 +208,7 @@ class TestManageDocuments(unittest.TestCase):
         assert format_document_sources(self.web_source_node) == self.source_template.format(
             file_sources=web_template
         ), "Web source should return a matching web template"
-        assert format_document_sources({}) == "", "Empty source should return empty string"
+        assert format_document_sources([]) == "", "Empty source should return empty string"
+
+        with patch("docq.manage_documents._parse_metadata", MagicMock(return_value=("name", "page", "uri", "UNKNOWN_DS"))):
+            assert format_document_sources(self.file_source_node) == "", "Unknown data source should return empty string"
