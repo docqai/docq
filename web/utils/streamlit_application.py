@@ -10,7 +10,8 @@ from tornado.web import Application, RequestHandler
 
 # from web.utils.layout import st_app
 
-class StreamlitApplication():
+
+class StreamlitApplication:
     """returns a reference to the Streamlit instance of the Tornado Application object.
 
     This uses a hack, grabbing the instance from the garbage collector because Streamlit does not directly expose.
@@ -20,7 +21,7 @@ class StreamlitApplication():
     _rules: List[Rule] = []
     __singleton_instance = None
 
-    #TODO: figure out how to set instance of the class with the Tornado Application object.
+    # TODO: figure out how to set instance of the class with the Tornado Application object.
     # when the code below returns the instance it overwrites the function we've defined like add_route()
     # def __new__(cls:Type["StreamlitApplication"], *args, **kwargs) -> Any:
     #     """Create a singleton instance and set to the Streamlit Tornado Application object.."""
@@ -37,10 +38,10 @@ class StreamlitApplication():
 
     def add_route_handler(self: Self, rule: Rule) -> None:
         """Add a route rule."""
-        logging.debug("Adding route handler: %s",rule)
-        #self._rules.append(rule)
+        logging.debug("Adding route handler: %s", rule)
+        # self._rules.append(rule)
         tornado_app: Application = self.get_singleton_instance()
-        tornado_app.wildcard_router.rules.insert(0,rule)
+        tornado_app.wildcard_router.rules.insert(0, rule)
 
     # def register_routes(self: Self) -> None:
     #     """Register the routes with the Streamlit Tornado Application instance."""
@@ -73,7 +74,7 @@ class StreamlitApplication():
         """
 
         def decorator(cls: Type[RequestHandler]) -> Type[RequestHandler]:
-            logging.debug("Decorator adding route handler: %s",cls)
+            logging.debug("Decorator adding route handler: %s", cls)
             self.add_route_handler(Rule(PathMatches(path), cls))
             return cls
 

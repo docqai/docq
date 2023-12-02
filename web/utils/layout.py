@@ -37,9 +37,8 @@ from streamlit.delta_generator import DeltaGenerator
 from streamlit.errors import StreamlitAPIException
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 from streamlit.source_util import get_pages
-from tornado.routing import PathMatches, Rule
 
-import web.api.handlers  # noqa: F401
+import web.api.index_handler  # noqa: F401 DO NOT REMOVE. This is required to register the web API route handlers.
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .error_ui import _handle_error_state_ui
@@ -1341,10 +1340,7 @@ def init_with_pretty_error_ui() -> None:
     """UI to run setup and prevent showing errors to the user."""
     try:
         setup.init()
-
-        #t = [HelloHandler]
-        #log.debug( st_app._rules)
-        #st_app.register_routes()
+        log.debug("Tornado settings: %s ", st_app.get_singleton_instance().settings)
     except Exception as e:
         st.error("Something went wrong starting Docq.")
         log.fatal("Error: setup.init() failed with: %s", e, exc_info=True)
