@@ -16,6 +16,10 @@ class ChatCompletionHandler(RequestHandler):
         """Override the origin check if it's causing problems."""
         return True
 
+    def check_xsrf_cookie(self) -> bool:
+        #TODO: check if switching this off for API endpoint is safe.
+        return False
+
     def get(self: Self) -> None:
         """Handle GET request."""
         self.write({"message": "hello world 2"})
