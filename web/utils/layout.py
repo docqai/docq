@@ -31,12 +31,15 @@ from docq.support.auth_utils import (
     verify_cookie_hmac_session_id,
 )
 from opentelemetry import trace
-from st_pages import add_page_title, hide_pages, translate_icon
+from st_pages import hide_pages, translate_icon
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 from streamlit.errors import StreamlitAPIException
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 from streamlit.source_util import get_pages
+from tornado.routing import PathMatches, Rule
+
+import web.api.handlers  # noqa: F401
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .error_ui import _handle_error_state_ui
@@ -113,8 +116,10 @@ from .sessions import (
     reset_session_state,
     session_state_exists,
 )
+from .streamlit_application import st_app
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
+
 
 
 __chat_ui_script = """
@@ -1336,6 +1341,10 @@ def init_with_pretty_error_ui() -> None:
     """UI to run setup and prevent showing errors to the user."""
     try:
         setup.init()
+
+        #t = [HelloHandler]
+        #log.debug( st_app._rules)
+        #st_app.register_routes()
     except Exception as e:
         st.error("Something went wrong starting Docq.")
         log.fatal("Error: setup.init() failed with: %s", e, exc_info=True)
