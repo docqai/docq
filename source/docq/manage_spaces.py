@@ -289,7 +289,12 @@ def list_shared_spaces(
 
 @trace.start_as_current_span("manage_spaces.list_public_spaces")
 def list_public_spaces(space_group_id: int) -> list[tuple[int, int, str, str, bool, str, dict, datetime, datetime]]:
-    """List all public spaces from a given space group."""
+    """List all public spaces from a given space group.
+
+    Returns:
+        List[(id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at)]
+    """
+    #TODO: this should filter on something like org_id to protect against space ID's leaking across org boundaries.
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
