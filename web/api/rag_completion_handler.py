@@ -1,18 +1,33 @@
 """Handle /api/rag/completion requests."""
 import json
-from typing import Self
+from typing import Optional, Self
 
 from docq.domain import SpaceKey, SpaceType
+from docq.manage_spaces import list_public_spaces
 from docq.model_selection.main import get_model_settings_collection
 from docq.support.llm import run_ask
 from llama_index import Response
 from llama_index.response.schema import PydanticResponse
+from pydantic import Field, ValidationError
 from tornado.web import HTTPError, RequestHandler
 
 from web.utils.streamlit_application import st_app
 
-from ...source.docq.manage_spaces import list_public_spaces
-from .utils import authenticated
+from .utils import CamelModel, authenticated
+
+
+class PostRequestModel(CamelModel):
+    """Pydantic model for the request body."""
+    input_: str = Field(..., alias="input")
+    history: Optional[str] = None
+    space_group_id: Optional[int] = Field(None)
+    org_id: Optional[int] = Field(None)
+    model_settings_collection_name: Optional[str] = Field(None)
+
+
+class PostResponseModel(CamelModel):
+    """Pydantic model for the response body."""
+    response: str
 
 
 @st_app.api_route("/api/rag/completion")
@@ -28,44 +43,35 @@ class RagCompletionHandler(RequestHandler):
         # Safe with token based authN
         return False
 
-    def get(self: Self) -> None:
-        """Handle GET request."""
-        self.write({"message": "hello world 2"})
-
     @authenticated
     def post(self: Self) -> None:
-        """Handle POST request.
-
-        Example:
-        ```shell
-        curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer expected_token" -d /
-        '{"input":"whats the sun?"}' http://localhost:8501/api/rag/completion
-        ```
-        """
+        """Handle POST request."""
         body = self.request.body
-        # Parse the request body as JSON
-        payload = json.loads(body)
-        # Extract parameters from the JSON
-        input_ = payload.get("input")
-        history = payload.get("history")
-        space_group_id: int = payload.get("spaceGroupId")
-        org_id: int = payload.get("orgId")
-        model_setting_collection_name = payload.get("modelSettingsCollectionName")
-        space_keys: list[SpaceKey] = []
-        if space_group_id:
-            spaces = list_public_spaces(space_group_id)
-            for s in spaces:
-                space_keys.append(SpaceKey(id_ = s[0], type_=SpaceType.PUBLIC, org_id=org_id, summary=s[3]))
-
         try:
-            model_usage_settings = get_model_settings_collection(model_setting_collection_name) if model_setting_collection_name else get_model_settings_collection("azure_openai_latest")
-        except ValueError as e:
-            raise HTTPError(400, "Invalid modelSettingsCollectionName") from e
+            request_model = PostRequestModel.model_validate_json(body)
 
-        result = run_ask(input_=input_, history=history, model_settings_collection=model_usage_settings)
+            space_keys: list[SpaceKey] = []
+            if request_model.space_group_id:
+                spaces = list_public_spaces(request_model.space_group_id)
+                for s in spaces:
+                    space_keys.append(SpaceKey(id_ = s[0], type_=SpaceType.PUBLIC, org_id=request_model.org_id if request_model.org_id else 0, summary=s[3]))
 
-        if result:
-            if isinstance(result, Response) and result.response:
-                self.write(result.response)
-            else:
-                self.write({"error": "Response type not supported by web API"})
+            try:
+                model_usage_settings = get_model_settings_collection(request_model.model_settings_collection_name) if request_model.model_settings_collection_name else get_model_settings_collection("azure_openai_latest")
+            except ValueError as e:
+                raise HTTPError(400, "Invalid modelSettingsCollectionName") from e
+
+            history = request_model.history if request_model.history else ""
+            result = run_ask(input_=request_model.input_, history=history, model_settings_collection=model_usage_settings)
+
+            if result:
+                if isinstance(result, Response) and result.response:
+                    response_model = PostResponseModel(response=result.response)
+                    # Dump the model to a dictionary
+                    self.write(response_model.model_dump())
+                else:
+                    self.write({"error": "Response type not supported by web API"})
+        except ValidationError as e:
+            raise HTTPError(400, "Invalid request body") from e
+
+
