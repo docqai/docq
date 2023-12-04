@@ -49,6 +49,7 @@ microsoftgraph-python = "^1.1.6"
 llama-index = "^0.9.8.post1"
 litellm = "^1.7.7"
 pydantic = "^2.5.2"
+mkdocs-material = "^9.4.14"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.18.1"
@@ -62,7 +63,7 @@ pytest-reverse = "^1.5.0"
 pytest-cov = "^3.0.0"
 pytest-bdd = "^6.1.1"
 mkdocs = "^1.4.2"
-mkdocs-material = "^8.5.10"
+mkdocs-material = "^9.4.14"
 mkdocs-gen-files = "^0.4.0"
 mkdocs-awesome-pages-plugin = "^2.8.0"
 mkapi = "^1.0.14"
@@ -186,23 +187,6 @@ docker build
 --build-arg BUILDPLATFORM=$build_platform \
 --target $target \
 -t docqai/docq:$target-$build_tag ."""
-help = "Build a docker image to test the project in an isolated environment"
-args = [
-    { name = "test", default = false, type = "boolean" },
-    { name = "build-tag", default = "3.11-slim-buster" },
-    { name = "build-platform", default = "linux/amd64" },
-    { name = "target", default = "prod" },
-]
-
-[tool.poe.tasks.docker-build-pipcached]
-cmd = """
-docker build 
---build-arg TESTBUILD=$test \
---build-arg BUILDTAG=$build_tag \
---build-arg BUILDPLATFORM=$build_platform \
---build-arg PIPNOCACHE= \
---target $target \
--t docq:$target-$build_tag ."""
 help = "Build a docker image to test the project in an isolated environment"
 args = [
     { name = "test", default = false, type = "boolean" },

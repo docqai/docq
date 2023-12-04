@@ -1,5 +1,7 @@
 # Introduction
 
+![Docq Illustration](./assets/docq-diag-nov2023.png)
+
 Docq helps your _**businesses**_ gain _**AI-based knowledge insight**_ from your _**private data, securely!**_
 
 Think of Docq as **your employees' private and secure ChatGPT, a second-brain that understands your business**.
@@ -15,4 +17,3 @@ For the developers and other tech-savvy audience, Docq is like **WordPress for g
 [User Guide](./user-guide/getting-started.md) - This is section is for _end-users_ (employees) and admins of the Docq app. It covers how to deploy and config Docq and how to use the AI chat funcitonality to help with your daily work.
 
 [Developer Guide](./developer-guide/getting-started.md) - This section id for those wanting to understand the Docq code base, make code changes to customise Docq, extend Docq, and use Docq as a platform to build AI powered applications on top.
-- [File Storage Services](./developer-guide/file-storage-services.md) - Docq supports multiple file storage services. This section covers how to setup the supported file storage services.
