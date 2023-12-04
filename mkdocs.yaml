@@ -52,7 +52,7 @@ theme:
         name: Switch to light mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      accent: light-purple
+      accent: purple
       toggle:
         icon: material/lightbulb
         name: Switch to dark mode
