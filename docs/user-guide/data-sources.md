@@ -6,3 +6,5 @@ Docq supports associating data to a Space is a varierty of ways. These are calle
 - [Azure Blob](./config-spaces.md#data-source-azure-blob-container)
 - [Web Scraper](./config-spaces.md#data-source-web-scraper)
 - [Knowledgebase Scraper](./config-spaces.md#data-source-knowledgebase-scraper)
+- [Google Drive](./config-spaces.md#data-source-google-drive)
+- [OneDrive](./config-spaces.md#data-source-onedrive)

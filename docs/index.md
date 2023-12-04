@@ -15,3 +15,4 @@ For the developers and other tech-savvy audience, Docq is like **WordPress for g
 [User Guide](./user-guide/getting-started.md) - This is section is for _end-users_ (employees) and admins of the Docq app. It covers how to deploy and config Docq and how to use the AI chat funcitonality to help with your daily work.
 
 [Developer Guide](./developer-guide/getting-started.md) - This section id for those wanting to understand the Docq code base, make code changes to customise Docq, extend Docq, and use Docq as a platform to build AI powered applications on top.
+- [File Storage Services](./developer-guide/file-storage-services.md) - Docq supports multiple file storage services. This section covers how to setup the supported file storage services.
