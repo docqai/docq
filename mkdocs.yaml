@@ -1,6 +1,6 @@
-site_name: Docq - Private & Secure AI Knowledge Insight
+site_name: Docq - Private & Secure ChatGPT AI Knowledge Insight
 site_url: https://docqai.github.io/docq
-site_description: Docq offers self-hosted, private and secure AI for knowledge insight on your private data with minimal onboarding and operational effort.
+site_description: Docq offers self-hosted, private and secure ChatGPT on your private data with minimal onboarding and operational effort.
 site_author: Docq Contributors
 copyright: Copyright &copy; 2023 Docq Contributors
 site_dir: html
@@ -46,13 +46,13 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: docq
-      accent: light-green
+      accent: purple
       toggle:
         icon: material/lightbulb-outline
         name: Switch to light mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      accent: light-green
+      accent: purple
       toggle:
         icon: material/lightbulb
         name: Switch to dark mode
@@ -91,12 +91,14 @@ nav:
       - "Deployment Scenarios": overview/deployment-scenarios.md
   - "User Guides":
       - "Getting Started": user-guide/getting-started.md
+      - "Configuration": user-guide/configuration.md
       - "Deploy to Streamlit": user-guide/deploy-to-streamlit.md
-      - "Deploy to Azure": user-guide/deploy-to-streamlit.md
+      - "Deploy to Azure": user-guide/deploy-to-azure.md
       - "Deploy to AWS": user-guide/deploy-to-aws.md
       - "Deploy to GCP": user-guide/deploy-to-gcp.md
       - "Configure Spaces": user-guide/config-spaces.md
       - "Data Sources": user-guide/data-sources.md
+      - "Configure File Storage Services": user-guide/file-storage-services.md
       - "Usage": user-guide/usage.md
       - "FAQ": user-guide/faq.md
   - "Developer Guides":
@@ -104,11 +106,12 @@ nav:
       - "Architecture": developer-guide/architecture.md
       - "Contributing": developer-guide/contributing.md
       - "Extensions": developer-guide/extensions.md
+      - "Web API": developer-guide/web-api.md
       - "FAQ": developer-guide/faq.md
   #- ... | glob=readme.md
   #- ... | regex=scenarios/.+.md
-  - API: mkapi/api/docq
-  - Tests: mkapi/tests/tests
+  #- API: mkapi/api/docq
+  #- Tests: mkapi/tests/tests
   - "Issues GitHub": https://github.com/docqai/docq/issues
-  - "Discussions GitHub": https://github.com/docqai/docq/discussions
+  - "Join Our Slack": https://join.slack.com/t/docqai/shared_invite/zt-27p17lu6v-6KLJxSmt61vfNqCavSE73A
   - "Acknowledgement": acknowledgement.md

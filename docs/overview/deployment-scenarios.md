@@ -13,6 +13,8 @@ Docq mainly caters for two deployment scenarios:
 
 Plus
 
+- **SaaS Multi-tenant** - An instance of Docq hosted and operated in our cloud provider account (Azure UK South region). Each organisations data is isolated but you are sharing a single instance of Docq and LLMs. This is the fast way to get going. Head over to [https://docq.ai/#plans](https://docq.ai/#plans) to subscribe.
+- **SaaS Dedicated** - Your own dedicated instance of Docq hosted and operated in our cloud account. You don't share any infrastructure with other organisations.
 - **On-Premise Deployment**: It is another option and we are happy to support you with a bespoke setup.
 
 Docq has been designed from ground up for the secure cloud and on-prem deployment scenarios with strict data security and privacy requirement in mind. However it should not stop all other businesses from adopting Docq with the flexible deployment setup if it suits their requirements.
@@ -26,7 +28,7 @@ The diagram above demonstrates the possibilities of have different deployment se
 
 ### Secure Cloud Deployment
 
-If your business have clear data security and privacy guideline, we recommend one of the big three cloud vendors:
+If your business have clear data security and privacy guidelines, we recommend one of the big three cloud vendors:
 
 - Microsoft Cloud (Azure)
 - Amazon Web Services (AWS)

@@ -110,7 +110,7 @@ poe run-otel
 ### Build a docker image for tests
 
 ```sh
-poe docker-build --target test --build-tag 3.10-alpine --test true
+poe docker-build --target test --test true
 ```
 
 ```sh
@@ -130,13 +130,6 @@ poe docker-run --target test
   ```
 - TIP: Make sure `docker.env` is in the `.gitignore` file so it isn't checked in with secrets. It's also safer if you only have the environment variable name for secrets and set the value in your shell with `export`.
 
-### Build a container image with cached dependencies
-
-This is useful when iterating on the dockerfile itself
-
-  ```sh
-  poe docker-build-pipcached
-  ```
 
 ### Run container
 

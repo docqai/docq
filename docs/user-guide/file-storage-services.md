@@ -2,14 +2,6 @@
 
 Docq supports multiple cloud file storage services as a data source. This section covers how to set up the supported file storage services.
 
-  - [Google Drive](#file-storage-google-drive)
-    - [Setup and Configure Google Cloud project](#setup-and-configure-google-cloud-project)
-    - [Configure Docq web application for Google Drive](#configure-docq-web-application-for-google-drive)
-  - [OneDrive](#file-storage-onedrive)
-    - [Setup and Configure Microsoft Azure Application](#setup-and-configure-microsoft-azure-application)
-    - [Configure Docq web application for OneDrive](#configure-docq-web-application-for-onedrive)
-
-
 ## File storage: Google Drive
 
 This guide aims to assist developers in integrating Google Drive with Docq. The focus will be on setting up the Google Drive API and obtaining the necessary credentials.
@@ -39,7 +31,6 @@ After setting up the Google Cloud project and configuring the Google Drive API, 
 
 Note: The Google Drive data source will be automatically disabled if any of the above environment variables are not set.
 
-
 ## File storage: OneDrive
 
 This guide aims to assist developers in integrating OneDrive with Docq. The focus will be on setting up the Microsoft Graph API and obtaining the necessary credentials.
@@ -49,6 +40,7 @@ This guide aims to assist developers in integrating OneDrive with Docq. The focu
 - [Register an Application](https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade/isMSAApp~/false) in the Microsoft Entra ID center
 
 ![Register an Application](../assets/azure_register_an_application.png)
+
 - Configure the following under `Redirect URI`
   - Select `Web` as the platform
   - Enter the redirect URL to the following path `/Admin_Spaces/` e.g. `http://localhost:8501/Admin_Spaces/`

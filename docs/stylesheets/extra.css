@@ -2,14 +2,16 @@
   --md-primary-fg-color:        #202020;
   --md-primary-fg-color--light: #373737;
   --md-primary-fg-color--dark:  #373737;
-  --md-typeset-a-color: #4cae4f
+  --md-typeset-a-color: #542CF2;
+  //--md-typeset-a-color: #4cae4f;
 }
 
 [data-md-color-scheme="slate"] {
   --md-primary-fg-color:        #202020;
   --md-primary-fg-color--light: #373737;
   --md-primary-fg-color--dark:  #373737;
-  --md-typeset-a-color: #71c174
+  --md-typeset-a-color: #542CF2;
+  //--md-typeset-a-color: #71c174;
 }
 
 .mkapi-node code.mkapi-item-name, code.mkapi-object-parenthesis, code.mkapi-object-signature, span.mkapi-item-type, span.mkapi-item-dash, mkapi-item-description {
