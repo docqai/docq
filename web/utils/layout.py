@@ -1233,7 +1233,7 @@ def list_spaces_ui(admin_access: bool = False) -> None:
     spaces = list_shared_spaces()
     if spaces:
         for s in spaces:
-            if s[3] and not admin_access:
+            if s[4] and not admin_access: # Skip if archived and not admin.
                 continue
             ds = get_space_data_source_choice_by_type(s[5])
             container = _render_view_space_details_with_container(s, ds, True)
