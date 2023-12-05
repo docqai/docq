@@ -135,7 +135,7 @@ def test_list_users(manage_users_test_dir: tuple) -> None:
 
     sqlite_system_file = manage_users_test_dir[1]
 
-    user_id = insert_test_user(sqlite_system_file, "test_list_users")
+    user_id = insert_test_user(sqlite_system_file, "test_list_users_test")
 
     assert user_id is not None, "Test list users should be created"
 
@@ -143,10 +143,127 @@ def test_list_users(manage_users_test_dir: tuple) -> None:
     assert user_list is not None, "Test list users should be returned"
     assert len(user_list) >= 1, "Atleast one user should be returned."
 
-    user_list = list_users(username_match="test_list_users")
+    user_list = list_users(username_match="test_list_users_test")
     assert user_list is not None, "Test list users should be returned"
     assert len(user_list) == 1, "Expected only one user to be returned."
     assert user_list[0][0] == user_id, "User id should match"
 
 
+def test_list_users_by_org(manage_users_test_dir: tuple) -> None:
+    """Test list_users_by_org."""
+    from docq.manage_organisations import _init
+    from docq.manage_users import list_users_by_org
 
+    sqlite_system_file = manage_users_test_dir[1]
+    user_id = insert_test_user(sqlite_system_file, "test_list_users_by_org_test")
+    ctrl_user_id = insert_test_user(sqlite_system_file, "test_list_users_by_org_ctrl_test")
+
+    assert user_id is not None, "Test list users by org should be created"
+    assert ctrl_user_id is not None, "Test list users by org should be created"
+
+    with patch("docq.manage_organisations.get_sqlite_system_file") as get_sqlite_system_file:
+        get_sqlite_system_file.return_value = sqlite_system_file
+        _init()
+
+    with closing(
+        sqlite3.connect(sqlite_system_file, detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name = ?", ("orgs",)
+        )
+        org = cursor.fetchone()
+
+        assert org is not None, "Org table should exist"
+
+        cursor.execute(
+            "INSERT INTO orgs (name) VALUES (?)",
+            ("test_list_users_by_org_test",),
+        )
+        org_id = cursor.lastrowid
+
+        cursor.execute(
+            "INSERT INTO orgs (name) VALUES (?)",
+            ("test_list_users_by_org_ctrl_test",),
+        )
+        ctrl_org_id = cursor.lastrowid
+
+        assert org_id is not None, "Test list users by org should be created"
+        assert ctrl_org_id is not None, "Test list users by org should be created"
+
+        cursor.execute(
+            "INSERT INTO org_members (user_id, org_id) VALUES (?, ?)",
+            (user_id, org_id,),
+        )
+        cursor.execute(
+            "INSERT INTO org_members (user_id, org_id, org_admin) VALUES (?, ?, ?)",
+            (ctrl_user_id, org_id, 1),
+        )
+        connection.commit()
+
+    user_list = list_users_by_org(org_id=org_id)
+
+    assert user_list is not None, "Test list users by org should be returned"
+    assert len(user_list) == 2, "Expected only two users to be returned."
+
+    user_list = list_users_by_org(org_id=org_id, username_match="test_list_users_by_org_test")
+
+    assert user_list is not None, "Test list users by org should be returned"
+    assert len(user_list) == 1, "Expected only one user to be returned."
+
+    user_list = list_users_by_org(org_id=org_id, org_admin_match=True)
+
+    assert user_list is not None, "Test list users by org should be returned"
+    assert len(user_list) == 1, "Expected only one user to be returned."
+
+    user_list = list_users_by_org(org_id=org_id, org_admin_match=False)
+
+    assert user_list is not None, "Test list users by org should be returned"
+    assert len(user_list) == 1, "Expected only one user to be returned."
+
+
+def test_list_selected_users(manage_users_test_dir: tuple) -> None:
+    """Test list selected users."""
+    from docq.manage_users import list_selected_users
+
+    sqlite_system_file = manage_users_test_dir[1]
+    user_id1 = insert_test_user(sqlite_system_file, "test_list_selected_users1")
+    user_id2 = insert_test_user(sqlite_system_file, "test_list_selected_users2")
+    ctrl_user_id = insert_test_user(sqlite_system_file, "test_list_selected_users_ctrl")
+
+    assert user_id1 is not None, "Test list selected users should be created"
+    assert user_id2 is not None, "Test list selected users should be created"
+    assert ctrl_user_id is not None, "Test list selected users should be created"
+
+    user_list = list_selected_users([user_id1, user_id2])
+
+    assert user_list is not None, "Test list selected users should be returned"
+    assert len(user_list) == 2, "Expected only two users to be returned."
+    assert user_id1 in [x[0] for x in user_list], "User id should match"
+    assert user_id2 in [x[0] for x in user_list], "User id should match"
+    assert ctrl_user_id not in [x[0] for x in user_list], "User id should not match"
+
+
+def test_update_user(manage_users_test_dir: tuple) -> None:
+    """Test update user."""
+    from docq.manage_users import update_user
+
+    sqlite_system_file = manage_users_test_dir[1]
+    user_id = insert_test_user(sqlite_system_file, "test_update_user")
+    ctrl_user_id = insert_test_user(sqlite_system_file, "test_update_user_ctrl")
+    update_username = "test_update_user_updated"
+
+    assert user_id is not None, "Test update user should be created"
+    assert ctrl_user_id is not None, "Test update user should be created"
+
+    update_user(user_id, username=update_username)
+
+    with closing(
+        sqlite3.connect(sqlite_system_file, detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(
+            "SELECT username FROM users WHERE id = ?", (user_id,)
+        )
+        updated_user = cursor.fetchone()
+
+        assert updated_user is not None, "Test update user should be returned"
+        assert updated_user[0] == update_username, "Username should be updated"
