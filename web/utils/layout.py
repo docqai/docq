@@ -234,6 +234,21 @@ def __embed_page_config() -> None:
     )
 
 
+def __hide_all_empty_divs() -> None:
+    """Hide all empty divs containing style or iframe that doesent render anything."""
+    st.markdown("""<style>
+        div:has(> div.stMarkdown > div[data-testid="stMarkdownContainer"] > style) {
+            display: none !important;
+        }
+        div:has(> iframe[height="0"]) {
+            display: none !important;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+    )
+
+
 def __always_hidden_pages() -> None:
     """These pages are always hidden whether the user is an admin or not."""
     hide_pages(["widget", "signup", "verify"])
@@ -348,6 +363,7 @@ def public_access() -> None:
     # __no_staff_menu()
     __no_admin_menu()
     __always_hidden_pages()
+    __hide_all_empty_divs()
 
 
 @tracer.start_as_current_span("auth_required")
@@ -360,6 +376,7 @@ def auth_required(
     span.add_event("Checking authorisation")
     auth = None
     __always_hidden_pages()
+    __hide_all_empty_divs()
 
     session_state_existed = session_state_exists()
     log.debug("auth_required(): session_state_existed: %s", session_state_existed)
@@ -710,7 +727,7 @@ def chat_ui(feature: FeatureKey) -> None:
     """Chat UI layout."""
     prepare_for_chat(feature)
     # Style for formatting sources list.
-    st.write(
+    st.markdown(
         """<style>
             [data-testid="stMarkdownContainer"] h6 {
                 padding: 0px !important;
@@ -1233,7 +1250,7 @@ def list_spaces_ui(admin_access: bool = False) -> None:
     spaces = list_shared_spaces()
     if spaces:
         for s in spaces:
-            if s[3] and not admin_access:
+            if s[4] and not admin_access: # Skip if archived and not admin.
                 continue
             ds = get_space_data_source_choice_by_type(s[5])
             container = _render_view_space_details_with_container(s, ds, True)
