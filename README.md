@@ -27,13 +27,18 @@
 
 Docq offers **private** and **secure** GenAI that unlocks knowledge from your organisation's documents, with minimal onboarding and operational effort.
 
-Design tenants:
+Design tenets:
 
-- **Data stays within your boundary** bring ML models to the data. Cloud-vendor-hosted & self-hosted LLMs within the same cloud account to address data security and privacy concerns.
-- **Self-hosting** with your organisation's choice of cloud vendor. Minimal onboarding and operational effort. Can support air-gap use cases with local models.
-- **multi-model** ability to utilise a variety of models and ability adopt new models quickly.
-- **Multi-modal** supports text today. Image, video, and audio formats are on the roadmap.
-- **Extensible** Abstractions to easily add custom data sources. Plugin system for extending application, from UI to database.
+- **Data stays within your boundary**:
+bring ML models to the data. Cloud-vendor-hosted & self-hosted LLMs within the same cloud account to address data security and privacy concerns.
+- **Self-hosting**:
+with your organisation's choice of cloud vendor. Minimal onboarding and operational effort. Can support air-gap use cases with local models.
+- **Multi-model**:
+ability to utilise a variety of models and ability adopt new models quickly.
+- **Multi-modal**:
+supports text today. Image, video, and audio formats are on the roadmap.
+- **Extensible**:
+Abstractions to easily add custom data sources. Plugin system for extending application, from UI to database.
 
 We offer Docq as a **turnkey** solution to lower the barrier for your organisation to adopt the latest AI innovation safely.
 
