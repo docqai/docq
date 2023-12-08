@@ -57,9 +57,9 @@ with tracer().start_as_current_span("home_page", attributes=baggage_as_attribute
 
     st.markdown(
         """
-    - Click on the _General Chat_ link to use Docq like ChatGPT.
-    - Click on the _Ask Your Documents_ link to ask questions and get answers from your own documents. You can also _Manage Your Documents_.
-    - Click on the _Ask Shared Documents_ link to ask questions and get answers from documents shared within your organisation.
+    - Click on _General Chat_ to use Docq like ChatGPT.
+    - Click on _Ask Shared Documents_ link to ask questions and get answers from documents shared within your organisation as a Space.
+    - Click on _Admin Spaces_ to create a new Space, add documents, and share with your organisation.
     """
     )
 
@@ -67,8 +67,8 @@ with tracer().start_as_current_span("home_page", attributes=baggage_as_attribute
     st.markdown(
         """
     - Always ask questions in plain English and try to be as specific as possible.
-    - You can manage the documents in your space which sets the context for your questions.
-    - Your access to shared spaces is subject to permissions set by your organisation.
+    - Admins can manage the documents in a Space which sets the context for your questions.
+    - Your access to shared spaces is subject to permissions set by your organisation admin.
     - For any questions or feedback, please contact your organisation's Docq administrator.
 
     Enjoy Docq!
