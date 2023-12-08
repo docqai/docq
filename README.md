@@ -48,7 +48,7 @@ We offer Docq as a **turnkey** solution to lower the barrier for your organisati
 
 ## Vision
 
-Be the goto OSS GenAI application stack for the privacy and security concious.
+Be the goto OSS GenAI application stack for the privacy and security conscious.
 
 ## Demo
 
