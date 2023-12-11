@@ -541,11 +541,11 @@ def _get_chat_spaces(feature: domain.FeatureKey) -> List[SpaceKey]:
     if select_org_id is None:
         raise ValueError("Selected org id was None")
 
-    shared_spaces = manage_spaces.get_shared_spaces(
-        [s_[0] for s_ in st.session_state[f"chat_shared_spaces_{feature.value()}"]]
-    )
     result = []
     if feature.type_ == config.OrganisationFeatureType.ASK_SHARED:
+        shared_spaces = manage_spaces.get_shared_spaces(
+            [s_[0] for s_ in st.session_state[f"chat_shared_spaces_{feature.value()}"]]
+        )
         result = [
             domain.SpaceKey(config.SpaceType.SHARED, s_[0], select_org_id, summary=s_[3])
             # for s_ in st.session_state[f"chat_shared_spaces_{feature.value()}"]
