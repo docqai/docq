@@ -17,6 +17,6 @@ with tracer().start_as_current_span("shared_spaces_page", attributes=baggage_as_
 
     org_feature_enabled(OrganisationFeatureType.ASK_SHARED)
 
-    feature = FeatureKey(OrganisationFeatureType.ASK_SHARED, get_authenticated_user_id())
+    feature = FeatureKey(OrganisationFeatureType.ASK_SHARED, get_authenticated_user_id()) # type: ignore
 
     list_spaces_ui()

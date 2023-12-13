@@ -2,18 +2,12 @@
 
 
 import streamlit as st
-from utils.layout import (
-    auth_required,
-    create_user_ui,
-    list_users_ui,
-    org_selection_ui,
-    render_page_title_and_favicon,
-)
-from utils.observability import baggage_as_attributes, tracer
+from utils.layout import create_user_ui, list_users_ui, org_selection_ui, tracer
 
-with tracer().start_as_current_span("admin_users_page", attributes=baggage_as_attributes()):
-    # render_page_title_and_favicon()
 
+@tracer.start_as_current_span("admin_users_page")
+def admin_users_page() -> None:
+    """Page: Admin / Manage Users."""
     with st.sidebar:
         org_selection_ui()
 
