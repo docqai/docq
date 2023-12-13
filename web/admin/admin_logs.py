@@ -2,10 +2,7 @@
 
 import streamlit as st
 from docq.config import LogType
-from utils.layout import auth_required, list_logs_ui, render_page_title_and_favicon
-
-render_page_title_and_favicon()
-auth_required(requiring_selected_org_admin=True)
+from utils.layout import list_logs_ui
 
 types_ = [LogType.ACTIVITY, LogType.SYSTEM]
 tabs = st.tabs([t.value for t in types_])

@@ -12,8 +12,7 @@ from utils.layout import (
 from utils.observability import baggage_as_attributes, tracer
 
 with tracer().start_as_current_span("admin_users_page", attributes=baggage_as_attributes()):
-    render_page_title_and_favicon()
-    auth_required(requiring_selected_org_admin=True)
+    # render_page_title_and_favicon()
 
     with st.sidebar:
         org_selection_ui()
