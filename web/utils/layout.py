@@ -37,7 +37,6 @@ from streamlit.delta_generator import DeltaGenerator
 from streamlit.errors import StreamlitAPIException
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 from streamlit.source_util import get_pages
-from streamlit_extras.switch_page_button import switch_page
 
 import web.api.index_handler  # noqa: F401 DO NOT REMOVE. This is required to register the web API route handlers.
 
@@ -241,19 +240,7 @@ def __hide_all_empty_divs() -> None:
 
 def __always_hidden_pages() -> None:
     """These pages are always hidden whether the user is an admin or not."""
-    hide_pages([
-        "widget",
-        "signup",
-        "verify",
-        "Admin_Settings",
-        "Admin_Spaces",
-        "Admin_Space_Groups",
-        "Admin_Docs",
-        "Admin_Users",
-        "Admin_User_Groups",
-        "Admin_Logs",
-        "Admin_Orgs",
-    ])
+    hide_pages(["widget", "signup", "verify"])
 
 
 def render_page_title_and_favicon(page_display_title: Optional[str] = None) -> None:
@@ -1523,51 +1510,3 @@ def verify_email_ui() -> None:
     else:
         st.error("Email verification failed!")
         st.info("Please try again or contact your administrator.")
-
-
-def admin_section_ui() -> None:
-    """Admin section UI."""
-    st.markdown(
-        """
-        <style>
-          section[tabindex="0"] div[data-testid="stExpander"] {
-            padding-top: 1rem;
-          }
-          section[tabindex="0"] div[data-testid="stExpander"] [data-testid="stExpanderDetails"] {
-            padding-top: 1rem;
-          }
-          section[tabindex="0"] div[data-testid="stExpander"] [data-testid="stExpanderDetails"] > div > div {
-            gap: 0.5rem;
-          }
-          section[tabindex="0"] div[data-testid="stExpander"] summary {
-            display: none;
-          }
-          section[tabindex="0"] button[kind="secondary"] {
-            border: none;
-            min-height: unset !important;
-            height: 2rem;
-            padding: 0 1rem;
-            min-width: 250px;
-            justify-content: flex-start;
-          }
-          section[tabindex="0"] button[kind="secondary"]:not(:has(:hover)) {
-            background-color: transparent;
-          }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-    admin_pages = [
-        "Admin Settings",
-        "Admin Spaces",
-        "Admin Space Groups",
-        "Admin Users",
-        "Admin User Groups",
-        "Admin Orgs",
-        "Admin Logs"
-    ]
-
-    with st.expander("Admin", 1):
-        for page in admin_pages:
-            if st.button(page):
-                switch_page(page)
