@@ -91,7 +91,10 @@ nav:
       - "Deployment Scenarios": overview/deployment-scenarios.md
   - "User Guides":
       - "Getting Started": user-guide/getting-started.md
-      - "Configuration": user-guide/configuration.md
+      - "Configuration":
+          - "LLM Service Configuration": user-guide/llm-config.md
+          - "Configure Spaces": user-guides/config-spaces.md
+          - "Configure File Storage Services": user-guides/file-storage-services.md
       - "Deploy to Streamlit": user-guide/deploy-to-streamlit.md
       - "Deploy to Azure": user-guide/deploy-to-azure.md
       - "Deploy to AWS": user-guide/deploy-to-aws.md
@@ -99,6 +102,7 @@ nav:
       - "Configure Spaces": user-guide/config-spaces.md
       - "Data Sources": user-guide/data-sources.md
       - "Configure File Storage Services": user-guide/file-storage-services.md
+      - "LLM Service Configuration": user-guide/llm-config.md
       - "Usage": user-guide/usage.md
       - "FAQ": user-guide/faq.md
   - "Developer Guides":
