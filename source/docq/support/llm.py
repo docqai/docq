@@ -14,8 +14,8 @@ from llama_index import (
 )
 from llama_index.callbacks.base import CallbackManager
 from llama_index.chat_engine import SimpleChatEngine
-from llama_index.chat_engine.types import AGENT_CHAT_RESPONSE_TYPE, AgentChatResponse, ChatMode
-from llama_index.embeddings import AzureOpenAIEmbedding, OpenAIEmbedding, OptimumEmbedding
+from llama_index.chat_engine.types import AGENT_CHAT_RESPONSE_TYPE, AgentChatResponse
+from llama_index.embeddings import AzureOpenAIEmbedding, GooglePaLMEmbedding, OpenAIEmbedding, OptimumEmbedding
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.indices.base import BaseIndex
 from llama_index.indices.composability import ComposableGraph
@@ -96,6 +96,8 @@ def _init_local_models() -> None:
 
 @tracer.start_as_current_span(name="_get_generation_model")
 def _get_generation_model(model_settings_collection: ModelUsageSettingsCollection) -> LLM | None:
+    import litellm
+    litellm.telemetry = False
     model = None
     if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.CHAT]:
         chat_model_settings = model_settings_collection.model_usage_settings[ModelCapability.CHAT]
@@ -131,9 +133,27 @@ def _get_generation_model(model_settings_collection: ModelUsageSettingsCollectio
             _env_missing = not bool(os.getenv("DOCQ_OPENAI_API_KEY"))
             if _env_missing:
                 log.warning("Chat model: env var values missing")
+        elif chat_model_settings.model_vendor == ModelVendor.GOOGLE_VERTEXAI_PALM2:
+            # GCP project_id is coming from the credentials json.
+            model = LiteLLM(
+                temperature=chat_model_settings.temperature,
+                model=chat_model_settings.model_name,
+                callback_manager=_callback_manager,
+            )
+        elif chat_model_settings.model_vendor == ModelVendor.GOOGLE_VERTEXTAI_GEMINI_PRO:
+            # GCP project_id is coming from the credentials json.
+            model = LiteLLM(
+                temperature=chat_model_settings.temperature,
+                model=chat_model_settings.model_name,
+                callback_manager=_callback_manager,
+                max_tokens=2048,
+                kwargs={"telemetry":False}
+            )
+            litellm.vertex_location = "us-central1"
         else:
             raise ValueError("Chat model: model settings with a supported model vendor not found.")
 
+        model.max_retries = 3
         return model
 
 
