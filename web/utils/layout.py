@@ -195,18 +195,7 @@ def __no_staff_menu() -> None:
 
 @tracer.start_as_current_span("__no_admin_menu")
 def __no_admin_menu() -> None:
-    hide_pages(
-        [
-            "Admin",
-            "Admin_Settings",
-            "Admin_Spaces",
-            "Admin_Space_Groups",
-            "Admin_Docs",
-            "Admin_Users",
-            "Admin_User_Groups",
-            "Admin_Logs",
-        ]
-    )
+    hide_pages(["Admin_Section"])
 
 
 def __embed_page_config() -> None:
@@ -251,7 +240,7 @@ def __hide_all_empty_divs() -> None:
 
 def __always_hidden_pages() -> None:
     """These pages are always hidden whether the user is an admin or not."""
-    hide_pages(["widget", "signup", "verify"])
+    hide_pages(["widget", "signup", "verify", "Admin_Spaces"])
 
 
 def render_page_title_and_favicon(page_display_title: Optional[str] = None) -> None:
