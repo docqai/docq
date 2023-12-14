@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Optional
 
+import vertexai
+
 from ..config import OrganisationSettingsKey
 from ..manage_settings import get_organisation_settings
 
@@ -32,6 +34,8 @@ class ModelVendor(str, Enum):
     AWS_BEDROCK_STABILITYAI = "AWS Bedrock StabilityAI"
     AWS_SAGEMAKER_META = "AWS Sagemaker Meta"
     HUGGINGFACE_OPTIMUM_BAAI = "HuggingFace Optimum BAAI"
+    GOOGLE_VERTEXAI_PALM2 = "Google VertexAI Palm2"
+    GOOGLE_VERTEXTAI_GEMINI_PRO = "Google VertexAI Gemini Pro"
 
 
 class ModelCapability(str, Enum):
@@ -45,6 +49,8 @@ class ModelCapability(str, Enum):
     SUMMARISATION = "Summarisation"
     IMAGE = "Image"
     AUDIO = "Audio"
+    TEXT = "Text"
+    VISION = "Vision"
 
 
 @dataclass
@@ -74,7 +80,8 @@ class ModelUsageSettingsCollection:
     """Unique key for the model collection."""
     model_usage_settings: Dict[ModelCapability, ModelUsageSettings]
 
-
+#NOTE: we are using LiteLLM client via Llama Index as the LLM client interface. This means model names need to follow the LiteLLM naming convention.
+# SoT https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json
 LLM_MODEL_COLLECTIONS = {
     "openai_latest": ModelUsageSettingsCollection(
         name="OpenAI Latest",
@@ -117,6 +124,57 @@ LLM_MODEL_COLLECTIONS = {
                 model_name="gpt-35-turbo",
                 model_deployment_name="gpt-35-turbo",
                 model_capability=ModelCapability.CHAT,
+            ),
+            ModelCapability.EMBEDDING: ModelUsageSettings(
+                model_vendor=ModelVendor.HUGGINGFACE_OPTIMUM_BAAI,
+                model_name="BAAI/bge-small-en-v1.5",
+                model_capability=ModelCapability.EMBEDDING,
+                license_="MIT",
+                citation="""@misc{bge_embedding,
+                            title={C-Pack: Packaged Resources To Advance General Chinese Embedding}, 
+                            author={Shitao Xiao and Zheng Liu and Peitian Zhang and Niklas Muennighoff},
+                            year={2023},
+                            eprint={2309.07597},
+                            archivePrefix={arXiv},
+                            primaryClass={cs.CL}
+                            }""",
+            ),
+        },
+    ),
+    "google_vertexai_palm2": ModelUsageSettingsCollection(
+        name="Google VertexAI Palm2 Latest",
+        key="google_vertexai_palm2_latest",
+        model_usage_settings={
+            ModelCapability.CHAT: ModelUsageSettings(
+                model_vendor=ModelVendor.GOOGLE_VERTEXAI_PALM2,
+                model_name="chat-bison@002",
+                model_capability=ModelCapability.CHAT,
+            ),
+            ModelCapability.EMBEDDING: ModelUsageSettings(
+                model_vendor=ModelVendor.HUGGINGFACE_OPTIMUM_BAAI,
+                model_name="BAAI/bge-small-en-v1.5",
+                model_capability=ModelCapability.EMBEDDING,
+                license_="MIT",
+                citation="""@misc{bge_embedding,
+                            title={C-Pack: Packaged Resources To Advance General Chinese Embedding}, 
+                            author={Shitao Xiao and Zheng Liu and Peitian Zhang and Niklas Muennighoff},
+                            year={2023},
+                            eprint={2309.07597},
+                            archivePrefix={arXiv},
+                            primaryClass={cs.CL}
+                            }""",
+            ),
+        },
+    ),
+    "google_vertexai_gemini_pro": ModelUsageSettingsCollection(
+        name="Google VertexAI Gemini Pro Latest",
+        key="google_vertexai_gemini_pro_latest",
+        model_usage_settings={
+            ModelCapability.CHAT: ModelUsageSettings(
+                model_vendor=ModelVendor.GOOGLE_VERTEXTAI_GEMINI_PRO,
+                model_name="gemini-pro",
+                model_capability=ModelCapability.CHAT,
+                temperature=0.0,
             ),
             ModelCapability.EMBEDDING: ModelUsageSettings(
                 model_vendor=ModelVendor.HUGGINGFACE_OPTIMUM_BAAI,
