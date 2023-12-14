@@ -47,9 +47,12 @@ google-api-python-client = "^2.104.0"
 google-auth-httplib2 = "^0.1.1"
 microsoftgraph-python = "^1.1.6"
 llama-index = "^0.9.8.post1"
-litellm = "^1.7.7"
 pydantic = "^2.5.2"
 mkdocs-material = "^9.4.14"
+google-cloud-aiplatform = "^1.38.0"
+litellm = "^1.14.1"
+opentelemetry-instrumentation-httpx = "0.41b0"
+opentelemetry-instrumentation-system-metrics = "0.41b0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.18.1"
@@ -176,6 +179,11 @@ env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${PWD}/web/:${PWD}/source/:$
 
 [tool.poe.tasks.run-otel]
 cmd = "opentelemetry-instrument --logs_exporter none streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.runOnSave true --server.fileWatcherType auto"
+args = [{ name = "port", default = 8501, type = "integer" }]
+env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${PWD}/web/:${PWD}/source/:${PWD}/../docq-extensions/source/" }
+
+[tool.poe.tasks.run-otel-infisical]
+cmd = "infisical run --env=dev -- opentelemetry-instrument --logs_exporter none streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.runOnSave true --server.fileWatcherType auto"
 args = [{ name = "port", default = 8501, type = "integer" }]
 env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${PWD}/web/:${PWD}/source/:${PWD}/../docq-extensions/source/" }
 
