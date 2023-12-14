@@ -718,7 +718,7 @@ def _render_chat_file_uploader(feature: FeatureKey) -> None:
     <style>
       div.element-container:has(div[data-testid="stFileUploader"]) {
         position: fixed;
-        bottom: 20px;
+        bottom: 1.8rem;
         z-index: 1000;
       }
       div[data-testid="stFileUploader"] label {
@@ -727,12 +727,32 @@ def _render_chat_file_uploader(feature: FeatureKey) -> None:
       section[data-testid="stFileUploadDropzone"] {
         height: 2rem;
       }
+      section[data-testid="stFileUploadDropzone"] div {
+        flex-direction: row;
+        gap: 1rem;
+      }
+      section[data-testid="stFileUploadDropzone"] :is(small, span) {
+        justify-content: center;
+        align-items: center;
+        display: flex;
+        margin: 0;
+      }
+      section[data-testid="stFileUploadDropzone"] button[data-testid="baseButton-secondary"] {
+        min-height: unset;
+        height: 1.5rem;
+        font-size: 0.8rem;
+      }
+      div[data-testid="stFileUploader"]:has(.uploadedFile) section[data-testid="stFileUploadDropzone"] {
+        display: none;
+      }
     </style>
     """,
     unsafe_allow_html=True
     )
     st.file_uploader(
         ":paperclip:",
+        key=f"chat_file_uploader_{feature.value()}",
+        accept_multiple_files=False,
     )
 
 
