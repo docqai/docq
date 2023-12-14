@@ -12,6 +12,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 
+#TODO: move this to a config factory in credential_utils.py. If possible to provide the json, do that.
 CREDENTIALS_KEY = "DOCQ_GOOGLE_APPLICATION_CREDENTIALS"
 REDIRECT_URL_KEY = "DOCQ_GOOGLE_AUTH_REDIRECT_URL"
 
