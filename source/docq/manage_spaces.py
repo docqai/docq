@@ -186,7 +186,7 @@ def get_shared_spaces(space_ids: List[int]) -> List[Tuple[int, int, str, str, bo
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         placeholders = ", ".join("?" * len(space_ids))
-        query = "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM spaces WHERE id IN ({})".format(
+        query = "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM spaces WHERE id IN ({})".format(  # noqa: S608
             placeholders
         )
         cursor.execute(query, space_ids)
