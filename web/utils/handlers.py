@@ -592,6 +592,7 @@ def handle_delete_all_documents(space: domain.SpaceKey) -> None:
 
 
 def handle_upload_file(space: domain.SpaceKey) -> None:
+    """Handle upload file."""
     files = st.session_state[f"uploaded_file_{space.value()}"]
 
     disp = st.empty()

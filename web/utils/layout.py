@@ -751,8 +751,7 @@ def _render_chat_file_uploader(feature: FeatureKey) -> None:
     )
     st.file_uploader(
         ":paperclip:",
-        key=f"chat_file_uploader_{feature.value()}",
-        accept_multiple_files=False,
+        key=f"chat_file_uploader_{feature.value()}"
     )
 
 
