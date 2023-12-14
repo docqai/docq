@@ -712,6 +712,30 @@ def _show_chat_histories(feature: FeatureKey) -> None:
             )
 
 
+def _render_chat_file_uploader(feature: FeatureKey) -> None:
+    """Upload files to chat."""
+    st.markdown("""
+    <style>
+      div.element-container:has(div[data-testid="stFileUploader"]) {
+        position: fixed;
+        bottom: 20px;
+        z-index: 1000;
+      }
+      div[data-testid="stFileUploader"] label {
+        display: none;
+      }
+      section[data-testid="stFileUploadDropzone"] {
+        height: 2rem;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True
+    )
+    st.file_uploader(
+        ":paperclip:",
+    )
+
+
 def chat_ui(feature: FeatureKey) -> None:
     """Chat UI layout."""
     prepare_for_chat(feature)
@@ -787,6 +811,7 @@ def chat_ui(feature: FeatureKey) -> None:
         args=(feature,),
     )
     _show_chat_histories(feature)
+    _render_chat_file_uploader(feature)
 
 
 def _render_document_upload(space: SpaceKey, documents: List) -> None:
