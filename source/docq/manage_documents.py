@@ -11,9 +11,9 @@ from llama_index.schema import NodeWithScore
 from streamlit import runtime
 
 from .data_source.main import DocumentMetadata
-from .domain import SpaceKey
+from .domain import FeatureKey, SpaceKey
 from .manage_spaces import reindex
-from .support.store import get_upload_dir, get_upload_file
+from .support.store import get_chat_thread_upload_file, get_upload_dir, get_upload_file
 
 
 def upload(filename: str, content: bytes, space: SpaceKey) -> None:
@@ -42,6 +42,18 @@ def delete_all(space: SpaceKey) -> None:
     shutil.rmtree(get_upload_dir(space))
 
     reindex(space)
+
+
+def save_thread_upload(filename: str, content: bytes, feature: FeatureKey, thread_id: str) -> None:
+    """Upload the file to the space."""
+    with open(get_chat_thread_upload_file(feature, thread_id, filename), "wb") as f:
+        f.write(content)
+
+
+def delete_thread_uploads(feature: FeatureKey, thread_id: str) -> None:
+    """Delete the file from the space."""
+    shutil.rmtree(get_chat_thread_upload_file(feature, thread_id))
+
 
 def _is_web_address(uri: str) -> bool:
     """Return true if the uri is a web address."""
