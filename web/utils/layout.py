@@ -737,6 +737,13 @@ def _render_chat_file_uploader(feature: FeatureKey, chat_id: int) -> None:
         display: flex;
         margin: 0;
       }
+      section[data-testid="stFileUploadDropzone"] small {
+        font-size: 0;
+      }
+      section[data-testid="stFileUploadDropzone"] small:after {
+        content: "File limit 200MB";
+        font-size: 0.8rem;
+      }
       section[data-testid="stFileUploadDropzone"] button[data-testid="baseButton-secondary"] {
         min-height: unset;
         height: 1.5rem;
@@ -750,7 +757,7 @@ def _render_chat_file_uploader(feature: FeatureKey, chat_id: int) -> None:
     unsafe_allow_html=True
     )
     input_key = f"chat_file_uploader_{feature.value()}_{chat_id}"
-    st.file_uploader(":paperclip:", key=input_key)
+    st.file_uploader(":paperclip:", key=input_key, type=ALLOWED_DOC_EXTS)
     st.session_state[f"chat_file_uploader_{feature.value()}"] = st.session_state[input_key]
 
 
@@ -842,7 +849,7 @@ def _render_document_upload(space: SpaceKey, documents: List) -> None:
                 key=f"uploaded_file_{space.value()}",
                 accept_multiple_files=True,
             )
-            st.form_submit_button(label="Upload", on_click=handle_upload_file, args=(space,))
+            st.form_submit_button(label="Save files", on_click=handle_upload_file, args=(space,))
     else:
         st.warning(f"You cannot upload more than {max_size} documents.")
 
