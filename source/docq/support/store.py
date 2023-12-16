@@ -68,12 +68,12 @@ def get_upload_dir(space: SpaceKey) -> str:
     )
 
 
-def get_chat_thread_upload_file(feature: FeatureKey, thread_id: str, filename: Optional[str] = None) -> str:
-    """Get the upload directory for a space."""
+def get_chat_thread_upload_dir_or_file(feature: FeatureKey, thread_id: str, filename: Optional[str] = None) -> str:
+    """Get chat thread upload directory or file. Returns directory if filename is None."""
     return _get_path(
         store=_StoreSubdir.UPLOAD,
         type_=SpaceType.THREAD,
-        subtype=os.path.join(feature.value(), thread_id),
+        subtype=os.path.join(feature.value(), str(thread_id)),
         filename=filename
     )
 

@@ -575,7 +575,7 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
     saved_model_settings = get_saved_model_settings_collection(select_org_id)
 
     result = run_queries.query(req, feature, thread_id, saved_model_settings, spaces)
-
+    handle_persist_chat_file_upload(feature, thread_id)
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 
 
@@ -616,6 +616,16 @@ def handle_upload_file(space: domain.SpaceKey) -> None:
         return None
     # if any error occurs
     disp.error("Error uploading file(s)")
+
+
+def handle_persist_chat_file_upload(feature: domain.FeatureKey, thread_id: str) -> None:
+    """Handle save chat thread uploads."""
+    key = f"chat_file_uploader_{feature.value()}"
+    file = st.session_state[key]
+
+    if file is not None:
+        manage_documents.save_thread_upload(file.name, file.getvalue(), feature, thread_id)
+        st.session_state[key] = None
 
 
 def handle_change_temperature(type_: config.SpaceType):

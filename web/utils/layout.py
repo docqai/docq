@@ -712,7 +712,7 @@ def _show_chat_histories(feature: FeatureKey) -> None:
             )
 
 
-def _render_chat_file_uploader(feature: FeatureKey) -> None:
+def _render_chat_file_uploader(feature: FeatureKey, chat_id: int) -> None:
     """Upload files to chat."""
     st.markdown("""
     <style>
@@ -749,10 +749,9 @@ def _render_chat_file_uploader(feature: FeatureKey) -> None:
     """,
     unsafe_allow_html=True
     )
-    st.file_uploader(
-        ":paperclip:",
-        key=f"chat_file_uploader_{feature.value()}"
-    )
+    input_key = f"chat_file_uploader_{feature.value()}_{chat_id}"
+    st.file_uploader(":paperclip:", key=input_key)
+    st.session_state[f"chat_file_uploader_{feature.value()}"] = st.session_state[input_key]
 
 
 def chat_ui(feature: FeatureKey) -> None:
@@ -830,7 +829,7 @@ def chat_ui(feature: FeatureKey) -> None:
         args=(feature,),
     )
     _show_chat_histories(feature)
-    _render_chat_file_uploader(feature)
+    _render_chat_file_uploader(feature, len(chat_history) if chat_history else 0)
 
 
 def _render_document_upload(space: SpaceKey, documents: List) -> None:
