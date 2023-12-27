@@ -12,12 +12,13 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 
-#TODO: move this to a config factory in credential_utils.py. If possible to provide the json, do that.
 CREDENTIALS_KEY = "DOCQ_GOOGLE_APPLICATION_CREDENTIALS"
 REDIRECT_URL_KEY = "DOCQ_GOOGLE_AUTH_REDIRECT_URL"
+CREDENTIAL_JSON_KEY = "DOCQ_GOOGLE_APPLICATION_CREDENTIALS_JSON"
 
 GOOGLE_APPLICATION_CREDS_PATH = os.environ.get(CREDENTIALS_KEY)
 FLOW_REDIRECT_URI = os.environ.get(REDIRECT_URL_KEY)
+CREDENTIAL_JSON = os.environ.get(CREDENTIAL_JSON_KEY)
 
 SCOPES = [
     'https://www.googleapis.com/auth/drive.readonly',
@@ -33,22 +34,26 @@ AUTH_URL = "auth_url"
 AUTH_ERROR = "auth_error"
 
 CREDENTIALS = Union[Credentials,  ExtCredentials]
+CREDENTIAL_FILE_EXISTS = GOOGLE_APPLICATION_CREDS_PATH is not None and os.path.isfile(GOOGLE_APPLICATION_CREDS_PATH)
 
 def _init() -> None:
     """Initialize."""
-    if not GOOGLE_APPLICATION_CREDS_PATH:
-        return log.info("services.google_drive -- Google application credentials not found. API disabled.")
-    if not os.path.exists(GOOGLE_APPLICATION_CREDS_PATH):
-        return log.info("services.google_drive -- Google application credentials file not found. API disabled.")
+    if not CREDENTIAL_FILE_EXISTS or not CREDENTIAL_JSON:
+        log.info("services.google_drive -- Google application credentials not found. API disabled.")
     if not FLOW_REDIRECT_URI:
-        return log.info("services.google_drive -- Google auth redirect url not found. API disabled.")
+        log.info("services.google_drive -- Google auth redirect url not found. API disabled.")
 
 
 def get_flow() -> InstalledAppFlow:
     """Get Google Drive flow."""
-    flow =  InstalledAppFlow.from_client_secrets_file(
-        GOOGLE_APPLICATION_CREDS_PATH, SCOPES
-    )
+    if CREDENTIAL_FILE_EXISTS:
+        flow =  InstalledAppFlow.from_client_secrets_file(
+            GOOGLE_APPLICATION_CREDS_PATH, SCOPES
+        )
+    else:
+        flow = InstalledAppFlow.from_client_config(
+            CREDENTIAL_JSON, SCOPES
+        )
     flow.redirect_uri = FLOW_REDIRECT_URI
     return flow
 
@@ -166,9 +171,4 @@ def get_auth_url(data: dict) -> Optional[dict]:
 
 def api_enabled() -> bool:
     """Check if google drive API is enabled."""
-    credentials_path = os.environ.get(CREDENTIALS_KEY)
-    return credentials_path is not None and os.path.isfile(
-        credentials_path) and all([
-        credentials_path,
-        os.environ.get(REDIRECT_URL_KEY)
-    ])
+    return (CREDENTIAL_FILE_EXISTS or CREDENTIAL_JSON is not None) and FLOW_REDIRECT_URI is not None

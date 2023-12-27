@@ -10,8 +10,6 @@ from typing import Optional
 
 from opentelemetry import trace
 
-from .google_drive import CREDENTIALS_KEY
-
 tracer = trace.get_tracer(__name__)
 
 
@@ -28,7 +26,7 @@ def load_gcp_credentials_from_env_var(save_path: Optional[str] = None) -> bool:
     success = False
     credentials_json = f"<env var {DOCQ_GOOGLE_APPLICATION_CREDENTIALS_JSON} not set>"
     try:
-        credentials_json = os.environ[DOCQ_GOOGLE_APPLICATION_CREDENTIALS_JSON] 
+        credentials_json = os.environ[DOCQ_GOOGLE_APPLICATION_CREDENTIALS_JSON]
     except KeyError as e:
         success = False
         span.add_event(f"Failed to access env var {DOCQ_GOOGLE_APPLICATION_CREDENTIALS_JSON}", attributes={"error": str(e)})
@@ -48,7 +46,6 @@ def load_gcp_credentials_from_env_var(save_path: Optional[str] = None) -> bool:
 
     # note: this will only be available to the current process thread. coroutine code will not have access.
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = path # default GCP env var
-    os.environ[CREDENTIALS_KEY] = path # used by the google_drive.py module.
 
     return success
 
