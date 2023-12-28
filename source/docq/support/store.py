@@ -7,10 +7,9 @@ import time
 from contextlib import suppress
 from enum import Enum
 from threading import Timer
-from typing import Optional
 
 from ..config import ENV_VAR_DOCQ_DATA, OrganisationFeatureType, SpaceType
-from ..domain import FeatureKey, SpaceKey
+from ..domain import SpaceKey
 
 
 class _StoreSubdir(Enum):
@@ -35,7 +34,7 @@ INACTIVITY_THRESHOLD = 60 * 60 * 2 * 24  # 1 day
 CLEANUP_FREQUENCY = 60 * 60 * 1  # 1 hour
 
 
-def _get_path(store: _StoreSubdir, type_: SpaceType, subtype: Optional[str] = None, filename: Optional[str] = None) -> str:
+def _get_path(store: _StoreSubdir, type_: SpaceType, subtype: str = None, filename: str = None) -> str:
     log.debug("_get_path() - store: %s, type_: %s, subtype: %s, filename: %s", store, type_, subtype, filename)
     dir_ = (
         os.path.join(os.environ[ENV_VAR_DOCQ_DATA], store.value, type_.name, subtype)
@@ -54,6 +53,7 @@ def _get_path(store: _StoreSubdir, type_: SpaceType, subtype: Optional[str] = No
 
 def get_models_dir(model_group_key: str, makedir: bool = True) -> str:
     """Get directory where local models are stored."""
+
     dir_ = os.path.join(os.environ[ENV_VAR_DOCQ_DATA], _StoreSubdir.MODELS.value, model_group_key)
 
     if makedir:
@@ -65,16 +65,6 @@ def get_upload_dir(space: SpaceKey) -> str:
     """Get the upload directory for a space."""
     return _get_path(
         store=_StoreSubdir.UPLOAD, type_=space.type_, subtype=os.path.join(str(space.org_id), str(space.id_))
-    )
-
-
-def get_chat_thread_upload_dir_or_file(feature: FeatureKey, thread_id: str, filename: Optional[str] = None) -> str:
-    """Get chat thread upload directory or file. Returns directory if filename is None."""
-    return _get_path(
-        store=_StoreSubdir.UPLOAD,
-        type_=SpaceType.THREAD,
-        subtype=os.path.join(feature.value(), str(thread_id)),
-        filename=filename
     )
 
 
