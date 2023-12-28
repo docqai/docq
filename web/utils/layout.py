@@ -714,6 +714,9 @@ def _show_chat_histories(feature: FeatureKey) -> None:
 
 def _render_chat_file_uploader(feature: FeatureKey, chat_id: int) -> None:
     """Upload files to chat."""
+    if feature.type_ != OrganisationFeatureType.ASK_SHARED:
+        return None
+
     st.markdown("""
     <style>
       div.element-container:has(div[data-testid="stFileUploader"]) {

@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS spaces (
     id INTEGER PRIMARY KEY,
     org_id INTEGER NOT NULL,
     name TEXT UNIQUE,
+    space_type TEXT NOT NULL,
     summary TEXT,
     archived BOOL DEFAULT 0,
     datasource_type TEXT,
@@ -246,6 +247,7 @@ def create_shared_space(
     params = (
         org_id,
         name,
+        SpaceType.SHARED.name,
         summary,
         datasource_type,
         json.dumps(datasource_configs),
@@ -256,7 +258,7 @@ def create_shared_space(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
-            "INSERT INTO spaces (org_id, name, summary, datasource_type, datasource_configs) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO spaces (org_id, name, space_type, summary, datasource_type, datasource_configs) VALUES (?, ?, ?, ?, ?, ?)",
             params,
         )
         rowid = cursor.lastrowid
@@ -270,6 +272,55 @@ def create_shared_space(
 
     return space
 
+
+def create_thread_space(org_id: int, thread_id: int, summary: str, datasource_type: str ) -> SpaceKey:
+    """Create a spcace for chat thread uploads."""
+    name = f"Thread-{thread_id}"
+    params = (
+        org_id,
+        name,
+        SpaceType.THREAD.name,
+        summary,
+        datasource_type,
+        json.dumps({"name": name, "summary": summary, "thread_id": thread_id}),
+    )
+    log.debug("Creating space with params: %s", params)
+    rowid = None
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(
+            "INSERT INTO spaces (org_id, name, space_type, summary, datasource_type, datasource_configs) VALUES (?, ?, ?, ?, ?, ?)",
+            params,
+        )
+        rowid = cursor.lastrowid
+        connection.commit()
+        if rowid is None:
+            raise ValueError("Failed to create space")
+        log.debug("Created space with rowid: %d", rowid)
+        space = SpaceKey(SpaceType.THREAD, rowid, org_id)
+
+    reindex(space)
+
+    return space
+
+
+def get_thread_space(org_id: int, thread_id: int) -> Optional[SpaceKey]:
+    """Get a space for chat thread uploads."""
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(
+            "SELECT id FROM spaces WHERE org_id = ? AND name = ? and space_type = ?",
+            (org_id, f"Thread-{thread_id}", SpaceType.THREAD.name),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        log.debug("Found space with rowid: %d", row[0])
+        return SpaceKey(SpaceType.THREAD, row[0], org_id)
+
+
 @trace.start_as_current_span("manage_spaces.list_shared_spaces")
 def list_shared_spaces(
     org_id: int, user_id: Optional[int] = None
@@ -279,8 +330,8 @@ def list_shared_spaces(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
-            "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM spaces WHERE org_id = ? ORDER BY name",
-            (org_id,),
+            "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM spaces WHERE org_id = ? AND space_type = ? ORDER BY name",
+            (org_id, SpaceType.SHARED.name),
         )
         rows = cursor.fetchall()
         return [
@@ -315,6 +366,7 @@ def list_public_spaces(space_group_id: int) -> list[tuple[int, int, str, str, bo
             (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8]) for row in rows
         ]
 
+
 @trace.start_as_current_span("manage_spaces.get_shared_space_permissions")
 def get_shared_space_permissions(id_: int, org_id: int) -> List[SpaceAccessor]:
     """Get the permissions for a shared space."""
@@ -339,6 +391,7 @@ def get_shared_space_permissions(id_: int, org_id: int) -> List[SpaceAccessor]:
             elif row[0] == SpaceAccessType.GROUP.name:
                 results.append(SpaceAccessor(SpaceAccessType.GROUP, row[3], row[4]))
         return results
+
 
 @trace.start_as_current_span("manage_spaces.update_shared_space_permissions")
 def update_shared_space_permissions(id_: int, accessors: List[SpaceAccessor]) -> bool:

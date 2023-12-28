@@ -558,24 +558,45 @@ def _get_chat_spaces(feature: domain.FeatureKey) -> List[SpaceKey]:
     return result
 
 
+def _setup_chat_thread_space(feature: domain.FeatureKey, org_id:int, thread_id: int) ->  Optional[SpaceKey]:
+    """Create a thread space or add more files and index if the space already exists."""
+    space: Optional[SpaceKey] = None
+
+    space = manage_spaces.get_thread_space(org_id, thread_id)
+    if space is None:
+        topic = run_queries.get_thread_topic(feature, thread_id)
+        space = manage_spaces.create_thread_space(org_id, thread_id, topic, SpaceDataSources.MANUAL_UPLOAD.name)
+
+    if space is not None:
+        file = st.session_state.get(f"chat_file_uploader_{feature.value()}", None)
+        manage_documents.upload(file.name, file.getvalue(), space) if file is not None else None
+
+    return space
+
+
 @tracer.start_as_current_span("handle_chat_input")
 def handle_chat_input(feature: domain.FeatureKey) -> None:
     """Handle chat input."""
     req = st.session_state[f"chat_input_{feature.value()}"]
     spaces = None
-    if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
-        spaces = _get_chat_spaces(feature)
 
     thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
     if thread_id is None:
         raise ValueError("Thread id in session state was None")
-    select_org_id =get_selected_org_id()
+
+    select_org_id = get_selected_org_id()
     if select_org_id is None:
         raise ValueError("Selected org id was None")
+
+    if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
+        _thread_space = _setup_chat_thread_space(feature, select_org_id, thread_id)
+        spaces = _get_chat_spaces(feature)
+        if _thread_space is not None:
+            spaces.append(_thread_space)
+
     saved_model_settings = get_saved_model_settings_collection(select_org_id)
 
     result = run_queries.query(req, feature, thread_id, saved_model_settings, spaces)
-    handle_persist_chat_file_upload(feature, thread_id)
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 
 
@@ -616,16 +637,6 @@ def handle_upload_file(space: domain.SpaceKey) -> None:
         return None
     # if any error occurs
     disp.error("Error uploading file(s)")
-
-
-def handle_persist_chat_file_upload(feature: domain.FeatureKey, thread_id: str) -> None:
-    """Handle save chat thread uploads."""
-    key = f"chat_file_uploader_{feature.value()}"
-    file = st.session_state[key]
-
-    if file is not None:
-        manage_documents.save_thread_upload(file.name, file.getvalue(), feature, thread_id)
-        st.session_state[key] = None
 
 
 def handle_change_temperature(type_: config.SpaceType):
