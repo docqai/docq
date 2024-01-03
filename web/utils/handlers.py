@@ -421,7 +421,9 @@ def list_user_groups(name_match: str = None) -> List[Tuple]:
 def list_public_spaces() -> List[Tuple]:
     """List public spaces in a space group."""
     space_group_id = get_public_space_group_id()
-    return manage_spaces.list_public_spaces(space_group_id)
+    selected_org_id = get_selected_org_id()
+    if space_group_id and selected_org_id:
+        return manage_spaces.list_public_spaces(selected_org_id, space_group_id)
 
 
 def handle_create_org() -> bool:
