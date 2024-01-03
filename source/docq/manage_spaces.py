@@ -373,7 +373,7 @@ def get_thread_space(org_id: int, thread_id: int) -> Optional[SpaceKey]:
 
 
 @trace.start_as_current_span("manage_spaces.list_shared_spaces")
-def list_shared_spaces(org_id: int) -> list[SPACE]:
+def list_shared_spaces(org_id: int, user_id: Optional[int]=None) -> list[SPACE]:
     """List all shared spaces."""
     return _list_space(org_id, SpaceType.SHARED.name)
 

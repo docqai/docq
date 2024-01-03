@@ -313,7 +313,7 @@ def test_list_public_spaces(manage_spaces_test_dir: tuple) -> None:
         connection.commit()
 
     assert group_id is not None, "Test list public spaces sample group_id not found."
-    public_spaces = list_public_spaces(group_id)
+    public_spaces = list_public_spaces(selected_org_id=TEST_ORG_ID, space_group_id=group_id)
     space_ids = [s[0] for s in public_spaces]
     assert space_id1 in space_ids, f"Space id {space_id1} not found."
     assert space_id2 in space_ids, f"Space id {space_id2} not found."
