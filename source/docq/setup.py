@@ -4,7 +4,7 @@ import logging
 from opentelemetry import trace
 
 import docq
-from docq import extensions
+from docq import db_migrations, extensions
 
 from . import (
     manage_organisations,
@@ -35,6 +35,7 @@ def init() -> None:
         manage_settings._init()
         manage_spaces._init()
         manage_users._init()
+        db_migrations.run() # run db migrations after all tables are created
         services._init()
         services.credential_utils.setup_all_service_credentials()
         store._init()
