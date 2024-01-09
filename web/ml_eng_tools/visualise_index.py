@@ -4,7 +4,7 @@ from typing import cast
 import streamlit as st
 from docq.config import SpaceType
 from docq.domain import SpaceKey
-from docq.manage_spaces import list_shared_spaces
+from docq.manage_spaces import _list_space, list_shared_spaces
 from docq.model_selection.main import ModelUsageSettingsCollection, get_saved_model_settings_collection
 from docq.support.llm import _get_service_context, _get_storage_context
 
@@ -30,14 +30,18 @@ def _load_index(
 
 
 selected_org_id = get_selected_org_id()
-spaces = list_shared_spaces(org_id=selected_org_id)
-selected_space = st.selectbox(
-    "Space",
-    spaces,
-    format_func=lambda x: x[2],
-    label_visibility="visible",
-    index=0,
-)
+spaces = []
+if selected_org_id:
+    spaces.extend(_list_space(selected_org_id, SpaceType.SHARED.name))
+    spaces.extend(_list_space(selected_org_id, SpaceType.THREAD.name))
+    #list_shared_spaces(org_id=selected_org_id)
+    selected_space = st.selectbox(
+        "Space",
+        spaces,
+        format_func=lambda x: x[2],
+        label_visibility="visible",
+        index=0,
+    )
 
 
 def visualise_document_summary_index(_index: DocumentSummaryIndex) -> None:
