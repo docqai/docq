@@ -102,7 +102,7 @@ def _format_space(row: Any) -> SPACE:
 
 
 def _create_space(
-    org_id: int, name: str, summary: str, datasource_type: str, datasource_configs: dict, space_type: str
+    org_id: int, name: str, summary: str, datasource_type: str, datasource_configs: dict, space_type: SpaceType
 ) -> SpaceKey:
     """Create a space.
 
@@ -117,13 +117,13 @@ def _create_space(
     Returns:
         SpaceKey of the created space on success.
     """
-    if (space_type is not None) and (space_type not in SpaceType.__members__):
+    if space_type.name not in SpaceType.__members__:
         raise ValueError(f"Invalid space type {space_type}")
 
     params = (
         org_id,
         name,
-        space_type,
+        space_type.name,
         summary,
         datasource_type,
         json.dumps(datasource_configs),
@@ -142,7 +142,7 @@ def _create_space(
         if rowid is None:
             raise ValueError("Failed to create space")
         log.debug("Created space with rowid: %d", rowid)
-        space = SpaceKey(SpaceType.SHARED, rowid, org_id)
+        space = SpaceKey(space_type, rowid, org_id)
 
     reindex(space)
 
@@ -338,7 +338,7 @@ def create_shared_space(
         summary=summary,
         datasource_type=datasource_type,
         datasource_configs=datasource_configs,
-        space_type=SpaceType.SHARED.name,
+        space_type=SpaceType.SHARED,
     )
 
 
@@ -352,7 +352,7 @@ def create_thread_space(org_id: int, thread_id: int, summary: str, datasource_ty
         summary=summary,
         datasource_type=datasource_type,
         datasource_configs={"name": name, "summary": summary, "thread_id": thread_id},
-        space_type=SpaceType.THREAD.name,
+        space_type=SpaceType.THREAD,
     )
 
 
@@ -361,9 +361,10 @@ def get_thread_space(org_id: int, thread_id: int) -> Optional[SpaceKey]:
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
+        name = f"Thread-{thread_id} %"
         cursor.execute(
-            "SELECT id FROM spaces WHERE org_id = ? AND name = ? and space_type = ?",
-            (org_id, f"Thread-{thread_id}", SpaceType.THREAD.name),
+           "SELECT id FROM spaces WHERE org_id = ? AND name LIKE ? AND space_type = ?",
+           (org_id, name, SpaceType.THREAD.name)
         )
         row = cursor.fetchone()
         if row is None:
