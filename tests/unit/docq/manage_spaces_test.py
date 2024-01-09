@@ -235,7 +235,7 @@ def test_create_thread_space(manage_spaces_test_dir: tuple) -> None:
         cursor.execute("SELECT name, summary, datasource_type, datasource_configs FROM spaces WHERE id = ?", (space.id_,))
         result = cursor.fetchone()
         assert result is not None, "Space not found."
-        assert result[0] == f"Thread-{test_thread_id}", "Space name mismatch."
+        assert result[0] == f"Thread-{test_thread_id} {space_summary}", "Space name mismatch."
         assert result[1] == space_summary, "Space summary mismatch."
         assert result[2] == space_datasource_type, "Space datasource_type mismatch."
 
