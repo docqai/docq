@@ -345,7 +345,7 @@ def create_shared_space(
 @trace.start_as_current_span("manage_spaces.create_thread_space")
 def create_thread_space(org_id: int, thread_id: int, summary: str, datasource_type: str ) -> SpaceKey:
     """Create a spcace for chat thread uploads."""
-    name = f"Thread-{thread_id}"
+    name = f"Thread-{thread_id} {summary}"
     return _create_space(
         org_id=org_id,
         name=name,
