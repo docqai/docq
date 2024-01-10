@@ -52,23 +52,13 @@ def add_space_type_to_spaces() -> None:
             logging.info("Running migration add_space_type_to_spaces")
 
             with closing(sqlite3.connect(get_sqlite_system_file())) as connection, closing(connection.cursor()) as cursor:
-                cursor.execute("PRAGMA table_info(spaces)")
-                rows = cursor.fetchall()
+                cursor.execute("SELECT name FROM pragma_table_info('spaces') WHERE name = 'space_type'")
 
-                space_type_column_exists = False
-                logging.info("db_migrations.add_space_type_to_spaces, Found columns in spaces table: %s", rows)
-                for row in rows:
-                    if row[1] == "space_type":
-                        logging.info("db_migrations.add_space_type_to_spaces, space_type column exists: %s", row)
-                        space_type_column_exists = True
-                        break
-
-                if not space_type_column_exists:
+                if cursor.fetchone() is None:
                     logging.info("db_migrations.add_space_type_to_spaces, space_type column does not exist, adding it")
                     try:
                         cursor.execute("BEGIN TRANSACTION")
-                        cursor.execute("ALTER TABLE spaces ADD COLUMN space_type TEXT NOT NULL")
-                        cursor.execute("UPDATE spaces SET space_type = ?", (SpaceType.SHARED.name,))
+                        cursor.execute("ALTER TABLE spaces ADD COLUMN space_type TEXT NOT NULL DEFAULT '" + SpaceType.SHARED.name + "'",)
                         connection.commit()
                         logging.info("db_migrations.add_space_type_to_spaces, space_type column added successfully")
                         span.set_attribute("migration_successful", "true")
