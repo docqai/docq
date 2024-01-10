@@ -32,7 +32,6 @@ with tracer().start_as_current_span("home_page", attributes=baggage_as_attribute
             Page("web/shared_ask.py", "Ask_Shared_Documents"),
             Page("web/shared_spaces.py", "List_Shared_Spaces"),
             Page("web/embed.py", "widget"),
-            Page("web/admin_spaces.py", "Admin_Spaces"),
             Page("web/admin/index.py", "Admin_Section", icon="💂"),
             Section("ML Engineering", icon="💻"),
             Page("web/ml_eng_tools/visualise_index.py", "Visualise Index"),
