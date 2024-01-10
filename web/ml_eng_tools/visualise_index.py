@@ -100,8 +100,8 @@ def visualise_vector_store_index(_index: VectorStoreIndex) -> None:
                 x_count = len(doc_json["metadata"][entity_label])
                 st.write(f"Metadata Entity '{entity_label}' count: {x_count}")
 
-
-space = SpaceKey(SpaceType.SHARED, selected_space[0], selected_org_id)
+#print("selected_space: ", selected_space[7])
+space = SpaceKey(SpaceType[selected_space[7]], selected_space[0], selected_org_id)
 
 saved_model_settings = get_saved_model_settings_collection(selected_org_id)
 
