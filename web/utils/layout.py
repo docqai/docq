@@ -73,11 +73,11 @@ from .handlers import (
     handle_get_chat_history_threads,
     handle_get_gravatar_url,
     handle_get_system_settings,
+    handle_get_thread_space,
     handle_get_user_email,
     handle_index_thread_space,
     handle_list_documents,
     handle_list_orgs,
-    handle_get_thread_space,
     handle_login,
     handle_logout,
     handle_manage_space_permissions,
@@ -748,10 +748,9 @@ def _render_documents_list_ui(space: SpaceKey, read_only: bool = True) -> None:
 def _render_show_user_uploads(feature: FeatureKey) -> None:
     """Show file uploads within a chat thread space."""
     with st.sidebar.container():
-        if st.checkbox("Show my uploads"):
-            space = handle_get_thread_space(feature)
-            if space:
-                _render_documents_list_ui(space, False)
+        space = handle_get_thread_space(feature)
+        if space:
+            _render_documents_list_ui(space, False)
 
 
 def _render_chat_file_uploader(feature: FeatureKey, chat_id: int) -> None:
