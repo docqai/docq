@@ -74,8 +74,10 @@ from .handlers import (
     handle_get_gravatar_url,
     handle_get_system_settings,
     handle_get_user_email,
+    handle_index_thread_space,
     handle_list_documents,
     handle_list_orgs,
+    handle_get_thread_space,
     handle_login,
     handle_logout,
     handle_manage_space_permissions,
@@ -712,6 +714,46 @@ def _show_chat_histories(feature: FeatureKey) -> None:
             )
 
 
+def _render_documents_list_ui(space: SpaceKey, read_only: bool = True) -> None:
+    """Render the UI for listing documents in a space."""
+    documents: List[DocumentListItem] = handle_list_documents(space)
+    if documents:
+        st.markdown(f"**Document Count**: {len(documents)}")
+        for i, document in enumerate(documents):
+            with st.expander(document.link):
+                st.markdown(
+                    f"Size: {format_filesize(document.size)} | Last Modified: {format_timestamp(document.indexed_on)}"
+                )
+                if not read_only:
+                    st.button(
+                        "Delete",
+                        key=f"delete_file_{i}_{space.value()}",
+                        on_click=handle_delete_document,
+                        args=(
+                            document.link,
+                            space,
+                        ),
+                    )
+        if not read_only:
+            st.button(
+                "Delete all documents",
+                key=f"delete_all_files_{space.value()}",
+                on_click=handle_delete_all_documents,
+                args=(space,),
+            )
+    else:
+        st.info("No documents or the space does not support listing documents.")
+
+
+def _render_show_user_uploads(feature: FeatureKey) -> None:
+    """Show file uploads within a chat thread space."""
+    with st.sidebar.container():
+        if st.checkbox("Show my uploads"):
+            space = handle_get_thread_space(feature)
+            if space:
+                _render_documents_list_ui(space, False)
+
+
 def _render_chat_file_uploader(feature: FeatureKey, chat_id: int) -> None:
     """Upload files to chat."""
     if feature.type_ != OrganisationFeatureType.ASK_SHARED:
@@ -760,8 +802,10 @@ def _render_chat_file_uploader(feature: FeatureKey, chat_id: int) -> None:
     unsafe_allow_html=True
     )
     input_key = f"chat_file_uploader_{feature.value()}_{chat_id}"
-    st.file_uploader(":paperclip:", key=input_key, type=ALLOWED_DOC_EXTS)
-    st.session_state[f"chat_file_uploader_{feature.value()}"] = st.session_state[input_key]
+    if st.file_uploader(":paperclip:", key=input_key, type=ALLOWED_DOC_EXTS):
+        st.session_state[f"chat_file_uploader_{feature.value()}"] = st.session_state[input_key]
+        handle_index_thread_space(feature)
+    _render_show_user_uploads(feature)
 
 
 def chat_ui(feature: FeatureKey) -> None:
@@ -878,31 +922,7 @@ def documents_ui(space: SpaceKey) -> None:
 
     if documents:
         st.divider()
-        st.markdown(f"**Document Count**: {len(documents)}")
-        for i, document in enumerate(documents):
-            with st.expander(document.link):
-                st.markdown(
-                    f"Size: {format_filesize(document.size)} | Last Modified: {format_timestamp(document.indexed_on)}"
-                )
-
-                if show_delete:
-                    st.button(
-                        "Delete",
-                        key=f"delete_file_{i}_{space.value()}",
-                        on_click=handle_delete_document,
-                        args=(
-                            document.link,
-                            space,
-                        ),
-                    )
-
-        if show_delete:
-            st.button(
-                "Delete all documents",
-                key=f"delete_all_files_{space.value()}",
-                on_click=handle_delete_all_documents,
-                args=(space,),
-            )
+        _render_documents_list_ui(space, show_delete)
     else:
         st.info("No documents or the space does not support listing documents.")
 

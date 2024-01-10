@@ -602,6 +602,24 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 
 
+def handle_get_thread_space(feature: domain.FeatureKey) -> Optional[SpaceKey]:
+    """Get the current thread space."""
+    selected_org_id = get_selected_org_id()
+    thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
+
+    if thread_id and selected_org_id:
+        return manage_spaces.get_thread_space(selected_org_id, thread_id)
+
+
+def handle_index_thread_space(feature: domain.FeatureKey) -> None:
+    """Automatically start indexing the active thread space on file upload."""
+    selected_org_id = get_selected_org_id()
+    thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
+
+    if selected_org_id and thread_id:
+        _setup_chat_thread_space(feature, selected_org_id, thread_id)
+
+
 def handle_list_documents(space: domain.SpaceKey) -> List[DocumentListItem]:
     return manage_spaces.list_documents(space)
 
