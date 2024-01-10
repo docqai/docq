@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS space_access (
 
 SPACE = tuple[int, int, str, str, bool, str, dict, datetime, datetime]
 
+
 @trace.start_as_current_span("manage_spaces._init")
 def _init() -> None:
     """Initialize the database."""
@@ -149,7 +150,7 @@ def _create_space(
     return space
 
 
-def _list_space(org_id: int,  space_type: Optional[str] = None) -> list[SPACE]:
+def _list_space(org_id: int, space_type: Optional[str] = None) -> list[SPACE]:
     """List all spaces of a given type."""
     if (space_type is not None) and (space_type not in SpaceType.__members__):
         raise ValueError(f"Invalid space type {space_type}")
@@ -157,19 +158,22 @@ def _list_space(org_id: int,  space_type: Optional[str] = None) -> list[SPACE]:
     with closing(
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
+        _query = "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, space_type, created_at, updated_at FROM spaces WHERE org_id = ?"
+        params = (org_id,)
+
         if space_type is not None:
-            cursor.execute(
-                "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM spaces WHERE org_id = ? AND space_type = ? ORDER BY name",
-                (org_id, space_type),
-            )
-        else:
-            cursor.execute(
-                "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM spaces WHERE org_id = ? ORDER BY name",
-                (org_id,),
-            )
+            _query += " AND space_type = ?"
+            params += (space_type,)
+
+        _query += " ORDER BY name"
+
+        cursor.execute(
+            _query,
+            params,
+        )
 
         rows = cursor.fetchall()
-        return [ _format_space(row) for row in rows ]
+        return [_format_space(row) for row in rows]
 
 
 @trace.start_as_current_span("manage_spaces.reindex")
@@ -209,7 +213,6 @@ def list_documents(space: SpaceKey) -> List[DocumentListItem]:
 
     if _space_data_source is None:
         raise ValueError(f"No data source found for space {space}")
-
 
     (ds_type, ds_configs) = _space_data_source
 
@@ -280,7 +283,7 @@ def get_shared_spaces(space_ids: List[int]) -> list[SPACE]:
         )
         cursor.execute(query, space_ids)
         rows = cursor.fetchall()
-        return [ _format_space(row) for row in rows ]
+        return [_format_space(row) for row in rows]
 
 
 @trace.start_as_current_span("manage_spaces.update_shared_space")
@@ -343,7 +346,7 @@ def create_shared_space(
 
 
 @trace.start_as_current_span("manage_spaces.create_thread_space")
-def create_thread_space(org_id: int, thread_id: int, summary: str, datasource_type: str ) -> SpaceKey:
+def create_thread_space(org_id: int, thread_id: int, summary: str, datasource_type: str) -> SpaceKey:
     """Create a spcace for chat thread uploads."""
     name = f"Thread-{thread_id} {summary}"
     return _create_space(
@@ -363,8 +366,8 @@ def get_thread_space(org_id: int, thread_id: int) -> Optional[SpaceKey]:
     ) as connection, closing(connection.cursor()) as cursor:
         name = f"Thread-{thread_id} %"
         cursor.execute(
-           "SELECT id FROM spaces WHERE org_id = ? AND name LIKE ? AND space_type = ?",
-           (org_id, name, SpaceType.THREAD.name)
+            "SELECT id FROM spaces WHERE org_id = ? AND name LIKE ? AND space_type = ?",
+            (org_id, name, SpaceType.THREAD.name),
         )
         row = cursor.fetchone()
         if row is None:
@@ -374,7 +377,7 @@ def get_thread_space(org_id: int, thread_id: int) -> Optional[SpaceKey]:
 
 
 @trace.start_as_current_span("manage_spaces.list_shared_spaces")
-def list_shared_spaces(org_id: int, user_id: Optional[int]=None) -> list[SPACE]:
+def list_shared_spaces(org_id: int, user_id: Optional[int] = None) -> list[SPACE]:
     """List all shared spaces."""
     return _list_space(org_id, SpaceType.SHARED.name)
 
@@ -404,7 +407,7 @@ def list_public_spaces(selected_org_id: int, space_group_id: int) -> list[SPACE]
             (selected_org_id, space_group_id, SpaceAccessType.PUBLIC.name),
         )
         rows = cursor.fetchall()
-        return [ _format_space(row) for row in rows ]
+        return [_format_space(row) for row in rows]
 
 
 @trace.start_as_current_span("manage_spaces.get_shared_space_permissions")
