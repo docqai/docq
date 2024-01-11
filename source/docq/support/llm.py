@@ -1,11 +1,13 @@
 """Functions for utilising LLMs."""
 
+import imp
 import logging as log
 import os
 from typing import Any, Dict
 
 import docq
 from llama_index import (
+    DocumentSummaryIndex,
     Response,
     ServiceContext,
     StorageContext,
@@ -19,9 +21,10 @@ from llama_index.embeddings import AzureOpenAIEmbedding, GooglePaLMEmbedding, Op
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.indices.base import BaseIndex
 from llama_index.indices.composability import ComposableGraph
-from llama_index.llms.base import LLM
+from llama_index.llms.base import LLM, ChatMessage, MessageRole
 from llama_index.llms.litellm import LiteLLM
 from llama_index.node_parser import NodeParser, SentenceSplitter
+from llama_index.prompts.base import ChatPromptTemplate
 from llama_index.response.schema import RESPONSE_TYPE
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
@@ -42,29 +45,6 @@ from .store import get_index_dir, get_models_dir
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
-# PROMPT_CHAT_SYSTEM = """
-# You are an AI assistant helping a human to find information.
-# Your conversation with the human is recorded in the chat history below.
-
-# History:
-# "{history}"
-# """
-
-# PROMPT_CHAT_HUMAN = "{input}"
-
-PROMPT_QUESTION = """
-You are an AI assistant helping a human to find information in a collection of documents.
-You are given a question and a collection of documents.
-You need to find the best answer to the question from the given collection of documents.
-Your conversation with the human is recorded in the chat history below.
-
-History:
-"{history}"
-
-Now continue the conversation with the human. If you do not know the answer, say "I don't know".
-Human: {input}
-Assistant:"""
-
 
 ERROR_PROMPT = """
 Examine the following error and provide a simple response for the user
@@ -73,6 +53,44 @@ if you can't understand the error, simply say "Sorry I cannot offer any assistan
 Make sure your response is in the first person context
 ERROR: {error}
 """
+
+TEXT_QA_SYSTEM_PROMPT = ChatMessage(
+    content=(
+        "You are an expert Q&A system that is trusted around the world.\n"
+        "Always answer the query using the provided context information and chat message history, "
+        "and not prior knowledge.\n"
+        "Some rules to follow:\n"
+        "1. Never directly reference the given context in your answer.\n"
+        "2. Avoid statements like 'Based on the context, ...' or "
+        "'The context information ...' or '... given context information.' or anything along "
+        "those lines."
+    ),
+    role=MessageRole.SYSTEM,
+)
+
+
+TEXT_QA_PROMPT_TMPL_MSGS = [
+    TEXT_QA_SYSTEM_PROMPT,
+    ChatMessage(
+        content=(
+            "Chat message history is below:\n"
+            "---------------------\n"
+            "{history_str}\n"
+            "---------------------\n\n"
+            "Context information is below:\n"
+            "---------------------\n"
+            "{context_str}\n"
+            "---------------------\n"
+            "Given the context information and chat message history but not prior knowledge from your training, "
+            "answer the query below in British English.\n"
+            "Query: {query_str}\n"
+            "Answer: "
+        ),
+        role=MessageRole.USER,
+    ),
+]
+
+CHAT_TEXT_QA_PROMPT = ChatPromptTemplate(message_templates=TEXT_QA_PROMPT_TMPL_MSGS)
 
 
 # def _get_model() -> OpenAI:
@@ -97,6 +115,7 @@ def _init_local_models() -> None:
 @tracer.start_as_current_span(name="_get_generation_model")
 def _get_generation_model(model_settings_collection: ModelUsageSettingsCollection) -> LLM | None:
     import litellm
+
     litellm.telemetry = False
     model = None
     if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.CHAT]:
@@ -147,7 +166,7 @@ def _get_generation_model(model_settings_collection: ModelUsageSettingsCollectio
                 model=chat_model_settings.model_name,
                 callback_manager=_callback_manager,
                 max_tokens=2048,
-                kwargs={"telemetry":False}
+                kwargs={"telemetry": False},
             )
             litellm.vertex_location = "us-central1"
         else:
@@ -279,6 +298,7 @@ def run_chat(input_: str, history: str, model_settings_collection: ModelUsageSet
     log.debug("(Chat) Q: %s, A: %s", input_, output)
     return output
 
+
 @tracer.start_as_current_span(name="run_ask")
 def run_ask(
     input_: str,
@@ -292,7 +312,7 @@ def run_ask(
 
     if spaces is not None and len(spaces) > 0:
         span.set_attribute("spaces_count", len(spaces))
-        #log.debug("runs_ask(): spaces count: %s", len(spaces))
+        # log.debug("runs_ask(): spaces count: %s", len(spaces))
         # With additional spaces likely to be combining a number of shared spaces.
         indices = []
         summaries = []
@@ -304,8 +324,12 @@ def run_ask(
 
                 log.debug("run_chat(): %s, %s", index_.index_id, s_.summary)
                 indices.append(index_)
-                span.add_event(name="index_appended", attributes={"index_id": index_.index_id, "index_struct_cls": index_.index_struct_cls.__name__})
+                span.add_event(
+                    name="index_appended",
+                    attributes={"index_id": index_.index_id, "index_struct_cls": index_.index_struct_cls.__name__},
+                )
                 s_text = s_.summary if s_.summary else ""
+                #s_text = index_.as_query_engine().query("What is a summary of this document?", )
                 summaries.append(s_text)
                 span.add_event(name="summary_appended", attributes={"index_summary": s_text})
             except Exception as e:
@@ -328,8 +352,18 @@ def run_ask(
                     index_summaries=summaries,
                     service_context=_get_service_context(model_settings_collection),
                 )
-                output = graph.as_query_engine().query(PROMPT_QUESTION.format(history=history, input=input_))
-                span.add_event(name="ask_combined_spaces", attributes={"question": input_, "answer": str(output), "spaces_count": len(spaces)})
+
+                custom_query_engines = {
+                    index.index_id: index.as_query_engine(child_branch_factor=2) for index in indices
+                }
+
+                query_engine = graph.as_query_engine(custom_query_engines=custom_query_engines, text_qa_template=CHAT_TEXT_QA_PROMPT.partial_format(history_str=history))
+
+                output = query_engine.query(input_)
+                span.add_event(
+                    name="ask_combined_spaces",
+                    attributes={"question": input_, "answer": str(output), "spaces_count": len(spaces)},
+                )
                 log.debug("(Ask combined spaces %s) Q: %s, A: %s", spaces, input_, output)
             except Exception as e:
                 span.set_status(status=Status(StatusCode.ERROR))
@@ -348,15 +382,15 @@ def run_ask(
         log.debug("runs_ask(): space is None. executing run_chat(), not ASK.")
         output = run_chat(input_=input_, history=history, model_settings_collection=model_settings_collection)
         span.add_event(name="ask_without_spaces", attributes={"question": input_, "answer": str(output)})
-            # index = _load_index_from_storage(space=space, model_settings_collection=model_settings_collection)
-            # engine = index.as_chat_engine(
-            #     verbose=True,
-            #     similarity_top_k=3,
-            #     vector_store_query_mode="default",
-            #     chat_mode=ChatMode.CONDENSE_QUESTION,
-            # )
-            # output = engine.chat(input_)
-            # log.debug("(Ask %s w/o shared spaces) Q: %s, A: %s", space, input_, output)
+        # index = _load_index_from_storage(space=space, model_settings_collection=model_settings_collection)
+        # engine = index.as_chat_engine(
+        #     verbose=True,
+        #     similarity_top_k=3,
+        #     vector_store_query_mode="default",
+        #     chat_mode=ChatMode.CONDENSE_QUESTION,
+        # )
+        # output = engine.chat(input_)
+        # log.debug("(Ask %s w/o shared spaces) Q: %s, A: %s", space, input_, output)
 
     return output
 
