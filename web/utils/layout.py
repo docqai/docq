@@ -240,7 +240,7 @@ def __hide_all_empty_divs() -> None:
 
 def __always_hidden_pages() -> None:
     """These pages are always hidden whether the user is an admin or not."""
-    hide_pages(["widget", "signup", "verify", "Admin_Spaces"])
+    hide_pages(["widget", "signup", "verify"])
 
 
 def render_page_title_and_favicon(page_display_title: Optional[str] = None) -> None:
