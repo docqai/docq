@@ -12,19 +12,19 @@ from docq.support.store import SpaceType, get_sqlite_system_file
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
 
-@tracer.start_as_current_span("docq.db_migrations.run")
+@tracer.start_as_current_span("db_migrations.run")
 def run() -> None:
     """Run database migrations.
 
     Call this after all tables are created.
     """
     migration_sample1()
-    add_space_type_to_spaces()
+    add_space_type_to_spaces_table()
 
 
 def migration_sample1() -> None:
     """Sample migration script."""
-    with tracer.start_as_current_span("docq.db_migrations.migration_sample") as span:
+    with tracer.start_as_current_span("migration_sample") as span:
         try:
             logging.info("Running migration sample")
             span.add_event("Running migration sample")
@@ -38,7 +38,7 @@ def migration_sample1() -> None:
             raise Exception("Migration XYZ failed") from e
 
 
-def add_space_type_to_spaces() -> None:
+def add_space_type_to_spaces_table() -> None:
     """Add space_type column to spaces table.
 
     Check if space_type column exists in spaces table. if exists log and return.
@@ -46,7 +46,7 @@ def add_space_type_to_spaces() -> None:
     Create space_type column in spaces table with parameter space_type TEXT NOT NULL.
     UPDATE spaces SET space_type = SpaceType.SHARED.name for all existing rows.
     """
-    with tracer.start_as_current_span("docq.db_migrations.add_space_type_to_spaces") as span:
+    with tracer.start_as_current_span("add_space_type_to_spaces_table") as span:
         try:
             span.add_event("Running migration add_space_type_to_spaces")
             logging.info("Running migration add_space_type_to_spaces")
