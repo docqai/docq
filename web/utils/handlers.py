@@ -571,7 +571,9 @@ def _setup_chat_thread_space(feature: domain.FeatureKey, org_id:int, thread_id: 
 
     if space is not None:
         file = st.session_state.get(f"chat_file_uploader_{feature.value()}", None)
-        manage_documents.upload(file.name, file.getvalue(), space) if file is not None else None
+        if file:
+            manage_documents.upload(file.name, file.getvalue(), space)
+            st.session_state[f"chat_file_uploader_{feature.value()}"] = None
 
     return space
 
