@@ -663,15 +663,18 @@ def handle_change_temperature(type_: config.SpaceType):
     manage_settings.change_settings(type_.name, temperature=st.session_state[f"temperature_{type_.name}"])
 
 
-def get_shared_space(id_: int) -> tuple[int, int, str, str, bool, str, dict, datetime, datetime]:
+def get_shared_space(id_: int) -> Optional[manage_spaces.SPACE]:
+    """Get a shared space."""
     org_id = get_selected_org_id()
-    return manage_spaces.get_shared_space(id_, org_id)
+    if org_id is not None:
+        return manage_spaces.get_shared_space(id_, org_id)
 
 
-def list_shared_spaces():
+def list_shared_spaces() -> List[manage_spaces.SPACE]:
+    """List shared spaces."""
     user_id = get_authenticated_user_id()
     org_id = get_selected_org_id()
-    return manage_spaces.list_shared_spaces(org_id, user_id)
+    return manage_spaces.list_shared_spaces(org_id, user_id) if org_id else []
 
 
 def handle_archive_space(id_: int):

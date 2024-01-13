@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS space_access (
 )
 """
 
-SPACE = tuple[int, int, str, str, bool, str, dict, datetime, datetime]
+SPACE = tuple[int, int, str, str, bool, str, dict, str, datetime, datetime]
 
 
 @trace.start_as_current_span("manage_spaces._init")
@@ -96,10 +96,13 @@ def _persist_index(index: BaseIndex, space: SpaceKey) -> None:
 def _format_space(row: Any) -> SPACE:
     """Format space return value from sql data row.
 
+    Args:
+        row: (id, org_id, name, summary, archived, datasource_type, datasource_configs, space_type, created_at, updated_at)
+
     Returns:
         tuple[int, int, str, str, bool, str, dict, datetime, datetime] - [id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at]
     """
-    return (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8])
+    return (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8], row[9])
 
 
 @trace.start_as_current_span("manage_spaces.create_space")
@@ -248,7 +251,7 @@ def get_space_data_source(space: SpaceKey) -> tuple[str, dict] | None:
     shared_space = get_shared_space(space.id_, space.org_id)
     if shared_space is None:
         raise ValueError(f"No shared space found with id {space.id_} and org_id {space.org_id}")
-    (_, _, _, _, _, ds_type, ds_configs, _, _) = shared_space
+    (_, _, _, _, _, ds_type, ds_configs, _, _, _) = shared_space
 
     return ds_type, ds_configs
 
@@ -261,7 +264,7 @@ def get_shared_space(id_: int, org_id: int) -> Optional[SPACE]:
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
-            "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM spaces WHERE id = ? AND org_id = ?",
+            "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, space_type, created_at, updated_at FROM spaces WHERE id = ? AND org_id = ?",
             (id_, org_id),
         )
         row = cursor.fetchone()
@@ -280,7 +283,7 @@ def get_shared_spaces(space_ids: List[int]) -> list[SPACE]:
         sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         placeholders = ", ".join("?" * len(space_ids))
-        query = "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at FROM spaces WHERE id IN ({})".format(  # noqa: S608
+        query = "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, space_type, created_at, updated_at FROM spaces WHERE id IN ({})".format(  # noqa: S608
             placeholders
         )
         cursor.execute(query, space_ids)
@@ -396,7 +399,7 @@ def list_public_spaces(selected_org_id: int, space_group_id: int) -> list[SPACE]
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             """
-            SELECT s.id, s.org_id, s.name, s.summary, s.archived, s.datasource_type, s.datasource_configs, s.created_at, s.updated_at
+            SELECT s.id, s.org_id, s.name, s.summary, s.archived, s.datasource_type, s.datasource_configs, s.space_type, s.created_at, s.updated_at
             FROM spaces s
             JOIN space_group_members c
             LEFT JOIN space_access sa ON s.id = sa.space_id
