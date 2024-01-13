@@ -3,7 +3,7 @@ import base64
 import logging as log
 import random
 import re
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Literal, Optional, Tuple
 from urllib.parse import quote_plus, unquote_plus
 
 import docq
@@ -141,6 +141,7 @@ __chat_ui_script = """
             }
         `
         parent.head.appendChild(style)
+        setExpanderLabels()
     }; setStyle();
 
     const observer = new MutationObserver(setStyle)
@@ -160,6 +161,21 @@ __chat_ui_script = """
                 window.open('https://www.gravatar.com/', '_blank')
             }
     })})
+
+
+    /**
+     * 1. Find all expanders
+     * 2. For each expander set an attribute 'docq-data-label' with the expander's label text
+     * Note: label is nested under summary > span > div > p
+     */
+    function setExpanderLabels() {
+        const expanders = parent.querySelectorAll('[data-testid="stExpander"]');
+        expanders.forEach((el) => {
+            const label = el.querySelector('summary > span > div > p').innerText
+            console.log('Found label text',label)
+            el.setAttribute('docq-data-label', label)
+        })
+    };
 
 </script>
 """
@@ -714,19 +730,40 @@ def _show_chat_histories(feature: FeatureKey) -> None:
             )
 
 
-def _render_documents_list_ui(space: SpaceKey, read_only: bool = True) -> None:
+def _render_documents_list_ui(space: SpaceKey, read_only: bool = True, size: Literal["lg", "sm"] = "lg", expander_label: str = "Documents List") -> None:
     """Render the UI for listing documents in a space."""
+    expander_selector = f'div[data-testid="stExpander"][docq-data-label="{expander_label}"]'
+
+    st.markdown(f"""
+        <style>
+          {expander_selector} hr {{
+            margin-top: 0.5rem;
+          }}
+          {expander_selector} button[kind="primary"] {{
+            min-height: unset;
+            height: 1.5rem;
+          }}
+          {expander_selector} button[kind="secondary"] {{
+            justify-content: center !important;
+          }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
     documents: List[DocumentListItem] = handle_list_documents(space)
     if documents:
         st.markdown(f"**Document Count**: {len(documents)}")
+        st.divider()
         for i, document in enumerate(documents):
-            with st.expander(document.link):
+            with st.container():
+                st.markdown(f"**{document.link}**")
                 st.markdown(
                     f"Size: {format_filesize(document.size)} | Last Modified: {format_timestamp(document.indexed_on)}"
                 )
                 if not read_only:
                     st.button(
-                        "Delete",
+                        "Delete file",
+                        type="secondary" if size == "lg" else "primary",
                         key=f"delete_file_{i}_{space.value()}",
                         on_click=handle_delete_document,
                         args=(
@@ -734,6 +771,8 @@ def _render_documents_list_ui(space: SpaceKey, read_only: bool = True) -> None:
                             space,
                         ),
                     )
+                    st.divider()
+
         if not read_only:
             st.button(
                 "Delete all documents",
@@ -750,10 +789,12 @@ def _render_show_user_uploads(feature: FeatureKey) -> None:
     with st.sidebar.container():
         space = handle_get_thread_space(feature)
         if space:
-            _render_documents_list_ui(space, False)
+            expander_label = "Knowledge"
+            with st.expander(expander_label):
+                _render_documents_list_ui(space, False, "sm", expander_label)
 
 
-def _render_chat_file_uploader(feature: FeatureKey, chat_id: int) -> None:
+def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
     """Upload files to chat."""
     if feature.type_ != OrganisationFeatureType.ASK_SHARED:
         return None
@@ -800,7 +841,7 @@ def _render_chat_file_uploader(feature: FeatureKey, chat_id: int) -> None:
     """,
     unsafe_allow_html=True
     )
-    input_key = f"chat_file_uploader_{feature.value()}_{chat_id}"
+    input_key = f"chat_file_uploader_{feature.value()}_{key_suffix}"
     if st.file_uploader(":paperclip:", key=input_key, type=ALLOWED_DOC_EXTS):
         st.session_state[f"chat_file_uploader_{feature.value()}"] = st.session_state[input_key]
         handle_index_thread_space(feature)
@@ -920,8 +961,18 @@ def documents_ui(space: SpaceKey) -> None:
         st.button("Reindex", key=f"reindex_{space.value()}_top", on_click=handle_reindex_space, args=(space,))
 
     if documents:
-        st.divider()
-        _render_documents_list_ui(space, show_delete)
+        label = "Documents"
+        st.markdown("""
+            <style>
+              div[data-testid="stExpander"] hr {
+                margin-top: 0.5rem;
+              }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+        with st.expander(label):
+            _render_documents_list_ui(space, read_only=not show_delete, expander_label=label)
     else:
         st.info("No documents or the space does not support listing documents.")
 
