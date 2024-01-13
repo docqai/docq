@@ -102,7 +102,8 @@ def _format_space(row: Any) -> SPACE:
     return (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8])
 
 
-def _create_space(
+@trace.start_as_current_span("manage_spaces.create_space")
+def create_space(
     org_id: int, name: str, summary: str, datasource_type: str, datasource_configs: dict, space_type: SpaceType
 ) -> SpaceKey:
     """Create a space.
@@ -150,7 +151,8 @@ def _create_space(
     return space
 
 
-def _list_space(org_id: int, space_type: Optional[str] = None) -> list[SPACE]:
+@trace.start_as_current_span("manage_spaces.list_space")
+def list_space(org_id: int, space_type: Optional[str] = None) -> list[SPACE]:
     """List all spaces of a given type."""
     if (space_type is not None) and (space_type not in SpaceType.__members__):
         raise ValueError(f"Invalid space type {space_type}")
@@ -335,7 +337,7 @@ def create_shared_space(
     org_id: int, name: str, summary: str, datasource_type: str, datasource_configs: dict
 ) -> SpaceKey:
     """Create a shared space."""
-    return _create_space(
+    return create_space(
         org_id=org_id,
         name=name,
         summary=summary,
@@ -349,7 +351,7 @@ def create_shared_space(
 def create_thread_space(org_id: int, thread_id: int, summary: str, datasource_type: str) -> SpaceKey:
     """Create a spcace for chat thread uploads."""
     name = f"Thread-{thread_id} {summary}"
-    return _create_space(
+    return create_space(
         org_id=org_id,
         name=name,
         summary=summary,
@@ -376,16 +378,14 @@ def get_thread_space(org_id: int, thread_id: int) -> Optional[SpaceKey]:
         return SpaceKey(SpaceType.THREAD, row[0], org_id)
 
 
-@trace.start_as_current_span("manage_spaces.list_shared_spaces")
 def list_shared_spaces(org_id: int, user_id: Optional[int] = None) -> list[SPACE]:
     """List all shared spaces."""
-    return _list_space(org_id, SpaceType.SHARED.name)
+    return list_space(org_id, SpaceType.SHARED.name)
 
 
-@trace.start_as_current_span("manage_spaces.list_thread_spaces")
 def list_thread_spaces(org_id: int) -> list[SPACE]:
     """List all thread spaces."""
-    return _list_space(org_id, SpaceType.THREAD.name)
+    return list_space(org_id, SpaceType.THREAD.name)
 
 
 @trace.start_as_current_span("manage_spaces.list_public_spaces")
