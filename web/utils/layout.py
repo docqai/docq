@@ -172,7 +172,6 @@ __chat_ui_script = """
         const expanders = parent.querySelectorAll('[data-testid="stExpander"]');
         expanders.forEach((el) => {
             const label = el.querySelector('summary > span > div > p').innerText
-            console.log('Found label text',label)
             el.setAttribute('docq-data-label', label)
         })
     };
@@ -1276,7 +1275,6 @@ def _render_view_space_details_with_container(
 ) -> DeltaGenerator:
     id_, org_id, name, summary, archived, ds_type, ds_configs, _, created_at, updated_at = space_data
     has_view_perm = org_id == get_selected_org_id()
-    print(f"\x1b[31mDebug space_data: {space_data}\x1b[0m")
 
     if has_view_perm:
         container = st.expander(format_archived(name, archived)) if use_expander else st.container()
