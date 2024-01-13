@@ -780,10 +780,10 @@ def _render_documents_list_ui(space: SpaceKey, read_only: bool = True, size: Lit
                 args=(space,),
             )
     else:
-        st.info("No documents or the space does not support listing documents.")
+        st.info("No documents.")
 
 
-def _render_show_user_uploads(feature: FeatureKey) -> None:
+def _render_show_thread_space_files(feature: FeatureKey) -> None:
     """Show file uploads within a chat thread space."""
     with st.sidebar.container():
         space = handle_get_thread_space(feature)
@@ -844,7 +844,6 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
     if st.file_uploader(":paperclip:", key=input_key, type=ALLOWED_DOC_EXTS):
         st.session_state[f"chat_file_uploader_{feature.value()}"] = st.session_state[input_key]
         handle_index_thread_space(feature)
-    _render_show_user_uploads(feature)
 
 
 def chat_ui(feature: FeatureKey) -> None:
@@ -894,13 +893,12 @@ def chat_ui(feature: FeatureKey) -> None:
                     label_visibility="collapsed",
                 )
 
-        load_history, create_new_chat = st.columns([3, 1])
-        with load_history:
-            if st.button("Load chat history earlier"):
-                query_chat_history(feature)
-        with create_new_chat:
-            if st.button("New chat"):
-                handle_create_new_chat(feature)
+        #load_history, create_new_chat = st.columns([3, 1])
+        #with load_history:
+        if st.button("Load chat history earlier"):
+            query_chat_history(feature)
+        #with create_new_chat:
+
     with st.container():
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
         st.markdown(f"#### {day}")
@@ -922,7 +920,10 @@ def chat_ui(feature: FeatureKey) -> None:
         args=(feature,),
     )
     _show_chat_histories(feature)
+    if st.button("New chat"):
+        handle_create_new_chat(feature)
     _render_chat_file_uploader(feature, len(chat_history) if chat_history else 0)
+    _render_show_thread_space_files(feature)
 
 
 def _render_document_upload(space: SpaceKey, documents: List) -> None:
