@@ -69,6 +69,7 @@ def add_space_type_to_spaces_table() -> None:
                         logging.error("db_migrations.add_space_type_to_spaces_table, failed to add space_type column to spaces table %s", e)
                         span.set_status(trace.Status(trace.StatusCode.ERROR, "Migration add_space_type_to_spaces_table failed"))
                         span.set_attribute("migration_successful", "false")
+                        span.record_exception(e)
                         connection.rollback()
 
         except Exception as e:
