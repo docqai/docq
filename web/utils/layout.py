@@ -140,8 +140,9 @@ __chat_ui_script = """
                 --background-color: ${getComputedStyle(parent.body, null).getPropertyValue('background-color')};
             }
         `
-        parent.head.appendChild(style)
-        setExpanderLabels()
+        parent.head.appendChild(style);
+        setExpanderLabels();
+        setButtonLabels();
     }; setStyle();
 
     const observer = new MutationObserver(setStyle)
@@ -173,6 +174,19 @@ __chat_ui_script = """
         expanders.forEach((el) => {
             const label = el.querySelector('summary > span > div > p').innerText
             el.setAttribute('docq-data-label', label)
+        })
+    };
+
+    /**
+     * 1. Find all buttons with attribute kind="primary"
+     * 2. For each button set an attribute 'docq-data-label' with the button's label text
+     */
+    function setButtonLabels() {
+        const buttons = parent.querySelectorAll('.row-widget.stButton');
+        buttons.forEach((el) => {
+            el.parentElement.setAttribute('docq-data-label', el.innerText)
+            el.parentElement.removeAttribute('width')
+            el.removeAttribute('style')
         })
     };
 
@@ -664,7 +678,7 @@ def _personal_ask_style() -> None:
     st.write(
         """
     <style>
-        section[tabindex="0"] [data-testid="stExpander"] {
+        [docq-data-label="Including these shared spaces:"] {
             z-index: 1000;
             position: fixed;
             top: 46px;
@@ -798,13 +812,9 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
     if feature.type_ != OrganisationFeatureType.ASK_SHARED:
         return None
 
+
     st.markdown("""
     <style>
-      div.element-container:has(div[data-testid="stFileUploader"]) {
-        position: fixed;
-        bottom: 1.8rem;
-        z-index: 1000;
-      }
       div[data-testid="stFileUploader"] label {
         display: none;
       }
@@ -836,6 +846,13 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
       div[data-testid="stFileUploader"]:has(.uploadedFile) section[data-testid="stFileUploadDropzone"] {
         display: none;
       }
+      div[data-testid="stHorizontalBlock"]:has([data-testid="stSpinner"]) div:has(> ul > li > .uploadedFile) {
+        display: none !important;
+      }
+      div:has(> ul > li > .uploadedFile) {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
     </style>
     """,
     unsafe_allow_html=True
@@ -843,7 +860,9 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
     input_key = f"chat_file_uploader_{feature.value()}_{key_suffix}"
     if st.file_uploader(":paperclip:", key=input_key, type=ALLOWED_DOC_EXTS):
         st.session_state[f"chat_file_uploader_{feature.value()}"] = st.session_state[input_key]
-        handle_index_thread_space(feature)
+        filename = st.session_state[input_key].name
+        with st.spinner(f"Indexing file: {filename[:100]} ..."):
+            handle_index_thread_space(feature)
 
 
 def chat_ui(feature: FeatureKey) -> None:
@@ -875,6 +894,29 @@ def chat_ui(feature: FeatureKey) -> None:
                 border-radius: 0;
             }
 
+            div[data-testid="stHorizontalBlock"]:has(div > div > div > [docq-data-label="New chat"]) {
+                position: fixed;
+                bottom: 1.8rem;
+                z-index: 1000;
+                max-height: 2rem;
+            }
+
+            div[data-testid="column"] > div > div > [docq-data-label="New chat"] > .stButton {
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+            }
+
+            [docq-data-label="New chat"] button {
+                min-height: unset;
+                height: 2rem;
+                font-size: 0.8rem;
+            }
+
+            [docq-data-label="Load chat history earlier"] .stButton {
+                display: flex;
+                justify-content: center;
+            }
         </style>
     """,
         unsafe_allow_html=True,
@@ -893,11 +935,8 @@ def chat_ui(feature: FeatureKey) -> None:
                     label_visibility="collapsed",
                 )
 
-        #load_history, create_new_chat = st.columns([3, 1])
-        #with load_history:
         if st.button("Load chat history earlier"):
             query_chat_history(feature)
-        #with create_new_chat:
 
     with st.container():
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
@@ -911,7 +950,6 @@ def chat_ui(feature: FeatureKey) -> None:
                     day = format_datetime(x[3])
                     st.markdown(f"#### {day}")
                 _chat_message(x[1], x[2])
-            _chat_ui_script()
 
     st.chat_input(
         "Type your question here",
@@ -920,10 +958,16 @@ def chat_ui(feature: FeatureKey) -> None:
         args=(feature,),
     )
     _show_chat_histories(feature)
-    if st.button("New chat"):
-        handle_create_new_chat(feature)
-    _render_chat_file_uploader(feature, len(chat_history) if chat_history else 0)
+
+    uploader, new_chat = st.columns([3, 1])
+    with new_chat:
+        if st.button("New chat"):
+            handle_create_new_chat(feature)
+    with uploader:
+        _render_chat_file_uploader(feature, len(chat_history) if chat_history else 0)
+
     _render_show_thread_space_files(feature)
+    _chat_ui_script()
 
 
 def _render_document_upload(space: SpaceKey, documents: List) -> None:

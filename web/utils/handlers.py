@@ -623,14 +623,17 @@ def handle_index_thread_space(feature: domain.FeatureKey) -> None:
 
 
 def handle_list_documents(space: domain.SpaceKey) -> List[DocumentListItem]:
+    """Handle list documents."""
     return manage_spaces.list_documents(space)
 
 
 def handle_delete_document(filename: str, space: domain.SpaceKey) -> None:
+    """Handle delete document."""
     manage_documents.delete(filename, space)
 
 
 def handle_delete_all_documents(space: domain.SpaceKey) -> None:
+    """Handle delete all documents."""
     manage_documents.delete_all(space)
 
 
