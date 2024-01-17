@@ -1,11 +1,9 @@
 """Handle /api/chat/completion requests."""
-import json
 from typing import Optional, Self
 
 from docq.model_selection.main import get_model_settings_collection
 from docq.run_queries import run_chat
-from py import log
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import Field, ValidationError
 from tornado.web import HTTPError, RequestHandler
 
 from web.api.utils import CamelModel, authenticated
