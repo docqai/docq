@@ -7,13 +7,25 @@ from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Literal, Optional, Self, Tuple, Union
 
 import autogen
-from autogen import Agent, AssistantAgent, ConversableAgent, UserProxyAgent
+from autogen import Agent
+from colorama import init
 from docq.model_selection.main import ModelCapability, get_model_settings_collection
-from httpx import get
-from numpy import rec
+from opentelemetry import trace
 
+from .assistant_agent import AssistantAgent
+from .conversable_agent import ConversableAgent
 from .datamodels import AgentConfig, AgentFlowSpec, AgentWorkFlowConfig, LLMConfig, Message
-from .utils import extract_successful_code_blocks, get_default_agent_config, get_modified_files
+from .user_proxy_agent import UserProxyAgent
+from .utils import (
+    extract_successful_code_blocks,
+    get_all_skills,
+    get_default_agent_config,
+    get_modified_files,
+    get_skills_prompt,
+    init_webserver_folders,
+    md5_hash,
+    skill_from_folder,
+)
 
 # Load LLM inference endpoints from an env variable or a file
 # See https://microsoft.github.io/autogen/docs/FAQ#set-your-api-endpoints
@@ -21,7 +33,7 @@ from .utils import extract_successful_code_blocks, get_default_agent_config, get
 # config_list = config_list_from_json(env_or_file="OAI_CONFIG_LIST")
 
 logger = logging.getLogger(__name__)
-
+tracer = trace.get_tracer(__name__)
 config_list: List[Dict[str, str]] = []
 
 chat_model_settings = get_model_settings_collection("azure_openai_latest").model_usage_settings[ModelCapability.CHAT]
@@ -38,159 +50,98 @@ config_list.append(
 
 # You can also set config_list directly as a list, for example, config_list = [{'model': 'gpt-4', 'api_key': '<your OpenAI API key here>'},]
 
+DEFAULT_SYSTEM_MESSAGE = """You are a helpful AI assistant.
+Solve tasks using your coding and language skills.
+In the following cases, suggest python code (in a python coding block) or shell script (in a sh coding block) for the user to execute.
+    1. When you need to collect info, use the code to output the info you need, for example, browse or search the web, download/read a file, print the content of a webpage or a file, get the current date/time, check the operating system. After sufficient info is printed and the task is ready to be solved based on your language skill, you can solve the task by yourself.
+    2. When you need to perform some task with code, use the code to perform the task and output the result. Finish the task smartly.
+Solve the task step by step if you need to. If a plan is not provided, explain your plan first. Be clear which step uses code, and which step uses your language skill.
+When using code, you must properly format code blocks in code fences and indicate the code language like python or sh. The user cannot provide any other feedback or perform any other action beyond executing the code you suggest. The user can't modify your code. So do not suggest incomplete code which requires users to modify. Don't use a code block if it's not intended to be executed by the user.
+The output of code execution should only be json formatted data including metadata to artifacts generated like images for charts. Dot not open images or any files with external programs like plt.show().
+If you want the user to save the code in a file before executing it, put # filename: <filename> inside the code block as the first line. Don't include multiple code blocks in one response. Do not ask users to copy and paste the result. Instead, use 'print' function for the output when relevant. Check the execution result returned by the user.
+If the result indicates there is an error, fix the error and output the code again. Suggest the full code instead of partial code or code changes. If the error can't be fixed or if the task is not solved even after the code is executed successfully, analyze the problem, revisit your assumption, collect additional info you need, and think of a different approach to try.
+When you find an answer, verify the answer carefully. Include verifiable evidence in your response if possible.
+Reply "TERMINATE" in the end when everything is done.
+    """
 
-# def run_agent() -> str:
-#     """Run the agent."""
-#     # assistant = AssistantAgent("assistant", llm_config={"config_list": config_list})
-#     # user_proxy = UserProxyAgent("user_proxy", code_execution_config={"work_dir": "coding"})
-#     # user_proxy.initiate_chat(assistant, message="Plot a chart of NVDA and TESLA stock price change YTD.")
-#     # This initiates an automated chat between the two agents to solve the task
+folders = init_webserver_folders("./.persisted/agents/")
 
-#     user_proxy_config = AgentConfig(name="user_proxy")
-#     assistant_config = AgentConfig(name="assistant", llm_config=LLMConfig(config_list=config_list))
-#     flow_config = AgentWorkFlowConfig(name="default", sender=AgentFlowSpec(type="userproxy", config=user_proxy_config), receiver=AgentFlowSpec(type="assistant", config=assistant_config))
-
-#     # workflow_manager = AutoGenWorkFlowManager(config=flow_config)
-#     # workflow_manager.run("Plot a chart of NVDA and TESLA stock price change YTD.")
-
-#     m = Message(content="Plot a chart of NVDA and TESLA stock price change YTD.",user_id="user_proxy",role="user",root_msg_id="root",session_id="session")
-
-#     return AutoGenChatManager().chat(message=m, flow_config=flow_config, history=[], work_dir="./.persisted/agents/coding")
-
-
-def handle_messages(
-    recipient: ConversableAgent,
-    messages: Optional[List[Dict]] = None,
-    sender: Optional[Agent] = None,
-    config: Optional[Any] = None,
-) -> Tuple[bool, Union[str, Dict, None]]:
-    """Handle messages from the sender."""
-    logging.debug("Received messages: s%", messages)
-    return False, None
-
-
-class DocqUserProxyAgent(UserProxyAgent):
-    """DocqUserProxy class."""
-
-    def __init__(
-        self: Self,
-        name: str,
-        is_termination_msg: Optional[Callable[[Dict], bool]] = None,
-        max_consecutive_auto_reply: Optional[int] = None,
-        human_input_mode: Optional[str] = "ALWAYS",
-        function_map: Optional[Dict[str, Callable]] = None,
-        code_execution_config: Optional[Union[Dict, Literal[False]]] = None,  # noqa: F821
-        default_auto_reply: Optional[Union[str, Dict, None]] = "",
-        llm_config: Optional[Union[Dict, Literal[False]]] = False,
-        system_message: Optional[str] = "",
-        receive_callback: Optional[Callable] = None,
-        send_callback: Optional[Callable] = None,
-    ) -> None:
-        """Initialize the DocqUserProxy class.
-
-        Args:
-            name: The name of the agent.
-            is_termination_msg: A function that returns True if the message is a termination message.
-            max_consecutive_auto_reply: The maximum number of consecutive auto replies.
-            human_input_mode: The human input mode.
-            function_map: The function map.
-            code_execution_config: The code execution configuration.
-            default_auto_reply: The default auto reply.
-            llm_config: The LLM configuration.
-            system_message: The system message.
-            receive_callback: The receive callback function. Signature:
-                            def func(
-                                self: Self,
-                                message: Dict | str,
-                                recipient: Agent,
-                                request_reply: bool | None = None,
-                                silent: bool | None = False,
-                            ) -> None:
-            send_callback: The send callback function. Signature:
-                          def func(
-                            self: Self,
-                            message: Dict | str,
-                            recipient: Agent,
-                            request_reply: bool | None = None,
-                            silent: bool | None = False,
-                        ) -> None:
+USER_PROXY_INSTRUCTIONS = """If the request has been addressed sufficiently, summarize the answer and end with the word TERMINATE. Otherwise, ask a follow-up question.
         """
-        self.receive_callback = receive_callback
-        self.send_callback = send_callback
 
-        super().__init__(
-            name=name,
-            is_termination_msg=is_termination_msg,
-            max_consecutive_auto_reply=max_consecutive_auto_reply,
-            human_input_mode=human_input_mode,
-            function_map=function_map,
-            code_execution_config=code_execution_config,
-            llm_config=llm_config,
-            default_auto_reply=default_auto_reply,
-            system_message=system_message
-        )
+current_user_id_thread_id = "user_id_plus_threadid_goes_here_12345"
+user_dir = os.path.join(folders["files_static_root"], "user", md5_hash(current_user_id_thread_id))
+os.makedirs(user_dir, exist_ok=True)
+skills = get_all_skills(
+        os.path.join(folders["user_skills_dir"], md5_hash(current_user_id_thread_id)),
+        folders["global_skills_dir"],
+        dest_dir=os.path.join(user_dir, "scratch"),
+    )
 
-    def receive(
-        self: Self, message: Dict | str, sender: Agent, request_reply: bool | None = None, silent: bool | None = False
-    ) -> None:
-        """Receive a message from another agent aka the `sender`."""
-        if self.receive_callback:
-            self.receive_callback(message, sender, request_reply, silent)
-        super().receive(message, sender, request_reply, silent)
+skills_suffix = get_skills_prompt(skills)
 
-    def send(
-        self: Self,
-        message: Union[Dict, str],
-        recipient: Agent,
-        request_reply: Optional[bool] = None,
-        silent: Optional[bool] = False,
-    ) -> None:
-        """Send a message to another agent aka the `recipient`."""
-        if self.send_callback:
-            self.send_callback(message, recipient, request_reply, silent)
-        super().send(message, recipient, request_reply, silent)
-
-    async def a_receive(
-        self: Self, message: Dict | str, sender: Agent, request_reply: bool | None = None, silent: bool | None = False
-    ) -> None:
-        """Async receive a message from another agent aka the `sender`."""
-        if self.receive_callback:
-            self.receive_callback(message, sender, request_reply, silent)
-        await super().a_receive(message, sender, request_reply, silent)
-
-    async def a_send(
-        self: Self,
-        message: Union[Dict, str],
-        recipient: Agent,
-        request_reply: Optional[bool] = None,
-        silent: Optional[bool] = False,
-    ) -> None:
-        """Async send a message to another agent aka the `recipient`."""
-        if self.send_callback:
-            self.send_callback(message, recipient, request_reply, silent)
-        await super().a_send(message, recipient, request_reply, silent)
-
-
-def run_agent(message_receive_callback_handler: Callable, message_send_callback_handler: Callable) -> Dict[Agent, List[Dict]]:
+@tracer.start_as_current_span("run_agent")
+def run_agent() -> Message: #Dict[Agent, List[Dict]]: #List[dict]:
     """Run the agent."""
-    assistant = AssistantAgent("assistant1", llm_config={"config_list": config_list})
+    assistant = AssistantAgent(
+        "assistant1",
+        llm_config={"config_list": config_list},
+        system_message=autogen.AssistantAgent.DEFAULT_SYSTEM_MESSAGE + skills_suffix,
+    )
+
+    scratch_dir = os.path.join(user_dir, "scratch")
     user_proxy = UserProxyAgent(
         "user_proxy1",
-        code_execution_config={"work_dir": "./.persisted/agents/coding"},
+        code_execution_config={"work_dir": scratch_dir},
         human_input_mode="NEVER",
-        max_consecutive_auto_reply=10,
+        # default_auto_reply="make sure code is properly formatted with code fences. If the result was generated correctly then terminate.",
+        max_consecutive_auto_reply=15,
+        system_message=USER_PROXY_INSTRUCTIONS,
+        is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
     )
-    user_proxy.initiate_chat(assistant, message="Plot a chart of NVDA and TESLA stock price change YTD.")
 
-    # This initiates an automated chat between the two agents to solve the task
-    logger.debug("===========================")
-    logger.debug(assistant.last_message(user_proxy))
-    logger.debug(user_proxy.last_message(assistant))
-    logger.debug("===========================")
-    # user_proxy.register_reply(assistant, handle_messages)how do
+    start_time = time.time()
+    user_proxy.initiate_chat(
+        assistant,
+        message="Plot a chart of NVDA and TESLA stock price YTD. Save the result to a file named nvda_tesla.png",
+    )
+    #return user_proxy._agent_log
+    metadata = {}
+    agent_chat_messages = user_proxy.chat_messages[assistant] #[len(history) :]
+    metadata["messages"] = agent_chat_messages
 
-    # return AutoGenChatManager().chat(message=m, flow_config=flow_config, history=[], work_dir="./.persisted/agents/coding")
-    return user_proxy.chat_messages
+    successful_code_blocks = extract_successful_code_blocks(agent_chat_messages)
+    successful_code_blocks = "\n\n".join(successful_code_blocks)
+    last_message = assistant.last_message()
+    output = "<empty>"
+    if last_message:
+      output = (
+          (last_message["content"] + "\n" + successful_code_blocks)
+          if successful_code_blocks
+          else last_message["content"]
+      )
+
+    metadata["code"] = ""
+    end_time = time.time()
+    metadata["time"] = end_time - start_time
+    modified_files = get_modified_files(start_timestamp=start_time, end_timestamp=end_time, source_dir=scratch_dir, dest_dir=user_dir)
+    metadata["files"] = modified_files
+
+    print("Modified files: ", len(modified_files))
+
+    output_message = Message(
+        user_id="2",
+        root_msg_id="1",
+        role="assistant",
+        content=output,
+        metadata=metadata,
+        session_id="3",
+    )
+
+    return output_message
+
+    #return user_proxy.chat_messages
+
 
 class AutoGenChatManager:
     def __init__(self) -> None:

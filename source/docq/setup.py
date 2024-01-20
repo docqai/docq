@@ -21,7 +21,7 @@ tracer = trace.get_tracer(__name__, docq.__version_str__)
 
 def _config_logging() -> None:
     """Configure logging."""
-    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(process)d %(levelname)s %(message)s", force=True) # force over rides Otel (or other) logging config with this.
+    logging.basicConfig(level=logging.CRITICAL, format="%(asctime)s %(process)d %(levelname)s %(message)s", force=True) # force over rides Otel (or other) logging config with this.
 
 #FIXME: right now this will run everytime a user hits the home page. add a global lock using st.cache to make this only run once.
 def init() -> None:

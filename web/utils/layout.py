@@ -1,6 +1,7 @@
 """Layout components for the web app."""
 import base64
 import logging as log
+import os
 import random
 import re
 from typing import Callable, List, Literal, Optional, Tuple
@@ -34,6 +35,7 @@ from opentelemetry import trace
 from st_pages import hide_pages, translate_icon
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
+from streamlit.elements.image import AtomicImage
 from streamlit.errors import StreamlitAPIException
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 from streamlit.source_util import get_pages
@@ -921,6 +923,7 @@ def chat_ui(feature: FeatureKey) -> None:
     """,
         unsafe_allow_html=True,
     )
+    from docq.agents.datamodels import Message
     with st.container():
         if feature.type_ == OrganisationFeatureType.ASK_SHARED:
             _personal_ask_style()
@@ -943,13 +946,53 @@ def chat_ui(feature: FeatureKey) -> None:
         st.markdown(f"#### {day}")
 
         chat_history = get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY)
+
         if chat_history:
             for x in chat_history:
                 # x = (id, text, is_user, time, thread_id)
                 if format_datetime(x[3]) != day:
                     day = format_datetime(x[3])
                     st.markdown(f"#### {day}")
-                _chat_message(x[1], x[2])
+
+                is_agent_message = False
+                try:
+                    _x: Message = x[1]
+                    _y = _x.metadata
+                    is_agent_message = True
+                except Exception:
+                    is_agent_message = False
+
+                if is_agent_message:
+                    agent_output: Message = x[1]
+                    if agent_output.metadata:
+                        with st.expander("Agent Messages", False):
+                                for m in agent_output.metadata["messages"]:
+                                    if m["content"] != "":
+                                        st.write(m["content"])
+                                        st.divider()
+                        with st.expander("Files", True):
+                            files = agent_output.metadata["files"]
+                            if files:
+                                images: list[AtomicImage] = []
+                                image_names = []
+                                for file in files:
+                                    if file["type"] == "image":
+                                        images.append(os.path.join("./.persisted/agents",file['path']))
+                                        image_names.append(file["name"])
+                                    elif file["type"] == "code":  # noqa: SIM114
+                                        images.append(os.path.join("./web/icons/flaticon/001-py.png"))
+                                        image_names.append(file["name"])
+                                    elif file["type"] == "pdf":
+                                        images.append(os.path.join("./web/icons/flaticon/003-pdf-file.png"))
+                                        image_names.append(file["name"])
+                                    else:
+                                        st.write(file["name"])
+
+                                st.image(images,image_names)
+
+                else:
+                    _chat_message(x[1], x[2])
+            _chat_ui_script()
 
     st.chat_input(
         "Type your question here",

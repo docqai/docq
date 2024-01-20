@@ -218,7 +218,7 @@ def skill_from_folder(folder: str) -> List[Dict[str, str]]:
     return skills
 
 
-def get_all_skills(user_skills_path: str, global_skills_path: str, dest_dir: str = None) -> List[Dict[str, str]]:
+def get_all_skills(user_skills_path: str, global_skills_path: str, dest_dir: str = None) -> Dict[str, List[Dict[str,str]]]:
     """Get all skills from the user and global skills directories. If dest_dir, copy all skills to dest_dir.
 
     :param user_skills_path: The path to the user skills directory
@@ -247,7 +247,7 @@ def get_all_skills(user_skills_path: str, global_skills_path: str, dest_dir: str
     return skills
 
 
-def get_skills_prompt(skills: List[Dict[str, str]]) -> str:
+def get_skills_prompt(skills: Dict[str, List[Dict[str, str]]]) -> str:
     """Get a prompt with the content of all skills.
 
     :param skills: A dictionary of user and global skills

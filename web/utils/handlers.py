@@ -597,14 +597,8 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
     req = st.session_state[f"chat_input_{feature.value()}"]
     result = []
     if req.startswith("/agent"):
-        messages = run_agent(receive_message_callback_handler, send_message_callback_handler)
-        log.debug("== agent chat result == ")
-        log.debug(messages)
-        log.debug("=== ")
-        for a, m in messages.items():
-            result.append(("0", f"{a.name}: {m[0]['content']}", False, datetime.now(), 3))
-            for x in m:
-                result.append(("0", f"{x['role']}: {x['content']}", False, datetime.now(), 3))
+        output_message = run_agent()
+        result.append(("0", output_message, False, datetime.now(), 3))
 
     else:
         spaces = None
@@ -628,9 +622,6 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
     saved_model_settings = get_saved_model_settings_collection(select_org_id)
 
         result = run_queries.query(req, feature, thread_id, saved_model_settings, spaces)
-        log.debug("== chat result == ")
-        log.debug(result)
-        log.debug("=== ")
 
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 
@@ -918,7 +909,7 @@ def _create_new_thread(feature: domain.FeatureKey) -> int:
 def prepare_for_chat(feature: domain.FeatureKey) -> None:
     """Prepare the session for chat. Load latest thread_id, cutoff, and history."""
     thread_id = 0
-    log.debug("prepare_for_chat(): %s", get_chat_session(feature.type_))
+    #log.debug("prepare_for_chat(): %s", get_chat_session(feature.type_))
     if SessionKeyNameForChat.THREAD.name not in get_chat_session(feature.type_):
         thread = run_queries.get_latest_thread(feature)
         thread_id = thread[0] if thread else _create_new_thread(feature)

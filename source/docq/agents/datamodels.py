@@ -17,7 +17,7 @@ class Message(object):
     personalize: Optional[bool] = False
     ra: Optional[str] = None
     code: Optional[str] = None
-    metadata: Optional[Any] = None
+    metadata: Optional[Dict] = None
     session_id: Optional[str] = None
 
     def __post_init__(self):
