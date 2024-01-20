@@ -1,5 +1,4 @@
 """Handle /api/rag/completion requests."""
-import json
 from typing import Optional, Self
 
 from docq.domain import SpaceKey, SpaceType
@@ -7,7 +6,6 @@ from docq.manage_spaces import list_public_spaces
 from docq.model_selection.main import get_model_settings_collection
 from docq.support.llm import run_ask
 from llama_index import Response
-from llama_index.response.schema import PydanticResponse
 from pydantic import Field, ValidationError
 from tornado.web import HTTPError, RequestHandler
 

@@ -123,6 +123,23 @@ def list_thread_history(feature: FeatureKey) -> list[tuple[int, str, int]]:
     return rows
 
 
+def get_thread_topic(feature: FeatureKey, thread_id: int) -> str:
+    """Retrieve the topic of a thread."""
+    tablename = get_history_thread_table_name(feature.type_)
+    row = None
+    with closing(
+        sqlite3.connect(get_sqlite_usage_file(feature.id_), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(
+            SQL_CREATE_THREAD_TABLE.format(
+                table=tablename,
+            )
+        )
+        row = cursor.execute(f"SELECT topic FROM {tablename} WHERE id = ?", (thread_id,)).fetchone()  # noqa: S608
+
+    return row[0] if row else f"New thread {thread_id}"
+
+
 def update_thread_topic(topic: str, feature: FeatureKey, thread_id: int) -> None:
     """Update the topic of a thread."""
     tablename = get_history_thread_table_name(feature.type_)

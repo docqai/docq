@@ -1,13 +1,11 @@
 """Functions for utilising LLMs."""
 
-import imp
 import logging as log
 import os
 from typing import Any, Dict
 
 import docq
 from llama_index import (
-    DocumentSummaryIndex,
     Response,
     ServiceContext,
     StorageContext,
@@ -17,7 +15,7 @@ from llama_index import (
 from llama_index.callbacks.base import CallbackManager
 from llama_index.chat_engine import SimpleChatEngine
 from llama_index.chat_engine.types import AGENT_CHAT_RESPONSE_TYPE, AgentChatResponse
-from llama_index.embeddings import AzureOpenAIEmbedding, GooglePaLMEmbedding, OpenAIEmbedding, OptimumEmbedding
+from llama_index.embeddings import AzureOpenAIEmbedding, OpenAIEmbedding, OptimumEmbedding
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.indices.base import BaseIndex
 from llama_index.indices.composability import ComposableGraph

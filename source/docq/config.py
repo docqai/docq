@@ -15,6 +15,7 @@ class SpaceType(Enum):
     PERSONAL = "personal"
     SHARED = "shared"
     PUBLIC = "public"
+    THREAD = "thread"
 
 
 class SystemFeatureType(Enum):

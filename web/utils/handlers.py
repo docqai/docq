@@ -34,7 +34,6 @@ from opentelemetry import baggage, trace
 from streamlit.components.v1 import html
 
 from .constants import (
-    MAX_NUMBER_OF_UPLOAD_DOCS,
     NUMBER_OF_MSGS_TO_LOAD,
     SessionKeyNameForAuth,
     SessionKeyNameForChat,
@@ -421,7 +420,9 @@ def list_user_groups(name_match: str = None) -> List[Tuple]:
 def list_public_spaces() -> List[Tuple]:
     """List public spaces in a space group."""
     space_group_id = get_public_space_group_id()
-    return manage_spaces.list_public_spaces(space_group_id)
+    selected_org_id = get_selected_org_id()
+    if space_group_id and selected_org_id:
+        return manage_spaces.list_public_spaces(selected_org_id, space_group_id)
 
 
 def handle_create_org() -> bool:
@@ -558,40 +559,85 @@ def _get_chat_spaces(feature: domain.FeatureKey) -> List[SpaceKey]:
     return result
 
 
+def _setup_chat_thread_space(feature: domain.FeatureKey, org_id:int, thread_id: int) ->  Optional[SpaceKey]:
+    """Create a thread space or add more files and index if the space already exists."""
+    space: Optional[SpaceKey] = None
+
+    space = manage_spaces.get_thread_space(org_id, thread_id)
+    if space is None:
+        topic = run_queries.get_thread_topic(feature, thread_id)
+        space = manage_spaces.create_thread_space(org_id, thread_id, topic, SpaceDataSources.MANUAL_UPLOAD.name)
+
+    if space is not None:
+        file = st.session_state.get(f"chat_file_uploader_{feature.value()}", None)
+        if file:
+            manage_documents.upload(file.name, file.getvalue(), space)
+            st.session_state[f"chat_file_uploader_{feature.value()}"] = None
+
+    return space
+
+
 @tracer.start_as_current_span("handle_chat_input")
 def handle_chat_input(feature: domain.FeatureKey) -> None:
     """Handle chat input."""
     req = st.session_state[f"chat_input_{feature.value()}"]
     spaces = None
-    if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
-        spaces = _get_chat_spaces(feature)
 
     thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
     if thread_id is None:
         raise ValueError("Thread id in session state was None")
-    select_org_id =get_selected_org_id()
+
+    select_org_id = get_selected_org_id()
     if select_org_id is None:
         raise ValueError("Selected org id was None")
+
+    if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
+        _thread_space = _setup_chat_thread_space(feature, select_org_id, thread_id)
+        spaces = _get_chat_spaces(feature)
+        if _thread_space is not None:
+            spaces.append(_thread_space)
+
     saved_model_settings = get_saved_model_settings_collection(select_org_id)
 
     result = run_queries.query(req, feature, thread_id, saved_model_settings, spaces)
-
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 
 
+def handle_get_thread_space(feature: domain.FeatureKey) -> Optional[SpaceKey]:
+    """Get the current thread space."""
+    selected_org_id = get_selected_org_id()
+    thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
+
+    if thread_id and selected_org_id:
+        return manage_spaces.get_thread_space(selected_org_id, thread_id)
+
+
+def handle_index_thread_space(feature: domain.FeatureKey) -> None:
+    """Automatically start indexing the active thread space on file upload."""
+    selected_org_id = get_selected_org_id()
+    thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
+
+    if selected_org_id and thread_id:
+        _setup_chat_thread_space(feature, selected_org_id, thread_id)
+
+
 def handle_list_documents(space: domain.SpaceKey) -> List[DocumentListItem]:
+    """Handle list documents."""
     return manage_spaces.list_documents(space)
 
 
 def handle_delete_document(filename: str, space: domain.SpaceKey) -> None:
+    """Handle delete document."""
     manage_documents.delete(filename, space)
 
 
 def handle_delete_all_documents(space: domain.SpaceKey) -> None:
+    """Handle delete all documents."""
     manage_documents.delete_all(space)
 
 
 def handle_upload_file(space: domain.SpaceKey) -> None:
+    """Handle upload file."""
     files = st.session_state[f"uploaded_file_{space.value()}"]
 
     disp = st.empty()
@@ -621,15 +667,18 @@ def handle_change_temperature(type_: config.SpaceType):
     manage_settings.change_settings(type_.name, temperature=st.session_state[f"temperature_{type_.name}"])
 
 
-def get_shared_space(id_: int) -> tuple[int, int, str, str, bool, str, dict, datetime, datetime]:
+def get_shared_space(id_: int) -> Optional[manage_spaces.SPACE]:
+    """Get a shared space."""
     org_id = get_selected_org_id()
-    return manage_spaces.get_shared_space(id_, org_id)
+    if org_id is not None:
+        return manage_spaces.get_shared_space(id_, org_id)
 
 
-def list_shared_spaces():
+def list_shared_spaces() -> List[manage_spaces.SPACE]:
+    """List shared spaces."""
     user_id = get_authenticated_user_id()
     org_id = get_selected_org_id()
-    return manage_spaces.list_shared_spaces(org_id, user_id)
+    return manage_spaces.list_shared_spaces(org_id, user_id) if org_id else []
 
 
 def handle_archive_space(id_: int):

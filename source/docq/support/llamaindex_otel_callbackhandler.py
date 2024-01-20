@@ -79,7 +79,7 @@ class OtelCallbackHandler(BaseCallbackHandler):
             ctx = trace.set_span_in_context(NonRecordingSpan(current_span.get_span_context()))
             span = self._tracer.start_span(name=trace_id, context=ctx)
             span.add_event(name="callback_handler.start_trace", attributes={"cbevent.trace_id": trace_id})
-            self._spans[trace_id] = span 
+            self._spans[trace_id] = span
 
     def end_trace(
         self: Self,

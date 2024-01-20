@@ -10,7 +10,7 @@ import json
 import logging as log
 import sqlite3
 from contextlib import closing
-from typing import Any, Optional
+from typing import Optional
 
 from opentelemetry import trace
 
@@ -23,7 +23,6 @@ from .config import (
     SystemSettingsKey,
     UserSettingsKey,
 )
-from .constants import DEFAULT_ORG_ID
 from .support.store import get_sqlite_system_file, get_sqlite_usage_file
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)

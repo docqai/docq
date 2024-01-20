@@ -3,7 +3,7 @@ import base64
 import logging as log
 import random
 import re
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Literal, Optional, Tuple
 from urllib.parse import quote_plus, unquote_plus
 
 import docq
@@ -73,7 +73,9 @@ from .handlers import (
     handle_get_chat_history_threads,
     handle_get_gravatar_url,
     handle_get_system_settings,
+    handle_get_thread_space,
     handle_get_user_email,
+    handle_index_thread_space,
     handle_list_documents,
     handle_list_orgs,
     handle_login,
@@ -138,7 +140,9 @@ __chat_ui_script = """
                 --background-color: ${getComputedStyle(parent.body, null).getPropertyValue('background-color')};
             }
         `
-        parent.head.appendChild(style)
+        parent.head.appendChild(style);
+        setExpanderLabels();
+        setButtonLabels();
     }; setStyle();
 
     const observer = new MutationObserver(setStyle)
@@ -158,6 +162,33 @@ __chat_ui_script = """
                 window.open('https://www.gravatar.com/', '_blank')
             }
     })})
+
+
+    /**
+     * 1. Find all expanders
+     * 2. For each expander set an attribute 'docq-data-label' with the expander's label text
+     * Note: label is nested under summary > span > div > p
+     */
+    function setExpanderLabels() {
+        const expanders = parent.querySelectorAll('[data-testid="stExpander"]');
+        expanders.forEach((el) => {
+            const label = el.querySelector('summary > span > div > p').innerText
+            el.setAttribute('docq-data-label', label)
+        })
+    };
+
+    /**
+     * 1. Find all buttons with attribute kind="primary"
+     * 2. For each button set an attribute 'docq-data-label' with the button's label text
+     */
+    function setButtonLabels() {
+        const buttons = parent.querySelectorAll('.row-widget.stButton');
+        buttons.forEach((el) => {
+            el.parentElement.setAttribute('docq-data-label', el.innerText)
+            el.parentElement.removeAttribute('width')
+            el.removeAttribute('style')
+        })
+    };
 
 </script>
 """
@@ -647,7 +678,7 @@ def _personal_ask_style() -> None:
     st.write(
         """
     <style>
-        section[tabindex="0"] [data-testid="stExpander"] {
+        [docq-data-label="Including these shared spaces:"] {
             z-index: 1000;
             position: fixed;
             top: 46px;
@@ -712,6 +743,128 @@ def _show_chat_histories(feature: FeatureKey) -> None:
             )
 
 
+def _render_documents_list_ui(space: SpaceKey, read_only: bool = True, size: Literal["lg", "sm"] = "lg", expander_label: str = "Documents List") -> None:
+    """Render the UI for listing documents in a space."""
+    expander_selector = f'div[data-testid="stExpander"][docq-data-label="{expander_label}"]'
+
+    st.markdown(f"""
+        <style>
+          {expander_selector} hr {{
+            margin-top: 0.5rem;
+          }}
+          {expander_selector} button[kind="primary"] {{
+            min-height: unset;
+            height: 1.5rem;
+          }}
+          {expander_selector} button[kind="secondary"] {{
+            justify-content: center !important;
+          }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    documents: List[DocumentListItem] = handle_list_documents(space)
+    if documents:
+        st.markdown(f"**Document Count**: {len(documents)}")
+        st.divider()
+        for i, document in enumerate(documents):
+            with st.container():
+                st.markdown(f"**{document.link}**")
+                st.markdown(
+                    f"Size: {format_filesize(document.size)} | Last Modified: {format_timestamp(document.indexed_on)}"
+                )
+                if not read_only:
+                    st.button(
+                        "Delete file",
+                        type="secondary" if size == "lg" else "primary",
+                        key=f"delete_file_{i}_{space.value()}",
+                        on_click=handle_delete_document,
+                        args=(
+                            document.link,
+                            space,
+                        ),
+                    )
+                    st.divider()
+
+        if not read_only:
+            st.button(
+                "Delete all documents",
+                key=f"delete_all_files_{space.value()}",
+                on_click=handle_delete_all_documents,
+                args=(space,),
+            )
+    else:
+        st.info("No documents.")
+
+
+def _render_show_thread_space_files(feature: FeatureKey) -> None:
+    """Show file uploads within a chat thread space."""
+    with st.sidebar.container():
+        space = handle_get_thread_space(feature)
+        if space:
+            expander_label = "Knowledge"
+            with st.expander(expander_label):
+                _render_documents_list_ui(space, False, "sm", expander_label)
+
+
+def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
+    """Upload files to chat."""
+    if feature.type_ != OrganisationFeatureType.ASK_SHARED:
+        return None
+
+
+    st.markdown("""
+    <style>
+      div[data-testid="stFileUploader"] label {
+        display: none;
+      }
+      section[data-testid="stFileUploadDropzone"] {
+        height: 2rem;
+      }
+      section[data-testid="stFileUploadDropzone"] div {
+        flex-direction: row;
+        gap: 1rem;
+      }
+      section[data-testid="stFileUploadDropzone"] :is(small, span) {
+        justify-content: center;
+        align-items: center;
+        display: flex;
+        margin: 0;
+      }
+      section[data-testid="stFileUploadDropzone"] small {
+        font-size: 0;
+      }
+      section[data-testid="stFileUploadDropzone"] small:after {
+        content: "File limit 200MB";
+        font-size: 0.8rem;
+      }
+      section[data-testid="stFileUploadDropzone"] button[data-testid="baseButton-secondary"] {
+        min-height: unset;
+        height: 1.5rem;
+        font-size: 0.8rem;
+      }
+      div[data-testid="stFileUploader"]:has(.uploadedFile) section[data-testid="stFileUploadDropzone"] {
+        display: none;
+      }
+      div[data-testid="stHorizontalBlock"]:has([data-testid="stSpinner"]) div:has(> ul > li > .uploadedFile) {
+        display: none !important;
+      }
+      div:has(> ul > li > .uploadedFile) {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True
+    )
+    input_key = f"chat_file_uploader_{feature.value()}_{key_suffix}"
+    if st.file_uploader(":paperclip:", key=input_key, type=ALLOWED_DOC_EXTS):
+        st.session_state[f"chat_file_uploader_{feature.value()}"] = st.session_state[input_key]
+        filename = st.session_state[input_key].name
+        with st.spinner(f"Indexing file: {filename[:100]} ..."):
+            handle_index_thread_space(feature)
+
+
 def chat_ui(feature: FeatureKey) -> None:
     """Chat UI layout."""
     prepare_for_chat(feature)
@@ -741,6 +894,29 @@ def chat_ui(feature: FeatureKey) -> None:
                 border-radius: 0;
             }
 
+            div[data-testid="stHorizontalBlock"]:has(div > div > div > [docq-data-label="New chat"]) {
+                position: fixed;
+                bottom: 1.8rem;
+                z-index: 1000;
+                max-height: 2rem;
+            }
+
+            div[data-testid="column"] > div > div > [docq-data-label="New chat"] > .stButton {
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+            }
+
+            [docq-data-label="New chat"] button {
+                min-height: unset;
+                height: 2rem;
+                font-size: 0.8rem;
+            }
+
+            [docq-data-label="Load chat history earlier"] .stButton {
+                display: flex;
+                justify-content: center;
+            }
         </style>
     """,
         unsafe_allow_html=True,
@@ -759,13 +935,9 @@ def chat_ui(feature: FeatureKey) -> None:
                     label_visibility="collapsed",
                 )
 
-        load_history, create_new_chat = st.columns([3, 1])
-        with load_history:
-            if st.button("Load chat history earlier"):
-                query_chat_history(feature)
-        with create_new_chat:
-            if st.button("New chat"):
-                handle_create_new_chat(feature)
+        if st.button("Load chat history earlier"):
+            query_chat_history(feature)
+
     with st.container():
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
         st.markdown(f"#### {day}")
@@ -778,7 +950,6 @@ def chat_ui(feature: FeatureKey) -> None:
                     day = format_datetime(x[3])
                     st.markdown(f"#### {day}")
                 _chat_message(x[1], x[2])
-            _chat_ui_script()
 
     st.chat_input(
         "Type your question here",
@@ -787,6 +958,16 @@ def chat_ui(feature: FeatureKey) -> None:
         args=(feature,),
     )
     _show_chat_histories(feature)
+
+    uploader, new_chat = st.columns([3, 1])
+    with new_chat:
+        if st.button("New chat"):
+            handle_create_new_chat(feature)
+    with uploader:
+        _render_chat_file_uploader(feature, len(chat_history) if chat_history else 0)
+
+    _render_show_thread_space_files(feature)
+    _chat_ui_script()
 
 
 def _render_document_upload(space: SpaceKey, documents: List) -> None:
@@ -799,7 +980,7 @@ def _render_document_upload(space: SpaceKey, documents: List) -> None:
                 key=f"uploaded_file_{space.value()}",
                 accept_multiple_files=True,
             )
-            st.form_submit_button(label="Upload", on_click=handle_upload_file, args=(space,))
+            st.form_submit_button(label="Save files", on_click=handle_upload_file, args=(space,))
     else:
         st.warning(f"You cannot upload more than {max_size} documents.")
 
@@ -824,32 +1005,18 @@ def documents_ui(space: SpaceKey) -> None:
         st.button("Reindex", key=f"reindex_{space.value()}_top", on_click=handle_reindex_space, args=(space,))
 
     if documents:
-        st.divider()
-        st.markdown(f"**Document Count**: {len(documents)}")
-        for i, document in enumerate(documents):
-            with st.expander(document.link):
-                st.markdown(
-                    f"Size: {format_filesize(document.size)} | Last Modified: {format_timestamp(document.indexed_on)}"
-                )
-
-                if show_delete:
-                    st.button(
-                        "Delete",
-                        key=f"delete_file_{i}_{space.value()}",
-                        on_click=handle_delete_document,
-                        args=(
-                            document.link,
-                            space,
-                        ),
-                    )
-
-        if show_delete:
-            st.button(
-                "Delete all documents",
-                key=f"delete_all_files_{space.value()}",
-                on_click=handle_delete_all_documents,
-                args=(space,),
-            )
+        label = "Documents"
+        st.markdown("""
+            <style>
+              div[data-testid="stExpander"] hr {
+                margin-top: 0.5rem;
+              }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+        with st.expander(label):
+            _render_documents_list_ui(space, read_only=not show_delete, expander_label=label)
     else:
         st.info("No documents or the space does not support listing documents.")
 
@@ -1151,7 +1318,7 @@ def create_space_ui(expanded: bool = False) -> None:
 def _render_view_space_details_with_container(
     space_data: Tuple, data_source: Tuple, use_expander: bool = False
 ) -> DeltaGenerator:
-    id_, org_id, name, summary, archived, ds_type, ds_configs, created_at, updated_at = space_data
+    id_, org_id, name, summary, archived, ds_type, ds_configs, _, created_at, updated_at = space_data
     has_view_perm = org_id == get_selected_org_id()
 
     if has_view_perm:
@@ -1168,7 +1335,7 @@ def _render_view_space_details_with_container(
 
 
 def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> None:
-    id_, org_id, name, summary, archived, ds_type, ds_configs, _, _ = space_data
+    id_, org_id, name, summary, archived, ds_type, ds_configs, *_ = space_data
     has_edit_perm = org_id == get_selected_org_id()
 
     if has_edit_perm:
