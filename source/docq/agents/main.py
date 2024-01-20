@@ -93,6 +93,8 @@ DEFAULT_AGENT_REQUEST = "What's the weather in London today?"
 
 #from semantic_kernel.connectors.search_engine import BingConnector
 #from semantic_kernel.core_skills import ConversationSummarySkill, HttpSkill, TextSkill, TimeSkill
+from semantic_kernel.core_skills import ConversationSummarySkill, TextSkill, TimeSkill
+
 from ..llm_plugins.openai.sk_bing_plugin import BingPlugin
 from ..llm_plugins.openai.sk_web_pages_plugin import WebPagesPlugin
 from ..llm_plugins.openai.weather_plugin import WeatherPlugin
@@ -111,12 +113,10 @@ def run_agent(user_request_message: str = DEFAULT_AGENT_REQUEST) -> Message:  # 
     kernel.import_skill(BingPlugin(bing_search_api_key))
     kernel.import_skill(WebPagesPlugin())
     kernel.import_skill(WeatherPlugin())
-    # bing_connector = BingConnector(bing_search_api_key)
-    # kernel.import_skill(WebSearchEngineSkill(bing_connector), "web_search_engine")
-    # kernel.import_skill(ConversationSummarySkill(kernel), "conversation_summary")
+    #kernel.import_skill(ConversationSummarySkill(kernel), "conversation_summary")
     # kernel.import_skill(HttpSkill(), "http")
-    # kernel.import_skill(TextSkill(), "text")
-    # kernel.import_skill(TimeSkill(), "time")
+    kernel.import_skill(TextSkill(), "text")
+    kernel.import_skill(TimeSkill(), "time")
 
     assistant = AssistantAgent(
         "assistant1",

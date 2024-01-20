@@ -1,5 +1,7 @@
 """Layout components for the web app."""
 import base64
+import contextlib
+import json
 import logging as log
 import os
 import random
@@ -122,7 +124,6 @@ from .sessions import (
 from .streamlit_application import st_app
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
-
 
 
 __chat_ui_script = """
@@ -258,7 +259,8 @@ def __embed_page_config() -> None:
 
 def __hide_all_empty_divs() -> None:
     """Hide all empty divs containing style or iframe that doesent render anything."""
-    st.markdown("""<style>
+    st.markdown(
+        """<style>
         div:has(> div.stMarkdown > div[data-testid="stMarkdownContainer"] > style) {
             display: none !important;
         }
@@ -267,7 +269,7 @@ def __hide_all_empty_divs() -> None:
         }
     </style>
     """,
-    unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
 
@@ -311,7 +313,11 @@ def render_page_title_and_favicon(page_display_title: Optional[str] = None) -> N
 
     try:
         ctx._set_page_config_allowed = True
-        st.set_page_config(page_icon=favicon_path, page_title=f"{browser_title_prefix} - {_page_display_title}", menu_items={"About": about_menu_content})
+        st.set_page_config(
+            page_icon=favicon_path,
+            page_title=f"{browser_title_prefix} - {_page_display_title}",
+            menu_items={"About": about_menu_content},
+        )
     except StreamlitAPIException:
         pass
 
@@ -924,6 +930,7 @@ def chat_ui(feature: FeatureKey) -> None:
         unsafe_allow_html=True,
     )
     from docq.agents.datamodels import Message
+
     with st.container():
         if feature.type_ == OrganisationFeatureType.ASK_SHARED:
             _personal_ask_style()
@@ -954,43 +961,45 @@ def chat_ui(feature: FeatureKey) -> None:
                     day = format_datetime(x[3])
                     st.markdown(f"#### {day}")
 
-                is_agent_message = False
-                try:
-                    _x: Message = x[1]
-                    _y = _x.metadata
-                    is_agent_message = True
-                except Exception:
-                    is_agent_message = False
+                agent_output = None
+                with contextlib.suppress(Exception):
+                    # agent messages are serialised Message dataclass. Other messages are str.
+                    _x = json.loads(x[1])
+                    agent_output = Message(
+                        **_x
+                    )  # if the message payload isn't a serialised Message class an exception will be raised and we ignore it.
 
-                if is_agent_message:
-                    agent_output: Message = x[1]
+                if agent_output:
+                    # agent_output: Message = x[1]
                     if agent_output.metadata:
-                        st.write(agent_output.content)
-                        with st.expander("Agent Messages", False):
+                        with st.chat_message(
+                            "assistant", avatar="https://github.com/docqai/docq/blob/main/docs/assets/logo.jpg?raw=true"
+                        ):
+                            st.write(agent_output.content)
+                            with st.expander("Agent Messages", False):
                                 for m in agent_output.metadata["messages"]:
                                     if m["content"] != "":
-
-                                        st.write(m["role"],"\n\n",m["content"])
+                                        st.write(m["role"], "\n\n", m["content"])
                                         st.divider()
-                        with st.expander("Files", True):
-                            files = agent_output.metadata["files"]
-                            if files:
-                                images: list[AtomicImage] = []
-                                image_names = []
-                                for file in files:
-                                    if file["type"] == "image":
-                                        images.append(os.path.join("./.persisted/agents",file['path']))
-                                        image_names.append(file["name"])
-                                    elif file["type"] == "code":  # noqa: SIM114
-                                        images.append(os.path.join("./web/icons/flaticon/001-py.png"))
-                                        image_names.append(file["name"])
-                                    elif file["type"] == "pdf":
-                                        images.append(os.path.join("./web/icons/flaticon/003-pdf-file.png"))
-                                        image_names.append(file["name"])
-                                    else:
-                                        st.write(file["name"])
+                            with st.expander("Files", True):
+                                files = agent_output.metadata["files"]
+                                if files:
+                                    images: list[AtomicImage] = []
+                                    image_names = []
+                                    for file in files:
+                                        if file["type"] == "image":
+                                            images.append(os.path.join("./.persisted/agents", file["path"]))
+                                            image_names.append(file["name"])
+                                        elif file["type"] == "code":  # noqa: SIM114
+                                            images.append(os.path.join("./web/icons/flaticon/001-py.png"))
+                                            image_names.append(file["name"])
+                                        elif file["type"] == "pdf":
+                                            images.append(os.path.join("./web/icons/flaticon/003-pdf-file.png"))
+                                            image_names.append(file["name"])
+                                        else:
+                                            st.write(file["name"])
 
-                                st.image(images,image_names)
+                                    st.image(images, image_names)
 
                 else:
                     _chat_message(x[1], x[2])
@@ -1166,7 +1175,9 @@ def organisation_settings_ui() -> None:
                 st.write(
                     f"- Deployment Name: `{model_settings.service_instance_config.model_deployment_name if model_settings.service_instance_config.model_deployment_name else 'n/a'}`"
                 )
-                st.write(f"- License: `{model_settings.service_instance_config.license_ if model_settings.service_instance_config.license_ else 'unknown'}`")
+                st.write(
+                    f"- License: `{model_settings.service_instance_config.license_ if model_settings.service_instance_config.license_ else 'unknown'}`"
+                )
                 st.write(f"- Citation: `{model_settings.service_instance_config.citation}`")
                 st.divider()
 
@@ -1195,7 +1206,8 @@ def _get_credential_request_params() -> dict:
 def _render_file_storage_credential_request(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
     """Renders the credential request input field with an action button."""
     saved_credentials = configs.get(configkey.key) if configs else st.session_state.get(key, None)
-    st.markdown("""
+    st.markdown(
+        """
     <style>
       div.element-container .stMarkdown div[data-testid="stMarkdownContainer"] p {
         margin-bottom: 8px !important;
@@ -1252,7 +1264,7 @@ def fetch_file_storage_root_folders(_configkey: ConfigKey, configs: Optional[dic
         return [saved_settings], True
 
     else:
-        with st.spinner("Loading Options..."): # noqa E501
+        with st.spinner("Loading Options..."):  # noqa E501
             handler: Callable = options.get("handler", None)
             if handler:
                 return handler(configs, st.session_state)
@@ -1451,7 +1463,7 @@ def list_spaces_ui(admin_access: bool = False) -> None:
     spaces = list_shared_spaces()
     if spaces:
         for s in spaces:
-            if s[4] and not admin_access: # Skip if archived and not admin.
+            if s[4] and not admin_access:  # Skip if archived and not admin.
                 continue
             ds = get_space_data_source_choice_by_type(s[5])
             container = _render_view_space_details_with_container(s, ds, True)
