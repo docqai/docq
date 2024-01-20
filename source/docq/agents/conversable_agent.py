@@ -8,12 +8,13 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Self, Tuple, Ty
 
 from autogen import Agent, OpenAIWrapper
 from autogen.code_utils import DEFAULT_MODEL, UNKNOWN, content_str, execute_code, extract_code, infer_lang
-from numpy import rec
 from openai.types.chat import ChatCompletion
-from openai.types.completion import Completion
 from opentelemetry import trace
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from opentelemetry.trace import Status, StatusCode
 
 from ..support.pydantic import model_dump
+from .utils import get_or_create_python_eventloop
 
 try:
     from termcolor import colored
@@ -24,6 +25,32 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
+
+ENABLE_PAYLOAD_LOGGING = True
+
+
+def request_hook(span, request) -> None:
+    """Hook to be called before sending a request."""
+    method, url, headers, stream, extensions = request
+
+    byte_stream = b"".join([chunk for chunk in stream])
+    s = byte_stream.decode("utf-8")
+    span.set_attribute("http.request.body", s)
+    # print("request_hook called", s)
+
+
+def response_hook(span, request, response) -> None:
+    """Hook to be called after receiving a response."""
+    span.set_attribute("http.response.body", response.text)
+
+
+if ENABLE_PAYLOAD_LOGGING:
+    HTTPXClientInstrumentor().uninstrument()  # because we are using auto instrument we need to uninstrument first to be able to override
+    HTTPXClientInstrumentor().instrument(
+        request_hook=request_hook,
+        response_hook=None,
+    )
+
 
 tracer = trace.get_tracer(__name__)
 
@@ -62,6 +89,7 @@ class ConversableAgent(Agent):
         code_execution_config: Optional[Union[Dict, Literal[False]]] = None,
         llm_config: Optional[Union[Dict, Literal[False]]] = None,
         default_auto_reply: Optional[Union[str, Dict, None]] = "",
+        description: Optional[str] = None,
     ):
         """Args:
         name (str): name of the agent.
@@ -102,14 +130,18 @@ class ConversableAgent(Agent):
             for available options.
             To disable llm-based auto reply, set to False.
         default_auto_reply (str or dict or None): default auto reply when no code execution or llm-based reply is generated.
+        description (str): a short description of the agent. This description is used by other agents (e.g. the GroupChatManager) to decide when to call upon this agent. (Default: system_message).
         """  # noqa: D205
         super().__init__(name)
+
         span = trace.get_current_span()
+        span.update_name(f"ConversableAgent.{name}.__init__")
         span.set_attribute("agent_name", name)
         span.set_attribute("agent_type", self.__class__.__name__)
         # a dictionary of conversations, default value is list
         self._oai_messages = defaultdict(list)
         self._oai_system_message = [{"content": system_message, "role": "system"}]
+        self.description = description if description is not None else system_message
         self._is_termination_msg = (
             is_termination_msg
             if is_termination_msg is not None
@@ -126,6 +158,8 @@ class ConversableAgent(Agent):
                 self.llm_config.update(llm_config)
             self.client = OpenAIWrapper(**self.llm_config)
 
+        span.set_attribute("llm_config", self.llm_config.__str__())
+
         self._code_execution_config: Union[Dict, Literal[False]] = (
             {} if code_execution_config is None else code_execution_config
         )
@@ -136,15 +170,16 @@ class ConversableAgent(Agent):
         self._consecutive_auto_reply_counter = defaultdict(int)
         self._max_consecutive_auto_reply_dict = defaultdict(self.max_consecutive_auto_reply)
         self._function_map = {} if function_map is None else function_map
+        span.set_attribute("function_map", self.function_map.__str__())
         self._default_auto_reply = default_auto_reply
         self._reply_func_list = []
         self.reply_at_receive = defaultdict(bool)
         self.register_reply([Agent, None], ConversableAgent.generate_oai_reply)
         self.register_reply([Agent, None], ConversableAgent.generate_code_execution_reply)
         self.register_reply([Agent, None], ConversableAgent.generate_function_call_reply)
-        # self.register_reply([Agent, None], ConversableAgent.generate_async_function_call_reply)
+        self.register_reply([Agent, None], ConversableAgent.generate_async_function_call_reply)
         self.register_reply([Agent, None], ConversableAgent.check_termination_and_human_reply)
-        # self.register_reply([Agent, None], ConversableAgent.a_check_termination_and_human_reply)
+        self.register_reply([Agent, None], ConversableAgent.a_check_termination_and_human_reply)
 
     @tracer.start_as_current_span("ConversableAgent.register_reply")
     def register_reply(
@@ -200,6 +235,8 @@ class ConversableAgent(Agent):
                 "reset_config": reset_config,
             },
         )
+        span = trace.get_current_span()
+        span.set_attribute("is_coroutine_function", asyncio.coroutines.iscoroutinefunction(reply_func))
 
     @property
     def system_message(self) -> Union[str, List]:
@@ -282,8 +319,11 @@ class ConversableAgent(Agent):
         else:
             return dict(message)
 
-
-    def _append_to_log(self: Self, event: Literal["message_received","message_sent", "code_executed", "reply_function_called"], message: dict | str ) -> None:
+    def _append_to_log(
+        self: Self,
+        event: Literal["message_received", "message_sent", "code_executed", "reply_function_called"],
+        message: dict | str,
+    ) -> None:
         """Append a message to the agent log.
 
         Args:
@@ -387,7 +427,9 @@ class ConversableAgent(Agent):
         span.set_attribute("agent_type", self.__class__.__name__)
         # When the agent composes and sends the message, the role of the message is "assistant"
         # unless it's "function".
-        valid = self._append_oai_message(message, "assistant", recipient) #FIXME: in main `conversation_id=recipient` which seems a bug
+        valid = self._append_oai_message(
+            message, "assistant", recipient
+        )  # FIXME: in main `conversation_id=recipient` which seems a bug
 
         if isinstance(message, dict):
             m = message.copy()
@@ -402,7 +444,6 @@ class ConversableAgent(Agent):
                 "Message can't be converted into a valid ChatCompletion message. Either content or function_call must be provided."
             )
 
-    @tracer.start_as_current_span("ConversableAgent.a_send")
     async def a_send(
         self: Self,
         message: Union[Dict, str],
@@ -442,6 +483,7 @@ class ConversableAgent(Agent):
         Raises:
             ValueError: if the message can't be converted into a valid ChatCompletion message.
         """
+        tracer.start_as_current_span("ConversableAgent.a_send")
         # When the agent composes and sends the message, the role of the message is "assistant"
         # unless it's "function".
         valid = self._append_oai_message(message, "assistant", self)
@@ -541,7 +583,6 @@ class ConversableAgent(Agent):
         if reply is not None:
             self.send(reply, sender, silent=silent)
 
-    @tracer.start_as_current_span("ConversableAgent.a_receive")
     async def a_receive(
         self,
         message: Union[Dict, str],
@@ -571,6 +612,7 @@ class ConversableAgent(Agent):
         Raises:
             ValueError: if the message can't be converted into a valid ChatCompletion message.
         """
+        tracer.start_as_current_span("ConversableAgent.a_receive")
         self._process_received_message(message, sender, silent)
         if request_reply is False or request_reply is None and self.reply_at_receive[sender] is False:
             return
@@ -614,7 +656,6 @@ class ConversableAgent(Agent):
         self._prepare_chat(recipient, clear_history)
         self.send(self.generate_init_message(**context), recipient, silent=silent)
 
-    @tracer.start_as_current_span("ConversableAgent.a_initiate_chat")
     async def a_initiate_chat(
         self,
         recipient: "ConversableAgent",
@@ -635,6 +676,7 @@ class ConversableAgent(Agent):
             **context: any context information.
                 "message" needs to be provided if the `generate_init_message` method is not overridden.
         """
+        tracer.start_as_current_span("ConversableAgent.a_initiate_chat")
         span = trace.get_current_span()
         span.set_attribute("recipient_agent.name", recipient.name)
         self._prepare_chat(recipient, clear_history)
@@ -686,6 +728,7 @@ class ConversableAgent(Agent):
     ) -> Tuple[bool, Union[str, Dict, None]]:
         """Generate a reply using autogen.oai."""
         span = trace.get_current_span()
+        span.set_attribute("config", config.__str__() if config is not None else "None")
         client = self.client if config is None else config
         if client is None:
             return False, None
@@ -700,6 +743,8 @@ class ConversableAgent(Agent):
             )
         except Exception as e:
             logging.error("Error when calling OpenAIWrapper.create:", e)
+            span.set_status(status=Status(StatusCode.ERROR, str(e)))
+            span.record_exception(e)
             return False, f"error: {e}"
 
         span.set_attribute("response.type.openai.ChatCompletion", isinstance(response, ChatCompletion))
@@ -707,7 +752,7 @@ class ConversableAgent(Agent):
             span.set_attribute("response.raw", response.model_dump_json())
 
         extracted_response = client.extract_text_or_completion_object(response)[0]
-        if not isinstance(extracted_response, str):
+        if extracted_response and not isinstance(extracted_response, str):
             extracted_response = model_dump(extracted_response)
 
         span.set_attribute("", extracted_response.__str__())
@@ -776,24 +821,7 @@ class ConversableAgent(Agent):
         config: Optional[Any] = None,
     ) -> Tuple[bool, Union[Dict, None]]:
         """Generate a reply using function call."""
-        if config is None:
-            config = self
-        if messages is None:
-            messages = self._oai_messages[sender]
-        message = messages[-1]
-        if "function_call" in message:
-            _, func_return = self.execute_function(message["function_call"])
-            return True, func_return
-        return False, None
-
-    @tracer.start_as_current_span("ConversableAgent.generate_async_function_call_reply")
-    async def generate_async_function_call_reply(
-        self,
-        messages: Optional[List[Dict]] = None,
-        sender: Optional[Agent] = None,
-        config: Optional[Any] = None,
-    ) -> Tuple[bool, Union[Dict, None]]:
-        """Generate a reply using async function call."""
+        span = trace.get_current_span()
         if config is None:
             config = self
         if messages is None:
@@ -803,11 +831,50 @@ class ConversableAgent(Agent):
             func_call = message["function_call"]
             func_name = func_call.get("name", "")
             func = self._function_map.get(func_name, None)
-            if func and asyncio.coroutines.iscoroutinefunction(func):
-                _, func_return = await self.a_execute_function(func_call)
+            span.set_attributes(
+                {
+                    "message_with_function_call": json.dumps(message),
+                    "func_call.function_name": func_name,
+                    "func_call.is_coroutine_function": asyncio.coroutines.iscoroutinefunction(func),
+                }
+            )
+            if func and not asyncio.coroutines.iscoroutinefunction(func):
+                _, func_return = self.execute_function(func_call)
                 return True, func_return
-
         return False, None
+
+    async def generate_async_function_call_reply(
+        self,
+        messages: Optional[List[Dict]] = None,
+        sender: Optional[Agent] = None,
+        config: Optional[Any] = None,
+    ) -> Tuple[bool, Union[Dict, None]]:
+        """Generate a reply using async function call."""
+        with tracer.start_as_current_span(
+            "ConversableAgent.generate_async_function_call_reply"
+        ) as span: # using decorator breaks iscoroutinefunction() checks
+
+            if config is None:
+                config = self
+            if messages is None:
+                messages = self._oai_messages[sender]
+            message = messages[-1]
+            if "function_call" in message:
+                func_call = message["function_call"]
+                func_name = func_call.get("name", "")
+                func = self._function_map.get(func_name, None)
+                span.set_attributes(
+                    {
+                        "message_with_function_call": json.dumps(message),
+                        "func_call.function_name": func_name,
+                        "func_call.is_coroutine_function": asyncio.coroutines.iscoroutinefunction(func),
+                    }
+                )
+                if func and (asyncio.coroutines.iscoroutinefunction(func) or "async" in func_name.lower()):
+                    _, func_return = await self.a_execute_function(func_call)
+                    return True, func_return
+
+            return False, None
 
     @tracer.start_as_current_span("ConversableAgent.check_termination_and_human_reply")
     def check_termination_and_human_reply(
@@ -899,7 +966,6 @@ class ConversableAgent(Agent):
 
         return False, None
 
-    @tracer.start_as_current_span("ConversableAgent.a_check_termination_and_human_reply")
     async def a_check_termination_and_human_reply(
         self,
         messages: Optional[List[Dict]] = None,
@@ -923,69 +989,71 @@ class ConversableAgent(Agent):
             - Tuple[bool, Union[str, Dict, None]]: A tuple containing a boolean indicating if the conversation
             should be terminated, and a human reply which can be a string, a dictionary, or None.
         """
-        if config is None:
-            config = self
-        if messages is None:
-            messages = self._oai_messages[sender]
-        message = messages[-1]
-        reply = ""
-        no_human_input_msg = ""
-        if self.human_input_mode == "ALWAYS":
-            reply = await self.a_get_human_input(
-                f"Provide feedback to {sender.name}. Press enter to skip and use auto-reply, or type 'exit' to end the conversation: "
-            )
-            no_human_input_msg = "NO HUMAN INPUT RECEIVED." if not reply else ""
-            # if the human input is empty, and the message is a termination message, then we will terminate the conversation
-            reply = reply if reply or not self._is_termination_msg(message) else "exit"
-        else:
-            if self._consecutive_auto_reply_counter[sender] >= self._max_consecutive_auto_reply_dict[sender]:
-                if self.human_input_mode == "NEVER":
-                    reply = "exit"
-                else:
-                    # self.human_input_mode == "TERMINATE":
-                    terminate = self._is_termination_msg(message)
-                    reply = await self.a_get_human_input(
-                        f"Please give feedback to {sender.name}. Press enter or type 'exit' to stop the conversation: "
-                        if terminate
-                        else f"Please give feedback to {sender.name}. Press enter to skip and use auto-reply, or type 'exit' to stop the conversation: "
-                    )
-                    no_human_input_msg = "NO HUMAN INPUT RECEIVED." if not reply else ""
-                    # if the human input is empty, and the message is a termination message, then we will terminate the conversation
-                    reply = reply if reply or not terminate else "exit"
-            elif self._is_termination_msg(message):
-                if self.human_input_mode == "NEVER":
-                    reply = "exit"
-                else:
-                    # self.human_input_mode == "TERMINATE":
-                    reply = await self.a_get_human_input(
-                        f"Please give feedback to {sender.name}. Press enter or type 'exit' to stop the conversation: "
-                    )
-                    no_human_input_msg = "NO HUMAN INPUT RECEIVED." if not reply else ""
-                    # if the human input is empty, and the message is a termination message, then we will terminate the conversation
-                    reply = reply or "exit"
+        with tracer.start_as_current_span("ConversableAgent.a_check_termination_and_human_reply") as span:
 
-        # print the no_human_input_msg
-        if no_human_input_msg:
-            print(colored(f"\n>>>>>>>> {no_human_input_msg}", "red"), flush=True)
+            if config is None:
+                config = self
+            if messages is None:
+                messages = self._oai_messages[sender]
+            message = messages[-1]
+            reply = ""
+            no_human_input_msg = ""
+            if self.human_input_mode == "ALWAYS":
+                reply = await self.a_get_human_input(
+                    f"Provide feedback to {sender.name}. Press enter to skip and use auto-reply, or type 'exit' to end the conversation: "
+                )
+                no_human_input_msg = "NO HUMAN INPUT RECEIVED." if not reply else ""
+                # if the human input is empty, and the message is a termination message, then we will terminate the conversation
+                reply = reply if reply or not self._is_termination_msg(message) else "exit"
+            else:
+                if self._consecutive_auto_reply_counter[sender] >= self._max_consecutive_auto_reply_dict[sender]:
+                    if self.human_input_mode == "NEVER":
+                        reply = "exit"
+                    else:
+                        # self.human_input_mode == "TERMINATE":
+                        terminate = self._is_termination_msg(message)
+                        reply = await self.a_get_human_input(
+                            f"Please give feedback to {sender.name}. Press enter or type 'exit' to stop the conversation: "
+                            if terminate
+                            else f"Please give feedback to {sender.name}. Press enter to skip and use auto-reply, or type 'exit' to stop the conversation: "
+                        )
+                        no_human_input_msg = "NO HUMAN INPUT RECEIVED." if not reply else ""
+                        # if the human input is empty, and the message is a termination message, then we will terminate the conversation
+                        reply = reply if reply or not terminate else "exit"
+                elif self._is_termination_msg(message):
+                    if self.human_input_mode == "NEVER":
+                        reply = "exit"
+                    else:
+                        # self.human_input_mode == "TERMINATE":
+                        reply = await self.a_get_human_input(
+                            f"Please give feedback to {sender.name}. Press enter or type 'exit' to stop the conversation: "
+                        )
+                        no_human_input_msg = "NO HUMAN INPUT RECEIVED." if not reply else ""
+                        # if the human input is empty, and the message is a termination message, then we will terminate the conversation
+                        reply = reply or "exit"
 
-        # stop the conversation
-        if reply == "exit":
-            # reset the consecutive_auto_reply_counter
-            self._consecutive_auto_reply_counter[sender] = 0
-            return True, None
+            # print the no_human_input_msg
+            if no_human_input_msg:
+                print(colored(f"\n>>>>>>>> {no_human_input_msg}", "red"), flush=True)
 
-        # send the human reply
-        if reply or self._max_consecutive_auto_reply_dict[sender] == 0:
-            # reset the consecutive_auto_reply_counter
-            self._consecutive_auto_reply_counter[sender] = 0
-            return True, reply
+            # stop the conversation
+            if reply == "exit":
+                # reset the consecutive_auto_reply_counter
+                self._consecutive_auto_reply_counter[sender] = 0
+                return True, None
 
-        # increment the consecutive_auto_reply_counter
-        self._consecutive_auto_reply_counter[sender] += 1
-        if self.human_input_mode != "NEVER":
-            print(colored("\n>>>>>>>> USING AUTO REPLY...", "red"), flush=True)
+            # send the human reply
+            if reply or self._max_consecutive_auto_reply_dict[sender] == 0:
+                # reset the consecutive_auto_reply_counter
+                self._consecutive_auto_reply_counter[sender] = 0
+                return True, reply
 
-        return False, None
+            # increment the consecutive_auto_reply_counter
+            self._consecutive_auto_reply_counter[sender] += 1
+            if self.human_input_mode != "NEVER":
+                print(colored("\n>>>>>>>> USING AUTO REPLY...", "red"), flush=True)
+
+            return False, None
 
     @tracer.start_as_current_span("ConversableAgent.generate_reply")
     def generate_reply(
@@ -1031,27 +1099,42 @@ class ConversableAgent(Agent):
         span.set_attribute("message_history", json.dumps(messages))
         for reply_func_tuple in self._reply_func_list:
             reply_func = reply_func_tuple["reply_func"]
-            if exclude and reply_func in exclude:
-                continue
-            import inspect
 
-            if inspect.iscoroutinefunction(reply_func):
-                continue
+            reply_func_not_excluded: bool = (exclude and reply_func in exclude) is not True
+
             sender_matches_trigger = self._match_trigger(reply_func_tuple["trigger"], sender)
-            if sender_matches_trigger:
-                print(
-                    f"reply_func `{reply_func.__name__}` is a coroutine function: {inspect.iscoroutinefunction(reply_func)}"
-                )
-                final, reply = reply_func(self, messages=messages, sender=sender, config=reply_func_tuple["config"])
-                span.add_event(
-                    "reply_func.sender_match_trigger",
-                    attributes={
-                        "reply_func.name": reply_func.__name__,
-                        "reply_func.is_coroutine": inspect.iscoroutinefunction(reply_func),
-                        "reply_func.is_final": final,
-                        "reply_func.reply_content": reply,
-                    },
-                )
+            span.add_event(
+                name=f"reply_func.{reply_func.__name__}",
+                attributes={
+                    "reply_func.is_coroutine_function": asyncio.coroutines.iscoroutinefunction(reply_func),
+                    "reply_func.name": reply_func.__name__,
+                    "reply_func.sender_matches_trigger": sender_matches_trigger,
+                    "reply_func.is_excluded": not reply_func_not_excluded,
+                },
+            )
+            if sender_matches_trigger and reply_func_not_excluded:
+                if asyncio.coroutines.iscoroutinefunction(reply_func):
+                    final, reply = asyncio.run(
+                        reply_func(self, messages=messages, sender=sender, config=reply_func_tuple["config"])
+                    )
+                    span.add_event(
+                        f"reply_func.sync.{reply_func.__name__}.executed",
+                        attributes={
+                            "reply_func.name": reply_func.__name__,
+                            "reply_func.is_final": final,
+                            "reply_func.reply_content": reply,
+                        },
+                    )
+                else:
+                    final, reply = reply_func(self, messages=messages, sender=sender, config=reply_func_tuple["config"])
+                    span.add_event(
+                        f"reply_func.async.{reply_func.__name__}.executed",
+                        attributes={
+                            "reply_func.name": reply_func.__name__,
+                            "reply_func.is_final": final,
+                            "reply_func.reply_content": reply,
+                        },
+                    )
                 if final:
                     span.set_attribute("reply.is_default_reply", "False")
                     span.set_attribute("reply.content", reply)
@@ -1060,7 +1143,6 @@ class ConversableAgent(Agent):
         span.set_attribute("reply.content", json.dumps(self._default_auto_reply))
         return self._default_auto_reply
 
-    @tracer.start_as_current_span("ConversableAgent.a_generate_reply")
     async def a_generate_reply(
         self,
         messages: Optional[List[Dict]] = None,
@@ -1092,6 +1174,7 @@ class ConversableAgent(Agent):
         Returns:
             str or dict or None: reply. None if no reply is generated.
         """
+        tracer.start_as_current_span("ConversableAgent.a_generate_reply")
         if all((messages is None, sender is None)):
             error_msg = f"Either {messages=} or {sender=} must be provided."
             logger.error(error_msg)
@@ -1162,7 +1245,6 @@ class ConversableAgent(Agent):
         reply = input(prompt)
         return reply
 
-    @tracer.start_as_current_span("ConversableAgent.a_get_human_input")
     async def a_get_human_input(self, prompt: str) -> str:
         """(Async) Get human input.
 
@@ -1174,6 +1256,7 @@ class ConversableAgent(Agent):
         Returns:
             str: human input.
         """
+        tracer.start_as_current_span("ConversableAgent.a_get_human_input")
         reply = input(prompt)
         return reply
 
@@ -1297,18 +1380,26 @@ class ConversableAgent(Agent):
             is_exec_success (boolean): whether the execution is successful.
             result_dict: a dictionary with keys "name", "role", and "content". Value of "role" is "function".
         """
+        span = trace.get_current_span()
+
         func_name = func_call.get("name", "")
         func = self._function_map.get(func_name, None)
-
+        span.set_attribute("func_call", func_call.__str__() if func_call is not None else "None")
+        span.set_attribute("func_call.func_name", func_name)
+        span.set_attribute("func_call.func", func.__str__() if func is not None else "None")
         is_exec_success = False
         if func is not None:
             # Extract arguments from a json-like string and put it into a dict.
             input_string = self._format_json_str(func_call.get("arguments", "{}"))
             try:
                 arguments = json.loads(input_string)
+                span.set_attribute("func_call.arguments", input_string)
             except json.JSONDecodeError as e:
                 arguments = None
-                content = f"Error: {e}\n You argument should follow json format."
+                span.set_attribute("func_call.arguments", "None")
+                content = f"Error: {e}\n Your argument should follow json format."
+                span.set_status(status=Status(StatusCode.ERROR, str(e)))
+                span.record_exception(e)
 
             # Try to execute the function
             if arguments is not None:
@@ -1317,12 +1408,19 @@ class ConversableAgent(Agent):
                     flush=True,
                 )
                 try:
+                    get_or_create_python_eventloop() #hack
                     content = func(**arguments)
                     is_exec_success = True
+                    span.set_attribute("func_call.is_exec_success", is_exec_success)
                 except Exception as e:
-                    content = f"Error: {e}"
+                    content = f"Error1: {e}"
+                    span.set_status(status=Status(StatusCode.ERROR, str(e)))
+                    span.record_exception(e)
         else:
             content = f"Error: Function {func_name} not found."
+            span.set_status(status=Status(StatusCode.ERROR, content))
+
+        span.set_attribute("func_call.return_content", content if content else "None")
 
         if verbose:
             print(
@@ -1336,7 +1434,6 @@ class ConversableAgent(Agent):
             "content": str(content),
         }
 
-    @tracer.start_as_current_span("ConversableAgent.a_execute_function")
     async def a_execute_function(self, func_call):
         """Execute an async function call and return the result.
 
@@ -1350,42 +1447,50 @@ class ConversableAgent(Agent):
             is_exec_success (boolean): whether the execution is successful.
             result_dict: a dictionary with keys "name", "role", and "content". Value of "role" is "function".
         """
-        func_name = func_call.get("name", "")
-        func = self._function_map.get(func_name, None)
+        with tracer.start_as_current_span("ConversableAgent.a_execute_function") as span:
+            func_name = func_call.get("name", "")
+            func = self._function_map.get(func_name, None)
 
-        is_exec_success = False
-        if func is not None:
-            # Extract arguments from a json-like string and put it into a dict.
-            input_string = self._format_json_str(func_call.get("arguments", "{}"))
-            try:
-                arguments = json.loads(input_string)
-            except json.JSONDecodeError as e:
-                arguments = None
-                content = f"Error: {e}\n You argument should follow json format."
-
-            # Try to execute the function
-            if arguments is not None:
-                print(
-                    colored(f"\n>>>>>>>> EXECUTING ASYNC FUNCTION {func_name}...", "magenta"),
-                    flush=True,
-                )
+            is_exec_success = False
+            if func is not None:
+                # Extract arguments from a json-like string and put it into a dict.
+                input_string = self._format_json_str(func_call.get("arguments", "{}"))
                 try:
-                    if asyncio.coroutines.iscoroutinefunction(func):
-                        content = await func(**arguments)
-                    else:
-                        # Fallback to sync function if the function is not async
-                        content = func(**arguments)
-                    is_exec_success = True
-                except Exception as e:
-                    content = f"Error: {e}"
-        else:
-            content = f"Error: Function {func_name} not found."
+                    arguments = json.loads(input_string)
+                except json.JSONDecodeError as e:
+                    arguments = None
+                    content = f"Error: {e}\n You argument should follow json format."
+                    span.set_status(status=Status(StatusCode.ERROR, str(e)))
+                    span.record_exception(e)
 
-        return is_exec_success, {
-            "name": func_name,
-            "role": "function",
-            "content": str(content),
-        }
+                # Try to execute the function
+                if arguments is not None:
+                    print(
+                        colored(f"\n>>>>>>>> EXECUTING ASYNC FUNCTION {func_name}...", "magenta"),
+                        flush=True,
+                    )
+                    try:
+                        span.set_attribute("func_call.arguments", input_string)
+                        #TODO: figure out why async skill functions are not being recognised as coroutines
+                        if asyncio.coroutines.iscoroutinefunction(func) or "async" in func_name.lower():
+                            content = await func(**arguments)
+                        else:
+                            # Fallback to sync function if the function is not async
+                            content = func(**arguments)
+                        is_exec_success = True
+                        span.set_attribute("func_call.is_exec_success", is_exec_success)
+                    except Exception as e:
+                        content = f"Error2: {e}"
+                        span.set_status(status=Status(StatusCode.ERROR, str(e)))
+                        span.record_exception(e)
+            else:
+                content = f"Error: Function {func_name} not found."
+
+            return is_exec_success, {
+                "name": func_name,
+                "role": "function",
+                "content": str(content),
+            }
 
     @tracer.start_as_current_span("ConversableAgent.generate_init_message")
     def generate_init_message(self, **context) -> Union[str, Dict]:

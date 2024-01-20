@@ -1,10 +1,31 @@
+"""Agent related utils."""
+
 import ast
 import base64
 import hashlib
+import logging
 import os
 import re
 import shutil
 from typing import Dict, List, Tuple, Union
+
+from ..model_selection.main import LlmUsageSettings
+
+
+def get_autogen_llm_config(chat_model_settings: LlmUsageSettings) -> Dict[str, str]:
+    """Get the default LLM config for Autogen.
+
+    :return: A list of dictionaries containing the LLM config for Autogen.
+    """
+    sc = chat_model_settings.service_instance_config
+
+    return {
+            "model": sc.model_deployment_name.__str__(),
+            "api_key":  sc.api_key or "",
+            "base_url": sc.api_base or "",
+            "api_type": sc.api_type or "azure",
+            "api_version": "2023-07-01-preview" #"2023-10-01-preview",
+        }
 
 
 def md5_hash(text: str) -> str:
@@ -226,9 +247,6 @@ def delete_files_in_folder(folders: Union[str, List[str]]) -> None:
                 print(f"Failed to delete {path}. Reason: {e}")
 
 
-
-
-
 def extract_successful_code_blocks(messages: List[Dict[str, str]]) -> List[str]:
     """Parses through a list of messages containing code blocks and execution statuses,.
 
@@ -246,8 +264,8 @@ def extract_successful_code_blocks(messages: List[Dict[str, str]]) -> List[str]:
     code_block_regex = r"```[\s\S]*?```"
 
     for i, message in enumerate(messages):
-        #message = row["message"]
-        if message["role"] == "assistant" and "execution succeeded" in message["content"]:  # noqa: SIM102
+        # message = row["message"]
+        if message["role"] == "assistant" and message["content"] and "execution succeeded" in message["content"]:  # noqa: SIM102
             if i > 0 and messages[i - 1]["role"] == "user":
                 prev_content = messages[i - 1]["content"]
                 print("prev_content: ", prev_content)
@@ -257,7 +275,6 @@ def extract_successful_code_blocks(messages: List[Dict[str, str]]) -> List[str]:
                 successful_code_blocks.extend(code_blocks)
 
     return successful_code_blocks
-
 
 
 def create_skills_from_code(dest_dir: str, skills: Union[str, List[str]]) -> None:
@@ -310,23 +327,60 @@ def create_skills_from_code(dest_dir: str, skills: Union[str, List[str]]) -> Non
         with open(skill_file_path, "w", encoding="utf-8") as f:
             f.write(skill)
 
+
 def extract_last_useful_message(messages: List[Dict[str, str]]) -> dict[str, str]:
-  """Extract the last useful message from a list of messages.
+    """Extract the last useful message from a list of messages.
 
-  Parameters:
-  messages (List[Dict[str, str]]): A list of message dictionaries containing 'content' and 'role' keys.
+    Parameters:
+    messages (List[Dict[str, str]]): A list of message dictionaries containing 'content' and 'role' keys.
 
-  Returns:
-  Dict[str, str]: A dictionary containing the last useful message.
-  """
-  # reverse order and remove messages with empty content
-  messages_reverse_order = [message for message in reversed(messages) if message["content"] != ""]
+    Returns:
+    Dict[str, str]: A dictionary containing the last useful message.
+    """
+    # reverse order and remove messages with empty content
+    messages_reverse_order = [message for message in reversed(messages) if message["content"] != ""]
 
-  last_useful_message = {}
-  #messages_reverse_order = messages[::-1]  # reverse the order of the messages list
-  for i, message in enumerate(messages_reverse_order):
-    if message["role"] == "assistant":  # noqa: SIM102
-        if "execution succeeded" in message["content"]:
-            last_useful_message = messages_reverse_order[i]
-            continue
-  return last_useful_message
+    last_useful_message = {}
+    # messages_reverse_order = messages[::-1]  # reverse the order of the messages list
+    for i, message in enumerate(messages_reverse_order):
+        if message["role"] == "assistant" and message["content"]:  # noqa: SIM102
+            if "execution succeeded" in message["content"]:  # noqa: SIM114
+                last_useful_message = messages_reverse_order[i]
+                continue
+            elif "TERMINATE" in message["content"]:
+                previous_message_i = i + 1
+                if previous_message_i < len(messages_reverse_order):
+                    last_useful_message = messages_reverse_order[previous_message_i]
+                continue
+    return last_useful_message
+
+def get_or_create_python_eventloop():
+    """Get the current event loop or create a new one if there isn't one. Need this hack because of the way the Streamlit works.
+
+    If you get the error "There is no current event loop in thread 'ScriptRunner.scriptThread'" when calling an async function then call this function first.
+    Usage:
+
+    ```python
+        loop = get_or_create_python_eventloop()
+        loop.run_until_complete(async_function())
+    ```
+
+    or
+
+    ```python
+        get_or_create_python_eventloop()
+        await async_function()
+    ```
+
+    """
+    try:
+        import asyncio
+    except ImportError:
+        logging.warning("Package 'asyncio' not available.")
+    try:
+        return asyncio.get_event_loop()
+    except RuntimeError as ex:
+        if "There is no current event loop in thread" in str(ex):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return asyncio.get_event_loop()

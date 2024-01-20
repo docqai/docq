@@ -4,17 +4,23 @@ import os
 import time
 from typing import Dict, List
 
-import autogen
+import semantic_kernel
+
+# from autogen import AssistantAgent, UserProxyAgent
 from docq.model_selection.main import ModelCapability, get_model_settings_collection
 from opentelemetry import trace
 
 from .assistant_agent import AssistantAgent
+
+# from .assistant_agent import AssistantAgent
 from .datamodels import Message
-from .skills_utils import generate_prompt_from_skills, generate_skills_python_file, skills
 from .user_proxy_agent import UserProxyAgent
+
+# from .user_proxy_agent import UserProxyAgent
 from .utils import (
     extract_last_useful_message,
     extract_successful_code_blocks,
+    get_autogen_llm_config,
     get_modified_files,
     init_webserver_folders,
     md5_hash,
@@ -31,15 +37,17 @@ config_list: List[Dict[str, str]] = []
 
 chat_model_settings = get_model_settings_collection("azure_openai_latest").model_usage_settings[ModelCapability.CHAT]
 
-config_list.append(
-    {
-        "model": chat_model_settings.model_deployment_name.__str__(),
-        "api_key": os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
-        "base_url": os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
-        "api_type": "azure",
-        "api_version": os.getenv("DOCQ_AZURE_OPENAI_API_VERSION") or "2023-07-01-preview",
-    }
-)
+# config_list.append(
+#     {
+#         "model": chat_model_settings.service_instance_config.model_deployment_name.__str__(),
+#         "api_key": os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
+#         "base_url": os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
+#         "api_type": "azure",
+#         "api_version": os.getenv("DOCQ_AZURE_OPENAI_API_VERSION") or "2023-07-01-preview",
+#     }
+# )
+
+config_list.append(get_autogen_llm_config(chat_model_settings))
 
 # You can also set config_list directly as a list, for example, config_list = [{'model': 'gpt-4', 'api_key': '<your OpenAI API key here>'},]
 
@@ -71,53 +79,71 @@ Reply "TERMINATE" in the end when everything is done.
 folders = init_webserver_folders("./.persisted/agents/")
 
 
-USER_PROXY_INSTRUCTIONS = """If the request has been addressed sufficiently, summarize the answer and end with the word TERMINATE. Otherwise, ask a follow-up question.
-        """
+USER_PROXY_INSTRUCTIONS = """If the request has been addressed sufficiently, summarize the answer and end with the word TERMINATE. Otherwise, ask a follow-up question."""
 
 current_user_id_thread_id = "user_id_plus_threadid_goes_here_12345"
 user_dir = os.path.join(folders["files_static_root"], "user", md5_hash(current_user_id_thread_id))
 os.makedirs(user_dir, exist_ok=True)
 scratch_dir = os.path.join(user_dir, "scratch")
 
-# skills = get_all_skills(
-#         os.path.join(folders["user_skills_dir"], md5_hash(current_user_id_thread_id)),
-#         folders["global_skills_dir"],
-#         dest_dir=os.path.join(user_dir, "scratch"),
-#     )
-generate_skills_python_file(skills, scratch_dir)
 
-skills_suffix = generate_prompt_from_skills(skills)
+# DEFAULT_AGENT_REQUEST = "Plot a chart of NVDA and TESLA stock price YTD. Save the result to a file named nvda_tesla.png"
+DEFAULT_AGENT_REQUEST = "What's the weather in London today?"
 
-DEFAULT_AGENT_REQUEST = "Plot a chart of NVDA and TESLA stock price YTD. Save the result to a file named nvda_tesla.png"
+
+#from semantic_kernel.connectors.search_engine import BingConnector
+#from semantic_kernel.core_skills import ConversationSummarySkill, HttpSkill, TextSkill, TimeSkill
+from ..llm_plugins.openai.sk_bing_plugin import BingPlugin
+from ..llm_plugins.openai.sk_web_pages_plugin import WebPagesPlugin
+from ..llm_plugins.openai.weather_plugin import WeatherPlugin
+from .semantic_kernel_utils import (
+    ASSISTANT_PERSONA,
+    generate_autogen_llm_config,
+    get_autogen_function_map,
+)
+
 
 @tracer.start_as_current_span("run_agent")
-def run_agent(user_request_message: str = DEFAULT_AGENT_REQUEST) -> Message: #Dict[Agent, List[Dict]]: #List[dict]:
+def run_agent(user_request_message: str = DEFAULT_AGENT_REQUEST) -> Message:  # Dict[Agent, List[Dict]]: #List[dict]:
     """Run the agent."""
+    bing_search_api_key = os.getenv("DOCQ_BING_SEARCH_API_KEY") or ""
+    kernel = semantic_kernel.Kernel()
+    kernel.import_skill(BingPlugin(bing_search_api_key))
+    kernel.import_skill(WebPagesPlugin())
+    kernel.import_skill(WeatherPlugin())
+    # bing_connector = BingConnector(bing_search_api_key)
+    # kernel.import_skill(WebSearchEngineSkill(bing_connector), "web_search_engine")
+    # kernel.import_skill(ConversationSummarySkill(kernel), "conversation_summary")
+    # kernel.import_skill(HttpSkill(), "http")
+    # kernel.import_skill(TextSkill(), "text")
+    # kernel.import_skill(TimeSkill(), "time")
+
     assistant = AssistantAgent(
         "assistant1",
-        llm_config={"config_list": config_list},
-        system_message=autogen.AssistantAgent.DEFAULT_SYSTEM_MESSAGE + skills_suffix,
+        llm_config= generate_autogen_llm_config(chat_model_settings, kernel),
+        system_message=ASSISTANT_PERSONA,
     )
 
-
-    user_proxy = UserProxyAgent(
-        "user_proxy1",
+    worker = UserProxyAgent(
+        "worker",
         code_execution_config={"work_dir": scratch_dir, "use_docker": False},
         human_input_mode="NEVER",
+        llm_config=get_autogen_llm_config(chat_model_settings),
         # default_auto_reply="make sure code is properly formatted with code fences. If the result was generated correctly then terminate.",
-        max_consecutive_auto_reply=15,
+        max_consecutive_auto_reply=5,
+        function_map=get_autogen_function_map(kernel),
         system_message=USER_PROXY_INSTRUCTIONS,
-        is_termination_msg=lambda x: x.get("content", "").rstrip().endswith(("TERMINATE", "goodbye", "bye", "thanks", "thank you")),
     )
 
+
     start_time = time.time()
-    user_proxy.initiate_chat(
+    worker.initiate_chat(
         assistant,
         message=user_request_message,
     )
-    #return user_proxy._agent_log
+
     metadata = {}
-    agent_chat_messages = user_proxy.chat_messages[assistant] #[len(history) :]
+    agent_chat_messages = worker.chat_messages[assistant]  # [len(history) :]
     metadata["messages"] = agent_chat_messages
 
     successful_code_blocks = extract_successful_code_blocks(agent_chat_messages)
@@ -125,19 +151,22 @@ def run_agent(user_request_message: str = DEFAULT_AGENT_REQUEST) -> Message: #Di
     last_message = extract_last_useful_message(agent_chat_messages)
 
     print("Last message: ", last_message)
+
     print("Successful code blocks: ", successful_code_blocks)
     output = "<empty>"
     if last_message:
-      output = (
-          (last_message["content"] + "\n" + successful_code_blocks)
-          if successful_code_blocks
-          else last_message["content"]
-      )
+        output = (
+            (last_message["content"] + "\n" + successful_code_blocks)
+            if successful_code_blocks
+            else last_message["content"]
+        )
 
     metadata["code"] = ""
     end_time = time.time()
     metadata["time"] = end_time - start_time
-    modified_files = get_modified_files(start_timestamp=start_time, end_timestamp=end_time, source_dir=scratch_dir, dest_dir=user_dir)
+    modified_files = get_modified_files(
+        start_timestamp=start_time, end_timestamp=end_time, source_dir=scratch_dir, dest_dir=user_dir
+    )
     metadata["files"] = modified_files
 
     print("Modified files: ", len(modified_files))
@@ -153,4 +182,4 @@ def run_agent(user_request_message: str = DEFAULT_AGENT_REQUEST) -> Message: #Di
 
     return output_message
 
-    #return user_proxy.chat_messages
+    # return user_proxy.chat_messages
