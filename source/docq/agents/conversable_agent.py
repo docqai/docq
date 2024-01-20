@@ -13,6 +13,8 @@ from openai.types.chat import ChatCompletion
 from openai.types.completion import Completion
 from opentelemetry import trace
 
+from ..support.pydantic import model_dump
+
 try:
     from termcolor import colored
 except ImportError:
@@ -691,6 +693,7 @@ class ConversableAgent(Agent):
             messages = self._oai_messages[sender]
 
         # TODO: #1143 handle token limit exceeded error
+        response = None
         try:
             response = client.create(
                 context=messages[-1].pop("context", None), messages=self._oai_system_message + messages
@@ -703,10 +706,13 @@ class ConversableAgent(Agent):
         if isinstance(response, ChatCompletion):
             span.set_attribute("response.raw", response.model_dump_json())
 
-        reply = client.extract_text_or_function_call(response)[0]
-        span.set_attribute("", reply)
+        extracted_response = client.extract_text_or_completion_object(response)[0]
+        if not isinstance(extracted_response, str):
+            extracted_response = model_dump(extracted_response)
 
-        return True, reply
+        span.set_attribute("", extracted_response.__str__())
+
+        return True, extracted_response
 
     @tracer.start_as_current_span("ConversableAgent.generate_code_execution_reply")
     def generate_code_execution_reply(
@@ -740,6 +746,7 @@ class ConversableAgent(Agent):
         # iterate through the last n messages reversly
         # if code blocks are found, execute the code blocks and return the output
         # if no code blocks are found, continue
+        span.add_event("Extract code blocks from messages", attributes={"message_history": json.dumps(messages)})
         for i in range(min(len(messages), messages_to_scan)):
             message = messages[-(i + 1)]
             if not message["content"]:
@@ -754,7 +761,7 @@ class ConversableAgent(Agent):
             exitcode, logs = self.execute_code_blocks(code_blocks)
             code_execution_config["last_n_messages"] = last_n_messages
             exitcode2str = "execution succeeded" if exitcode == 0 else "execution failed"
-            return True, f"exitcode: {exitcode} ({exitcode2str})\nCode output: {logs}"
+            return True, f"exitcode: {exitcode} ({exitcode2str})\n\nCode output: {logs}"
 
         # no code blocks are found, push last_n_messages back and return.
         code_execution_config["last_n_messages"] = last_n_messages
@@ -1193,6 +1200,8 @@ class ConversableAgent(Agent):
     def execute_code_blocks(self, code_blocks):
         """Execute the code blocks and return the result."""
         logs_all = ""
+        span = trace.get_current_span()
+        span.set_attribute("code_blocks", json.dumps(code_blocks))
         for i, code_block in enumerate(code_blocks):
             with tracer.start_as_current_span(f"executing code block {i}") as code_block_span:
                 lang, code = code_block
@@ -1224,8 +1233,8 @@ class ConversableAgent(Agent):
                 else:
                     # In case the language is not supported, we return an error message.
                     exitcode, logs, image = (
-                        1,
-                        f"unknown language {lang}",
+                        0,
+                        f"unknown language '{lang}', ignored.",
                         None,
                     )
                     # raise NotImplementedError

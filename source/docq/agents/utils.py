@@ -196,85 +196,6 @@ def init_webserver_folders(root_file_path: str) -> Dict[str, str]:
     return folders
 
 
-def skill_from_folder(folder: str) -> List[Dict[str, str]]:
-    """Given a folder, return a dict of the skill (name, python file content). Only python files are considered.
-
-    :param folder: The folder to search for skills
-    :return: A list of dictionaries, each representing a skill
-    """
-    skills = []
-    for root, dirs, files in os.walk(folder):
-        for file in files:
-            if file.endswith(".py"):
-                skill_name = file.split(".")[0]
-                skill_file_path = os.path.join(root, file)
-                with open(skill_file_path, "r", encoding="utf-8") as f:
-                    skill_content = f.read()
-                skills.append({"name": skill_name, "content": skill_content, "file_name": file})
-    return skills
-
-
-def get_all_skills(user_skills_path: str, global_skills_path: str, dest_dir: str = None) -> Dict[str, List[Dict[str,str]]]:
-    """Get all skills from the user and global skills directories. If dest_dir, copy all skills to dest_dir.
-
-    :param user_skills_path: The path to the user skills directory
-    :param global_skills_path: The path to the global skills directory
-    :param dest_dir: The destination directory to copy all skills to
-    :return: A dictionary of user and global skills
-    """
-    user_skills = skill_from_folder(user_skills_path)
-    os.makedirs(user_skills_path, exist_ok=True)
-    global_skills = skill_from_folder(global_skills_path)
-    skills = {
-        "user": user_skills,
-        "global": global_skills,
-    }
-
-    if dest_dir:
-        # chcek if dest_dir exists
-        if not os.path.exists(dest_dir):
-            os.makedirs(dest_dir)
-        # copy all skills to dest_dir
-        for skill in user_skills + global_skills:
-            skill_file_path = os.path.join(dest_dir, skill["file_name"])
-            with open(skill_file_path, "w", encoding="utf-8") as f:
-                f.write(skill["content"])
-
-    return skills
-
-
-def get_skills_prompt(skills: Dict[str, List[Dict[str, str]]]) -> str:
-    """Get a prompt with the content of all skills.
-
-    :param skills: A dictionary of user and global skills
-    :return: A string containing the content of all skills
-    """
-    user_skills = skills["user"]
-    global_skills = skills["global"]
-    all_skills = user_skills + global_skills
-
-    prompt = """
-
-While solving the task you may use functions in the files below.
-To use a function from a file in code, import the file and then use the function.
-If you need to install python packages, write shell code to
-install via pip and use --quiet option.
-
-         """
-    for skill in all_skills:
-        prompt += f"""
-
-##### Begin of {skill["file_name"]} #####
-
-{skill["content"]}
-
-#### End of {skill["file_name"]} ####
-
-        """
-
-    return prompt
-
-
 def delete_files_in_folder(folders: Union[str, List[str]]) -> None:
     """Delete all files and directories in the specified folders.
 
@@ -305,52 +226,14 @@ def delete_files_in_folder(folders: Union[str, List[str]]) -> None:
                 print(f"Failed to delete {path}. Reason: {e}")
 
 
-# def get_default_agent_config(work_dir: str, skills_suffix: str = "") -> AgentWorkFlowConfig:
-#     """Get a default agent flow config."""
-#     llm_config = LLMConfig(
-#         config_list=[{"model": "gpt-4"}],
-#         temperature=0,
-#     )
 
-#     USER_PROXY_INSTRUCTIONS = """If the request has been addressed sufficiently, summarize the answer and end with the word TERMINATE. Otherwise, ask a follow-up question."""
-
-#     userproxy_spec = AgentFlowSpec(
-#         type="userproxy",
-#         config=AgentConfig(
-#             name="user_proxy",
-#             human_input_mode="NEVER",
-#             system_message=USER_PROXY_INSTRUCTIONS,
-#             code_execution_config={
-#                 "work_dir": work_dir,
-#                 "use_docker": False,
-#             },
-#             max_consecutive_auto_reply=10,
-#             llm_config=llm_config,
-#             is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
-#         ),
-#     )
-
-#     assistant_spec = AgentFlowSpec(
-#         type="assistant",
-#         config=AgentConfig(
-#             name="primary_assistant",
-#             system_message=autogen.AssistantAgent.DEFAULT_SYSTEM_MESSAGE + skills_suffix,
-#             llm_config=llm_config,
-#         ),
-#     )
-
-#     flow_config = AgentWorkFlowConfig(
-#         name="default",
-#         sender=userproxy_spec,
-#         receiver=assistant_spec,
-#         type="default",
-#     )
-
-#     return flow_config
 
 
 def extract_successful_code_blocks(messages: List[Dict[str, str]]) -> List[str]:
-    """Parses through a list of messages containing code blocks and execution statuses, returning the array of code blocks that executed successfully and retains the backticks for Markdown rendering.
+    """Parses through a list of messages containing code blocks and execution statuses,.
+
+    returning the array of code blocks that executed successfully and retains
+    the backticks for Markdown rendering.
 
     Parameters:
     messages (List[Dict[str, str]]): A list of message dictionaries containing 'content' and 'role' keys.
@@ -359,17 +242,22 @@ def extract_successful_code_blocks(messages: List[Dict[str, str]]) -> List[str]:
     List[str]: A list containing the code blocks that were successfully executed, including backticks.
     """
     successful_code_blocks = []
-    code_block_regex = r"```[\s\S]*?```"  # Regex pattern to capture code blocks enclosed in triple backticks.
+    # Regex pattern to capture code blocks enclosed in triple backticks.
+    code_block_regex = r"```[\s\S]*?```"
 
     for i, message in enumerate(messages):
-        if message["role"] == "user" and "execution succeeded" in message["content"]:  # noqa: SIM102
-            if i > 0 and messages[i - 1]["role"] == "assistant":
+        #message = row["message"]
+        if message["role"] == "assistant" and "execution succeeded" in message["content"]:  # noqa: SIM102
+            if i > 0 and messages[i - 1]["role"] == "user":
                 prev_content = messages[i - 1]["content"]
+                print("prev_content: ", prev_content)
                 # Find all matches for code blocks
                 code_blocks = re.findall(code_block_regex, prev_content)
-                successful_code_blocks.extend(code_blocks)  # Add the code blocks with backticks
+                # Add the code blocks with backticks
+                successful_code_blocks.extend(code_blocks)
 
     return successful_code_blocks
+
 
 
 def create_skills_from_code(dest_dir: str, skills: Union[str, List[str]]) -> None:
@@ -439,6 +327,6 @@ def extract_last_useful_message(messages: List[Dict[str, str]]) -> dict[str, str
   for i, message in enumerate(messages_reverse_order):
     if message["role"] == "assistant":  # noqa: SIM102
         if "execution succeeded" in message["content"]:
-            last_useful_message = messages_reverse_order[i - 1]
+            last_useful_message = messages_reverse_order[i]
             continue
   return last_useful_message
