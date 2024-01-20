@@ -963,6 +963,7 @@ def chat_ui(feature: FeatureKey) -> None:
 
                 agent_output = None
                 with contextlib.suppress(Exception):
+                    #TODO: this is a hack. A data structure with a pydantic model should be implemented to replace the list of tuples.
                     # agent messages are serialised Message dataclass. Other messages are str.
                     _x = json.loads(x[1])
                     agent_output = Message(

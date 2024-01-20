@@ -612,27 +612,9 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
         user_request_message = req.split("/agent")[1].strip()
         data.append((user_request_message, True, datetime.now(), thread_id))
         output_message = run_agent() if user_request_message == "" else run_agent(user_request_message)
-        #TODO: when we have dynamically created agents, each will have a user_id which will replace the hardcoded system user_id=0
         data.append((RootModel[Message](output_message).model_dump_json(), False, datetime.now(), thread_id))
-        print(f">>>{data}")
         result = run_queries._save_messages(data, feature)
 
-        # print(f">>>{data}")
-        # for i, item in enumerate(data):
-        #     with contextlib.suppress(Exception):
-        #         #print(f">>>{item[1]}")
-        #         j = json.loads(item[1])
-        #         #data[i][1] = RootModel[Message](output_message).model_validate_json(item[1])
-        #         print(f"===={Message}")
-        #         data[i][1] = Message(**j)
-
-        # j = RootModel[Message](output_message).model_dump_json()
-        # print(j)
-        # js = json.loads(j)
-        # m = Message(**js)
-
-
-        
     else:
         spaces = None
         if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
