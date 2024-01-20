@@ -17,6 +17,7 @@ from .conversable_agent import ConversableAgent
 from .datamodels import AgentConfig, AgentFlowSpec, AgentWorkFlowConfig, LLMConfig, Message
 from .user_proxy_agent import UserProxyAgent
 from .utils import (
+    extract_last_useful_message,
     extract_successful_code_blocks,
     get_all_skills,
     get_default_agent_config,
@@ -80,8 +81,10 @@ skills = get_all_skills(
 
 skills_suffix = get_skills_prompt(skills)
 
+DEFAULT_AGENT_REQUEST = "Plot a chart of NVDA and TESLA stock price YTD. Save the result to a file named nvda_tesla.png"
+
 @tracer.start_as_current_span("run_agent")
-def run_agent() -> Message: #Dict[Agent, List[Dict]]: #List[dict]:
+def run_agent(user_request_message: str = DEFAULT_AGENT_REQUEST) -> Message: #Dict[Agent, List[Dict]]: #List[dict]:
     """Run the agent."""
     assistant = AssistantAgent(
         "assistant1",
@@ -103,7 +106,7 @@ def run_agent() -> Message: #Dict[Agent, List[Dict]]: #List[dict]:
     start_time = time.time()
     user_proxy.initiate_chat(
         assistant,
-        message="Plot a chart of NVDA and TESLA stock price YTD. Save the result to a file named nvda_tesla.png",
+        message=user_request_message,
     )
     #return user_proxy._agent_log
     metadata = {}
@@ -112,7 +115,7 @@ def run_agent() -> Message: #Dict[Agent, List[Dict]]: #List[dict]:
 
     successful_code_blocks = extract_successful_code_blocks(agent_chat_messages)
     successful_code_blocks = "\n\n".join(successful_code_blocks)
-    last_message = assistant.last_message()
+    last_message = extract_last_useful_message(agent_chat_messages)
     output = "<empty>"
     if last_message:
       output = (

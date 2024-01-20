@@ -596,9 +596,19 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
     """Handle chat input."""
     req = st.session_state[f"chat_input_{feature.value()}"]
     result = []
+
+    thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
+    if thread_id is None:
+        raise ValueError("Thread id in session state was None")
+    select_org_id = get_selected_org_id()
+    if select_org_id is None:
+        raise ValueError("Selected org id was None")
+
     if req.startswith("/agent"):
-        output_message = run_agent()
-        result.append(("0", output_message, False, datetime.now(), 3))
+        user_request_message = req.split("/agent")[1].strip()
+        output_message = run_agent(user_request_message)
+        #TODO: when we have dynamically created agents, each will have a user_id which will replace the hardcoded system user_id=0
+        result.append(("0", output_message, False, datetime.now(), thread_id))
 
     else:
         spaces = None

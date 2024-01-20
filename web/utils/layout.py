@@ -965,10 +965,12 @@ def chat_ui(feature: FeatureKey) -> None:
                 if is_agent_message:
                     agent_output: Message = x[1]
                     if agent_output.metadata:
+                        st.write(agent_output.content)
                         with st.expander("Agent Messages", False):
                                 for m in agent_output.metadata["messages"]:
                                     if m["content"] != "":
-                                        st.write(m["content"])
+
+                                        st.write(m["role"],"\n\n",m["content"])
                                         st.divider()
                         with st.expander("Files", True):
                             files = agent_output.metadata["files"]

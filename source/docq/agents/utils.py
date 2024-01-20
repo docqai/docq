@@ -425,3 +425,24 @@ def create_skills_from_code(dest_dir: str, skills: Union[str, List[str]]) -> Non
         # Write the skill to the file
         with open(skill_file_path, "w", encoding="utf-8") as f:
             f.write(skill)
+
+def extract_last_useful_message(messages: List[Dict[str, str]]) -> dict[str, str]:
+  """Extract the last useful message from a list of messages.
+
+  Parameters:
+  messages (List[Dict[str, str]]): A list of message dictionaries containing 'content' and 'role' keys.
+
+  Returns:
+  Dict[str, str]: A dictionary containing the last useful message.
+  """
+  # reverse order and remove messages with empty content
+  messages_reverse_order = [message for message in reversed(messages) if message["content"] != ""]
+
+  last_useful_message = {}
+  #messages_reverse_order = messages[::-1]  # reverse the order of the messages list
+  for i, message in enumerate(messages_reverse_order):
+    if message["role"] == "assistant":  # noqa: SIM102
+        if "execution succeeded" in message["content"]:
+            last_useful_message = messages_reverse_order[i - 1]
+            continue
+  return last_useful_message
