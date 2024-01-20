@@ -7,11 +7,9 @@ import math
 import random
 import re
 from datetime import datetime
-from email import message
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import unquote_plus
 
-import autogen
 import streamlit as st
 from docq import (
     config,
@@ -26,7 +24,7 @@ from docq import (
     run_queries,
 )
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
-from docq.agents.main import AutoGenWorkFlowManager, run_agent
+from docq.agents.main import run_agent
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions

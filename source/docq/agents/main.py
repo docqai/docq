@@ -1,31 +1,24 @@
 """Agents."""
-import json
 import logging
 import os
 import time
-from dataclasses import asdict
-from typing import Any, Callable, Dict, List, Literal, Optional, Self, Tuple, Union
+from typing import Dict, List
 
 import autogen
-from autogen import Agent
-from colorama import init
 from docq.model_selection.main import ModelCapability, get_model_settings_collection
 from opentelemetry import trace
 
 from .assistant_agent import AssistantAgent
-from .conversable_agent import ConversableAgent
-from .datamodels import AgentConfig, AgentFlowSpec, AgentWorkFlowConfig, LLMConfig, Message
+from .datamodels import Message
 from .user_proxy_agent import UserProxyAgent
 from .utils import (
     extract_last_useful_message,
     extract_successful_code_blocks,
     get_all_skills,
-    get_default_agent_config,
     get_modified_files,
     get_skills_prompt,
     init_webserver_folders,
     md5_hash,
-    skill_from_folder,
 )
 
 # Load LLM inference endpoints from an env variable or a file
@@ -144,179 +137,3 @@ def run_agent(user_request_message: str = DEFAULT_AGENT_REQUEST) -> Message: #Di
     return output_message
 
     #return user_proxy.chat_messages
-
-
-class AutoGenChatManager:
-    def __init__(self) -> None:
-        pass
-
-    def chat(self, message: Message, history: List, flow_config: AgentWorkFlowConfig = None, **kwargs) -> str:
-        work_dir = kwargs.get("work_dir", None)
-        scratch_dir = os.path.join(work_dir, "scratch")
-        skills_suffix = kwargs.get("skills_prompt", "")
-
-        # if no flow config is provided, use the default
-        if flow_config is None:
-            flow_config = get_default_agent_config(scratch_dir, skills_suffix=skills_suffix)
-
-        # print("Flow config: ", flow_config)
-        flow = AutoGenWorkFlowManager(
-            config=flow_config, history=history, work_dir=scratch_dir, assistant_prompt=skills_suffix
-        )
-        message_text = message.content.strip()
-
-        output = ""
-        start_time = time.time()
-
-        metadata = {}
-        flow.run(message=f"{message_text}", clear_history=False)
-
-        agent_chat_messages = flow.receiver.chat_messages[flow.sender][len(history) :]
-        metadata["messages"] = agent_chat_messages
-
-        successful_code_blocks = extract_successful_code_blocks(agent_chat_messages)
-        successful_code_blocks = "\n\n".join(successful_code_blocks)
-        output = (
-            (flow.sender.last_message()["content"] + "\n" + successful_code_blocks)
-            if successful_code_blocks
-            else flow.sender.last_message()["content"]
-        )
-
-        metadata["code"] = ""
-        end_time = time.time()
-        metadata["time"] = end_time - start_time
-        modified_files = get_modified_files(start_time, end_time, scratch_dir, dest_dir=work_dir)
-        metadata["files"] = modified_files
-
-        print("Modified files: ", len(modified_files))
-
-        output_message = Message(
-            user_id=message.user_id,
-            root_msg_id=message.root_msg_id,
-            role="assistant",
-            content=output,
-            metadata=json.dumps(metadata),
-            session_id=message.session_id,
-        )
-        logging.debug("Output message: %s", output_message.content)
-        return output_message.content
-
-
-class AutoGenWorkFlowManager:
-    """AutoGenWorkFlowManager class to load agents from a provided configuration and run a chat between them."""
-
-    def __init__(
-        self: Self,
-        config: AgentWorkFlowConfig,
-        history: Optional[List[Message]] = None,
-        work_dir: str = None,
-        assistant_prompt: str = None,
-    ) -> None:
-        """Initializes the AutoGenFlow with agents specified in the config and optional message history.
-
-        Args:
-            config: The configuration settings for the sender and receiver agents.
-            history: An optional list of previous messages to populate the agents' history.
-            work_dir: The working directory for the code execution agent.
-            assistant_prompt: The assistant prompt for the code execution agent.
-        """
-        self.work_dir = work_dir or "work_dir"
-        self.assistant_prompt = assistant_prompt or ""
-        self.sender = self.load(config.sender)
-        self.receiver = self.load(config.receiver)
-
-        if history:
-            self.populate_history(history)
-
-    def _sanitize_history_message(self: Self, message: str) -> str:
-        """Sanitizes the message e.g. remove references to execution completed.
-
-        Args:
-            message: The message to be sanitized.
-
-        Returns:
-            The sanitized message.
-        """
-        to_replace = ["execution succeeded", "exitcode"]
-        for replace in to_replace:
-            message = message.replace(replace, "")
-        return message
-
-    def populate_history(self: Self, history: List[Message]) -> None:
-        """Populates the agent message history from the provided list of messages.
-
-        Args:
-            history: A list of messages to populate the agents' history.
-        """
-        for msg in history:
-            if isinstance(msg, dict):
-                msg = Message(**msg)
-            if msg.role == "user":
-                self.sender.send(
-                    msg.content,
-                    self.receiver,
-                    request_reply=False,
-                )
-            elif msg.role == "assistant":
-                self.receiver.send(
-                    msg.content,
-                    self.sender,
-                    request_reply=False,
-                )
-
-    def sanitize_agent_spec(self: Self, agent_spec: AgentFlowSpec) -> AgentFlowSpec:
-        """Sanitizes the agent spec by setting loading defaults.
-
-        Args:
-            agent_spec: The specification of the agent to be loaded.
-
-        Returns:
-            The sanitized agent configuration.
-        """
-        agent_spec.config.is_termination_msg = agent_spec.config.is_termination_msg or (
-            lambda x: "TERMINATE" in x.get("content", "").rstrip()
-        )
-
-        if agent_spec.type == "userproxy":
-            code_execution_config = agent_spec.config.code_execution_config or {}
-            code_execution_config["work_dir"] = self.work_dir
-            agent_spec.config.code_execution_config = code_execution_config
-
-        if agent_spec.type == "assistant":
-            agent_spec.config.system_message = f"{autogen.AssistantAgent.DEFAULT_SYSTEM_MESSAGE} \
-            \n\n{agent_spec.config.system_message} \
-            \n\n {self.assistant_prompt}"
-
-        return agent_spec
-
-    def load(self: Self, agent_spec: AgentFlowSpec) -> autogen.Agent:
-        """Loads an agent based on the provided agent specification.
-
-        Args:
-            agent_spec: The specification of the agent to be loaded.
-
-        Returns:
-            An instance of the loaded agent.
-        """
-        agent: autogen.Agent
-        agent_spec = self.sanitize_agent_spec(agent_spec)
-        if agent_spec.type == "assistant":
-            agent = autogen.AssistantAgent(**asdict(agent_spec.config))
-        elif agent_spec.type == "userproxy":
-            agent = autogen.UserProxyAgent(**asdict(agent_spec.config))
-        else:
-            raise ValueError(f"Unknown agent type: {agent_spec.type}")
-        return agent
-
-    def run(self: Self, message: str, clear_history: bool = False) -> None:
-        """Initiates a chat between the sender and receiver agents with an initial message and an option to clear the history.
-
-        Args:
-            message: The initial message to start the chat.
-            clear_history: If set to True, clears the chat history before initiating.
-        """
-        self.sender.initiate_chat(
-            self.receiver,
-            message=message,
-            clear_history=clear_history,
-        )

@@ -6,10 +6,6 @@ import re
 import shutil
 from typing import Dict, List, Tuple, Union
 
-import autogen
-
-from .datamodels import AgentConfig, AgentFlowSpec, AgentWorkFlowConfig, LLMConfig
-
 
 def md5_hash(text: str) -> str:
     """Compute the MD5 hash of a given text.
@@ -309,48 +305,48 @@ def delete_files_in_folder(folders: Union[str, List[str]]) -> None:
                 print(f"Failed to delete {path}. Reason: {e}")
 
 
-def get_default_agent_config(work_dir: str, skills_suffix: str = "") -> AgentWorkFlowConfig:
-    """Get a default agent flow config."""
-    llm_config = LLMConfig(
-        config_list=[{"model": "gpt-4"}],
-        temperature=0,
-    )
+# def get_default_agent_config(work_dir: str, skills_suffix: str = "") -> AgentWorkFlowConfig:
+#     """Get a default agent flow config."""
+#     llm_config = LLMConfig(
+#         config_list=[{"model": "gpt-4"}],
+#         temperature=0,
+#     )
 
-    USER_PROXY_INSTRUCTIONS = """If the request has been addressed sufficiently, summarize the answer and end with the word TERMINATE. Otherwise, ask a follow-up question."""
+#     USER_PROXY_INSTRUCTIONS = """If the request has been addressed sufficiently, summarize the answer and end with the word TERMINATE. Otherwise, ask a follow-up question."""
 
-    userproxy_spec = AgentFlowSpec(
-        type="userproxy",
-        config=AgentConfig(
-            name="user_proxy",
-            human_input_mode="NEVER",
-            system_message=USER_PROXY_INSTRUCTIONS,
-            code_execution_config={
-                "work_dir": work_dir,
-                "use_docker": False,
-            },
-            max_consecutive_auto_reply=10,
-            llm_config=llm_config,
-            is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
-        ),
-    )
+#     userproxy_spec = AgentFlowSpec(
+#         type="userproxy",
+#         config=AgentConfig(
+#             name="user_proxy",
+#             human_input_mode="NEVER",
+#             system_message=USER_PROXY_INSTRUCTIONS,
+#             code_execution_config={
+#                 "work_dir": work_dir,
+#                 "use_docker": False,
+#             },
+#             max_consecutive_auto_reply=10,
+#             llm_config=llm_config,
+#             is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
+#         ),
+#     )
 
-    assistant_spec = AgentFlowSpec(
-        type="assistant",
-        config=AgentConfig(
-            name="primary_assistant",
-            system_message=autogen.AssistantAgent.DEFAULT_SYSTEM_MESSAGE + skills_suffix,
-            llm_config=llm_config,
-        ),
-    )
+#     assistant_spec = AgentFlowSpec(
+#         type="assistant",
+#         config=AgentConfig(
+#             name="primary_assistant",
+#             system_message=autogen.AssistantAgent.DEFAULT_SYSTEM_MESSAGE + skills_suffix,
+#             llm_config=llm_config,
+#         ),
+#     )
 
-    flow_config = AgentWorkFlowConfig(
-        name="default",
-        sender=userproxy_spec,
-        receiver=assistant_spec,
-        type="default",
-    )
+#     flow_config = AgentWorkFlowConfig(
+#         name="default",
+#         sender=userproxy_spec,
+#         receiver=assistant_spec,
+#         type="default",
+#     )
 
-    return flow_config
+#     return flow_config
 
 
 def extract_successful_code_blocks(messages: List[Dict[str, str]]) -> List[str]:

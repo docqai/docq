@@ -2870,22 +2870,23 @@ sympy = "*"
 
 [[package]]
 name = "openai"
-version = "1.2.4"
+version = "1.6.1"
 description = "The official Python library for the openai API"
 optional = false
 python-versions = ">=3.7.1"
 files = [
-    {file = "openai-1.2.4-py3-none-any.whl", hash = "sha256:53927a2ca276eec0a0efdc1ae829f74a51f49b7d3e14cc6f820aeafb0abfd802"},
-    {file = "openai-1.2.4.tar.gz", hash = "sha256:d99a474049376be431d9b4dec3a5c895dd76e19165748c5944e80b7905d1b1ff"},
+    {file = "openai-1.6.1-py3-none-any.whl", hash = "sha256:bc9f774838d67ac29fb24cdeb2d58faf57de8b311085dcd1348f7aa02a96c7ee"},
+    {file = "openai-1.6.1.tar.gz", hash = "sha256:d553ca9dbf9486b08e75b09e8671e4f638462aaadccfced632bf490fc3d75fa2"},
 ]
 
 [package.dependencies]
-anyio = ">=3.5.0,<4"
+anyio = ">=3.5.0,<5"
 distro = ">=1.7.0,<2"
 httpx = ">=0.23.0,<1"
 pydantic = ">=1.9.0,<3"
+sniffio = "*"
 tqdm = ">4"
-typing-extensions = ">=4.5,<5"
+typing-extensions = ">=4.7,<5"
 
 [package.extras]
 datalib = ["numpy (>=1)", "pandas (>=1.2.3)", "pandas-stubs (>=1.1.0.11)"]
@@ -3892,19 +3893,19 @@ pyasn1 = ">=0.4.6,<0.6.0"
 
 [[package]]
 name = "pyautogen"
-version = "0.2.1"
+version = "0.2.2"
 description = "Enabling Next-Gen LLM Applications via Multi-Agent Conversation Framework"
 optional = false
 python-versions = ">=3.8, <3.12"
 files = [
-    {file = "pyautogen-0.2.1-py3-none-any.whl", hash = "sha256:25fa507efba3c276252fcf01f6ff61439ae5b6b8873b0625585407a7354c78c0"},
-    {file = "pyautogen-0.2.1.tar.gz", hash = "sha256:0071f8f6ee07641330335b2c03c82d9f004061cc7acbc48aba3bb4dfc9a39d87"},
+    {file = "pyautogen-0.2.2-py3-none-any.whl", hash = "sha256:c47b386c77ef7cc2e5e7e37ef9f93f543ccf055a0f3da2c509285422914f1de6"},
+    {file = "pyautogen-0.2.2.tar.gz", hash = "sha256:ef44ed706280f14b7ee256641d2407a12627a56f0b4fc0a3f6095be5ff11ad4b"},
 ]
 
 [package.dependencies]
 diskcache = "*"
 flaml = "*"
-openai = ">=1.2,<1.3"
+openai = ">=1.3,<2.0"
 python-dotenv = "*"
 termcolor = "*"
 tiktoken = "*"
@@ -6262,4 +6263,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.12"
-content-hash = "55484e7b4dde14fbfbe4fd59538aca01befe16526e1339390272feb12f3136c7"
+content-hash = "9daa4dd15e4f4f0a8008a486c3b8a365936835f21dfdf23fd3850b61d1838cc7"
