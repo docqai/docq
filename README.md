@@ -119,7 +119,7 @@ Distributed under multiple licenses:
 - AGPLv3 See [`LICENSE`](https://github.com/docqai/docq/blob/main/LICENSE) for more information.
 - Commercial licenses available
 
-Copyright (C) 2023 FABR Ltd t/a Docq.AI
+Copyright (C) 2023-2024 FABR Ltd t/a [Docq.AI](https://docq.ai)
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
