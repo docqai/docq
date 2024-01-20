@@ -171,18 +171,17 @@ class DocqUserProxyAgent(UserProxyAgent):
         await super().a_send(message, recipient, request_reply, silent)
 
 
-def run_agent(message_receive_callback_handler: Callable, message_send_callback_handler: Callable) -> None:
+def run_agent(message_receive_callback_handler: Callable, message_send_callback_handler: Callable) -> Dict[Agent, List[Dict]]:
     """Run the agent."""
     assistant = AssistantAgent("assistant1", llm_config={"config_list": config_list})
-    user_proxy = DocqUserProxyAgent(
+    user_proxy = UserProxyAgent(
         "user_proxy1",
-        code_execution_config={"work_dir": "coding"},
+        code_execution_config={"work_dir": "./.persisted/agents/coding"},
         human_input_mode="NEVER",
         max_consecutive_auto_reply=10,
-        receive_callback=message_receive_callback_handler,
-        send_callback=message_send_callback_handler
     )
     user_proxy.initiate_chat(assistant, message="Plot a chart of NVDA and TESLA stock price change YTD.")
+
     # This initiates an automated chat between the two agents to solve the task
     logger.debug("===========================")
     logger.debug(assistant.last_message(user_proxy))
@@ -191,7 +190,7 @@ def run_agent(message_receive_callback_handler: Callable, message_send_callback_
     # user_proxy.register_reply(assistant, handle_messages)how do
 
     # return AutoGenChatManager().chat(message=m, flow_config=flow_config, history=[], work_dir="./.persisted/agents/coding")
-
+    return user_proxy.chat_messages
 
 class AutoGenChatManager:
     def __init__(self) -> None:
