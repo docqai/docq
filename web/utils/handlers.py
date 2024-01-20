@@ -34,7 +34,6 @@ from opentelemetry import baggage, trace
 from streamlit.components.v1 import html
 
 from .constants import (
-    MAX_NUMBER_OF_UPLOAD_DOCS,
     NUMBER_OF_MSGS_TO_LOAD,
     SessionKeyNameForAuth,
     SessionKeyNameForChat,

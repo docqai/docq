@@ -11,8 +11,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Optional
 
-import vertexai
-
 from ..config import OrganisationSettingsKey
 from ..manage_settings import get_organisation_settings
 
@@ -131,7 +129,7 @@ LLM_MODEL_COLLECTIONS = {
                 model_capability=ModelCapability.EMBEDDING,
                 license_="MIT",
                 citation="""@misc{bge_embedding,
-                            title={C-Pack: Packaged Resources To Advance General Chinese Embedding}, 
+                            title={C-Pack: Packaged Resources To Advance General Chinese Embedding},
                             author={Shitao Xiao and Zheng Liu and Peitian Zhang and Niklas Muennighoff},
                             year={2023},
                             eprint={2309.07597},
@@ -156,7 +154,7 @@ LLM_MODEL_COLLECTIONS = {
                 model_capability=ModelCapability.EMBEDDING,
                 license_="MIT",
                 citation="""@misc{bge_embedding,
-                            title={C-Pack: Packaged Resources To Advance General Chinese Embedding}, 
+                            title={C-Pack: Packaged Resources To Advance General Chinese Embedding},
                             author={Shitao Xiao and Zheng Liu and Peitian Zhang and Niklas Muennighoff},
                             year={2023},
                             eprint={2309.07597},
@@ -182,7 +180,7 @@ LLM_MODEL_COLLECTIONS = {
                 model_capability=ModelCapability.EMBEDDING,
                 license_="MIT",
                 citation="""@misc{bge_embedding,
-                            title={C-Pack: Packaged Resources To Advance General Chinese Embedding}, 
+                            title={C-Pack: Packaged Resources To Advance General Chinese Embedding},
                             author={Shitao Xiao and Zheng Liu and Peitian Zhang and Niklas Muennighoff},
                             year={2023},
                             eprint={2309.07597},

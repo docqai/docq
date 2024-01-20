@@ -15,7 +15,7 @@ from . import (
     manage_users,
     services,
 )
-from .support import auth_utils, llm, metadata_extractors, store
+from .support import auth_utils, llm, store
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
