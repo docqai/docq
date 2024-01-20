@@ -612,6 +612,7 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
         user_request_message = req.split("/agent")[1].strip()
         data.append((user_request_message, True, datetime.now(), thread_id))
         output_message = run_agent() if user_request_message == "" else run_agent(user_request_message)
+        print("output_message:", output_message)
         data.append((RootModel[Message](output_message).model_dump_json(), False, datetime.now(), thread_id))
         result = run_queries._save_messages(data, feature)
 
@@ -623,20 +624,17 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
         thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
         if thread_id is None:
             raise ValueError("Thread id in session state was None")
-    
-    select_org_id = get_selected_org_id()
-    if select_org_id is None:
-        raise ValueError("Selected org id was None")
-    
-    if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
-        _thread_space = _setup_chat_thread_space(feature, select_org_id, thread_id)
-        spaces = _get_chat_spaces(feature)
-        if _thread_space is not None:
-            spaces.append(_thread_space)
 
-    saved_model_settings = get_saved_model_settings_collection(select_org_id)
 
-        result = run_queries.query(req, feature, thread_id, saved_model_settings, spaces)
+        if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
+            _thread_space = _setup_chat_thread_space(feature, select_org_id, thread_id)
+            spaces = _get_chat_spaces(feature)
+            if _thread_space is not None:
+                spaces.append(_thread_space)
+
+            saved_model_settings = get_saved_model_settings_collection(select_org_id)
+
+            result = run_queries.query(req, feature, thread_id, saved_model_settings, spaces)
 
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 

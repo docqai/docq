@@ -14,7 +14,7 @@ class PostRequestModel(CamelModel):
     """Pydantic model for the request body."""
     input_: str = Field(..., alias="input")
     history: Optional[str] = Field(None)
-    model_settings_collection_name: Optional[str] = Field(None)
+    llm_settings_collection_name: Optional[str] = Field(None)
 
 class PostResponseModel(CamelModel):
     """Pydantic model for the response body."""
@@ -55,7 +55,7 @@ class ChatCompletionHandler(RequestHandler):
         try:
             request_model = PostRequestModel.model_validate_json(body)
             history = request_model.history if request_model.history else ""
-            model_usage_settings = get_model_settings_collection(request_model.model_settings_collection_name) if request_model.model_settings_collection_name else get_model_settings_collection("azure_openai_latest")
+            model_usage_settings = get_model_settings_collection(request_model.llm_settings_collection_name) if request_model.llm_settings_collection_name else get_model_settings_collection("azure_openai_latest")
             result = run_chat(input_=request_model.input_, history=history, model_settings_collection=model_usage_settings)
             response_model = PostResponseModel(response=result.response, meta={"model_settings": model_usage_settings.key})
 

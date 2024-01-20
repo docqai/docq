@@ -20,7 +20,7 @@ class PostRequestModel(CamelModel):
     history: Optional[str] = None
     space_group_id: Optional[int] = Field(None)
     org_id: Optional[int] = Field(None)
-    model_settings_collection_name: Optional[str] = Field(None)
+    llm_settings_collection_name: Optional[str] = Field(None)
 
 
 class PostResponseModel(CamelModel):
@@ -55,7 +55,7 @@ class RagCompletionHandler(RequestHandler):
                     space_keys.append(SpaceKey(id_ = s[0], type_=SpaceType.PUBLIC, org_id=request_model.org_id if request_model.org_id else 0, summary=s[3]))
 
             try:
-                model_usage_settings = get_model_settings_collection(request_model.model_settings_collection_name) if request_model.model_settings_collection_name else get_model_settings_collection("azure_openai_latest")
+                model_usage_settings = get_model_settings_collection(request_model.llm_settings_collection_name) if request_model.llm_settings_collection_name else get_model_settings_collection("azure_openai_latest")
             except ValueError as e:
                 raise HTTPError(400, "Invalid modelSettingsCollectionName") from e
 
