@@ -166,6 +166,7 @@ def _get_generation_model(model_settings_collection: ModelUsageSettingsCollectio
                 max_tokens=2048,
                 kwargs={"telemetry": False},
             )
+            litellm.VertexAIConfig()
             litellm.vertex_location = "us-central1"
         else:
             raise ValueError("Chat model: model settings with a supported model vendor not found.")
@@ -290,7 +291,7 @@ def _load_index_from_storage(space: SpaceKey, model_settings_collection: ModelUs
 @tracer.start_as_current_span(name="run_chat")
 def run_chat(input_: str, history: str, model_settings_collection: ModelUsageSettingsCollection) -> AgentChatResponse:
     """Chat directly with a LLM with history."""
-    engine = SimpleChatEngine.from_defaults(service_context=_get_service_context(model_settings_collection))
+    engine = SimpleChatEngine.from_defaults(service_context=_get_service_context(model_settings_collection), kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args)
     output = engine.chat(input_)
 
     log.debug("(Chat) Q: %s, A: %s", input_, output)
@@ -349,6 +350,7 @@ def run_ask(
                     indices,
                     index_summaries=summaries,
                     service_context=_get_service_context(model_settings_collection),
+                    kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
                 )
 
                 custom_query_engines = {
@@ -391,6 +393,8 @@ def run_ask(
         # log.debug("(Ask %s w/o shared spaces) Q: %s, A: %s", space, input_, output)
 
     return output
+
+
 
 
 @tracer.start_as_current_span(name="_default_response")

@@ -7,9 +7,11 @@ Model collections grouped by vendor and model capability is just one way to stru
 """
 
 import logging as log
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, Optional
+from typing import Any, Dict, Mapping, Optional
+
+from vertexai.preview.generative_models import HarmBlockThreshold, HarmCategory
 
 from ..config import OrganisationSettingsKey
 from ..manage_settings import get_organisation_settings
@@ -67,6 +69,8 @@ class ModelUsageSettings:
     """Any citation information for the model. Typically applies to open source models."""
     license_: Optional[str] = None
     """The licenses under which the model is released. Especially important for open source models."""
+    additional_args: Optional[Mapping[str, Any]] = field(default_factory=dict)
+    """Any additional model API specific arguments to be passed to function like chat and completion"""
 
 @dataclass
 class ModelUsageSettingsCollection:
@@ -173,6 +177,12 @@ LLM_MODEL_COLLECTIONS = {
                 model_name="gemini-pro",
                 model_capability=ModelCapability.CHAT,
                 temperature=0.0,
+                additional_args={"safety_settings": {
+                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            }}
             ),
             ModelCapability.EMBEDDING: ModelUsageSettings(
                 model_vendor=ModelVendor.HUGGINGFACE_OPTIMUM_BAAI,
