@@ -8,7 +8,7 @@ from typing import Generator
 import pytest
 from docq import config, domain, manage_documents, manage_settings, manage_users, run_queries, setup
 from docq.model_selection.main import (
-    ModelUsageSettingsCollection,
+    LlmUsageSettingsCollection,
     get_saved_model_settings_collection,
 )
 
@@ -104,7 +104,7 @@ def _update_organisation_settings(auth_results: dict) -> None:
 
 # Get saved model settings
 @pytest.fixture(scope="session")
-def saved_model_settings(auth_results: dict) -> ModelUsageSettingsCollection:
+def saved_model_settings(auth_results: dict) -> LlmUsageSettingsCollection:
     """Get saved model settings."""
     return get_saved_model_settings_collection(
         auth_results[SessionKeyNameForAuth.SELECTED_ORG_ID.name]
@@ -124,7 +124,7 @@ def test_the_sample_file_exists(shared_space: domain.SpaceKey) -> None:
     assert file.endswith(TEST_FILE_NAME), "The test file should have the correct name."
 
 
-def test_chat_private_feature(features: dict[str, domain.FeatureKey], saved_model_settings: ModelUsageSettingsCollection) -> None:
+def test_chat_private_feature(features: dict[str, domain.FeatureKey], saved_model_settings: LlmUsageSettingsCollection) -> None:
     """Run a query against the private chat feature i.e. directly with the LLM no RAG."""
     prompt = """
     You are an AI designed to help humans with their daily activities.

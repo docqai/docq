@@ -17,7 +17,7 @@ from .access_control.main import SpaceAccessor, SpaceAccessType
 from .config import SpaceType
 from .data_source.list import SpaceDataSources
 from .domain import DocumentListItem, SpaceKey
-from .model_selection.main import ModelCapability, ModelUsageSettingsCollection, get_saved_model_settings_collection
+from .model_selection.main import LlmUsageSettingsCollection, ModelCapability, get_saved_model_settings_collection
 from .support.llm import _get_default_storage_context, _get_service_context
 from .support.store import get_index_dir, get_sqlite_system_file
 
@@ -65,7 +65,7 @@ def _init() -> None:
 
 @trace.start_as_current_span("manage_spaces._create_index")
 def _create_index(
-    documents: List[Document], model_settings_collection: ModelUsageSettingsCollection
+    documents: List[Document], model_settings_collection: LlmUsageSettingsCollection
 ) -> VectorStoreIndex:
     # Use default storage and service context to initialise index purely for persisting
     return VectorStoreIndex.from_documents(
@@ -78,7 +78,7 @@ def _create_index(
 
 @trace.start_as_current_span("manage_spaces._create_document_summary_index")
 def _create_document_summary_index(
-    documents: List[Document], model_settings_collection: ModelUsageSettingsCollection
+    documents: List[Document], model_settings_collection: LlmUsageSettingsCollection
 ) -> DocumentSummaryIndex:
     """Create a an index of summaries for each document."""
     return DocumentSummaryIndex.from_documents(

@@ -22,7 +22,7 @@ from docq.config import (
 from docq.domain import ConfigKey, DocumentListItem, FeatureKey, SpaceKey
 from docq.extensions import ExtensionContext
 from docq.model_selection.main import (
-    ModelUsageSettingsCollection,
+    LlmUsageSettingsCollection,
     get_model_settings_collection,
     list_available_model_settings_collections,
 )
@@ -1155,19 +1155,19 @@ def organisation_settings_ui() -> None:
             st.session_state[f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}"][0],
         )
         log.debug("selected model: %s", selected_model[0])
-        selected_model_settings: ModelUsageSettingsCollection = get_model_settings_collection(selected_model[0])
+        selected_model_settings: LlmUsageSettingsCollection = get_model_settings_collection(selected_model[0])
 
         with model_settings_container.expander("Model details"):
             for _, model_settings in selected_model_settings.model_usage_settings.items():
                 st.write(f"{model_settings.model_capability.value} model: ")
-                st.write(f"- Model Vendor: `{model_settings.model_vendor.value}`")
-                st.write(f"- Model Name: `{model_settings.model_name}`")
+                st.write(f"- Model Vendor: `{model_settings.service_instance_config.vendor.value}`")
+                st.write(f"- Model Name: `{model_settings.service_instance_config.model_name}`")
                 st.write(f"- Temperature: `{model_settings.temperature}`")
                 st.write(
-                    f"- Deployment Name: `{model_settings.model_deployment_name if model_settings.model_deployment_name else 'n/a'}`"
+                    f"- Deployment Name: `{model_settings.service_instance_config.model_deployment_name if model_settings.service_instance_config.model_deployment_name else 'n/a'}`"
                 )
-                st.write(f"- License: `{model_settings.license_ if model_settings.license_ else 'unknown'}`")
-                st.write(f"- Citation: `{model_settings.citation}`")
+                st.write(f"- License: `{model_settings.service_instance_config.license_ if model_settings.service_instance_config.license_ else 'unknown'}`")
+                st.write(f"- Citation: `{model_settings.service_instance_config.citation}`")
                 st.divider()
 
 

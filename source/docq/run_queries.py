@@ -6,7 +6,7 @@ from contextlib import closing
 from datetime import datetime
 from typing import Literal, Optional
 
-from docq.model_selection.main import ModelUsageSettingsCollection
+from docq.model_selection.main import LlmUsageSettingsCollection
 
 from .config import OrganisationFeatureType
 from .domain import FeatureKey, SpaceKey
@@ -223,7 +223,7 @@ def query(
     input_: str,
     feature: FeatureKey,
     thread_id: int,
-    model_settings_collection: ModelUsageSettingsCollection,
+    model_settings_collection: LlmUsageSettingsCollection,
     spaces: Optional[list[SpaceKey]] = None,
 ) -> list:
     """Run the query again documents in the space(s) using a LLM."""

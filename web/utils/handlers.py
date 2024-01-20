@@ -28,7 +28,7 @@ from docq.agents.main import run_agent
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions
-from docq.model_selection.main import ModelUsageSettingsCollection, get_saved_model_settings_collection
+from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
 from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
 from opentelemetry import baggage, trace
@@ -604,7 +604,7 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
 
     if req.startswith("/agent"):
         user_request_message = req.split("/agent")[1].strip()
-        output_message = run_agent(user_request_message)
+        output_message = run_agent() if user_request_message == "" else run_agent(user_request_message)
         #TODO: when we have dynamically created agents, each will have a user_id which will replace the hardcoded system user_id=0
         result.append(("0", output_message, False, datetime.now(), thread_id))
 
@@ -831,7 +831,7 @@ def handle_get_system_settings() -> dict[str, str]:  # noqa: D103
     return result
 
 
-def handle_get_selected_model_settings() -> ModelUsageSettingsCollection:
+def handle_get_selected_model_settings() -> LlmUsageSettingsCollection:
     """Handle getting the settings for the saved model."""
     current_org_id = get_selected_org_id()
     if not current_org_id:
