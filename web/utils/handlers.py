@@ -7,9 +7,10 @@ import math
 import random
 import re
 from datetime import datetime
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import unquote_plus
 
+import autogen
 import streamlit as st
 from docq import (
     config,
@@ -24,6 +25,7 @@ from docq import (
     run_queries,
 )
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
+from docq.agents.main import AutoGenWorkFlowManager, run_agent
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions
@@ -558,6 +560,17 @@ def _get_chat_spaces(feature: domain.FeatureKey) -> List[SpaceKey]:
 
     return result
 
+def receive_message_callback_handler(message: Dict | str, sender: Any, request_reply: bool | None = None, silent: bool | None = False) -> None:
+    from datetime import datetime
+    result = [("0", f"r:{sender.name}: {message}", False, datetime.now(), 3)]
+    get_chat_session(config.OrganisationFeatureType.ASK_SHARED, SessionKeyNameForChat.HISTORY).extend(result)
+
+def send_message_callback_handler(message: Dict | str, recipient: Any, request_reply: bool | None = None, silent: bool | None = False) -> None:
+    from datetime import datetime
+    result = [("0", f"s:{recipient.name}: {message}", False, datetime.now(), 3)]
+    get_chat_session(config.OrganisationFeatureType.ASK_SHARED, SessionKeyNameForChat.HISTORY).extend(result)
+
+
 
 def _setup_chat_thread_space(feature: domain.FeatureKey, org_id:int, thread_id: int) ->  Optional[SpaceKey]:
     """Create a thread space or add more files and index if the space already exists."""
@@ -581,16 +594,22 @@ def _setup_chat_thread_space(feature: domain.FeatureKey, org_id:int, thread_id: 
 def handle_chat_input(feature: domain.FeatureKey) -> None:
     """Handle chat input."""
     req = st.session_state[f"chat_input_{feature.value()}"]
-    spaces = None
+    result = None
+    if req.startswith("/agent"):
+        run_agent(receive_message_callback_handler, send_message_callback_handler)
+    else:
+        spaces = None
+        if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
+            spaces = _get_chat_spaces(feature)
 
-    thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
-    if thread_id is None:
-        raise ValueError("Thread id in session state was None")
-
+        thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
+        if thread_id is None:
+            raise ValueError("Thread id in session state was None")
+    
     select_org_id = get_selected_org_id()
     if select_org_id is None:
         raise ValueError("Selected org id was None")
-
+    
     if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
         _thread_space = _setup_chat_thread_space(feature, select_org_id, thread_id)
         spaces = _get_chat_spaces(feature)
@@ -600,6 +619,9 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
     saved_model_settings = get_saved_model_settings_collection(select_org_id)
 
     result = run_queries.query(req, feature, thread_id, saved_model_settings, spaces)
+    log.debug("== chat result == ")
+    log.debug(result)
+    log.debug("=== ")        
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 
 
