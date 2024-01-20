@@ -13,22 +13,44 @@ class Message(object):
     content: str
     root_msg_id: Optional[str] = None
     msg_id: Optional[str] = None
-    timestamp: Optional[datetime] = None
+    timestamp: Optional[str] = None
     personalize: Optional[bool] = False
     ra: Optional[str] = None
     code: Optional[str] = None
-    metadata: Optional[Dict] = None
+    metadata: Optional[Any] = None
     session_id: Optional[str] = None
 
     def __post_init__(self):
         if self.msg_id is None:
             self.msg_id = str(uuid.uuid4())
         if self.timestamp is None:
-            self.timestamp = datetime.now()
+            self.timestamp = datetime.now().isoformat()
 
     def dict(self):
         result = asdict(self)
-        result["timestamp"] = result["timestamp"].isoformat()
+        return result
+
+
+@dataclass
+class Skill(object):
+    title: str
+    file_name: str
+    content: str
+    id: Optional[str] = None
+    description: Optional[str] = None
+    timestamp: Optional[str] = None
+    user_id: Optional[str] = None
+
+    def __post_init__(self):
+        if self.id is None:
+            self.id = str(uuid.uuid4())
+        if self.timestamp is None:
+            self.timestamp = datetime.now().isoformat()
+        if self.user_id is None:
+            self.user_id = "default"
+
+    def dict(self):
+        result = asdict(self)
         return result
 
 
@@ -70,95 +92,3 @@ class AgentConfig:
     code_execution_config: Optional[Union[bool, str, Dict[str, Any]]] = None
 
 
-@dataclass
-class AgentFlowSpec:
-    """Data model to help flow load agents from config."""
-
-    type: Literal["assistant", "userproxy", "groupchat"]
-    config: AgentConfig = field(default_factory=AgentConfig)
-
-
-@dataclass
-class AgentWorkFlowConfig:
-    """Data model for Flow Config for Autogen."""
-
-    name: str
-    sender: AgentFlowSpec
-    receiver: Union[AgentFlowSpec, List[AgentFlowSpec]]
-    type: Literal["default", "groupchat"] = "default"
-
-    def dict(self):
-        return asdict(self)
-
-
-@dataclass
-class Session(object):
-    """Data model for AutoGen Chat Session."""
-
-    user_id: str
-    session_id: Optional[str] = None
-    timestamp: Optional[datetime] = None
-    flow_config: AgentWorkFlowConfig = None
-
-    def __post_init__(self):
-        if self.timestamp is None:
-            self.timestamp = datetime.now()
-        if self.session_id is None:
-            self.session_id = str(uuid.uuid4())
-
-    def dict(self):
-        result = asdict(self)
-        result["timestamp"] = self.timestamp.isoformat()
-        return result
-
-
-@dataclass
-class Gallery(object):
-    """Data model for Gallery Item"""
-
-    session: Session
-    messages: List[Message]
-    tags: List[str]
-    id: Optional[str] = None
-    timestamp: Optional[datetime] = None
-
-    def __post_init__(self):
-        if self.timestamp is None:
-            self.timestamp = datetime.now()
-        if self.id is None:
-            self.id = str(uuid.uuid4())
-
-    def dict(self):
-        result = asdict(self)
-        result["timestamp"] = self.timestamp.isoformat()
-        return result
-
-
-@dataclass
-class ChatWebRequestModel(object):
-    """Data model for Chat Web Request for Web End"""
-
-    message: Message
-    flow_config: AgentWorkFlowConfig
-
-
-@dataclass
-class DeleteMessageWebRequestModel(object):
-    user_id: str
-    msg_id: str
-    session_id: Optional[str] = None
-
-
-@dataclass
-class CreateSkillWebRequestModel(object):
-    user_id: str
-    skills: Union[str, List[str]]
-
-
-@dataclass
-class DBWebRequestModel(object):
-    user_id: str
-    msg_id: Optional[str] = None
-    session: Optional[Session] = None
-    skills: Optional[Union[str, List[str]]] = None
-    tags: Optional[List[str]] = None
