@@ -1,6 +1,8 @@
 """Handle /api/hello requests."""
+import logging as log
 from typing import Self
 
+import tornado.websocket
 from tornado.web import RequestHandler
 
 from web.api.utils import CamelModel
@@ -30,3 +32,22 @@ class ChatCompletionHandler(RequestHandler):
         self.write(response.model_dump())
 
 
+@st_app.api_route("/api/echo")
+class EchoWebSocket(tornado.websocket.WebSocketHandler):
+    """Handle websocket connections."""
+
+    def check_origin(self: Self, origin: str) -> bool:
+        """Override the origin check if it's causing problems."""
+        return True
+
+    def open(self: Self) -> None:  # noqa: A003
+        """Handle open connection."""
+        log.info("WebSocket opened")
+
+    def on_message(self: Self, message: str) -> None:
+        """Handle incoming message."""
+        self.write_message(u"You said: " + message)
+
+    def on_close(self: Self) -> None:
+        """Handle closed connection."""
+        log.info("WebSocket closed")
