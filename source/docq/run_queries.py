@@ -10,6 +10,7 @@ from docq.model_selection.main import LlmUsageSettingsCollection
 
 from .config import OrganisationFeatureType
 from .domain import FeatureKey, SpaceKey
+from .llm_personas import Persona, get_personas
 from .manage_documents import format_document_sources
 from .support.llm import query_error, run_ask, run_chat
 from .support.store import (
@@ -224,6 +225,7 @@ def query(
     feature: FeatureKey,
     thread_id: int,
     model_settings_collection: LlmUsageSettingsCollection,
+    persona: Persona,
     spaces: Optional[list[SpaceKey]] = None,
 ) -> list:
     """Run the query again documents in the space(s) using a LLM."""
@@ -242,7 +244,7 @@ def query(
         response = (
             run_chat(input_, history, model_settings_collection)
             if is_chat
-            else run_ask(input_, history, model_settings_collection, spaces)
+            else run_ask(input_, history, model_settings_collection, persona, spaces)
         )
         log.debug("Response: %s", response)
 

@@ -32,6 +32,7 @@ from docq.agents.main import run_agent
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions
+from docq.llm_personas import get_personas
 from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
 from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
@@ -52,6 +53,7 @@ from .sessions import (
     get_chat_session,
     get_public_space_group_id,
     get_selected_org_id,
+    get_selected_persona,
     get_username,
     is_current_user_selected_org_admin,
     reset_session_state,
@@ -634,7 +636,10 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
 
             saved_model_settings = get_saved_model_settings_collection(select_org_id)
 
-            result = run_queries.query(req, feature, thread_id, saved_model_settings, spaces)
+            persona = get_selected_persona()
+            persona = persona if persona else get_personas()["default"]
+
+            result = run_queries.query(req, feature, thread_id, saved_model_settings, persona, spaces)
 
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 

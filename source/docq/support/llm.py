@@ -29,6 +29,7 @@ from opentelemetry.trace import Status, StatusCode
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
+from ..llm_personas import Persona
 from ..model_selection.main import (
     LLM_MODEL_COLLECTIONS,
     LlmUsageSettingsCollection,
@@ -304,6 +305,7 @@ def run_ask(
     input_: str,
     history: str,
     model_settings_collection: LlmUsageSettingsCollection,
+    persona: Persona,
     spaces: list[SpaceKey] | None = None,
 ) -> RESPONSE_TYPE | AGENT_CHAT_RESPONSE_TYPE:
     """Ask questions against existing index(es) with history."""
@@ -358,7 +360,7 @@ def run_ask(
                     index.index_id: index.as_query_engine(child_branch_factor=2) for index in indices
                 }
 
-                query_engine = graph.as_query_engine(custom_query_engines=custom_query_engines, text_qa_template=CHAT_TEXT_QA_PROMPT.partial_format(history_str=history))
+                query_engine = graph.as_query_engine(custom_query_engines=custom_query_engines, text_qa_template=persona.get_llama_index_chat_prompt_template().partial_format(history_str=history))
 
                 output = query_engine.query(input_)
                 span.add_event(

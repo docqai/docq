@@ -23,6 +23,7 @@ from docq.config import (
 )
 from docq.domain import ConfigKey, DocumentListItem, FeatureKey, SpaceKey
 from docq.extensions import ExtensionContext
+from docq.llm_personas import PERSONAS, Persona, get_personas
 from docq.model_selection.main import (
     LlmUsageSettingsCollection,
     get_model_settings_collection,
@@ -120,6 +121,7 @@ from .sessions import (
     is_current_user_super_admin,
     reset_session_state,
     session_state_exists,
+    set_selected_persona,
 )
 from .streamlit_application import st_app
 
@@ -814,6 +816,25 @@ def _render_show_thread_space_files(feature: FeatureKey) -> None:
             with st.expander(expander_label):
                 _render_documents_list_ui(space, False, "sm", expander_label)
 
+def _render_agent_selection(feature: FeatureKey) -> None:
+    with st.sidebar.container():
+        with st.expander("Agents"):
+            st.markdown("#### Select an agent to chat with:")
+
+
+def _render_persona_selection(feature: FeatureKey) -> None:
+    with st.sidebar.container():
+        _personas = get_personas()
+        selected = st.selectbox(
+            "Persona:",
+            options=_personas.items(),
+            key="persona",
+            format_func=lambda x: x[1].name,
+            help="Select a persona to chat with.",
+        )
+        persona_key = selected[0]
+        set_selected_persona(persona_key)
+
 
 def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
     """Upload files to chat."""
@@ -1022,6 +1043,8 @@ def chat_ui(feature: FeatureKey) -> None:
         _render_chat_file_uploader(feature, len(chat_history) if chat_history else 0)
 
     _render_show_thread_space_files(feature)
+    _render_agent_selection(feature)
+    _render_persona_selection(feature)
     _chat_ui_script()
 
 

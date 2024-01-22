@@ -6,6 +6,7 @@ from typing import Any
 import docq
 import streamlit as st
 from docq import config, manage_users
+from docq.llm_personas import PERSONAS, Persona, get_personas
 from docq.support.auth_utils import set_cache_auth_session
 from opentelemetry import trace
 
@@ -129,6 +130,16 @@ def get_selected_org_id() -> int | None:
 def set_selected_org_id(org_id: int) -> None:
     """Set the selected org_id context."""
     _set_session_value(org_id, SessionKeySubName.AUTH, SessionKeyNameForAuth.SELECTED_ORG_ID.name)
+
+def set_selected_persona(name: str) -> None:
+    """Set the persona."""
+    personas = get_personas()
+    _set_session_value(personas[name], SessionKeySubName.SETTINGS, SessionKeyNameForSettings.USER.name, "persona")
+
+def get_selected_persona() -> Persona | None:
+    """Get the persona."""
+    persona = _get_session_value(SessionKeySubName.SETTINGS, SessionKeyNameForSettings.USER.name, "persona")
+    return persona
 
 
 def get_username() -> str | None:
