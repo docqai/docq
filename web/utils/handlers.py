@@ -599,7 +599,7 @@ def _setup_chat_thread_space(feature: domain.FeatureKey, org_id:int, thread_id: 
 @tracer.start_as_current_span("handle_chat_input")
 def handle_chat_input(feature: domain.FeatureKey) -> None:
     """Handle chat input."""
-    req = st.session_state[f"chat_input_{feature.value()}"]
+    req: str = st.session_state[f"chat_input_{feature.value()}"]
     result = []
 
     thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
@@ -614,19 +614,13 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
         user_request_message = req.split("/agent")[1].strip()
         data.append((user_request_message, True, datetime.now(), thread_id))
         output_message = run_agent() if user_request_message == "" else run_agent(user_request_message)
-        print("output_message:", output_message)
         data.append((RootModel[Message](output_message).model_dump_json(), False, datetime.now(), thread_id))
         result = run_queries._save_messages(data, feature)
 
     else:
-        spaces = None
-        if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
-            spaces = _get_chat_spaces(feature)
-
         thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
         if thread_id is None:
             raise ValueError("Thread id in session state was None")
-
 
         if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
             _thread_space = _setup_chat_thread_space(feature, select_org_id, thread_id)

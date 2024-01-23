@@ -359,7 +359,7 @@ def __login_form() -> None:
         )
         if st.form_submit_button("Login"):
             if handle_login(username, password):
-                st.experimental_rerun()
+                st.rerun()
             elif not handle_check_account_activated(username):
                 st.session_state[f"{form_name}-resend-verification-email"] = True
             else:
@@ -377,7 +377,7 @@ def __logout_button() -> None:
     sidebar = st.sidebar
     if sidebar.button("Logout"):
         handle_logout()
-        st.experimental_rerun()
+        st.rerun()
 
 
 def __not_authorised() -> None:
@@ -816,10 +816,10 @@ def _render_show_thread_space_files(feature: FeatureKey) -> None:
             with st.expander(expander_label):
                 _render_documents_list_ui(space, False, "sm", expander_label)
 
+
 def _render_agent_selection(feature: FeatureKey) -> None:
-    with st.sidebar.container():
-        with st.expander("Agents"):
-            st.markdown("#### Select an agent to chat with:")
+    with st.sidebar.container().expander("Agents"):
+        st.markdown("#### Select an agent to chat with:")
 
 
 def _render_persona_selection(feature: FeatureKey) -> None:
@@ -892,6 +892,7 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
         filename = st.session_state[input_key].name
         with st.spinner(f"Indexing file: {filename[:100]} ..."):
             handle_index_thread_space(feature)
+            st.session_state[f"chat_file_uploader_{feature.value()}"] = None
 
 
 def chat_ui(feature: FeatureKey) -> None:
@@ -991,41 +992,38 @@ def chat_ui(feature: FeatureKey) -> None:
                         **_x
                     )  # if the message payload isn't a serialised Message class an exception will be raised and we ignore it.
 
-                if agent_output:
-                    # agent_output: Message = x[1]
-                    if agent_output.metadata:
-                        with st.chat_message(
-                            "assistant", avatar="https://github.com/docqai/docq/blob/main/docs/assets/logo.jpg?raw=true"
-                        ):
-                            st.write(agent_output.content)
-                            with st.expander("Agent Messages", False):
-                                for m in agent_output.metadata["messages"]:
-                                    if m["content"] != "":
-                                        st.write(m["role"], "\n\n", m["content"])
-                                        st.divider()
-                            with st.expander("Files", True):
-                                files = agent_output.metadata["files"]
-                                if files:
-                                    images: list[AtomicImage] = []
-                                    image_names = []
-                                    for file in files:
-                                        if file["type"] == "image":
-                                            images.append(os.path.join("./.persisted/agents", file["path"]))
-                                            image_names.append(file["name"])
-                                        elif file["type"] == "code":  # noqa: SIM114
-                                            images.append(os.path.join("./web/icons/flaticon/001-py.png"))
-                                            image_names.append(file["name"])
-                                        elif file["type"] == "pdf":
-                                            images.append(os.path.join("./web/icons/flaticon/003-pdf-file.png"))
-                                            image_names.append(file["name"])
-                                        else:
-                                            st.write(file["name"])
+                if agent_output and agent_output.metadata:
+                    with st.chat_message(
+                        "assistant", avatar="https://github.com/docqai/docq/blob/main/docs/assets/logo.jpg?raw=true"
+                    ):
+                        st.write(agent_output.content)
+                        with st.expander("Agent Messages", False):
+                            for m in agent_output.metadata["messages"]:
+                                if m["content"] != "":
+                                    st.write(m["role"], "\n\n", m["content"])
+                                    st.divider()
+                        with st.expander("Files", True):
+                            files = agent_output.metadata["files"]
+                            if files:
+                                images: list[AtomicImage] = []
+                                image_names = []
+                                for file in files:
+                                    if file["type"] == "image":
+                                        images.append(os.path.join("./.persisted/agents", file["path"]))
+                                        image_names.append(file["name"])
+                                    elif file["type"] == "code":  # noqa: SIM114
+                                        images.append(os.path.join("./web/icons/flaticon/001-py.png"))
+                                        image_names.append(file["name"])
+                                    elif file["type"] == "pdf":
+                                        images.append(os.path.join("./web/icons/flaticon/003-pdf-file.png"))
+                                        image_names.append(file["name"])
+                                    else:
+                                        st.write(file["name"])
 
-                                    st.image(images, image_names)
+                                st.image(images, image_names)
 
                 else:
                     _chat_message(x[1], x[2])
-            _chat_ui_script()
 
     st.chat_input(
         "Type your question here",
@@ -1033,18 +1031,18 @@ def chat_ui(feature: FeatureKey) -> None:
         on_submit=handle_chat_input,
         args=(feature,),
     )
-    _show_chat_histories(feature)
 
     uploader, new_chat = st.columns([3, 1])
-    with new_chat:
-        if st.button("New chat"):
-            handle_create_new_chat(feature)
+    if new_chat.button("New chat"):
+        handle_create_new_chat(feature)
+        st.rerun()
     with uploader:
         _render_chat_file_uploader(feature, len(chat_history) if chat_history else 0)
 
     _render_show_thread_space_files(feature)
     _render_agent_selection(feature)
     _render_persona_selection(feature)
+    _show_chat_histories(feature)
     _chat_ui_script()
 
 
@@ -1626,7 +1624,7 @@ def _validate_email(email: str, generator: DeltaGenerator, form: str) -> bool:
         return False
     elif handle_check_user_exists(email) and not handle_check_account_activated(email):
         st.session_state[f"{form}-resend-verification-email"] = True
-        st.experimental_rerun()
+        st.rerun()
     elif handle_check_user_exists(email) and handle_check_account_activated(email):
         generator.error(f"A user with _{email}_ is already registered!")
         return False

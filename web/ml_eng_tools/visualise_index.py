@@ -4,7 +4,7 @@ from typing import cast
 import streamlit as st
 from docq.config import SpaceType
 from docq.domain import SpaceKey
-from docq.manage_spaces import list_shared_spaces
+from docq.manage_spaces import list_space
 from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
 from docq.support.llm import _get_service_context, _get_storage_context
 
