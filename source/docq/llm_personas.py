@@ -53,7 +53,7 @@ PERSONAS = {
             answer the query below.\n
             Query: {query_str}\n
             Answer: """,
-    }
+    },
 }
 
 
@@ -82,12 +82,13 @@ class Persona:
         )
 
         user_prompt = ChatMessage(
-                content=self.user_prompt_template,
-                role=MessageRole.USER,
-            )
+            content=self.user_prompt_template,
+            role=MessageRole.USER,
+        )
 
         return ChatPromptTemplate(message_templates=[system_prompt, user_prompt])
 
+
 def get_personas() -> dict[str, Persona]:
     """Get the personas."""
-    return {name: Persona(**persona) for name, persona in PERSONAS.items()}
+    return {key: Persona(**persona) for key, persona in PERSONAS.items()}
