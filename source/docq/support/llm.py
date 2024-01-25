@@ -314,7 +314,7 @@ def run_ask(
 
     if spaces is not None and len(spaces) > 0:
         span.set_attribute("spaces_count", len(spaces))
-        # log.debug("runs_ask(): spaces count: %s", len(spaces))
+        log.debug("runs_ask(): spaces count: %s", len(spaces))
         # With additional spaces likely to be combining a number of shared spaces.
         indices = []
         summaries = []
@@ -360,7 +360,12 @@ def run_ask(
                     index.index_id: index.as_query_engine(child_branch_factor=2) for index in indices
                 }
 
-                query_engine = graph.as_query_engine(custom_query_engines=custom_query_engines, text_qa_template=persona.get_llama_index_chat_prompt_template().partial_format(history_str=history))
+                #print("persona: ", persona.get_llama_index_chat_prompt_template().partial_format(history_str=history))
+                query_engine = graph.as_query_engine(custom_query_engines=custom_query_engines)
+                #query_engine = graph.as_query_engine(custom_query_engines=custom_query_engines, text_qa_template=persona.get_llama_index_chat_prompt_template().partial_format(history_str=history))
+                #query_engine.update_prompts({"text_qa_template": persona.get_llama_index_chat_prompt_template().partial_format(history_str=history)})
+                prompts_dict = query_engine.get_prompts()
+                print("prompts:", list(prompts_dict.keys()))
 
                 output = query_engine.query(input_)
                 span.add_event(
