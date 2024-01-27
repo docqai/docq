@@ -242,7 +242,7 @@ def query(
     log.debug("is_chat: %s", is_chat)
     try:
         response = (
-            run_chat(input_, history, model_settings_collection)
+            run_chat(input_, history, model_settings_collection, persona)
             if is_chat
             else run_ask(input_, history, model_settings_collection, persona, spaces)
         )

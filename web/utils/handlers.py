@@ -622,7 +622,7 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
         if thread_id is None:
             raise ValueError("Thread id in session state was None")
 
-        if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
+        if feature.type_ is config.OrganisationFeatureType.CHAT_PRIVATE or config.OrganisationFeatureType.ASK_SHARED:
             _thread_space = _setup_chat_thread_space(feature, select_org_id, thread_id)
             spaces = _get_chat_spaces(feature)
             if _thread_space is not None:

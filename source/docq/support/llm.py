@@ -134,11 +134,7 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
                 callback_manager=_callback_manager,
             )
             log.info("Chat model: using Azure OpenAI")
-            _env_missing = not bool(
-                sc.api_base
-                and sc.api_key
-                and sc.api_version
-            )
+            _env_missing = not bool(sc.api_base and sc.api_key and sc.api_version)
             if _env_missing:
                 log.warning("Chat model: env var values missing.")
         elif chat_model_settings.service_instance_config.vendor == ModelVendor.OPENAI:
@@ -183,7 +179,9 @@ def _get_embed_model(model_settings_collection: LlmUsageSettingsCollection) -> B
     if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]:
         embedding_model_settings = model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]
         _callback_manager = CallbackManager([OtelCallbackHandler(tracer_provider=trace.get_tracer_provider())])
-        with tracer.start_as_current_span(name=f"LangchainEmbedding.{embedding_model_settings.service_instance_config.vendor}"):
+        with tracer.start_as_current_span(
+            name=f"LangchainEmbedding.{embedding_model_settings.service_instance_config.vendor}"
+        ):
             if embedding_model_settings.service_instance_config.vendor == ModelVendor.AZURE_OPENAI:
                 embedding_model = AzureOpenAIEmbedding(
                     model=embedding_model_settings.service_instance_config.model_name,
@@ -202,7 +200,8 @@ def _get_embed_model(model_settings_collection: LlmUsageSettingsCollection) -> B
                 )
             elif embedding_model_settings.service_instance_config.vendor == ModelVendor.HUGGINGFACE_OPTIMUM_BAAI:
                 embedding_model = OptimumEmbedding(
-                    folder_name=get_models_dir(embedding_model_settings.service_instance_config.model_name), callback_manager=_callback_manager
+                    folder_name=get_models_dir(embedding_model_settings.service_instance_config.model_name),
+                    callback_manager=_callback_manager,
                 )
             else:
                 # defaults
@@ -291,9 +290,18 @@ def _load_index_from_storage(space: SpaceKey, model_settings_collection: LlmUsag
 
 
 @tracer.start_as_current_span(name="run_chat")
-def run_chat(input_: str, history: str, model_settings_collection: LlmUsageSettingsCollection) -> AgentChatResponse:
+def run_chat(
+    input_: str, history: str, model_settings_collection: LlmUsageSettingsCollection, persona: Persona
+) -> AgentChatResponse:
     """Chat directly with a LLM with history."""
-    engine = SimpleChatEngine.from_defaults(service_context=_get_service_context(model_settings_collection), kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args)
+    #persona.get_llama_index_chat_prompt_template().partial_format(history_str=history)
+    ## chat engine handles tracking the history.
+    print("persona: ", persona.system_prompt_content)
+    engine = SimpleChatEngine.from_defaults(
+        service_context=_get_service_context(model_settings_collection),
+        kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
+        system_prompt=persona.system_prompt_content
+    )
     output = engine.chat(input_)
 
     log.debug("(Chat) Q: %s, A: %s", input_, output)
@@ -331,7 +339,7 @@ def run_ask(
                     attributes={"index_id": index_.index_id, "index_struct_cls": index_.index_struct_cls.__name__},
                 )
                 s_text = s_.summary if s_.summary else ""
-                #s_text = index_.as_query_engine().query("What is a summary of this document?", )
+                # s_text = index_.as_query_engine().query("What is a summary of this document?", )
                 summaries.append(s_text)
                 span.add_event(name="summary_appended", attributes={"index_summary": s_text})
             except Exception as e:
@@ -360,10 +368,13 @@ def run_ask(
                     index.index_id: index.as_query_engine(child_branch_factor=2) for index in indices
                 }
 
-                #print("persona: ", persona.get_llama_index_chat_prompt_template().partial_format(history_str=history))
-                query_engine = graph.as_query_engine(custom_query_engines=custom_query_engines)
-                #query_engine = graph.as_query_engine(custom_query_engines=custom_query_engines, text_qa_template=persona.get_llama_index_chat_prompt_template().partial_format(history_str=history))
-                #query_engine.update_prompts({"text_qa_template": persona.get_llama_index_chat_prompt_template().partial_format(history_str=history)})
+                # print("persona: ", persona.get_llama_index_chat_prompt_template().partial_format(history_str=history))
+                # query_engine = graph.as_query_engine(custom_query_engines=custom_query_engines)
+                query_engine = graph.as_query_engine(
+                    custom_query_engines=custom_query_engines,
+                    text_qa_template=persona.get_llama_index_chat_prompt_template().partial_format(history_str=history),
+                )
+                # query_engine.update_prompts({"text_qa_template": persona.get_llama_index_chat_prompt_template().partial_format(history_str=history)})
                 prompts_dict = query_engine.get_prompts()
                 print("prompts:", list(prompts_dict.keys()))
 
@@ -388,7 +399,9 @@ def run_ask(
         # No additional spaces i.e. likely to be against a user's documents in their personal space.
 
         log.debug("runs_ask(): space is None. executing run_chat(), not ASK.")
-        output = run_chat(input_=input_, history=history, model_settings_collection=model_settings_collection)
+        output = run_chat(
+            input_=input_, history=history, model_settings_collection=model_settings_collection, persona=persona
+        )
         span.add_event(name="ask_without_spaces", attributes={"question": input_, "answer": str(output)})
         # index = _load_index_from_storage(space=space, model_settings_collection=model_settings_collection)
         # engine = index.as_chat_engine(
@@ -401,8 +414,6 @@ def run_ask(
         # log.debug("(Ask %s w/o shared spaces) Q: %s, A: %s", space, input_, output)
 
     return output
-
-
 
 
 @tracer.start_as_current_span(name="_default_response")

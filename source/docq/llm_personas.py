@@ -1,4 +1,5 @@
 """prompt templates that represent a persona."""
+from os import system
 from typing import Self
 
 from llama_index import ChatPromptTemplate
@@ -54,17 +55,41 @@ PERSONAS = {
             Query: {query_str}\n
             Answer: """,
     },
+    "meeting-assistant": {
+        "name": "Meeting Assistant",
+        "system_prompt": """You are a extremely helpful meeting assistant.
+            You pay attention to all the details in a meeting.
+            You are able summarise a meeting.
+            You are able to answer questions about a meeting with context.
+            Only answer questions using the meeting notes that are provided. Do NOT use prior knowledge.
+            """,
+        "user_prompt_template": """Chat message history is below:\n
+            ---------------------\n
+            {history_str}\n
+            ---------------------\n\n
+            Context information is below:\n
+            ---------------------\n
+            {context_str}\n
+            ---------------------\n
+            Given the meeting notes in the context information and chat message history, 
+            answer the query below.\n
+            Query: {query_str}\n
+            Answer: """,
+    },
 }
 
 
 class Persona:
     """A persona is a collection of prompts that represent a persona."""
 
+    system_prompt_content: str
+    user_prompt_template_content: str
+
     def __init__(self: Self, name: str, system_prompt: str, user_prompt_template: str) -> None:
         """Initialise."""
         self.name = name
-        self.system_prompt = system_prompt
-        self.user_prompt_template = user_prompt_template
+        self.system_prompt_content = system_prompt
+        self.user_prompt_template_content = user_prompt_template
 
     def __str__(self: Self) -> str:
         """Get default string representation."""
@@ -72,21 +97,21 @@ class Persona:
 
     def __repr__(self: Self) -> str:
         """Get a computer executable representation of this class."""
-        return f"Persona(name={self.name}, system_prompt={self.system_prompt}, user_prompt_template={self.user_prompt_template})"
+        return f"Persona(name={self.name}, system_prompt={self.system_prompt_content}, user_prompt_template={self.user_prompt_template_content})"
 
     def get_llama_index_chat_prompt_template(self: Self) -> ChatPromptTemplate:
         """Get the prompt template for the llama index."""
-        system_prompt = ChatMessage(
-            content=self.system_prompt,
+        _system_prompt_message = ChatMessage(
+            content=self.system_prompt_content,
             role=MessageRole.SYSTEM,
         )
 
-        user_prompt = ChatMessage(
-            content=self.user_prompt_template,
+        _user_prompt_message = ChatMessage(
+            content=self.user_prompt_template_content,
             role=MessageRole.USER,
         )
 
-        return ChatPromptTemplate(message_templates=[system_prompt, user_prompt])
+        return ChatPromptTemplate(message_templates=[_system_prompt_message, _user_prompt_message])
 
 
 def get_personas() -> dict[str, Persona]:
