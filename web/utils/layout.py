@@ -23,7 +23,7 @@ from docq.config import (
 )
 from docq.domain import ConfigKey, DocumentListItem, FeatureKey, SpaceKey
 from docq.extensions import ExtensionContext
-from docq.llm_personas import PERSONAS, Persona, get_personas
+from docq.manage_personas import get_personas
 from docq.model_selection.main import (
     LlmUsageSettingsCollection,
     get_model_settings_collection,
@@ -42,8 +42,6 @@ from streamlit.elements.image import AtomicImage
 from streamlit.errors import StreamlitAPIException
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 from streamlit.source_util import get_pages
-
-import web.api.index_handler  # noqa: F401 DO NOT REMOVE. This is required to register the web API route handlers.
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .error_ui import _handle_error_state_ui
@@ -118,6 +116,7 @@ from .sessions import (
     get_public_session_id,
     get_public_space_group_id,
     get_selected_org_id,
+    get_selected_persona,
     is_current_user_super_admin,
     reset_session_state,
     session_state_exists,
@@ -823,17 +822,36 @@ def _render_agent_selection(feature: FeatureKey) -> None:
 
 
 def _render_persona_selection(feature: FeatureKey) -> None:
+
+
     with st.sidebar.container():
+        # def selection_changed_cb():
+        #     st.session_state["persona_selection_changed"] = True
+
+        #selected_key_index = 0
         _personas = get_personas()
+
+        # try:
+        #     st.session_state["persona_selection_changed"]
+        # except KeyError:
+        #     st.session_state["persona_selection_changed"] = False
+
+        # if not st.session_state["persona_selection_changed"]:
+        #     selected_persona_key = get_selected_persona()
+        #     selected_key_index = list(_personas.keys()).index(selected_persona_key) if selected_persona_key else 0
+        #     st.session_state["persona_selection_from_session"] = False
+
         selected = st.selectbox(
             "Persona:",
             options=_personas.items(),
-            key="persona",
+            key="select_box_persona",
             format_func=lambda x: x[1].name,
             help="Select a persona to chat with.",
         )
-        persona_key = selected[0]
-        set_selected_persona(persona_key)
+        if selected:
+            selected_persona_key = selected[0]
+            set_selected_persona(selected_persona_key)
+
 
 
 def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:

@@ -107,3 +107,12 @@ class DocumentListItem:
                 "Error creating document list item with '%s', '%s', '%d'", document_link, document_text, indexed_on
             )
             raise e
+
+@dataclass
+class Persona:
+    """A persona is system prompt and user prompt template that represent a particular persona we want an LLM to emulate."""
+
+    key: str
+    name: str
+    system_prompt_content: str
+    user_prompt_template_content: str

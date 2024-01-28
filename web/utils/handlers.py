@@ -1,9 +1,7 @@
 """Handlers for the web app."""
 
 import base64
-import contextlib
 import hashlib
-import json
 import logging as log
 import math
 import random
@@ -13,7 +11,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import unquote_plus
 
 import streamlit as st
-from attr import asdict
 from docq import (
     config,
     domain,
@@ -32,7 +29,7 @@ from docq.agents.main import run_agent
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions
-from docq.llm_personas import get_personas
+from docq.manage_personas import get_persona
 from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
 from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
@@ -630,8 +627,10 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
 
             saved_model_settings = get_saved_model_settings_collection(select_org_id)
 
-            persona = get_selected_persona()
-            persona = persona if persona else get_personas()["default"]
+            persona_key = get_selected_persona()
+            persona_key = persona_key if persona_key else "default"
+
+            persona = get_persona(persona_key)
 
             result = run_queries.query(req, feature, thread_id, saved_model_settings, persona, spaces)
 

@@ -125,8 +125,11 @@ def test_the_sample_file_exists(shared_space: domain.SpaceKey) -> None:
 
 
 def test_chat_private_feature(features: dict[str, domain.FeatureKey], saved_model_settings: LlmUsageSettingsCollection) -> None:
-    """Run a query against the private chat feature i.e. directly with the LLM no RAG."""
-    prompt = """
+    """Run a query against the private chat feature i.e. directly with the LLM no RAG.
+
+    This also tests that query() correctly selects which completion function to run based on spaces existing or not.
+    """
+    system_prompt = """
     You are an AI designed to help humans with their daily activities.
     You are currently in a test environment to gauge whether this functionality works as expected.
     For this test, all you need to do is to echo back the input and append from docq at the end of it.
@@ -134,17 +137,27 @@ def test_chat_private_feature(features: dict[str, domain.FeatureKey], saved_mode
     Below is a sample expected input (SampleInput) and output (SampleOutput).
     SampleInput: Hello World
     SampleOutput: Hello World from docq
-
-    Now, let's get started with the following input.
-    INPUT: {input}
     """
+
+    user_prompt_template_content = """
+        Now, let's get started with the following input.\n
+        INPUT: {input}
+    """
+
+    persona = domain.Persona(
+        key="test-persona",
+        name="Test Persona",
+        system_prompt_content=system_prompt,
+        user_prompt_template_content=user_prompt_template_content,)
+
     thread_id = 0
 
     # Run the query
     results = run_queries.query(
-        prompt.format(input="Test 1"),
+        "Test 1",
         features[config.OrganisationFeatureType.CHAT_PRIVATE.name],
         thread_id,
         model_settings_collection=saved_model_settings,
+        persona=persona,
     )
     assert "Test 1 from docq" in results[1][1], f"The query didn't return the expected response. Returned: '{results[1][1]}', expected: 'Test 1 from docq'"

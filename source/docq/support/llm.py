@@ -29,7 +29,7 @@ from opentelemetry.trace import Status, StatusCode
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
-from ..llm_personas import Persona
+from ..manage_personas import Persona, llama_index_chat_prompt_template_from_persona
 from ..model_selection.main import (
     LLM_MODEL_COLLECTIONS,
     LlmUsageSettingsCollection,
@@ -294,7 +294,6 @@ def run_chat(
     input_: str, history: str, model_settings_collection: LlmUsageSettingsCollection, persona: Persona
 ) -> AgentChatResponse:
     """Chat directly with a LLM with history."""
-    #persona.get_llama_index_chat_prompt_template().partial_format(history_str=history)
     ## chat engine handles tracking the history.
     print("persona: ", persona.system_prompt_content)
     engine = SimpleChatEngine.from_defaults(
@@ -368,13 +367,11 @@ def run_ask(
                     index.index_id: index.as_query_engine(child_branch_factor=2) for index in indices
                 }
 
-                # print("persona: ", persona.get_llama_index_chat_prompt_template().partial_format(history_str=history))
-                # query_engine = graph.as_query_engine(custom_query_engines=custom_query_engines)
                 query_engine = graph.as_query_engine(
                     custom_query_engines=custom_query_engines,
-                    text_qa_template=persona.get_llama_index_chat_prompt_template().partial_format(history_str=history),
+                    text_qa_template=llama_index_chat_prompt_template_from_persona(persona).partial_format(history_str=history),
                 )
-                # query_engine.update_prompts({"text_qa_template": persona.get_llama_index_chat_prompt_template().partial_format(history_str=history)})
+
                 prompts_dict = query_engine.get_prompts()
                 print("prompts:", list(prompts_dict.keys()))
 

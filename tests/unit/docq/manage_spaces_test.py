@@ -11,7 +11,7 @@ import pytest
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.config import SpaceType
 from docq.domain import SpaceKey
-from docq.model_selection.main import get_model_settings_collection
+from docq.model_selection.main import ModelCapability, get_model_settings_collection
 from llama_index import DocumentSummaryIndex
 from llama_index.schema import Document
 
@@ -66,11 +66,14 @@ def test_create_index(get_service_context: MagicMock, get_default_storage_contex
     from docq.manage_spaces import _create_index
 
     with patch("docq.manage_spaces.VectorStoreIndex", Mock(from_documents=MagicMock())):
-        docments = Mock([Document])
-        model_sttings_collection = Mock()
-        _create_index(docments, model_sttings_collection)
+        documents = Mock([Document])
+        model_settings_collection = Mock()
+        mocked_model_usage_settings = Mock()
+        mocked_model_usage_settings.additional_args = {"arg1": "value1", "arg2": "value2"}
+        model_settings_collection.model_usage_settings = {ModelCapability.TEXT: mocked_model_usage_settings}
+        _create_index(documents, model_settings_collection)
 
-        get_service_context.assert_called_once_with(model_sttings_collection)
+        get_service_context.assert_called_once_with(model_settings_collection)
         get_default_storage_context.assert_called_once()
 
 
