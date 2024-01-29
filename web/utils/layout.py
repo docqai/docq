@@ -21,7 +21,7 @@ from docq.config import (
     SystemFeatureType,
     SystemSettingsKey,
 )
-from docq.domain import ConfigKey, DocumentListItem, FeatureKey, SpaceKey
+from docq.domain import ConfigKey, DocumentListItem, FeatureKey, PersonaType, SpaceKey
 from docq.extensions import ExtensionContext
 from docq.manage_personas import get_personas
 from docq.model_selection.main import (
@@ -817,19 +817,19 @@ def _render_show_thread_space_files(feature: FeatureKey) -> None:
 
 
 def _render_agent_selection(feature: FeatureKey) -> None:
-    with st.sidebar.container().expander("Agents"):
-        st.markdown("#### Select an agent to chat with:")
+    with st.sidebar.container().expander("Assistants"):
+        st.markdown("#### Assistants coming soon")
 
 
 def _render_persona_selection(feature: FeatureKey) -> None:
-
 
     with st.sidebar.container():
         # def selection_changed_cb():
         #     st.session_state["persona_selection_changed"] = True
 
         #selected_key_index = 0
-        _personas = get_personas()
+        persona_type = PersonaType.SIMPLE_CHAT if feature.type_ == OrganisationFeatureType.CHAT_PRIVATE else PersonaType.ASK
+        _personas = get_personas(persona_type=persona_type)
 
         # try:
         #     st.session_state["persona_selection_changed"]
@@ -846,7 +846,7 @@ def _render_persona_selection(feature: FeatureKey) -> None:
             options=_personas.items(),
             key="select_box_persona",
             format_func=lambda x: x[1].name,
-            help="Select a persona to chat with.",
+            help="Select a persona related to your helps tune Docq to your needs.",
         )
         if selected:
             selected_persona_key = selected[0]

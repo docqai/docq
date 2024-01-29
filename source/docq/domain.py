@@ -1,9 +1,9 @@
 """Domain classes for Docq."""
-
 import logging as log
 import sys
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from typing import Any, Optional, Self
 
 from .config import OrganisationFeatureType, SpaceType
@@ -116,3 +116,11 @@ class Persona:
     name: str
     system_prompt_content: str
     user_prompt_template_content: str
+
+
+class PersonaType(Enum):
+    """Persona type."""
+
+    SIMPLE_CHAT = "Simple Chat"
+    AGENT = "Agent"
+    ASK = "Ask"

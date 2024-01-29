@@ -1,12 +1,12 @@
 """prompt templates that represent a persona."""
 from os import system
-from typing import Self
+from typing import Optional, Self
 
 from llama_index import ChatPromptTemplate
 from llama_index.llms.base import ChatMessage, MessageRole
 from regex import P
 
-from .domain import Persona
+from .domain import Persona, PersonaType
 
 DEFAULT_QA_SYSTEM_PROMPT = """You are an expert Q&A system that is trusted around the world.\n 
         Always answer the query using the provided context information and chat message history, 
@@ -31,7 +31,7 @@ DEFAULT_QA_USER_PROMPT_TEMPLATE = """Chat message history is below:\n
             Answer: """
 
 
-PERSONAS = {
+SIMPLE_CHAT_PERSONAS = {
     "default": {
         "name": "General Q&A Assistant",
         "system_prompt_content": DEFAULT_QA_SYSTEM_PROMPT,
@@ -82,6 +82,13 @@ PERSONAS = {
 }
 
 
+AGENT_PERSONAS = {
+}
+
+ASK_PERSONAS = {
+}
+
+
 def llama_index_chat_prompt_template_from_persona(persona: Persona) -> ChatPromptTemplate:
     """Get the prompt template for the llama index."""
     _system_prompt_message = ChatMessage(
@@ -97,12 +104,25 @@ def llama_index_chat_prompt_template_from_persona(persona: Persona) -> ChatPromp
     return ChatPromptTemplate(message_templates=[_system_prompt_message, _user_prompt_message])
 
 
-def get_personas() -> dict[str, Persona]:
+def get_personas(persona_type: Optional[PersonaType] = None) -> dict[str, Persona]:
     """Get the personas."""
-    return {key: Persona(key=key, **persona) for key, persona in PERSONAS.items()}
+    result = {}
+    if persona_type == PersonaType.SIMPLE_CHAT:
+        result = {key: Persona(key=key, **persona) for key, persona in SIMPLE_CHAT_PERSONAS.items()}
+    elif persona_type == PersonaType.AGENT:
+        result = {key: Persona(key=key, **persona) for key, persona in AGENT_PERSONAS.items()}
+    elif persona_type == PersonaType.ASK:
+        result = {key: Persona(key=key, **persona) for key, persona in ASK_PERSONAS.items()}
+    else:
+        result = {
+            **{key: Persona(key=key, **persona) for key, persona in SIMPLE_CHAT_PERSONAS.items()},
+            **{key: Persona(key=key, **persona) for key, persona in AGENT_PERSONAS.items()},
+            **{key: Persona(key=key, **persona) for key, persona in ASK_PERSONAS.items()},
+        }
+    return result
 
 def get_persona(key: str) -> Persona:
     """Get the persona."""
-    if key not in PERSONAS:
+    if key not in SIMPLE_CHAT_PERSONAS:
         raise ValueError(f"No Persona with: {key}")
-    return Persona(key=key, **PERSONAS[key])
+    return Persona(key=key, **SIMPLE_CHAT_PERSONAS[key])

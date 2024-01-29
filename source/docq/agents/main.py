@@ -9,11 +9,20 @@ import semantic_kernel
 # from autogen import AssistantAgent, UserProxyAgent
 from docq.model_selection.main import ModelCapability, get_model_settings_collection
 from opentelemetry import trace
+from semantic_kernel.core_skills import ConversationSummarySkill, TextSkill, TimeSkill
 
+from ..llm_plugins.openai.sk_bing_plugin import BingPlugin
+from ..llm_plugins.openai.sk_web_pages_plugin import WebPagesPlugin
+from ..llm_plugins.openai.weather_plugin import WeatherPlugin
 from .assistant_agent import AssistantAgent
 
 # from .assistant_agent import AssistantAgent
 from .datamodels import Message
+from .semantic_kernel_utils import (
+    ASSISTANT_PERSONA,
+    generate_autogen_llm_config,
+    get_autogen_function_map,
+)
 from .user_proxy_agent import UserProxyAgent
 
 # from .user_proxy_agent import UserProxyAgent
@@ -36,16 +45,6 @@ tracer = trace.get_tracer(__name__)
 config_list: List[Dict[str, str]] = []
 
 chat_model_settings = get_model_settings_collection("azure_openai_latest").model_usage_settings[ModelCapability.CHAT]
-
-# config_list.append(
-#     {
-#         "model": chat_model_settings.service_instance_config.model_deployment_name.__str__(),
-#         "api_key": os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
-#         "base_url": os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
-#         "api_type": "azure",
-#         "api_version": os.getenv("DOCQ_AZURE_OPENAI_API_VERSION") or "2023-07-01-preview",
-#     }
-# )
 
 config_list.append(get_autogen_llm_config(chat_model_settings))
 
@@ -90,21 +89,6 @@ scratch_dir = os.path.join(user_dir, "scratch")
 # DEFAULT_AGENT_REQUEST = "Plot a chart of NVDA and TESLA stock price YTD. Save the result to a file named nvda_tesla.png"
 DEFAULT_AGENT_REQUEST = "What's the weather in London today?"
 
-
-#from semantic_kernel.connectors.search_engine import BingConnector
-#from semantic_kernel.core_skills import ConversationSummarySkill, HttpSkill, TextSkill, TimeSkill
-from semantic_kernel.core_skills import ConversationSummarySkill, TextSkill, TimeSkill
-
-from ..llm_plugins.openai.sk_bing_plugin import BingPlugin
-from ..llm_plugins.openai.sk_web_pages_plugin import WebPagesPlugin
-from ..llm_plugins.openai.weather_plugin import WeatherPlugin
-from .semantic_kernel_utils import (
-    ASSISTANT_PERSONA,
-    generate_autogen_llm_config,
-    get_autogen_function_map,
-)
-
-
 @tracer.start_as_current_span("run_agent")
 def run_agent(user_request_message: str = DEFAULT_AGENT_REQUEST) -> Message:  # Dict[Agent, List[Dict]]: #List[dict]:
     """Run the agent."""
@@ -126,7 +110,8 @@ def run_agent(user_request_message: str = DEFAULT_AGENT_REQUEST) -> Message:  # 
 
     worker = UserProxyAgent(
         "worker",
-        code_execution_config={"work_dir": scratch_dir, "use_docker": False},
+        #code_execution_config={"work_dir": scratch_dir, "use_docker": False},
+        code_execution_config=False,
         human_input_mode="NEVER",
         llm_config=get_autogen_llm_config(chat_model_settings),
         # default_auto_reply="make sure code is properly formatted with code fences. If the result was generated correctly then terminate.",
