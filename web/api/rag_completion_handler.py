@@ -2,6 +2,7 @@
 from typing import Optional, Self
 
 from docq.domain import SpaceKey, SpaceType
+from docq.manage_personas import get_personas
 from docq.manage_spaces import list_public_spaces
 from docq.model_selection.main import get_model_settings_collection
 from docq.support.llm import run_ask
@@ -20,7 +21,8 @@ class PostRequestModel(CamelModel):
     history: Optional[str] = None
     space_group_id: Optional[int] = Field(None)
     org_id: Optional[int] = Field(None)
-    model_settings_collection_name: Optional[str] = Field(None)
+    llm_settings_collection_name: Optional[str] = Field(None)
+    persona_name: str
 
 
 class PostResponseModel(CamelModel):
@@ -55,12 +57,15 @@ class RagCompletionHandler(RequestHandler):
                     space_keys.append(SpaceKey(id_ = s[0], type_=SpaceType.PUBLIC, org_id=request_model.org_id if request_model.org_id else 0, summary=s[3]))
 
             try:
-                model_usage_settings = get_model_settings_collection(request_model.model_settings_collection_name) if request_model.model_settings_collection_name else get_model_settings_collection("azure_openai_latest")
+                model_usage_settings = get_model_settings_collection(request_model.llm_settings_collection_name) if request_model.llm_settings_collection_name else get_model_settings_collection("azure_openai_latest")
             except ValueError as e:
                 raise HTTPError(400, "Invalid modelSettingsCollectionName") from e
 
             history = request_model.history if request_model.history else ""
-            result = run_ask(input_=request_model.input_, history=history, model_settings_collection=model_usage_settings)
+            persona_name = request_model.persona_name
+            persona = get_personas()[persona_name]
+            persona = persona if persona else get_personas()["default"]
+            result = run_ask(input_=request_model.input_, history=history, model_settings_collection=model_usage_settings, persona=persona)
 
             if result:
                 if isinstance(result, Response) and result.response:

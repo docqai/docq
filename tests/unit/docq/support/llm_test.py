@@ -1,7 +1,9 @@
 """Tests for docq.support.llm."""
+from typing import Dict
 from unittest.mock import Mock, patch
 
-from docq.model_selection.main import ModelUsageSettingsCollection
+from docq.manage_personas import Persona
+from docq.model_selection.main import LlmUsageSettings, LlmUsageSettingsCollection, ModelCapability
 from llama_index import ServiceContext
 from llama_index.chat_engine import SimpleChatEngine
 
@@ -21,8 +23,14 @@ def test_run_chat() -> None:
         mocked_chat = Mock()
         mocked_engine.chat = mocked_chat
         mocked_chat.return_value = "LLM response"
-        mocked_model_usage_settings_collection = Mock(ModelUsageSettingsCollection)
+        mocked_model_usage_settings_collection = Mock(LlmUsageSettingsCollection)
+        mocked_model_usage_settings = Mock(LlmUsageSettings)
+        mocked_model_usage_settings.additional_args = {"arg1": "value1", "arg2": "value2"}
+        mocked_model_usage_settings_collection.model_usage_settings = {ModelCapability.CHAT: mocked_model_usage_settings}
+        mocked_persona = Mock(Persona)
+        mocked_persona.system_prompt_content= "Some system prompt"
+        mocked_persona.user_prompt_template_content = "My user prompt template"
 
-        response = run_chat("My ask", "My chat history", mocked_model_usage_settings_collection)
+        response = run_chat("My ask", "My chat history", mocked_model_usage_settings_collection, mocked_persona)
         mocked_chat.assert_called_once_with("My ask")
         assert response == "LLM response"

@@ -7,7 +7,7 @@ import math
 import random
 import re
 from datetime import datetime
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import unquote_plus
 
 import streamlit as st
@@ -24,13 +24,17 @@ from docq import (
     run_queries,
 )
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
+from docq.agents.datamodels import Message
+from docq.agents.main import run_agent
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions
-from docq.model_selection.main import ModelUsageSettingsCollection, get_saved_model_settings_collection
+from docq.manage_personas import get_persona
+from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
 from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
 from opentelemetry import baggage, trace
+from pydantic import RootModel
 from streamlit.components.v1 import html
 
 from .constants import (
@@ -46,6 +50,7 @@ from .sessions import (
     get_chat_session,
     get_public_space_group_id,
     get_selected_org_id,
+    get_selected_persona,
     get_username,
     is_current_user_selected_org_admin,
     reset_session_state,
@@ -558,6 +563,17 @@ def _get_chat_spaces(feature: domain.FeatureKey) -> List[SpaceKey]:
 
     return result
 
+def receive_message_callback_handler(message: Dict | str, sender: Any, request_reply: bool | None = None, silent: bool | None = False) -> None:
+    from datetime import datetime
+    result = [("0", f"r:{sender.name}: {message}", False, datetime.now(), 3)]
+    get_chat_session(config.OrganisationFeatureType.ASK_SHARED, SessionKeyNameForChat.HISTORY).extend(result)
+
+def send_message_callback_handler(message: Dict | str, recipient: Any, request_reply: bool | None = None, silent: bool | None = False) -> None:
+    from datetime import datetime
+    result = [("0", f"s:{recipient.name}: {message}", False, datetime.now(), 3)]
+    get_chat_session(config.OrganisationFeatureType.ASK_SHARED, SessionKeyNameForChat.HISTORY).extend(result)
+
+
 
 def _setup_chat_thread_space(feature: domain.FeatureKey, org_id:int, thread_id: int) ->  Optional[SpaceKey]:
     """Create a thread space or add more files and index if the space already exists."""
@@ -580,26 +596,44 @@ def _setup_chat_thread_space(feature: domain.FeatureKey, org_id:int, thread_id: 
 @tracer.start_as_current_span("handle_chat_input")
 def handle_chat_input(feature: domain.FeatureKey) -> None:
     """Handle chat input."""
-    req = st.session_state[f"chat_input_{feature.value()}"]
-    spaces = None
+    req: str = st.session_state[f"chat_input_{feature.value()}"]
+    result = []
 
     thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
     if thread_id is None:
         raise ValueError("Thread id in session state was None")
-
     select_org_id = get_selected_org_id()
     if select_org_id is None:
         raise ValueError("Selected org id was None")
 
-    if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
-        _thread_space = _setup_chat_thread_space(feature, select_org_id, thread_id)
-        spaces = _get_chat_spaces(feature)
-        if _thread_space is not None:
-            spaces.append(_thread_space)
+    if req.startswith("/agent"):
+        data = []
+        user_request_message = req.split("/agent")[1].strip()
+        data.append((user_request_message, True, datetime.now(), thread_id))
+        output_message = run_agent() if user_request_message == "" else run_agent(user_request_message)
+        data.append((RootModel[Message](output_message).model_dump_json(), False, datetime.now(), thread_id))
+        result = run_queries._save_messages(data, feature)
 
-    saved_model_settings = get_saved_model_settings_collection(select_org_id)
+    else:
+        thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
+        if thread_id is None:
+            raise ValueError("Thread id in session state was None")
 
-    result = run_queries.query(req, feature, thread_id, saved_model_settings, spaces)
+        if feature.type_ is config.OrganisationFeatureType.CHAT_PRIVATE or config.OrganisationFeatureType.ASK_SHARED:
+            _thread_space = _setup_chat_thread_space(feature, select_org_id, thread_id)
+            spaces = _get_chat_spaces(feature)
+            if _thread_space is not None:
+                spaces.append(_thread_space)
+
+            saved_model_settings = get_saved_model_settings_collection(select_org_id)
+
+            persona_key = get_selected_persona()
+            persona_key = persona_key if persona_key else "default"
+
+            persona = get_persona(persona_key)
+
+            result = run_queries.query(req, feature, thread_id, saved_model_settings, persona, spaces)
+
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 
 
@@ -800,7 +834,7 @@ def handle_get_system_settings() -> dict[str, str]:  # noqa: D103
     return result
 
 
-def handle_get_selected_model_settings() -> ModelUsageSettingsCollection:
+def handle_get_selected_model_settings() -> LlmUsageSettingsCollection:
     """Handle getting the settings for the saved model."""
     current_org_id = get_selected_org_id()
     if not current_org_id:
@@ -886,7 +920,7 @@ def _create_new_thread(feature: domain.FeatureKey) -> int:
 def prepare_for_chat(feature: domain.FeatureKey) -> None:
     """Prepare the session for chat. Load latest thread_id, cutoff, and history."""
     thread_id = 0
-    log.debug("prepare_for_chat(): %s", get_chat_session(feature.type_))
+    #log.debug("prepare_for_chat(): %s", get_chat_session(feature.type_))
     if SessionKeyNameForChat.THREAD.name not in get_chat_session(feature.type_):
         thread = run_queries.get_latest_thread(feature)
         thread_id = thread[0] if thread else _create_new_thread(feature)

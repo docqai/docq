@@ -29,10 +29,11 @@ from opentelemetry.trace import Status, StatusCode
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
+from ..manage_personas import Persona, llama_index_chat_prompt_template_from_persona
 from ..model_selection.main import (
     LLM_MODEL_COLLECTIONS,
+    LlmUsageSettingsCollection,
     ModelCapability,
-    ModelUsageSettingsCollection,
     ModelVendor,
 )
 from .llamaindex_otel_callbackhandler import OtelCallbackHandler
@@ -100,73 +101,71 @@ def _init_local_models() -> None:
     """Initialize local models."""
     for model_collection in LLM_MODEL_COLLECTIONS.values():
         for model_usage_settings in model_collection.model_usage_settings.values():
-            if model_usage_settings.model_vendor == ModelVendor.HUGGINGFACE_OPTIMUM_BAAI:
-                model_dir = get_models_dir(model_usage_settings.model_name, makedir=False)
+            if model_usage_settings.service_instance_config.vendor == ModelVendor.HUGGINGFACE_OPTIMUM_BAAI:
+                model_dir = get_models_dir(model_usage_settings.service_instance_config.model_name, makedir=False)
                 if not os.path.exists(model_dir):
-                    model_dir = get_models_dir(model_usage_settings.model_name, makedir=True)
+                    model_dir = get_models_dir(model_usage_settings.service_instance_config.model_name, makedir=True)
                     OptimumEmbedding.create_and_save_optimum_model(
-                        model_usage_settings.model_name,
+                        model_usage_settings.service_instance_config.model_name,
                         model_dir,
                     )
 
 
 @tracer.start_as_current_span(name="_get_generation_model")
-def _get_generation_model(model_settings_collection: ModelUsageSettingsCollection) -> LLM | None:
+def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection) -> LLM | None:
     import litellm
 
     litellm.telemetry = False
     model = None
     if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.CHAT]:
         chat_model_settings = model_settings_collection.model_usage_settings[ModelCapability.CHAT]
+        sc = chat_model_settings.service_instance_config
         _callback_manager = CallbackManager([OtelCallbackHandler(tracer_provider=trace.get_tracer_provider())])
-        if chat_model_settings.model_vendor == ModelVendor.AZURE_OPENAI:
+        if chat_model_settings.service_instance_config.vendor == ModelVendor.AZURE_OPENAI:
             _additional_kwargs: Dict[str, Any] = {}
-            _additional_kwargs["api_version"] = os.getenv("DOCQ_AZURE_OPENAI_API_VERSION")
+            _additional_kwargs["api_version"] = chat_model_settings.service_instance_config.api_version
             model = LiteLLM(
                 temperature=chat_model_settings.temperature,
-                model=f"azure/{chat_model_settings.model_deployment_name}",
+                model=f"azure/{sc.model_deployment_name}",
                 additional_kwargs=_additional_kwargs,
-                api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
-                api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
+                api_base=sc.api_base,
+                api_key=sc.api_key,
                 set_verbose=True,
                 callback_manager=_callback_manager,
             )
             log.info("Chat model: using Azure OpenAI")
-            _env_missing = not bool(
-                os.getenv("DOCQ_AZURE_OPENAI_API_BASE")
-                and os.getenv("DOCQ_AZURE_OPENAI_API_KEY1")
-                and os.getenv("DOCQ_AZURE_OPENAI_API_VERSION")
-            )
+            _env_missing = not bool(sc.api_base and sc.api_key and sc.api_version)
             if _env_missing:
                 log.warning("Chat model: env var values missing.")
-        elif chat_model_settings.model_vendor == ModelVendor.OPENAI:
+        elif chat_model_settings.service_instance_config.vendor == ModelVendor.OPENAI:
             model = LiteLLM(
                 temperature=chat_model_settings.temperature,
-                model=chat_model_settings.model_name,
-                api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
+                model=sc.model_name,
+                api_key=sc.api_key,
                 callback_manager=_callback_manager,
             )
             log.info("Chat model: using OpenAI.")
-            _env_missing = not bool(os.getenv("DOCQ_OPENAI_API_KEY"))
+            _env_missing = not bool(sc.api_key)
             if _env_missing:
                 log.warning("Chat model: env var values missing")
-        elif chat_model_settings.model_vendor == ModelVendor.GOOGLE_VERTEXAI_PALM2:
+        elif chat_model_settings.service_instance_config.vendor == ModelVendor.GOOGLE_VERTEXAI_PALM2:
             # GCP project_id is coming from the credentials json.
             model = LiteLLM(
                 temperature=chat_model_settings.temperature,
-                model=chat_model_settings.model_name,
+                model=sc.model_name,
                 callback_manager=_callback_manager,
             )
-        elif chat_model_settings.model_vendor == ModelVendor.GOOGLE_VERTEXTAI_GEMINI_PRO:
+        elif chat_model_settings.service_instance_config.vendor == ModelVendor.GOOGLE_VERTEXTAI_GEMINI_PRO:
             # GCP project_id is coming from the credentials json.
             model = LiteLLM(
                 temperature=chat_model_settings.temperature,
-                model=chat_model_settings.model_name,
+                model=sc.model_name,
                 callback_manager=_callback_manager,
                 max_tokens=2048,
                 kwargs={"telemetry": False},
             )
-            litellm.vertex_location = "us-central1"
+            litellm.VertexAIConfig()
+            litellm.vertex_location = sc.additional_properties["vertex_location"]
         else:
             raise ValueError("Chat model: model settings with a supported model vendor not found.")
 
@@ -175,31 +174,34 @@ def _get_generation_model(model_settings_collection: ModelUsageSettingsCollectio
 
 
 @tracer.start_as_current_span(name="_get_embed_model")
-def _get_embed_model(model_settings_collection: ModelUsageSettingsCollection) -> BaseEmbedding | None:
+def _get_embed_model(model_settings_collection: LlmUsageSettingsCollection) -> BaseEmbedding | None:
     embedding_model = None
     if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]:
         embedding_model_settings = model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]
         _callback_manager = CallbackManager([OtelCallbackHandler(tracer_provider=trace.get_tracer_provider())])
-        with tracer.start_as_current_span(name=f"LangchainEmbedding.{embedding_model_settings.model_vendor}"):
-            if embedding_model_settings.model_vendor == ModelVendor.AZURE_OPENAI:
+        with tracer.start_as_current_span(
+            name=f"LangchainEmbedding.{embedding_model_settings.service_instance_config.vendor}"
+        ):
+            if embedding_model_settings.service_instance_config.vendor == ModelVendor.AZURE_OPENAI:
                 embedding_model = AzureOpenAIEmbedding(
-                    model=embedding_model_settings.model_name,
-                    azure_deployment=embedding_model_settings.model_deployment_name,  # `deployment_name` is an alias
+                    model=embedding_model_settings.service_instance_config.model_name,
+                    azure_deployment=embedding_model_settings.service_instance_config.model_deployment_name,  # `deployment_name` is an alias
                     azure_endpoint=os.getenv("DOCQ_AZURE_OPENAI_API_BASE"),
                     api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1"),
                     # openai_api_type="azure",
                     api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION"),
                     callback_manager=_callback_manager,
                 )
-            elif embedding_model_settings.model_vendor == ModelVendor.OPENAI:
+            elif embedding_model_settings.service_instance_config.vendor == ModelVendor.OPENAI:
                 embedding_model = OpenAIEmbedding(
-                    model=embedding_model_settings.model_name,
+                    model=embedding_model_settings.service_instance_config.model_name,
                     api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
                     callback_manager=_callback_manager,
                 )
-            elif embedding_model_settings.model_vendor == ModelVendor.HUGGINGFACE_OPTIMUM_BAAI:
+            elif embedding_model_settings.service_instance_config.vendor == ModelVendor.HUGGINGFACE_OPTIMUM_BAAI:
                 embedding_model = OptimumEmbedding(
-                    folder_name=get_models_dir(embedding_model_settings.model_name), callback_manager=_callback_manager
+                    folder_name=get_models_dir(embedding_model_settings.service_instance_config.model_name),
+                    callback_manager=_callback_manager,
                 )
             else:
                 # defaults
@@ -219,7 +221,7 @@ def _get_storage_context(space: SpaceKey) -> StorageContext:
 
 
 @tracer.start_as_current_span(name="_get_service_context")
-def _get_service_context(model_settings_collection: ModelUsageSettingsCollection) -> ServiceContext:
+def _get_service_context(model_settings_collection: LlmUsageSettingsCollection) -> ServiceContext:
     log.debug(
         "EXPERIMENTS['INCLUDE_EXTRACTED_METADATA']['enabled']: %s", EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]
     )
@@ -244,7 +246,7 @@ def _get_service_context(model_settings_collection: ModelUsageSettingsCollection
 
 
 @tracer.start_as_current_span(name="_get_node_parser")
-def _get_node_parser(model_settings_collection: ModelUsageSettingsCollection) -> NodeParser:
+def _get_node_parser(model_settings_collection: LlmUsageSettingsCollection) -> NodeParser:
     # metadata_extractor = MetadataExtractor(
     #     extractors=[
 
@@ -279,7 +281,7 @@ def _get_node_parser(model_settings_collection: ModelUsageSettingsCollection) ->
 
 
 @tracer.start_as_current_span(name="_load_index_from_storage")
-def _load_index_from_storage(space: SpaceKey, model_settings_collection: ModelUsageSettingsCollection) -> BaseIndex:
+def _load_index_from_storage(space: SpaceKey, model_settings_collection: LlmUsageSettingsCollection) -> BaseIndex:
     # set service context explicitly for multi model compatibility
     sc = _get_service_context(model_settings_collection)
     return load_index_from_storage(
@@ -288,9 +290,17 @@ def _load_index_from_storage(space: SpaceKey, model_settings_collection: ModelUs
 
 
 @tracer.start_as_current_span(name="run_chat")
-def run_chat(input_: str, history: str, model_settings_collection: ModelUsageSettingsCollection) -> AgentChatResponse:
+def run_chat(
+    input_: str, history: str, model_settings_collection: LlmUsageSettingsCollection, persona: Persona
+) -> AgentChatResponse:
     """Chat directly with a LLM with history."""
-    engine = SimpleChatEngine.from_defaults(service_context=_get_service_context(model_settings_collection))
+    ## chat engine handles tracking the history.
+    print("persona: ", persona.system_prompt_content)
+    engine = SimpleChatEngine.from_defaults(
+        service_context=_get_service_context(model_settings_collection),
+        kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
+        system_prompt=persona.system_prompt_content
+    )
     output = engine.chat(input_)
 
     log.debug("(Chat) Q: %s, A: %s", input_, output)
@@ -301,7 +311,8 @@ def run_chat(input_: str, history: str, model_settings_collection: ModelUsageSet
 def run_ask(
     input_: str,
     history: str,
-    model_settings_collection: ModelUsageSettingsCollection,
+    model_settings_collection: LlmUsageSettingsCollection,
+    persona: Persona,
     spaces: list[SpaceKey] | None = None,
 ) -> RESPONSE_TYPE | AGENT_CHAT_RESPONSE_TYPE:
     """Ask questions against existing index(es) with history."""
@@ -310,7 +321,7 @@ def run_ask(
 
     if spaces is not None and len(spaces) > 0:
         span.set_attribute("spaces_count", len(spaces))
-        # log.debug("runs_ask(): spaces count: %s", len(spaces))
+        log.debug("runs_ask(): spaces count: %s", len(spaces))
         # With additional spaces likely to be combining a number of shared spaces.
         indices = []
         summaries = []
@@ -327,7 +338,7 @@ def run_ask(
                     attributes={"index_id": index_.index_id, "index_struct_cls": index_.index_struct_cls.__name__},
                 )
                 s_text = s_.summary if s_.summary else ""
-                #s_text = index_.as_query_engine().query("What is a summary of this document?", )
+                # s_text = index_.as_query_engine().query("What is a summary of this document?", )
                 summaries.append(s_text)
                 span.add_event(name="summary_appended", attributes={"index_summary": s_text})
             except Exception as e:
@@ -349,13 +360,20 @@ def run_ask(
                     indices,
                     index_summaries=summaries,
                     service_context=_get_service_context(model_settings_collection),
+                    kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
                 )
 
                 custom_query_engines = {
                     index.index_id: index.as_query_engine(child_branch_factor=2) for index in indices
                 }
 
-                query_engine = graph.as_query_engine(custom_query_engines=custom_query_engines, text_qa_template=CHAT_TEXT_QA_PROMPT.partial_format(history_str=history))
+                query_engine = graph.as_query_engine(
+                    custom_query_engines=custom_query_engines,
+                    text_qa_template=llama_index_chat_prompt_template_from_persona(persona).partial_format(history_str=history),
+                )
+
+                prompts_dict = query_engine.get_prompts()
+                print("prompts:", list(prompts_dict.keys()))
 
                 output = query_engine.query(input_)
                 span.add_event(
@@ -378,7 +396,9 @@ def run_ask(
         # No additional spaces i.e. likely to be against a user's documents in their personal space.
 
         log.debug("runs_ask(): space is None. executing run_chat(), not ASK.")
-        output = run_chat(input_=input_, history=history, model_settings_collection=model_settings_collection)
+        output = run_chat(
+            input_=input_, history=history, model_settings_collection=model_settings_collection, persona=persona
+        )
         span.add_event(name="ask_without_spaces", attributes={"question": input_, "answer": str(output)})
         # index = _load_index_from_storage(space=space, model_settings_collection=model_settings_collection)
         # engine = index.as_chat_engine(
@@ -400,7 +420,7 @@ def _default_response() -> Response:
 
 
 @tracer.start_as_current_span(name="query_error")
-def query_error(error: Exception, model_settings_collection: ModelUsageSettingsCollection) -> Response:
+def query_error(error: Exception, model_settings_collection: LlmUsageSettingsCollection) -> Response:
     """Query for a response to an error message."""
     try:  # Try re-prompting with the AI
         log.exception("Error: %s", error)

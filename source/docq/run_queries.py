@@ -6,11 +6,12 @@ from contextlib import closing
 from datetime import datetime
 from typing import Literal, Optional
 
-from docq.model_selection.main import ModelUsageSettingsCollection
+from docq.model_selection.main import LlmUsageSettingsCollection
 
 from .config import OrganisationFeatureType
 from .domain import FeatureKey, SpaceKey
 from .manage_documents import format_document_sources
+from .manage_personas import Persona, get_personas
 from .support.llm import query_error, run_ask, run_chat
 from .support.store import (
     get_history_table_name,
@@ -223,7 +224,8 @@ def query(
     input_: str,
     feature: FeatureKey,
     thread_id: int,
-    model_settings_collection: ModelUsageSettingsCollection,
+    model_settings_collection: LlmUsageSettingsCollection,
+    persona: Persona,
     spaces: Optional[list[SpaceKey]] = None,
 ) -> list:
     """Run the query again documents in the space(s) using a LLM."""
@@ -240,9 +242,9 @@ def query(
     log.debug("is_chat: %s", is_chat)
     try:
         response = (
-            run_chat(input_, history, model_settings_collection)
+            run_chat(input_, history, model_settings_collection, persona)
             if is_chat
-            else run_ask(input_, history, model_settings_collection, spaces)
+            else run_ask(input_, history, model_settings_collection, persona, spaces)
         )
         log.debug("Response: %s", response)
 

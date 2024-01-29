@@ -1,6 +1,9 @@
 """Layout components for the web app."""
 import base64
+import contextlib
+import json
 import logging as log
+import os
 import random
 import re
 from typing import Callable, List, Literal, Optional, Tuple
@@ -18,10 +21,11 @@ from docq.config import (
     SystemFeatureType,
     SystemSettingsKey,
 )
-from docq.domain import ConfigKey, DocumentListItem, FeatureKey, SpaceKey
+from docq.domain import ConfigKey, DocumentListItem, FeatureKey, PersonaType, SpaceKey
 from docq.extensions import ExtensionContext
+from docq.manage_personas import get_personas
 from docq.model_selection.main import (
-    ModelUsageSettingsCollection,
+    LlmUsageSettingsCollection,
     get_model_settings_collection,
     list_available_model_settings_collections,
 )
@@ -34,11 +38,10 @@ from opentelemetry import trace
 from st_pages import hide_pages, translate_icon
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
+from streamlit.elements.image import AtomicImage
 from streamlit.errors import StreamlitAPIException
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 from streamlit.source_util import get_pages
-
-import web.api.index_handler  # noqa: F401 DO NOT REMOVE. This is required to register the web API route handlers.
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .error_ui import _handle_error_state_ui
@@ -113,14 +116,15 @@ from .sessions import (
     get_public_session_id,
     get_public_space_group_id,
     get_selected_org_id,
+    get_selected_persona,
     is_current_user_super_admin,
     reset_session_state,
     session_state_exists,
+    set_selected_persona,
 )
 from .streamlit_application import st_app
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
-
 
 
 __chat_ui_script = """
@@ -256,7 +260,8 @@ def __embed_page_config() -> None:
 
 def __hide_all_empty_divs() -> None:
     """Hide all empty divs containing style or iframe that doesent render anything."""
-    st.markdown("""<style>
+    st.markdown(
+        """<style>
         div:has(> div.stMarkdown > div[data-testid="stMarkdownContainer"] > style) {
             display: none !important;
         }
@@ -265,7 +270,7 @@ def __hide_all_empty_divs() -> None:
         }
     </style>
     """,
-    unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
 
@@ -309,7 +314,11 @@ def render_page_title_and_favicon(page_display_title: Optional[str] = None) -> N
 
     try:
         ctx._set_page_config_allowed = True
-        st.set_page_config(page_icon=favicon_path, page_title=f"{browser_title_prefix} - {_page_display_title}", menu_items={"About": about_menu_content})
+        st.set_page_config(
+            page_icon=favicon_path,
+            page_title=f"{browser_title_prefix} - {_page_display_title}",
+            menu_items={"About": about_menu_content},
+        )
     except StreamlitAPIException:
         pass
 
@@ -349,7 +358,7 @@ def __login_form() -> None:
         )
         if st.form_submit_button("Login"):
             if handle_login(username, password):
-                st.experimental_rerun()
+                st.rerun()
             elif not handle_check_account_activated(username):
                 st.session_state[f"{form_name}-resend-verification-email"] = True
             else:
@@ -367,7 +376,7 @@ def __logout_button() -> None:
     sidebar = st.sidebar
     if sidebar.button("Logout"):
         handle_logout()
-        st.experimental_rerun()
+        st.rerun()
 
 
 def __not_authorised() -> None:
@@ -807,6 +816,44 @@ def _render_show_thread_space_files(feature: FeatureKey) -> None:
                 _render_documents_list_ui(space, False, "sm", expander_label)
 
 
+def _render_agent_selection(feature: FeatureKey) -> None:
+    with st.sidebar.container().expander("Assistants"):
+        st.markdown("#### Assistants coming soon")
+
+
+def _render_persona_selection(feature: FeatureKey) -> None:
+
+    with st.sidebar.container():
+        # def selection_changed_cb():
+        #     st.session_state["persona_selection_changed"] = True
+
+        #selected_key_index = 0
+        persona_type = PersonaType.SIMPLE_CHAT if feature.type_ == OrganisationFeatureType.CHAT_PRIVATE else PersonaType.ASK
+        _personas = get_personas(persona_type=persona_type)
+
+        # try:
+        #     st.session_state["persona_selection_changed"]
+        # except KeyError:
+        #     st.session_state["persona_selection_changed"] = False
+
+        # if not st.session_state["persona_selection_changed"]:
+        #     selected_persona_key = get_selected_persona()
+        #     selected_key_index = list(_personas.keys()).index(selected_persona_key) if selected_persona_key else 0
+        #     st.session_state["persona_selection_from_session"] = False
+
+        selected = st.selectbox(
+            "Persona:",
+            options=_personas.items(),
+            key="select_box_persona",
+            format_func=lambda x: x[1].name,
+            help="Select a persona related to your helps tune Docq to your needs.",
+        )
+        if selected:
+            selected_persona_key = selected[0]
+            set_selected_persona(selected_persona_key)
+
+
+
 def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
     """Upload files to chat."""
     if feature.type_ != OrganisationFeatureType.ASK_SHARED:
@@ -863,6 +910,7 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
         filename = st.session_state[input_key].name
         with st.spinner(f"Indexing file: {filename[:100]} ..."):
             handle_index_thread_space(feature)
+            st.session_state[f"chat_file_uploader_{feature.value()}"] = None
 
 
 def chat_ui(feature: FeatureKey) -> None:
@@ -921,6 +969,8 @@ def chat_ui(feature: FeatureKey) -> None:
     """,
         unsafe_allow_html=True,
     )
+    from docq.agents.datamodels import Message
+
     with st.container():
         if feature.type_ == OrganisationFeatureType.ASK_SHARED:
             _personal_ask_style()
@@ -943,13 +993,55 @@ def chat_ui(feature: FeatureKey) -> None:
         st.markdown(f"#### {day}")
 
         chat_history = get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY)
+
         if chat_history:
             for x in chat_history:
                 # x = (id, text, is_user, time, thread_id)
                 if format_datetime(x[3]) != day:
                     day = format_datetime(x[3])
                     st.markdown(f"#### {day}")
-                _chat_message(x[1], x[2])
+
+                agent_output = None
+                with contextlib.suppress(Exception):
+                    #TODO: this is a hack. A data structure with a pydantic model should be implemented to replace the list of tuples.
+                    # agent messages are serialised Message dataclass. Other messages are str.
+                    _x = json.loads(x[1])
+                    agent_output = Message(
+                        **_x
+                    )  # if the message payload isn't a serialised Message class an exception will be raised and we ignore it.
+
+                if agent_output and agent_output.metadata:
+                    with st.chat_message(
+                        "assistant", avatar="https://github.com/docqai/docq/blob/main/docs/assets/logo.jpg?raw=true"
+                    ):
+                        st.write(agent_output.content)
+                        with st.expander("Agent Messages", False):
+                            for m in agent_output.metadata["messages"]:
+                                if m["content"] != "":
+                                    st.write(m["role"], "\n\n", m["content"])
+                                    st.divider()
+                        with st.expander("Files", True):
+                            files = agent_output.metadata["files"]
+                            if files:
+                                images: list[AtomicImage] = []
+                                image_names = []
+                                for file in files:
+                                    if file["type"] == "image":
+                                        images.append(os.path.join("./.persisted/agents", file["path"]))
+                                        image_names.append(file["name"])
+                                    elif file["type"] == "code":  # noqa: SIM114
+                                        images.append(os.path.join("./web/icons/flaticon/001-py.png"))
+                                        image_names.append(file["name"])
+                                    elif file["type"] == "pdf":
+                                        images.append(os.path.join("./web/icons/flaticon/003-pdf-file.png"))
+                                        image_names.append(file["name"])
+                                    else:
+                                        st.write(file["name"])
+
+                                st.image(images, image_names)
+
+                else:
+                    _chat_message(x[1], x[2])
 
     st.chat_input(
         "Type your question here",
@@ -957,16 +1049,18 @@ def chat_ui(feature: FeatureKey) -> None:
         on_submit=handle_chat_input,
         args=(feature,),
     )
-    _show_chat_histories(feature)
 
     uploader, new_chat = st.columns([3, 1])
-    with new_chat:
-        if st.button("New chat"):
-            handle_create_new_chat(feature)
+    if new_chat.button("New chat"):
+        handle_create_new_chat(feature)
+        st.rerun()
     with uploader:
         _render_chat_file_uploader(feature, len(chat_history) if chat_history else 0)
 
     _render_show_thread_space_files(feature)
+    _render_agent_selection(feature)
+    _render_persona_selection(feature)
+    _show_chat_histories(feature)
     _chat_ui_script()
 
 
@@ -1110,19 +1204,21 @@ def organisation_settings_ui() -> None:
             st.session_state[f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}"][0],
         )
         log.debug("selected model: %s", selected_model[0])
-        selected_model_settings: ModelUsageSettingsCollection = get_model_settings_collection(selected_model[0])
+        selected_model_settings: LlmUsageSettingsCollection = get_model_settings_collection(selected_model[0])
 
         with model_settings_container.expander("Model details"):
             for _, model_settings in selected_model_settings.model_usage_settings.items():
                 st.write(f"{model_settings.model_capability.value} model: ")
-                st.write(f"- Model Vendor: `{model_settings.model_vendor.value}`")
-                st.write(f"- Model Name: `{model_settings.model_name}`")
+                st.write(f"- Model Vendor: `{model_settings.service_instance_config.vendor.value}`")
+                st.write(f"- Model Name: `{model_settings.service_instance_config.model_name}`")
                 st.write(f"- Temperature: `{model_settings.temperature}`")
                 st.write(
-                    f"- Deployment Name: `{model_settings.model_deployment_name if model_settings.model_deployment_name else 'n/a'}`"
+                    f"- Deployment Name: `{model_settings.service_instance_config.model_deployment_name if model_settings.service_instance_config.model_deployment_name else 'n/a'}`"
                 )
-                st.write(f"- License: `{model_settings.license_ if model_settings.license_ else 'unknown'}`")
-                st.write(f"- Citation: `{model_settings.citation}`")
+                st.write(
+                    f"- License: `{model_settings.service_instance_config.license_ if model_settings.service_instance_config.license_ else 'unknown'}`"
+                )
+                st.write(f"- Citation: `{model_settings.service_instance_config.citation}`")
                 st.divider()
 
 
@@ -1150,7 +1246,8 @@ def _get_credential_request_params() -> dict:
 def _render_file_storage_credential_request(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
     """Renders the credential request input field with an action button."""
     saved_credentials = configs.get(configkey.key) if configs else st.session_state.get(key, None)
-    st.markdown("""
+    st.markdown(
+        """
     <style>
       div.element-container .stMarkdown div[data-testid="stMarkdownContainer"] p {
         margin-bottom: 8px !important;
@@ -1207,7 +1304,7 @@ def fetch_file_storage_root_folders(_configkey: ConfigKey, configs: Optional[dic
         return [saved_settings], True
 
     else:
-        with st.spinner("Loading Options..."): # noqa E501
+        with st.spinner("Loading Options..."):  # noqa E501
             handler: Callable = options.get("handler", None)
             if handler:
                 return handler(configs, st.session_state)
@@ -1406,7 +1503,7 @@ def list_spaces_ui(admin_access: bool = False) -> None:
     spaces = list_shared_spaces()
     if spaces:
         for s in spaces:
-            if s[4] and not admin_access: # Skip if archived and not admin.
+            if s[4] and not admin_access:  # Skip if archived and not admin.
                 continue
             ds = get_space_data_source_choice_by_type(s[5])
             container = _render_view_space_details_with_container(s, ds, True)
@@ -1545,7 +1642,7 @@ def _validate_email(email: str, generator: DeltaGenerator, form: str) -> bool:
         return False
     elif handle_check_user_exists(email) and not handle_check_account_activated(email):
         st.session_state[f"{form}-resend-verification-email"] = True
-        st.experimental_rerun()
+        st.rerun()
     elif handle_check_user_exists(email) and handle_check_account_activated(email):
         generator.error(f"A user with _{email}_ is already registered!")
         return False

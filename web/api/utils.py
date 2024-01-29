@@ -66,7 +66,7 @@ class CamelModel(BaseModel):
     """Pydantic model that generated camelCase alias from snake_case field names."""
     class Config:
         alias_generator = to_camel
-        allow_population_by_field_name = True
+        population_by_name = True
 
 
 @tracer.start_as_current_span("authenticated")

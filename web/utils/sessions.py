@@ -1,11 +1,12 @@
 """Session utilities."""
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 import docq
 import streamlit as st
 from docq import config, manage_users
+from docq.manage_personas import Persona, get_personas
 from docq.support.auth_utils import set_cache_auth_session
 from opentelemetry import trace
 
@@ -42,18 +43,20 @@ def reset_session_state() -> None:
     logging.debug("called reset_session_state()")
 
 
-def _get_session_value(name: SessionKeySubName, key_: str = None, subkey_: str = None) -> Any | None:
+def _get_session_value(name: SessionKeySubName, key_: Optional[str] = None, subkey_: Optional[str] = None) -> Any | None:
     _init_session_state()
     val = st.session_state[SESSION_KEY_NAME_DOCQ][name.name]
     if key_ is None and subkey_ is None:
         return val
-    elif subkey_ is None:
+    elif subkey_ is None and key_ in val:
         return val[key_]
-    else:
+    elif key_ in val and subkey_ in val[key_]:
         return val[key_][subkey_]
+    else:
+        return None
 
 
-def _set_session_value(val: Any | None, name: SessionKeySubName, key: str = None, subkey: str = None) -> None:
+def _set_session_value(val: Any | None, name: SessionKeySubName, key: Optional[str] = None, subkey: Optional[str] = None) -> None:
     _init_session_state()
     if key is None and subkey is None:
         st.session_state[SESSION_KEY_NAME_DOCQ][name.name] = val
@@ -63,7 +66,7 @@ def _set_session_value(val: Any | None, name: SessionKeySubName, key: str = None
         st.session_state[SESSION_KEY_NAME_DOCQ][name.name][key][subkey] = val
 
 
-def get_chat_session(type_: config.OrganisationFeatureType = None, key_: SessionKeyNameForChat = None) -> Any | None:
+def get_chat_session(type_: Optional[config.OrganisationFeatureType] = None, key_: Optional[SessionKeyNameForChat] = None) -> Any | None:
     """Get the chat session value."""
     _init_session_state()
     return _get_session_value(
@@ -73,7 +76,7 @@ def get_chat_session(type_: config.OrganisationFeatureType = None, key_: Session
     )
 
 
-def set_chat_session(val: Any | None, type_: config.OrganisationFeatureType = None, key_: SessionKeyNameForChat = None) -> None:
+def set_chat_session(val: Any | None, type_: Optional[config.OrganisationFeatureType] = None, key_: Optional[SessionKeyNameForChat] = None) -> None:
     """Set the chat session value."""
     _init_session_state()
     _set_session_value(
@@ -84,7 +87,7 @@ def set_chat_session(val: Any | None, type_: config.OrganisationFeatureType = No
     )
 
 
-def set_auth_session(val: dict = None, cache: bool = False) -> None:
+def set_auth_session(val: Optional[dict] = None, cache: bool = False) -> None:
     """Set the auth session value."""
     _set_session_value(val, SessionKeySubName.AUTH)
     if cache:
@@ -130,18 +133,27 @@ def set_selected_org_id(org_id: int) -> None:
     """Set the selected org_id context."""
     _set_session_value(org_id, SessionKeySubName.AUTH, SessionKeyNameForAuth.SELECTED_ORG_ID.name)
 
+def set_selected_persona(key: str) -> None:
+    """Set the selected person key in session settings."""
+    _set_session_value(key, SessionKeySubName.SETTINGS, SessionKeyNameForSettings.USER.name, "persona")
+
+def get_selected_persona() -> str | None:
+    """Get the selected person key from session settings."""
+    persona = _get_session_value(SessionKeySubName.SETTINGS, SessionKeyNameForSettings.USER.name, "persona")
+    return persona
+
 
 def get_username() -> str | None:
     """Get the authenticated user name."""
     return _get_session_value(SessionKeySubName.AUTH, SessionKeyNameForAuth.USERNAME.name)
 
 
-def get_settings_session(key: SessionKeyNameForSettings = None) -> dict | None:
+def get_settings_session(key: Optional[SessionKeyNameForSettings] = None) -> dict | None:
     """Get the settings session value."""
     return _get_session_value(SessionKeySubName.SETTINGS, key.name if key is not None else None)
 
 
-def set_settings_session(val: dict = None, key: SessionKeyNameForSettings = None) -> None:
+def set_settings_session(val: Optional[dict] = None, key: Optional[SessionKeyNameForSettings] = None) -> None:
     """Set the settings session value."""
     _set_session_value(val, SessionKeySubName.SETTINGS, key.name if key is not None else None)
 

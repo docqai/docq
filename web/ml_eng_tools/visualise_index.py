@@ -5,7 +5,7 @@ import streamlit as st
 from docq.config import SpaceType
 from docq.domain import SpaceKey
 from docq.manage_spaces import list_space
-from docq.model_selection.main import ModelUsageSettingsCollection, get_saved_model_settings_collection
+from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
 from docq.support.llm import _get_service_context, _get_storage_context
 
 #from docq.support.metadata_extractors import DEFAULT_ENTITY_MAP
@@ -21,7 +21,7 @@ auth_required(requiring_selected_org_admin=True)
 
 
 def _load_index(
-    space: SpaceKey, model_settings_collection: ModelUsageSettingsCollection, exp_id: str = None
+    space: SpaceKey, model_settings_collection: LlmUsageSettingsCollection, exp_id: str = None
 ) -> BaseIndex:
     """Load index from storage."""
     storage_context = _get_storage_context(space)
