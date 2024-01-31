@@ -47,17 +47,17 @@ def user_admin_pages() -> None:
     admin_spaces, admin_space_groups, admin_logs, admin_settings = st.tabs(
         ["Admin Spaces", "Admin Space Groups", "Admin Logs", "Admin Settings"]
     )
-    with admin_logs:
-        admin_logs_page()
-
-    with admin_settings:
-        admin_settings_page()
-
     with admin_spaces:
         admin_spaces_page()
 
     with admin_space_groups:
         admin_space_groups_page()
+
+    with admin_logs:
+        admin_logs_page()
+
+    with admin_settings:
+        admin_settings_page()
 
 
 with tracer().start_as_current_span("admin_section", attributes=baggage_as_attributes()):
