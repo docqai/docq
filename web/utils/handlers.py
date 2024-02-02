@@ -580,15 +580,18 @@ def _setup_chat_thread_space(feature: domain.FeatureKey, org_id:int, thread_id: 
     space: Optional[SpaceKey] = None
 
     space = manage_spaces.get_thread_space(org_id, thread_id)
-    if space is None:
+    file = st.session_state.get(f"chat_file_uploader_{feature.value()}", None)
+
+    if space is None and (file and file.name):
         topic = run_queries.get_thread_topic(feature, thread_id)
         space = manage_spaces.create_thread_space(org_id, thread_id, topic, SpaceDataSources.MANUAL_UPLOAD.name)
+        manage_documents.upload(file.name, file.getvalue(), space)
+        st.session_state[f"chat_file_uploader_{feature.value()}"] = None
+        return space
 
-    if space is not None:
-        file = st.session_state.get(f"chat_file_uploader_{feature.value()}", None)
-        if file:
-            manage_documents.upload(file.name, file.getvalue(), space)
-            st.session_state[f"chat_file_uploader_{feature.value()}"] = None
+    if space is not None and (file and file.name):
+        manage_documents.upload(file.name, file.getvalue(), space)
+        st.session_state[f"chat_file_uploader_{feature.value()}"] = None
 
     return space
 
