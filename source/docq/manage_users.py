@@ -13,12 +13,9 @@ from opentelemetry import trace
 
 import docq
 
-from . import manage_documents as mdocuments
 from . import manage_organisations
 from . import manage_settings as msettings
-from .config import SpaceType
 from .constants import DEFAULT_ADMIN_FULLNAME, DEFAULT_ADMIN_ID, DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_USERNAME
-from .domain import SpaceKey
 from .support.store import get_sqlite_system_file
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)

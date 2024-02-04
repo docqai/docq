@@ -1,11 +1,14 @@
 """Utilities for the API handlers."""
 import functools
+import os
 import re
 from typing import Any, Callable, Iterable, Mapping
 
 from opentelemetry import trace
 from pydantic import BaseModel
 from tornado.web import HTTPError, RequestHandler
+
+from ...source.docq.config import ENV_VAR_DOCQ_API_SECRET
 
 tracer = trace.get_tracer(__name__)
 
@@ -66,7 +69,7 @@ class CamelModel(BaseModel):
     """Pydantic model that generated camelCase alias from snake_case field names."""
     class Config:
         alias_generator = to_camel
-        allow_population_by_field_name = True
+        population_by_name = True
 
 
 @tracer.start_as_current_span("authenticated")
@@ -103,6 +106,11 @@ def authenticated(method: Callable[..., Any]) -> Callable[..., Any]:
 def validate_token(token: str) -> bool:
     """Validate the token. This is just a placeholder, replace with your own validation logic."""
     #TODO: add token validation logic
-    return token == "expected_token"
+    is_valid = False
+    secret = os.environ.get(ENV_VAR_DOCQ_API_SECRET, None)
+    if secret is not None or secret != "":
+        is_valid = token == secret
+
+    return is_valid
 
 

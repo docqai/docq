@@ -6,11 +6,12 @@ from contextlib import closing
 from datetime import datetime
 from typing import Literal, Optional
 
-from docq.model_selection.main import ModelUsageSettingsCollection
+from docq.model_selection.main import LlmUsageSettingsCollection
 
 from .config import OrganisationFeatureType
 from .domain import FeatureKey, SpaceKey
 from .manage_documents import format_document_sources
+from .manage_personas import Persona, get_personas
 from .support.llm import query_error, run_ask, run_chat
 from .support.store import (
     get_history_table_name,
@@ -123,6 +124,23 @@ def list_thread_history(feature: FeatureKey) -> list[tuple[int, str, int]]:
     return rows
 
 
+def get_thread_topic(feature: FeatureKey, thread_id: int) -> str:
+    """Retrieve the topic of a thread."""
+    tablename = get_history_thread_table_name(feature.type_)
+    row = None
+    with closing(
+        sqlite3.connect(get_sqlite_usage_file(feature.id_), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(
+            SQL_CREATE_THREAD_TABLE.format(
+                table=tablename,
+            )
+        )
+        row = cursor.execute(f"SELECT topic FROM {tablename} WHERE id = ?", (thread_id,)).fetchone()  # noqa: S608
+
+    return row[0] if row else f"New thread {thread_id}"
+
+
 def update_thread_topic(topic: str, feature: FeatureKey, thread_id: int) -> None:
     """Update the topic of a thread."""
     tablename = get_history_thread_table_name(feature.type_)
@@ -206,7 +224,8 @@ def query(
     input_: str,
     feature: FeatureKey,
     thread_id: int,
-    model_settings_collection: ModelUsageSettingsCollection,
+    model_settings_collection: LlmUsageSettingsCollection,
+    persona: Persona,
     spaces: Optional[list[SpaceKey]] = None,
 ) -> list:
     """Run the query again documents in the space(s) using a LLM."""
@@ -223,9 +242,9 @@ def query(
     log.debug("is_chat: %s", is_chat)
     try:
         response = (
-            run_chat(input_, history, model_settings_collection)
+            run_chat(input_, history, model_settings_collection, persona)
             if is_chat
-            else run_ask(input_, history, model_settings_collection, spaces)
+            else run_ask(input_, history, model_settings_collection, persona, spaces)
         )
         log.debug("Response: %s", response)
 

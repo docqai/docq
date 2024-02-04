@@ -7,7 +7,7 @@ import math
 import random
 import re
 from datetime import datetime
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import unquote_plus
 
 import streamlit as st
@@ -24,17 +24,20 @@ from docq import (
     run_queries,
 )
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
+from docq.agents.datamodels import Message
+from docq.agents.main import run_agent
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions
-from docq.model_selection.main import ModelUsageSettingsCollection, get_saved_model_settings_collection
+from docq.manage_personas import get_persona
+from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
 from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
 from opentelemetry import baggage, trace
+from pydantic import RootModel
 from streamlit.components.v1 import html
 
 from .constants import (
-    MAX_NUMBER_OF_UPLOAD_DOCS,
     NUMBER_OF_MSGS_TO_LOAD,
     SessionKeyNameForAuth,
     SessionKeyNameForChat,
@@ -47,6 +50,7 @@ from .sessions import (
     get_chat_session,
     get_public_space_group_id,
     get_selected_org_id,
+    get_selected_persona,
     get_username,
     is_current_user_selected_org_admin,
     reset_session_state,
@@ -421,7 +425,9 @@ def list_user_groups(name_match: str = None) -> List[Tuple]:
 def list_public_spaces() -> List[Tuple]:
     """List public spaces in a space group."""
     space_group_id = get_public_space_group_id()
-    return manage_spaces.list_public_spaces(space_group_id)
+    selected_org_id = get_selected_org_id()
+    if space_group_id and selected_org_id:
+        return manage_spaces.list_public_spaces(selected_org_id, space_group_id)
 
 
 def handle_create_org() -> bool:
@@ -557,41 +563,115 @@ def _get_chat_spaces(feature: domain.FeatureKey) -> List[SpaceKey]:
 
     return result
 
+def receive_message_callback_handler(message: Dict | str, sender: Any, request_reply: bool | None = None, silent: bool | None = False) -> None:
+    from datetime import datetime
+    result = [("0", f"r:{sender.name}: {message}", False, datetime.now(), 3)]
+    get_chat_session(config.OrganisationFeatureType.ASK_SHARED, SessionKeyNameForChat.HISTORY).extend(result)
+
+def send_message_callback_handler(message: Dict | str, recipient: Any, request_reply: bool | None = None, silent: bool | None = False) -> None:
+    from datetime import datetime
+    result = [("0", f"s:{recipient.name}: {message}", False, datetime.now(), 3)]
+    get_chat_session(config.OrganisationFeatureType.ASK_SHARED, SessionKeyNameForChat.HISTORY).extend(result)
+
+
+
+def _setup_chat_thread_space(feature: domain.FeatureKey, org_id:int, thread_id: int) ->  Optional[SpaceKey]:
+    """Create a thread space or add more files and index if the space already exists."""
+    space: Optional[SpaceKey] = None
+
+    space = manage_spaces.get_thread_space(org_id, thread_id)
+    if space is None:
+        topic = run_queries.get_thread_topic(feature, thread_id)
+        space = manage_spaces.create_thread_space(org_id, thread_id, topic, SpaceDataSources.MANUAL_UPLOAD.name)
+
+    if space is not None:
+        file = st.session_state.get(f"chat_file_uploader_{feature.value()}", None)
+        if file:
+            manage_documents.upload(file.name, file.getvalue(), space)
+            st.session_state[f"chat_file_uploader_{feature.value()}"] = None
+
+    return space
+
 
 @tracer.start_as_current_span("handle_chat_input")
 def handle_chat_input(feature: domain.FeatureKey) -> None:
     """Handle chat input."""
-    req = st.session_state[f"chat_input_{feature.value()}"]
-    spaces = None
-    if feature.type_ is not config.OrganisationFeatureType.CHAT_PRIVATE:
-        spaces = _get_chat_spaces(feature)
+    req: str = st.session_state[f"chat_input_{feature.value()}"]
+    result = []
 
     thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
     if thread_id is None:
         raise ValueError("Thread id in session state was None")
-    select_org_id =get_selected_org_id()
+    select_org_id = get_selected_org_id()
     if select_org_id is None:
         raise ValueError("Selected org id was None")
-    saved_model_settings = get_saved_model_settings_collection(select_org_id)
 
-    result = run_queries.query(req, feature, thread_id, saved_model_settings, spaces)
+    if req.startswith("/agent"):
+        data = []
+        user_request_message = req.split("/agent")[1].strip()
+        data.append((user_request_message, True, datetime.now(), thread_id))
+        output_message = run_agent() if user_request_message == "" else run_agent(user_request_message)
+        data.append((RootModel[Message](output_message).model_dump_json(), False, datetime.now(), thread_id))
+        result = run_queries._save_messages(data, feature)
+
+    else:
+        thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
+        if thread_id is None:
+            raise ValueError("Thread id in session state was None")
+
+        if feature.type_ is config.OrganisationFeatureType.CHAT_PRIVATE or config.OrganisationFeatureType.ASK_SHARED:
+            _thread_space = _setup_chat_thread_space(feature, select_org_id, thread_id)
+            spaces = _get_chat_spaces(feature)
+            if _thread_space is not None:
+                spaces.append(_thread_space)
+
+            saved_model_settings = get_saved_model_settings_collection(select_org_id)
+
+            persona_key = get_selected_persona()
+            persona_key = persona_key if persona_key else "default"
+
+            persona = get_persona(persona_key)
+
+            result = run_queries.query(req, feature, thread_id, saved_model_settings, persona, spaces)
 
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)
 
 
+def handle_get_thread_space(feature: domain.FeatureKey) -> Optional[SpaceKey]:
+    """Get the current thread space."""
+    selected_org_id = get_selected_org_id()
+    thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
+
+    if thread_id and selected_org_id:
+        return manage_spaces.get_thread_space(selected_org_id, thread_id)
+
+
+def handle_index_thread_space(feature: domain.FeatureKey) -> None:
+    """Automatically start indexing the active thread space on file upload."""
+    selected_org_id = get_selected_org_id()
+    thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
+
+    if selected_org_id and thread_id:
+        _setup_chat_thread_space(feature, selected_org_id, thread_id)
+
+
 def handle_list_documents(space: domain.SpaceKey) -> List[DocumentListItem]:
+    """Handle list documents."""
     return manage_spaces.list_documents(space)
 
 
 def handle_delete_document(filename: str, space: domain.SpaceKey) -> None:
+    """Handle delete document."""
     manage_documents.delete(filename, space)
 
 
 def handle_delete_all_documents(space: domain.SpaceKey) -> None:
+    """Handle delete all documents."""
     manage_documents.delete_all(space)
 
 
 def handle_upload_file(space: domain.SpaceKey) -> None:
+    """Handle upload file."""
     files = st.session_state[f"uploaded_file_{space.value()}"]
 
     disp = st.empty()
@@ -621,15 +701,18 @@ def handle_change_temperature(type_: config.SpaceType):
     manage_settings.change_settings(type_.name, temperature=st.session_state[f"temperature_{type_.name}"])
 
 
-def get_shared_space(id_: int) -> tuple[int, int, str, str, bool, str, dict, datetime, datetime]:
+def get_shared_space(id_: int) -> Optional[manage_spaces.SPACE]:
+    """Get a shared space."""
     org_id = get_selected_org_id()
-    return manage_spaces.get_shared_space(id_, org_id)
+    if org_id is not None:
+        return manage_spaces.get_shared_space(id_, org_id)
 
 
-def list_shared_spaces():
+def list_shared_spaces() -> List[manage_spaces.SPACE]:
+    """List shared spaces."""
     user_id = get_authenticated_user_id()
     org_id = get_selected_org_id()
-    return manage_spaces.list_shared_spaces(org_id, user_id)
+    return manage_spaces.list_shared_spaces(org_id, user_id) if org_id else []
 
 
 def handle_archive_space(id_: int):
@@ -751,7 +834,7 @@ def handle_get_system_settings() -> dict[str, str]:  # noqa: D103
     return result
 
 
-def handle_get_selected_model_settings() -> ModelUsageSettingsCollection:
+def handle_get_selected_model_settings() -> LlmUsageSettingsCollection:
     """Handle getting the settings for the saved model."""
     current_org_id = get_selected_org_id()
     if not current_org_id:
@@ -837,7 +920,7 @@ def _create_new_thread(feature: domain.FeatureKey) -> int:
 def prepare_for_chat(feature: domain.FeatureKey) -> None:
     """Prepare the session for chat. Load latest thread_id, cutoff, and history."""
     thread_id = 0
-    log.debug("prepare_for_chat(): %s", get_chat_session(feature.type_))
+    #log.debug("prepare_for_chat(): %s", get_chat_session(feature.type_))
     if SessionKeyNameForChat.THREAD.name not in get_chat_session(feature.type_):
         thread = run_queries.get_latest_thread(feature)
         thread_id = thread[0] if thread else _create_new_thread(feature)

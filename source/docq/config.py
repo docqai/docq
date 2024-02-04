@@ -6,6 +6,7 @@ ENV_VAR_DOCQ_DATA = "DOCQ_DATA"
 ENV_VAR_DOCQ_DEMO = "DOCQ_DEMO"
 ENV_VAR_OPENAI_API_KEY = "DOCQ_OPENAI_API_KEY"
 ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY = "DOCQ_COOKIE_HMAC_SECRET_KEY"
+ENV_VAR_DOCQ_API_SECRET = "DOCQ_API_SECRET"
 SESSION_COOKIE_NAME = "docqai/_docq"
 
 
@@ -15,6 +16,7 @@ class SpaceType(Enum):
     PERSONAL = "personal"
     SHARED = "shared"
     PUBLIC = "public"
+    THREAD = "thread"
 
 
 class SystemFeatureType(Enum):

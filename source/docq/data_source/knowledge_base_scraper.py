@@ -1,6 +1,5 @@
 """Data source for scrapping articles from a knowledge base."""
 
-import logging as log
 from typing import List
 
 from ..domain import ConfigKey, SpaceKey

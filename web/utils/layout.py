@@ -1,9 +1,12 @@
 """Layout components for the web app."""
 import base64
+import contextlib
+import json
 import logging as log
+import os
 import random
 import re
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Literal, Optional, Tuple
 from urllib.parse import quote_plus, unquote_plus
 
 import docq
@@ -18,10 +21,11 @@ from docq.config import (
     SystemFeatureType,
     SystemSettingsKey,
 )
-from docq.domain import ConfigKey, DocumentListItem, FeatureKey, SpaceKey
+from docq.domain import ConfigKey, DocumentListItem, FeatureKey, PersonaType, SpaceKey
 from docq.extensions import ExtensionContext
+from docq.manage_personas import get_personas
 from docq.model_selection.main import (
-    ModelUsageSettingsCollection,
+    LlmUsageSettingsCollection,
     get_model_settings_collection,
     list_available_model_settings_collections,
 )
@@ -34,11 +38,10 @@ from opentelemetry import trace
 from st_pages import hide_pages, translate_icon
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
+from streamlit.elements.image import AtomicImage
 from streamlit.errors import StreamlitAPIException
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 from streamlit.source_util import get_pages
-
-import web.api.index_handler  # noqa: F401 DO NOT REMOVE. This is required to register the web API route handlers.
 
 from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
 from .error_ui import _handle_error_state_ui
@@ -73,7 +76,9 @@ from .handlers import (
     handle_get_chat_history_threads,
     handle_get_gravatar_url,
     handle_get_system_settings,
+    handle_get_thread_space,
     handle_get_user_email,
+    handle_index_thread_space,
     handle_list_documents,
     handle_list_orgs,
     handle_login,
@@ -111,14 +116,15 @@ from .sessions import (
     get_public_session_id,
     get_public_space_group_id,
     get_selected_org_id,
+    get_selected_persona,
     is_current_user_super_admin,
     reset_session_state,
     session_state_exists,
+    set_selected_persona,
 )
 from .streamlit_application import st_app
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
-
 
 
 __chat_ui_script = """
@@ -138,7 +144,9 @@ __chat_ui_script = """
                 --background-color: ${getComputedStyle(parent.body, null).getPropertyValue('background-color')};
             }
         `
-        parent.head.appendChild(style)
+        parent.head.appendChild(style);
+        setExpanderLabels();
+        setButtonLabels();
     }; setStyle();
 
     const observer = new MutationObserver(setStyle)
@@ -158,6 +166,33 @@ __chat_ui_script = """
                 window.open('https://www.gravatar.com/', '_blank')
             }
     })})
+
+
+    /**
+     * 1. Find all expanders
+     * 2. For each expander set an attribute 'docq-data-label' with the expander's label text
+     * Note: label is nested under summary > span > div > p
+     */
+    function setExpanderLabels() {
+        const expanders = parent.querySelectorAll('[data-testid="stExpander"]');
+        expanders.forEach((el) => {
+            const label = el.querySelector('summary > span > div > p').innerText
+            el.setAttribute('docq-data-label', label)
+        })
+    };
+
+    /**
+     * 1. Find all buttons with attribute kind="primary"
+     * 2. For each button set an attribute 'docq-data-label' with the button's label text
+     */
+    function setButtonLabels() {
+        const buttons = parent.querySelectorAll('.row-widget.stButton');
+        buttons.forEach((el) => {
+            el.parentElement.setAttribute('docq-data-label', el.innerText)
+            el.parentElement.removeAttribute('width')
+            el.removeAttribute('style')
+        })
+    };
 
 </script>
 """
@@ -225,7 +260,8 @@ def __embed_page_config() -> None:
 
 def __hide_all_empty_divs() -> None:
     """Hide all empty divs containing style or iframe that doesent render anything."""
-    st.markdown("""<style>
+    st.markdown(
+        """<style>
         div:has(> div.stMarkdown > div[data-testid="stMarkdownContainer"] > style) {
             display: none !important;
         }
@@ -234,13 +270,13 @@ def __hide_all_empty_divs() -> None:
         }
     </style>
     """,
-    unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
 
 def __always_hidden_pages() -> None:
     """These pages are always hidden whether the user is an admin or not."""
-    hide_pages(["widget", "signup", "verify", "Admin_Spaces"])
+    hide_pages(["widget", "signup", "verify"])
 
 
 def render_page_title_and_favicon(page_display_title: Optional[str] = None) -> None:
@@ -278,7 +314,11 @@ def render_page_title_and_favicon(page_display_title: Optional[str] = None) -> N
 
     try:
         ctx._set_page_config_allowed = True
-        st.set_page_config(page_icon=favicon_path, page_title=f"{browser_title_prefix} - {_page_display_title}", menu_items={"About": about_menu_content})
+        st.set_page_config(
+            page_icon=favicon_path,
+            page_title=f"{browser_title_prefix} - {_page_display_title}",
+            menu_items={"About": about_menu_content},
+        )
     except StreamlitAPIException:
         pass
 
@@ -318,7 +358,7 @@ def __login_form() -> None:
         )
         if st.form_submit_button("Login"):
             if handle_login(username, password):
-                st.experimental_rerun()
+                st.rerun()
             elif not handle_check_account_activated(username):
                 st.session_state[f"{form_name}-resend-verification-email"] = True
             else:
@@ -336,7 +376,7 @@ def __logout_button() -> None:
     sidebar = st.sidebar
     if sidebar.button("Logout"):
         handle_logout()
-        st.experimental_rerun()
+        st.rerun()
 
 
 def __not_authorised() -> None:
@@ -647,7 +687,7 @@ def _personal_ask_style() -> None:
     st.write(
         """
     <style>
-        section[tabindex="0"] [data-testid="stExpander"] {
+        [docq-data-label="Including these shared spaces:"] {
             z-index: 1000;
             position: fixed;
             top: 46px;
@@ -712,6 +752,167 @@ def _show_chat_histories(feature: FeatureKey) -> None:
             )
 
 
+def _render_documents_list_ui(space: SpaceKey, read_only: bool = True, size: Literal["lg", "sm"] = "lg", expander_label: str = "Documents List") -> None:
+    """Render the UI for listing documents in a space."""
+    expander_selector = f'div[data-testid="stExpander"][docq-data-label="{expander_label}"]'
+
+    st.markdown(f"""
+        <style>
+          {expander_selector} hr {{
+            margin-top: 0.5rem;
+          }}
+          {expander_selector} button[kind="primary"] {{
+            min-height: unset;
+            height: 1.5rem;
+          }}
+          {expander_selector} button[kind="secondary"] {{
+            justify-content: center !important;
+          }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    documents: List[DocumentListItem] = handle_list_documents(space)
+    if documents:
+        st.markdown(f"**Document Count**: {len(documents)}")
+        st.divider()
+        for i, document in enumerate(documents):
+            with st.container():
+                st.markdown(f"**{document.link}**")
+                st.markdown(
+                    f"Size: {format_filesize(document.size)} | Last Modified: {format_timestamp(document.indexed_on)}"
+                )
+                if not read_only:
+                    st.button(
+                        "Delete file",
+                        type="secondary" if size == "lg" else "primary",
+                        key=f"delete_file_{i}_{space.value()}",
+                        on_click=handle_delete_document,
+                        args=(
+                            document.link,
+                            space,
+                        ),
+                    )
+                    st.divider()
+
+        if not read_only:
+            st.button(
+                "Delete all documents",
+                key=f"delete_all_files_{space.value()}",
+                on_click=handle_delete_all_documents,
+                args=(space,),
+            )
+    else:
+        st.info("No documents.")
+
+
+def _render_show_thread_space_files(feature: FeatureKey) -> None:
+    """Show file uploads within a chat thread space."""
+    with st.sidebar.container():
+        space = handle_get_thread_space(feature)
+        if space:
+            expander_label = "Knowledge"
+            with st.expander(expander_label):
+                _render_documents_list_ui(space, False, "sm", expander_label)
+
+
+def _render_agent_selection(feature: FeatureKey) -> None:
+    with st.sidebar.container().expander("Assistants"):
+        st.markdown("#### Assistants coming soon")
+
+
+def _render_persona_selection(feature: FeatureKey) -> None:
+
+    with st.sidebar.container():
+        # def selection_changed_cb():
+        #     st.session_state["persona_selection_changed"] = True
+
+        #selected_key_index = 0
+        persona_type = PersonaType.SIMPLE_CHAT if feature.type_ == OrganisationFeatureType.CHAT_PRIVATE else PersonaType.ASK
+        _personas = get_personas(persona_type=persona_type)
+
+        # try:
+        #     st.session_state["persona_selection_changed"]
+        # except KeyError:
+        #     st.session_state["persona_selection_changed"] = False
+
+        # if not st.session_state["persona_selection_changed"]:
+        #     selected_persona_key = get_selected_persona()
+        #     selected_key_index = list(_personas.keys()).index(selected_persona_key) if selected_persona_key else 0
+        #     st.session_state["persona_selection_from_session"] = False
+
+        selected = st.selectbox(
+            "Persona:",
+            options=_personas.items(),
+            key="select_box_persona",
+            format_func=lambda x: x[1].name,
+            help="Select a persona related to your helps tune Docq to your needs.",
+        )
+        if selected:
+            selected_persona_key = selected[0]
+            set_selected_persona(selected_persona_key)
+
+
+
+def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
+    """Upload files to chat."""
+    if feature.type_ != OrganisationFeatureType.ASK_SHARED:
+        return None
+
+
+    st.markdown("""
+    <style>
+      div[data-testid="stFileUploader"] label {
+        display: none;
+      }
+      section[data-testid="stFileUploadDropzone"] {
+        height: 2rem;
+      }
+      section[data-testid="stFileUploadDropzone"] div {
+        flex-direction: row;
+        gap: 1rem;
+      }
+      section[data-testid="stFileUploadDropzone"] :is(small, span) {
+        justify-content: center;
+        align-items: center;
+        display: flex;
+        margin: 0;
+      }
+      section[data-testid="stFileUploadDropzone"] small {
+        font-size: 0;
+      }
+      section[data-testid="stFileUploadDropzone"] small:after {
+        content: "File limit 200MB";
+        font-size: 0.8rem;
+      }
+      section[data-testid="stFileUploadDropzone"] button[data-testid="baseButton-secondary"] {
+        min-height: unset;
+        height: 1.5rem;
+        font-size: 0.8rem;
+      }
+      div[data-testid="stFileUploader"]:has(.uploadedFile) section[data-testid="stFileUploadDropzone"] {
+        display: none;
+      }
+      div[data-testid="stHorizontalBlock"]:has([data-testid="stSpinner"]) div:has(> ul > li > .uploadedFile) {
+        display: none !important;
+      }
+      div:has(> ul > li > .uploadedFile) {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True
+    )
+    input_key = f"chat_file_uploader_{feature.value()}_{key_suffix}"
+    if st.file_uploader(":paperclip:", key=input_key, type=ALLOWED_DOC_EXTS):
+        st.session_state[f"chat_file_uploader_{feature.value()}"] = st.session_state[input_key]
+        filename = st.session_state[input_key].name
+        with st.spinner(f"Indexing file: {filename[:100]} ..."):
+            handle_index_thread_space(feature)
+            st.session_state[f"chat_file_uploader_{feature.value()}"] = None
+
+
 def chat_ui(feature: FeatureKey) -> None:
     """Chat UI layout."""
     prepare_for_chat(feature)
@@ -741,10 +942,35 @@ def chat_ui(feature: FeatureKey) -> None:
                 border-radius: 0;
             }
 
+            div[data-testid="stHorizontalBlock"]:has(div > div > div > [docq-data-label="New chat"]) {
+                position: fixed;
+                bottom: 1.8rem;
+                z-index: 1000;
+                max-height: 2rem;
+            }
+
+            div[data-testid="column"] > div > div > [docq-data-label="New chat"] > .stButton {
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+            }
+
+            [docq-data-label="New chat"] button {
+                min-height: unset;
+                height: 2rem;
+                font-size: 0.8rem;
+            }
+
+            [docq-data-label="Load chat history earlier"] .stButton {
+                display: flex;
+                justify-content: center;
+            }
         </style>
     """,
         unsafe_allow_html=True,
     )
+    from docq.agents.datamodels import Message
+
     with st.container():
         if feature.type_ == OrganisationFeatureType.ASK_SHARED:
             _personal_ask_style()
@@ -759,26 +985,63 @@ def chat_ui(feature: FeatureKey) -> None:
                     label_visibility="collapsed",
                 )
 
-        load_history, create_new_chat = st.columns([3, 1])
-        with load_history:
-            if st.button("Load chat history earlier"):
-                query_chat_history(feature)
-        with create_new_chat:
-            if st.button("New chat"):
-                handle_create_new_chat(feature)
+        if st.button("Load chat history earlier"):
+            query_chat_history(feature)
+
     with st.container():
         day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
         st.markdown(f"#### {day}")
 
         chat_history = get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY)
+
         if chat_history:
             for x in chat_history:
                 # x = (id, text, is_user, time, thread_id)
                 if format_datetime(x[3]) != day:
                     day = format_datetime(x[3])
                     st.markdown(f"#### {day}")
-                _chat_message(x[1], x[2])
-            _chat_ui_script()
+
+                agent_output = None
+                with contextlib.suppress(Exception):
+                    #TODO: this is a hack. A data structure with a pydantic model should be implemented to replace the list of tuples.
+                    # agent messages are serialised Message dataclass. Other messages are str.
+                    _x = json.loads(x[1])
+                    agent_output = Message(
+                        **_x
+                    )  # if the message payload isn't a serialised Message class an exception will be raised and we ignore it.
+
+                if agent_output and agent_output.metadata:
+                    with st.chat_message(
+                        "assistant", avatar="https://github.com/docqai/docq/blob/main/docs/assets/logo.jpg?raw=true"
+                    ):
+                        st.write(agent_output.content)
+                        with st.expander("Agent Messages", False):
+                            for m in agent_output.metadata["messages"]:
+                                if m["content"] != "":
+                                    st.write(m["role"], "\n\n", m["content"])
+                                    st.divider()
+                        with st.expander("Files", True):
+                            files = agent_output.metadata["files"]
+                            if files:
+                                images: list[AtomicImage] = []
+                                image_names = []
+                                for file in files:
+                                    if file["type"] == "image":
+                                        images.append(os.path.join("./.persisted/agents", file["path"]))
+                                        image_names.append(file["name"])
+                                    elif file["type"] == "code":  # noqa: SIM114
+                                        images.append(os.path.join("./web/icons/flaticon/001-py.png"))
+                                        image_names.append(file["name"])
+                                    elif file["type"] == "pdf":
+                                        images.append(os.path.join("./web/icons/flaticon/003-pdf-file.png"))
+                                        image_names.append(file["name"])
+                                    else:
+                                        st.write(file["name"])
+
+                                st.image(images, image_names)
+
+                else:
+                    _chat_message(x[1], x[2])
 
     st.chat_input(
         "Type your question here",
@@ -786,7 +1049,19 @@ def chat_ui(feature: FeatureKey) -> None:
         on_submit=handle_chat_input,
         args=(feature,),
     )
+
+    uploader, new_chat = st.columns([3, 1])
+    if new_chat.button("New chat"):
+        handle_create_new_chat(feature)
+        st.rerun()
+    with uploader:
+        _render_chat_file_uploader(feature, len(chat_history) if chat_history else 0)
+
+    _render_show_thread_space_files(feature)
+    _render_agent_selection(feature)
+    _render_persona_selection(feature)
     _show_chat_histories(feature)
+    _chat_ui_script()
 
 
 def _render_document_upload(space: SpaceKey, documents: List) -> None:
@@ -799,7 +1074,7 @@ def _render_document_upload(space: SpaceKey, documents: List) -> None:
                 key=f"uploaded_file_{space.value()}",
                 accept_multiple_files=True,
             )
-            st.form_submit_button(label="Upload", on_click=handle_upload_file, args=(space,))
+            st.form_submit_button(label="Save files", on_click=handle_upload_file, args=(space,))
     else:
         st.warning(f"You cannot upload more than {max_size} documents.")
 
@@ -824,32 +1099,18 @@ def documents_ui(space: SpaceKey) -> None:
         st.button("Reindex", key=f"reindex_{space.value()}_top", on_click=handle_reindex_space, args=(space,))
 
     if documents:
-        st.divider()
-        st.markdown(f"**Document Count**: {len(documents)}")
-        for i, document in enumerate(documents):
-            with st.expander(document.link):
-                st.markdown(
-                    f"Size: {format_filesize(document.size)} | Last Modified: {format_timestamp(document.indexed_on)}"
-                )
-
-                if show_delete:
-                    st.button(
-                        "Delete",
-                        key=f"delete_file_{i}_{space.value()}",
-                        on_click=handle_delete_document,
-                        args=(
-                            document.link,
-                            space,
-                        ),
-                    )
-
-        if show_delete:
-            st.button(
-                "Delete all documents",
-                key=f"delete_all_files_{space.value()}",
-                on_click=handle_delete_all_documents,
-                args=(space,),
-            )
+        label = "Documents"
+        st.markdown("""
+            <style>
+              div[data-testid="stExpander"] hr {
+                margin-top: 0.5rem;
+              }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+        with st.expander(label):
+            _render_documents_list_ui(space, read_only=not show_delete, expander_label=label)
     else:
         st.info("No documents or the space does not support listing documents.")
 
@@ -943,19 +1204,21 @@ def organisation_settings_ui() -> None:
             st.session_state[f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}"][0],
         )
         log.debug("selected model: %s", selected_model[0])
-        selected_model_settings: ModelUsageSettingsCollection = get_model_settings_collection(selected_model[0])
+        selected_model_settings: LlmUsageSettingsCollection = get_model_settings_collection(selected_model[0])
 
         with model_settings_container.expander("Model details"):
             for _, model_settings in selected_model_settings.model_usage_settings.items():
                 st.write(f"{model_settings.model_capability.value} model: ")
-                st.write(f"- Model Vendor: `{model_settings.model_vendor.value}`")
-                st.write(f"- Model Name: `{model_settings.model_name}`")
+                st.write(f"- Model Vendor: `{model_settings.service_instance_config.vendor.value}`")
+                st.write(f"- Model Name: `{model_settings.service_instance_config.model_name}`")
                 st.write(f"- Temperature: `{model_settings.temperature}`")
                 st.write(
-                    f"- Deployment Name: `{model_settings.model_deployment_name if model_settings.model_deployment_name else 'n/a'}`"
+                    f"- Deployment Name: `{model_settings.service_instance_config.model_deployment_name if model_settings.service_instance_config.model_deployment_name else 'n/a'}`"
                 )
-                st.write(f"- License: `{model_settings.license_ if model_settings.license_ else 'unknown'}`")
-                st.write(f"- Citation: `{model_settings.citation}`")
+                st.write(
+                    f"- License: `{model_settings.service_instance_config.license_ if model_settings.service_instance_config.license_ else 'unknown'}`"
+                )
+                st.write(f"- Citation: `{model_settings.service_instance_config.citation}`")
                 st.divider()
 
 
@@ -983,7 +1246,8 @@ def _get_credential_request_params() -> dict:
 def _render_file_storage_credential_request(configkey: ConfigKey, key: str, configs: Optional[dict]) -> None:
     """Renders the credential request input field with an action button."""
     saved_credentials = configs.get(configkey.key) if configs else st.session_state.get(key, None)
-    st.markdown("""
+    st.markdown(
+        """
     <style>
       div.element-container .stMarkdown div[data-testid="stMarkdownContainer"] p {
         margin-bottom: 8px !important;
@@ -1040,7 +1304,7 @@ def fetch_file_storage_root_folders(_configkey: ConfigKey, configs: Optional[dic
         return [saved_settings], True
 
     else:
-        with st.spinner("Loading Options..."): # noqa E501
+        with st.spinner("Loading Options..."):  # noqa E501
             handler: Callable = options.get("handler", None)
             if handler:
                 return handler(configs, st.session_state)
@@ -1151,7 +1415,7 @@ def create_space_ui(expanded: bool = False) -> None:
 def _render_view_space_details_with_container(
     space_data: Tuple, data_source: Tuple, use_expander: bool = False
 ) -> DeltaGenerator:
-    id_, org_id, name, summary, archived, ds_type, ds_configs, created_at, updated_at = space_data
+    id_, org_id, name, summary, archived, ds_type, ds_configs, _, created_at, updated_at = space_data
     has_view_perm = org_id == get_selected_org_id()
 
     if has_view_perm:
@@ -1168,7 +1432,7 @@ def _render_view_space_details_with_container(
 
 
 def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> None:
-    id_, org_id, name, summary, archived, ds_type, ds_configs, _, _ = space_data
+    id_, org_id, name, summary, archived, ds_type, ds_configs, *_ = space_data
     has_edit_perm = org_id == get_selected_org_id()
 
     if has_edit_perm:
@@ -1239,7 +1503,7 @@ def list_spaces_ui(admin_access: bool = False) -> None:
     spaces = list_shared_spaces()
     if spaces:
         for s in spaces:
-            if s[4] and not admin_access: # Skip if archived and not admin.
+            if s[4] and not admin_access:  # Skip if archived and not admin.
                 continue
             ds = get_space_data_source_choice_by_type(s[5])
             container = _render_view_space_details_with_container(s, ds, True)
@@ -1252,7 +1516,7 @@ def list_spaces_ui(admin_access: bool = False) -> None:
                     with col_permissions:
                         _render_manage_space_permissions(s)
     else:
-        st.info("No spaces have been created yet. Please speak to your admin.")
+        st.info("No spaces have been created yet. If you are an admin goto 'Admin Section > Admin Spaces' to create a Shared Space.")
 
 
 def show_space_details_ui(space: SpaceKey) -> None:
@@ -1378,7 +1642,7 @@ def _validate_email(email: str, generator: DeltaGenerator, form: str) -> bool:
         return False
     elif handle_check_user_exists(email) and not handle_check_account_activated(email):
         st.session_state[f"{form}-resend-verification-email"] = True
-        st.experimental_rerun()
+        st.rerun()
     elif handle_check_user_exists(email) and handle_check_account_activated(email):
         generator.error(f"A user with _{email}_ is already registered!")
         return False
