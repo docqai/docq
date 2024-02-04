@@ -6,7 +6,7 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import asdict
 from enum import Enum
-from typing import Any, Callable, List, Literal, Self
+from typing import List, Self
 
 from llama_index import Document
 from opentelemetry import trace

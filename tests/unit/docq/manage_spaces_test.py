@@ -11,7 +11,7 @@ import pytest
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.config import SpaceType
 from docq.domain import SpaceKey
-from docq.model_selection.main import get_model_settings_collection
+from docq.model_selection.main import ModelCapability, get_model_settings_collection
 from llama_index import DocumentSummaryIndex
 from llama_index.schema import Document
 
@@ -35,10 +35,12 @@ def manage_spaces_test_dir() -> Generator:
     log.info("Teardown manage spaces test.")
 
 
-def insert_test_space(sqlite_system_file: str, name: str) -> Optional[int]:
+def insert_test_space(sqlite_system_file: str, name: str, space_type: Optional[str] = None) -> Optional[int]:
     """Insert a test space."""
+    if space_type is None:
+        space_type = SpaceType.SHARED.name
     with closing(sqlite3.connect(sqlite_system_file)) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute("INSERT INTO spaces (org_id, name, summary, datasource_type, datasource_configs) VALUES (?, ?, ?, ?, ?)", (TEST_ORG_ID, name, "test space description", "test ds_type", json.dumps({"test": "test"})))
+        cursor.execute("INSERT INTO spaces (org_id, name, space_type, summary, datasource_type, datasource_configs) VALUES (?, ?, ?, ?, ?, ?)", (TEST_ORG_ID, name, space_type, "test space description", "test ds_type", json.dumps({"test": "test"})))
         space_id = cursor.lastrowid
         connection.commit()
 
@@ -64,11 +66,14 @@ def test_create_index(get_service_context: MagicMock, get_default_storage_contex
     from docq.manage_spaces import _create_index
 
     with patch("docq.manage_spaces.VectorStoreIndex", Mock(from_documents=MagicMock())):
-        docments = Mock([Document])
-        model_sttings_collection = Mock()
-        _create_index(docments, model_sttings_collection)
+        documents = Mock([Document])
+        model_settings_collection = Mock()
+        mocked_model_usage_settings = Mock()
+        mocked_model_usage_settings.additional_args = {"arg1": "value1", "arg2": "value2"}
+        model_settings_collection.model_usage_settings = {ModelCapability.TEXT: mocked_model_usage_settings}
+        _create_index(documents, model_settings_collection)
 
-        get_service_context.assert_called_once_with(model_sttings_collection)
+        get_service_context.assert_called_once_with(model_settings_collection)
         get_default_storage_context.assert_called_once()
 
 
@@ -212,6 +217,59 @@ def test_create_shared_space(manage_spaces_test_dir: tuple) -> None:
     reindex.assert_called_once_with(space)
 
 
+def test_create_thread_space(manage_spaces_test_dir: tuple) -> None:
+    """Test create thread space."""
+    sqlite_system_file = manage_spaces_test_dir[1]
+    space_summary = "create_thread_space test summary"
+    space_datasource_type = "create_thread_space test ds_type"
+    test_thread_id = 1234
+
+    with patch("docq.manage_spaces.reindex") as reindex:
+        from docq.manage_spaces import create_thread_space
+        space = create_thread_space(
+            TEST_ORG_ID,
+            test_thread_id,
+            space_summary,
+            space_datasource_type,
+        )
+
+    assert space is not None, "Space not found."
+    with closing(sqlite3.connect(sqlite_system_file)) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute("SELECT name, summary, datasource_type, datasource_configs FROM spaces WHERE id = ?", (space.id_,))
+        result = cursor.fetchone()
+        assert result is not None, "Space not found."
+        assert result[0] == f"Thread-{test_thread_id} {space_summary}", "Space name mismatch."
+        assert result[1] == space_summary, "Space summary mismatch."
+        assert result[2] == space_datasource_type, "Space datasource_type mismatch."
+
+    reindex.assert_called_once_with(space)
+
+
+def test_get_thread_space() -> None:
+    """Test get thread space."""
+    space_summary = "get_thread_space test summary"
+    space_datasource_type = "get_thread_space test ds_type"
+    test_thread_id = 4321
+
+    with patch("docq.manage_spaces.reindex") as reindex:
+        from docq.manage_spaces import create_thread_space
+        space = create_thread_space(
+            TEST_ORG_ID,
+            test_thread_id,
+            space_summary,
+            space_datasource_type,
+        )
+
+    assert space is not None, "Space not found."
+    reindex.assert_called_once_with(space)
+
+    from docq.manage_spaces import get_thread_space
+    space_result = get_thread_space(TEST_ORG_ID, test_thread_id)
+
+    assert space_result is not None, "Space not found."
+    assert space_result.id_ == space.id_, "Space id mismatch."
+
+
 def test_list_shared_space(manage_spaces_test_dir: tuple) -> None:
     """Test list shared space."""
     from docq.manage_spaces import list_shared_spaces
@@ -258,7 +316,7 @@ def test_list_public_spaces(manage_spaces_test_dir: tuple) -> None:
         connection.commit()
 
     assert group_id is not None, "Test list public spaces sample group_id not found."
-    public_spaces = list_public_spaces(group_id)
+    public_spaces = list_public_spaces(selected_org_id=TEST_ORG_ID, space_group_id=group_id)
     space_ids = [s[0] for s in public_spaces]
     assert space_id1 in space_ids, f"Space id {space_id1} not found."
     assert space_id2 in space_ids, f"Space id {space_id2} not found."

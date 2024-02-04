@@ -35,6 +35,7 @@ with tracer().start_as_current_span("home_page", attributes=baggage_as_attribute
             Page("web/admin/index.py", "Admin_Section", icon="💂"),
             Section("ML Engineering", icon="💻"),
             Page("web/ml_eng_tools/visualise_index.py", "Visualise Index"),
+            Page("web/ml_eng_tools/visualise_agent_messages.py", "Visualise Agent Messages"),
         ]
     )
 

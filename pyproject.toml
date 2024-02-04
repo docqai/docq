@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "docq"
-version = "0.7.3"
+version = "0.8.3"
 description = "Docq.AI - private and secure knowledge insight on your data."
 authors = ["Docq.AI Team <support@docqai.com>"]
 maintainers = ["Docq.AI Team <support@docqai.com>"]
@@ -42,6 +42,8 @@ opentelemetry-instrumentation-sqlalchemy = "0.41b0"
 opentelemetry-instrumentation-tornado = "0.41b0"
 opentelemetry-instrumentation-tortoiseorm = "0.41b0"
 opentelemetry-instrumentation-urllib3 = "0.41b0"
+opentelemetry-instrumentation-httpx = "0.41b0"
+opentelemetry-instrumentation-system-metrics = "0.41b0"
 google-auth-oauthlib = "^1.1.0"
 google-api-python-client = "^2.104.0"
 google-auth-httplib2 = "^0.1.1"
@@ -49,10 +51,12 @@ microsoftgraph-python = "^1.1.6"
 llama-index = "^0.9.8.post1"
 pydantic = "^2.5.2"
 mkdocs-material = "^9.4.14"
+pyautogen = "^0.2.2"
+termcolor = "^2.4.0"
 google-cloud-aiplatform = "^1.38.0"
 litellm = "^1.14.1"
-opentelemetry-instrumentation-httpx = "0.41b0"
-opentelemetry-instrumentation-system-metrics = "0.41b0"
+semantic-kernel = "^0.4.3.dev0"
+imap-tools = "^1.5.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.18.1"
