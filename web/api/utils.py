@@ -1,11 +1,14 @@
 """Utilities for the API handlers."""
 import functools
+import os
 import re
 from typing import Any, Callable, Iterable, Mapping
 
 from opentelemetry import trace
 from pydantic import BaseModel
 from tornado.web import HTTPError, RequestHandler
+
+from ...source.docq.config import ENV_VAR_DOCQ_API_SECRET
 
 tracer = trace.get_tracer(__name__)
 
@@ -103,6 +106,11 @@ def authenticated(method: Callable[..., Any]) -> Callable[..., Any]:
 def validate_token(token: str) -> bool:
     """Validate the token. This is just a placeholder, replace with your own validation logic."""
     #TODO: add token validation logic
-    return token == "expected_token"
+    is_valid = False
+    secret = os.environ.get(ENV_VAR_DOCQ_API_SECRET, None)
+    if secret is not None or secret != "":
+        is_valid = token == secret
+
+    return is_valid
 
 
