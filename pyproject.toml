@@ -13,7 +13,7 @@ packages = [{ include = "docq", from = "source" }]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.12"
-streamlit = "1.28.2"
+streamlit = "1.30.0"
 st-pages = "^0.4.1"
 pypdf = "^3.9.0"
 docx2txt = "^0.8"
