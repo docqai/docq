@@ -58,6 +58,17 @@ SIMPLE_CHAT_PERSONAS = {
             Query: {query_str}\n
             Answer: """,
     },
+}
+
+
+AGENT_PERSONAS = {}
+
+ASK_PERSONAS = {
+    "default": {
+        "name": "General Q&A Assistant",
+        "system_prompt_content": DEFAULT_QA_SYSTEM_PROMPT,
+        "user_prompt_template_content": DEFAULT_QA_USER_PROMPT_TEMPLATE,
+    },
     "meeting-assistant": {
         "name": "Meeting Assistant",
         "system_prompt_content": """You are a extremely helpful meeting assistant.
@@ -79,13 +90,6 @@ SIMPLE_CHAT_PERSONAS = {
             Query: {query_str}\n
             Answer: """,
     },
-}
-
-
-AGENT_PERSONAS = {
-}
-
-ASK_PERSONAS = {
 }
 
 
@@ -120,6 +124,7 @@ def get_personas(persona_type: Optional[PersonaType] = None) -> dict[str, Person
             **{key: Persona(key=key, **persona) for key, persona in ASK_PERSONAS.items()},
         }
     return result
+
 
 def get_persona(key: str) -> Persona:
     """Get the persona."""

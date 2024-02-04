@@ -1516,7 +1516,7 @@ def list_spaces_ui(admin_access: bool = False) -> None:
                     with col_permissions:
                         _render_manage_space_permissions(s)
     else:
-        st.info("No spaces have been created yet. Please speak to your admin.")
+        st.info("No spaces have been created yet. If you are an admin goto 'Admin Section > Admin Spaces' to create a Shared Space.")
 
 
 def show_space_details_ui(space: SpaceKey) -> None:
