@@ -1,6 +1,7 @@
 """Handle /api/chat/completion requests."""
-from typing import Optional, Self
+from typing import Any, Optional, Self
 
+from docq.manage_personas import get_persona
 from docq.model_selection.main import get_model_settings_collection
 from docq.run_queries import run_chat
 from pydantic import Field, ValidationError
@@ -15,6 +16,7 @@ class PostRequestModel(CamelModel):
     input_: str = Field(..., alias="input")
     history: Optional[str] = Field(None)
     llm_settings_collection_name: Optional[str] = Field(None)
+    persona_key: Optional[str] = Field(None)
 
 class PostResponseModel(CamelModel):
     """Pydantic model for the response body."""
@@ -25,11 +27,12 @@ class PostResponseModel(CamelModel):
 class ChatCompletionHandler(RequestHandler):
     """Handle /api/chat/completion requests."""
 
-    def check_origin(self: Self, origin) -> bool:
+    def check_origin(self: Self, origin: Any) -> bool:
         """Override the origin check if it's causing problems."""
         return True
 
-    def check_xsrf_cookie(self) -> bool:
+    def check_xsrf_cookie(self: Self) -> bool:
+        """Override the XSRF cookie check."""
         # If `True`, POST, PUT, and DELETE are block unless the `_xsrf` cookie is set.
         # Safe with token based authN
         return False
@@ -56,7 +59,8 @@ class ChatCompletionHandler(RequestHandler):
             request_model = PostRequestModel.model_validate_json(body)
             history = request_model.history if request_model.history else ""
             model_usage_settings = get_model_settings_collection(request_model.llm_settings_collection_name) if request_model.llm_settings_collection_name else get_model_settings_collection("azure_openai_latest")
-            result = run_chat(input_=request_model.input_, history=history, model_settings_collection=model_usage_settings)
+            persona = get_persona(request_model.persona_key if request_model.persona_key else "default")
+            result = run_chat(input_=request_model.input_, history=history, model_settings_collection=model_usage_settings, persona=persona)
             response_model = PostResponseModel(response=result.response, meta={"model_settings": model_usage_settings.key})
 
             self.write(response_model.model_dump())

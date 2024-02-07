@@ -4,17 +4,16 @@ import os
 import re
 from typing import Any, Callable, Iterable, Mapping
 
+from docq.config import ENV_VAR_DOCQ_API_SECRET
 from opentelemetry import trace
 from pydantic import BaseModel
 from tornado.web import HTTPError, RequestHandler
-
-from ...source.docq.config import ENV_VAR_DOCQ_API_SECRET
 
 tracer = trace.get_tracer(__name__)
 
 UNDERSCORE_RE = re.compile(r"(?<=[^\-_])[\-_]+[^\-_]")
 
-def _process_keys(str_or_iter: str | Iterable, fn) -> str | Iterable:
+def _process_keys(str_or_iter: str | Iterable, fn: Any) -> str | Iterable:
     """Recursively process keys in a string, dict, or list of dicts."""
     if isinstance(str_or_iter, list):
         return [_process_keys(k, fn) for k in str_or_iter]
@@ -22,7 +21,7 @@ def _process_keys(str_or_iter: str | Iterable, fn) -> str | Iterable:
         return {fn(k): _process_keys(v, fn) for k, v in str_or_iter.items()}
     return str_or_iter
 
-def _is_none(_in) -> str:
+def _is_none(_in: Any) -> str:
     """Determine if the input is None and returns a string with white-space removed.
 
     :param _in: input.
@@ -60,7 +59,7 @@ def camelize(str_or_iter: str | Iterable) -> str | Iterable:
     return UNDERSCORE_RE.sub(lambda m: m.group(0)[-1].upper(), s)
 
 
-def to_camel(string) -> str | Iterable:
+def to_camel(string: str) -> str | Iterable:
     """Convert a string to camel case."""
     return camelize(string)
 
@@ -68,6 +67,7 @@ def to_camel(string) -> str | Iterable:
 class CamelModel(BaseModel):
     """Pydantic model that generated camelCase alias from snake_case field names."""
     class Config:
+        """Pydantic model configuration."""
         alias_generator = to_camel
         population_by_name = True
 
