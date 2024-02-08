@@ -1237,7 +1237,7 @@ def _get_random_key(prefix: str) -> str:
 
 def _get_credential_request_params() -> dict:
     return {
-        "code": st.experimental_get_query_params().get("code", [None])[0],
+        "code": st.query_params.get("code", None),
         "email": handle_get_user_email(),
         "state": _get_create_space_config_input_values(),
     }
@@ -1293,7 +1293,7 @@ def _render_file_storage_credential_request(configkey: ConfigKey, key: str, conf
     if new_credentials is not None:
         st.session_state[key] = new_credentials or saved_credentials
         st.session_state[configkey.key] = new_credentials or saved_credentials
-        st.experimental_set_query_params()
+        st.query_params.clear()
 
 
 def fetch_file_storage_root_folders(_configkey: ConfigKey, configs: Optional[dict]) -> tuple[list[dict], bool]:
@@ -1377,7 +1377,7 @@ def _render_space_data_source_config_input_fields(
 
 def _get_create_space_form_values() -> Tuple[str, str, str]:
     """Get default values for space creation from query string."""
-    space_config = st.experimental_get_query_params().get("state", [None])[0]
+    space_config = st.query_params.get("state", None)
     if space_config:
         try:
             space_config = unquote_plus(space_config)
@@ -1409,7 +1409,7 @@ def create_space_ui(expanded: bool = False) -> None:
         if st.button("Create Space"):
             st.session_state["create_space_defaults"] = ("", "", "")
             space = handle_create_space()
-            st.experimental_set_query_params(sid=space.id_)
+            st.query_params['sid'] = str(space.id_)
 
 
 def _render_view_space_details_with_container(
@@ -1532,9 +1532,9 @@ def list_logs_ui(type_: LogType) -> None:
 
 
 def _editor_view(q_param: str) -> None:
-    if q_param in st.experimental_get_query_params():
+    if q_param in st.query_params.to_dict():
         org_id = get_selected_org_id()
-        space = SpaceKey(SpaceType.SHARED, int(st.experimental_get_query_params()[q_param][0]), org_id)
+        space = SpaceKey(SpaceType.SHARED, int(st.query_params[q_param]), org_id)
         s = get_shared_space(space.id_)
         if s:
             ds = get_space_data_source_choice_by_type(s[5])
@@ -1560,8 +1560,8 @@ def admin_docs_ui(q_param: Optional[str] = None) -> None:
 
         try:  # Get the space id from the query param with prefence to the newly created space.
             _sid = (
-                int(st.experimental_get_query_params()[q_param][0])
-                if q_param in st.experimental_get_query_params()
+                int(st.query_params[q_param])
+                if q_param in st.query_params.to_dict()
                 else None
             )
         except ValueError:
@@ -1577,7 +1577,7 @@ def admin_docs_ui(q_param: Optional[str] = None) -> None:
         )
 
         if selected and q_param:
-            st.experimental_set_query_params(**{q_param: selected[0]})
+            st.query_params[q_param] = str(selected[0])
         if q_param:
             _editor_view(q_param)
 
@@ -1709,7 +1709,7 @@ def _disable_sidebar() -> None:
 @tracer.start_as_current_span("signup_ui")
 def signup_ui() -> None:
     """Render signup UI."""
-    qs = st.experimental_get_query_params()
+    qs = st.query_params.to_dict()
     qs_email = qs["email"][0] if "email" in qs else None
     qs_name = qs["name"][0] if "name" in qs else ""
 
