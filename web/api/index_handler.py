@@ -15,6 +15,7 @@ class name: route replace capitalise route segments remove `/` and `_`. Example:
 
 # for now we'll manually add imports. TODO: convert to walk the directory and dynamically import using importlib
 from . import (
+    auth_handler,  # noqa: F401 DO NOT REMOVE
     chat_completion_handler,  # noqa: F401 DO NOT REMOVE
     hello_handler,  # noqa: F401 DO NOT REMOVE
     rag_completion_handler,  # noqa: F401 DO NOT REMOVE
