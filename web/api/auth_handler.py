@@ -6,8 +6,9 @@ import docq.manage_users as m_users
 from pydantic import ValidationError
 from tornado.web import HTTPError
 
+from web.api.models import UserModel
 from web.api.templates import LOGIN_PAGE_TEMPLATE
-from web.api.utils import BaseRequestHandler, UserModel, decode_jwt, encode_jwt
+from web.api.utils import BaseRequestHandler, decode_jwt, encode_jwt
 from web.utils.streamlit_application import st_app
 
 

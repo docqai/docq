@@ -1,13 +1,14 @@
 """Handle /api/chat/history requests."""
 from datetime import datetime
-from typing import Any, Optional, Self
+from typing import Optional, Self
 
 import docq.domain as domain
 import docq.run_queries as rq
 from pydantic import Field, ValidationError
-from tornado.web import HTTPError, RequestHandler
+from tornado.web import HTTPError
 
-from web.api.utils import CamelModel, authenticated
+from web.api.models import ChatHistoryModel, MessageModel
+from web.api.utils import BaseRequestHandler, CamelModel, authenticated
 from web.utils.streamlit_application import st_app
 
 
@@ -18,14 +19,6 @@ class PostRequestModel(CamelModel):
 class PostResponseModel(CamelModel):
     """Pydantic model for the response body."""
     pass
-
-class ChatHistoryModel(CamelModel):
-    """Pydantic model for the chat history object."""
-    id_: int = Field(..., alias="id")
-    message: str
-    human: bool
-    timestamp: datetime
-    thread_id: int
 
 class ApiInfoModel(CamelModel):
     """Pydantic model for the API info."""
@@ -41,41 +34,28 @@ class GetResponseModel(CamelModel):
     info: ApiInfoModel
 
 
-def _format_chat_message(message: tuple[int, str, bool, datetime, int]) -> ChatHistoryModel:
+def _format_chat_message(message: tuple[int, str, bool, datetime, int]) -> MessageModel:
     """Format chat message."""
-    return ChatHistoryModel(
+    return MessageModel(
         id=message[0],
         message=message[1],
         human=message[2],
-        timestamp=message[3],
+        timestamp=str(message[3]),
         thread_id=message[4],
     )
 
 @st_app.api_route("/api/chat/history")
-class ChatHistoryHandler(RequestHandler):
+class ChatHistoryHandler(BaseRequestHandler):
     """Handle /api/chat/history requests."""
-
-    def check_origin(self: Self, origin: Any) -> bool:
-        """Override the origin check if it's causing problems."""
-        return True
-
-    def check_xsrf_cookie(self: Self) -> bool:
-        """Override the XSRF cookie check."""
-        # If `True`, POST, PUT, and DELETE are block unless the `_xsrf` cookie is set.
-        # Safe with token based authN
-        return False
 
     @authenticated
     def get(self: Self) -> None:
         """Handle GET request."""
-        page = self.get_argument("page", str(1))
+        user = self.current_user
         limit = self.get_argument("limit", str(10))
         thread_id = self.get_argument("thread_id")
-        user_id = self.get_argument("user_id")
         feature_type_= self.get_argument("feature_type", domain.OrganisationFeatureType.CHAT_PRIVATE.name)
 
-        if not (bool(thread_id) and bool(user_id)):
-            raise HTTPError(400, "thread_id and feature_key are required")
 
         feature_type: Optional[domain.OrganisationFeatureType] = None
 
@@ -89,7 +69,7 @@ class ChatHistoryHandler(RequestHandler):
 
         feature = domain.FeatureKey(
             type_=feature_type,
-            id_=int(user_id)
+            id_=user.uid,
         )
 
         try:
@@ -100,14 +80,8 @@ class ChatHistoryHandler(RequestHandler):
                 int(thread_id),
             )
             messages = list(map(_format_chat_message, chat_history))
-            info = ApiInfoModel(
-                page=int(page),
-                limit=int(limit),
-                count=len(messages),
-                prev=None,
-                next=None,
-            )
-            self.write(GetResponseModel(messages=messages, info=info).model_dump())
+
+            self.write(ChatHistoryModel(response=messages).model_dump())
 
         except ValidationError as e:
             raise HTTPError(400, "Invalid page or limit") from e

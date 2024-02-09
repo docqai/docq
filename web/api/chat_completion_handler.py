@@ -1,6 +1,6 @@
 """Handle /api/chat/completion requests."""
 import random
-from typing import Any, Optional, Self
+from typing import Optional, Self
 
 import docq.run_queries as rq
 from docq.domain import FeatureKey, OrganisationFeatureType
@@ -9,6 +9,7 @@ from docq.model_selection.main import get_model_settings_collection
 from pydantic import Field, ValidationError
 from tornado.web import HTTPError
 
+from web.api.models import MessageModel, MessageResponseModel
 from web.api.utils import BaseRequestHandler, CamelModel, authenticated
 from web.utils.streamlit_application import st_app
 
@@ -20,12 +21,6 @@ class PostRequestModel(CamelModel):
     history: Optional[str] = Field(None)
     llm_settings_collection_name: Optional[str] = Field(None)
     persona_key: Optional[str] = Field(None)
-
-
-class PostResponseModel(CamelModel):
-    """Pydantic model for the response body."""
-    response: list[dict[str, Any]]
-    meta: Optional[dict[str,str]] = None
 
 
 def _get_message_object(result: tuple) -> dict:
@@ -75,9 +70,11 @@ class ChatCompletionHandler(BaseRequestHandler):
 
             result = rq.query(input_=request_model.input_, feature=feature, thread_id=thread_id, model_settings_collection=model_usage_settings, persona=persona )
 
-            messages = [ _get_message_object(result[i]) for i in range(2) ]
+            messages = [
+                MessageModel(**_get_message_object(result[i])) for i in range(2)
+            ]
 
-            response_model = PostResponseModel(response=messages, meta={"model_settings": model_usage_settings.key})
+            response_model = MessageResponseModel(response=messages, meta={"model_settings": model_usage_settings.key})
 
             self.write(response_model.model_dump())
 

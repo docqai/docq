@@ -8,11 +8,11 @@ from docq.model_selection.main import get_model_settings_collection
 from docq.support.llm import run_ask
 from llama_index import Response
 from pydantic import Field, ValidationError
-from tornado.web import HTTPError, RequestHandler
+from tornado.web import HTTPError
 
 from web.utils.streamlit_application import st_app
 
-from .utils import CamelModel, authenticated
+from .utils import BaseRequestHandler, CamelModel, authenticated
 
 
 class PostRequestModel(CamelModel):
@@ -31,17 +31,8 @@ class PostResponseModel(CamelModel):
 
 
 @st_app.api_route("/api/rag/completion")
-class RagCompletionHandler(RequestHandler):
+class RagCompletionHandler(BaseRequestHandler):
     """Handle /api/rag/completion requests."""
-
-    def check_origin(self: Self, origin) -> bool:
-        """Override the origin check if it's causing problems."""
-        return True
-
-    def check_xsrf_cookie(self) -> bool:
-        # If `True`, POST, PUT, and DELETE are block unless the `_xsrf` cookie is set.
-        # Safe with token based authN
-        return False
 
     @authenticated
     def post(self: Self) -> None:

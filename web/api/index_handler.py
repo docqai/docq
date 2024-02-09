@@ -17,6 +17,7 @@ class name: route replace capitalise route segments remove `/` and `_`. Example:
 from . import (
     auth_handler,  # noqa: F401 DO NOT REMOVE
     chat_completion_handler,  # noqa: F401 DO NOT REMOVE
+    chat_history_handler,  # noqa: F401 DO NOT REMOVE
     hello_handler,  # noqa: F401 DO NOT REMOVE
     rag_completion_handler,  # noqa: F401 DO NOT REMOVE
 )

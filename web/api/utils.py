@@ -17,6 +17,8 @@ from opentelemetry import trace
 from pydantic import BaseModel, ValidationError
 from tornado.web import HTTPError, RequestHandler
 
+from web.api.models import UserModel
+
 tracer = trace.get_tracer(__name__)
 
 UNDERSCORE_RE = re.compile(r"(?<=[^\-_])[\-_]+[^\-_]")
@@ -84,22 +86,6 @@ class CamelModel(BaseModel):
         """Pydantic model configuration."""
         alias_generator = to_camel
         population_by_name = True
-
-
-class SnakeModel(BaseModel):
-    """Pydantic model."""
-
-    class Config:
-        """Config."""
-        alias_generator = _to_snake_case
-
-
-class UserModel(SnakeModel):
-    """User info model."""
-    uid: int
-    fullname: str
-    super_admin: bool
-    username: str
 
 
 class BaseRequestHandler(RequestHandler):
