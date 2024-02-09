@@ -51,7 +51,6 @@ class ChatHistoryHandler(BaseRequestHandler):
     @authenticated
     def get(self: Self) -> None:
         """Handle GET request."""
-        user = self.current_user
         limit = self.get_argument("limit", str(10))
         thread_id = self.get_argument("thread_id")
         feature_type_= self.get_argument("feature_type", domain.OrganisationFeatureType.CHAT_PRIVATE.name)
@@ -69,7 +68,7 @@ class ChatHistoryHandler(BaseRequestHandler):
 
         feature = domain.FeatureKey(
             type_=feature_type,
-            id_=user.uid,
+            id_=self.current_user.uid,
         )
 
         try:
