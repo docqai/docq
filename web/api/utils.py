@@ -76,9 +76,6 @@ def to_camel(string: str) -> str | Iterable:
     """Convert a string to camel case."""
     return camelize(string)
 
-def _to_snake_case(string: str) -> str:
-    return ''.join(['_' + i.lower() if i.isupper() else i for i in string]).lstrip('_')
-
 
 class CamelModel(BaseModel):
     """Pydantic model that generated camelCase alias from snake_case field names."""
@@ -119,7 +116,6 @@ class BaseRequestHandler(RequestHandler):
 
         try:
             payload = decode_jwt(token)
-            print(f'\x1b[31m]Payload: {payload}\nToken: {token}\x1b[0m')
             user = UserModel.model_validate(payload.get("data"))
             return user
         except ValidationError as e:
@@ -175,8 +171,7 @@ def authenticated(method: Callable[..., Any]) -> Callable[..., Any]:
                 span.record_exception(ValueError("Invalid token"))
                 raise HTTPError(401, reason="API key missing")
 
-            print(f"\x1b[31mValid api key: {api_key}\x1b[0m")
-            if self.get_current_user() is not None:
+            if self.current_user is not None:
                 return method(self, *args, **kwargs)
 
         except ValueError as e:
