@@ -7,7 +7,7 @@ from pydantic import ValidationError
 from tornado.web import HTTPError
 
 from web.api.templates import LOGIN_PAGE_TEMPLATE
-from web.api.utils import BaseRequestHandler, UserModel, encode_jwt
+from web.api.utils import BaseRequestHandler, UserModel, decode_jwt, encode_jwt
 from web.utils.streamlit_application import st_app
 
 
@@ -53,3 +53,26 @@ class AuthLoginHandler(BaseRequestHandler):
                 self.set_header("Authorization", f"Bearer {token}")
         else:
             raise HTTPError(401, reason="Unauthorized: User not found")
+
+
+@st_app.api_route('/api/auth/refresh')
+class AuthRefreshHandler(BaseRequestHandler):
+    """Refresh auth token."""
+
+    def post(self: Self) -> None:
+        """Handle POST requests."""
+        try:
+            token = self.get_argument("token")
+        except Exception as e:
+            raise HTTPError(400, reason="Token is required") from e
+
+        try:
+            data = decode_jwt(token)
+        except Exception as e:
+            raise HTTPError(401, reason="Unauthorized: Token is invalid") from e
+
+        token = encode_jwt(UserModel.model_validate(data.get("data")))
+        if token:
+            self.set_header("Authorization", f"Bearer {token}")
+        else:
+            raise HTTPError(401, reason="Unauthorized: Token is invalid")
