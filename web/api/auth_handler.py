@@ -68,7 +68,7 @@ class AuthRefreshHandler(BaseRequestHandler):
             raise HTTPError(400, reason="Token is required") from e
 
         try:
-            data = decode_jwt(token)
+            data = decode_jwt(token, check_expired=False)
         except Exception as e:
             raise HTTPError(401, reason="Unauthorized: Token is invalid") from e
 

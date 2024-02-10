@@ -104,9 +104,10 @@ class BaseRequestHandler(RequestHandler):
 
         auth_header = self.request.headers.get("Authorization")
         if not auth_header:
+            error_msg = "Missing Authorization header"
             span.set_status(trace.Status(trace.StatusCode.ERROR))
-            span.record_exception(ValueError("Missing Authorization header"))
-            raise HTTPError(401, reason="Missing Authorization header")
+            span.record_exception(ValueError(error_msg))
+            raise HTTPError(401, reason=error_msg, log_message=error_msg)
 
         scheme, token = auth_header.split(" ")
         if scheme.lower() != "bearer":
@@ -142,7 +143,7 @@ def encode_jwt(data: UserModel) -> Optional[str]:
         raise HTTPError(500, "Error encoding token") from e
 
 
-def decode_jwt(token: str) -> dict:
+def decode_jwt(token: str, check_expired: bool = True) -> dict:
     """Decode a JWT."""
     try:
         key = jwk_from_pem(get_key("public"))
@@ -151,7 +152,7 @@ def decode_jwt(token: str) -> dict:
         raise HTTPError(500, "Error loading key") from e
 
     try:
-        return INSTANCE.decode(token, key, algorithms={"RS256"})
+        return INSTANCE.decode(token, key, algorithms={"RS256"}, do_time_check=check_expired)
     except (jwt_exceptions.JWSDecodeError, jwt_exceptions.JWTDecodeError) as e:
         log.error("Error decoding token: %s", e)
         raise HTTPError(401, reason="Unauthorized") from e
