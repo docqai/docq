@@ -37,6 +37,11 @@ def _get_message_object(result: tuple) -> dict:
 class ChatCompletionHandler(BaseRequestHandler):
     """Handle /api/chat/completion requests."""
 
+    @property
+    def feature(self: Self) -> FeatureKey:
+        """Get the feature key."""
+        return FeatureKey(OrganisationFeatureType.CHAT_PRIVATE, self.current_user.uid)
+
     def get(self: Self) -> None:
         """Handle GET request."""
         self.write({"message": "hello world 2"})
@@ -55,8 +60,6 @@ class ChatCompletionHandler(BaseRequestHandler):
         body = self.request.body
 
         try:
-            user = self.get_current_user()
-            feature = FeatureKey(OrganisationFeatureType.CHAT_PRIVATE, user.uid)
             request_model = PostRequestModel.model_validate_json(body)
             model_usage_settings = get_model_settings_collection(request_model.llm_settings_collection_name) if request_model.llm_settings_collection_name else get_model_settings_collection("azure_openai_latest")
             persona = get_persona(request_model.persona_key if request_model.persona_key else "default")
@@ -65,10 +68,10 @@ class ChatCompletionHandler(BaseRequestHandler):
             if thread_id is None:
                 thread_id = rq.create_history_thread(
                     f"{request_model.input_[:100]}-{random.randint(1, 100000)}",  # noqa: S311
-                    feature
+                    self.feature
                 )
 
-            result = rq.query(input_=request_model.input_, feature=feature, thread_id=thread_id, model_settings_collection=model_usage_settings, persona=persona )
+            result = rq.query(input_=request_model.input_, feature=self.feature, thread_id=thread_id, model_settings_collection=model_usage_settings, persona=persona )
 
             messages = [
                 MessageModel(**_get_message_object(result[i])) for i in range(2)

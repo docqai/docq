@@ -18,6 +18,7 @@ from . import (
     auth_handler,  # noqa: F401 DO NOT REMOVE
     chat_completion_handler,  # noqa: F401 DO NOT REMOVE
     chat_history_handler,  # noqa: F401 DO NOT REMOVE
+    chat_thread_handler,  # noqa: F401 DO NOT REMOVE
     hello_handler,  # noqa: F401 DO NOT REMOVE
     rag_completion_handler,  # noqa: F401 DO NOT REMOVE
 )

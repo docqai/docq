@@ -29,3 +29,14 @@ class MessageResponseModel(BaseModel):
 class ChatHistoryModel(BaseModel):
     """Pydantic model for chat history."""
     response : list[MessageModel]
+
+class ThreadModel(BaseModel):
+    """Pydantic model for the response body."""
+    id_: int = Field(..., alias="id")
+    topic: str
+    created_at: str
+
+
+class ThreadResponseModel(BaseModel):
+    """Pydantic model for the response body."""
+    response: list[ThreadModel]

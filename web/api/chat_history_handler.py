@@ -48,34 +48,22 @@ def _format_chat_message(message: tuple[int, str, bool, datetime, int]) -> Messa
 class ChatHistoryHandler(BaseRequestHandler):
     """Handle /api/chat/history requests."""
 
+    @property
+    def feature(self: Self) -> domain.FeatureKey:
+        """Get the feature key."""
+        return domain.FeatureKey(domain.OrganisationFeatureType.CHAT_PRIVATE, self.current_user.uid)
+
     @authenticated
     def get(self: Self) -> None:
         """Handle GET request."""
         limit = self.get_argument("limit", str(10))
         thread_id = self.get_argument("thread_id")
-        feature_type_= self.get_argument("feature_type", domain.OrganisationFeatureType.CHAT_PRIVATE.name)
-
-
-        feature_type: Optional[domain.OrganisationFeatureType] = None
-
-        for feature in domain.OrganisationFeatureType:
-            if feature.name == feature_type_:
-                feature_type = feature
-                break
-
-        if feature_type is None:
-            feature_type = domain.OrganisationFeatureType.CHAT_PRIVATE
-
-        feature = domain.FeatureKey(
-            type_=feature_type,
-            id_=self.current_user.uid,
-        )
 
         try:
             chat_history = rq._retrieve_messages(
                 datetime.now(),
                 int(limit),
-                feature,
+                self.feature,
                 int(thread_id),
             )
             messages = list(map(_format_chat_message, chat_history))
