@@ -37,17 +37,19 @@ class ChatThreadHandler(BaseRequestHandler):
         try:
             if q == "latest":
                 thread = rq.get_latest_thread(self.feature)
-                if thread:
-                    thread_response = [ThreadModel(**_get_thread_object(thread))]
+                thread_response = [ThreadModel(**_get_thread_object(thread))] if thread is not None else []
 
             elif thread_id is None:
                 threads = rq.list_thread_history(self.feature)
-                thread_response = [ThreadModel(**_get_thread_object(threads[i])) for i in range(len(threads))]
+                thread_response = [
+                    ThreadModel(**_get_thread_object(threads[i])) for i in range(len(threads))
+                ] if len(threads) > 0 else []
             else:
                 thread = rq.list_thread_history(self.feature, int(thread_id))
-                thread_response = [ThreadModel(**_get_thread_object(thread[0]))]
+                thread_response = [ThreadModel(**_get_thread_object(thread[0]))] if len(thread) > 0 else []
 
-            self.write(ThreadResponseModel(response=thread_response).model_dump())
+            response = ThreadResponseModel(response=thread_response).model_dump() if len(thread_response) > 0 else {'response': []}
+            self.write(response)
 
         except ValidationError as e:
             raise HTTPError(status_code=400, reason="Bad request", log_message=str(e)) from e
