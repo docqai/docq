@@ -6,7 +6,7 @@ from docq.domain import FeatureKey, OrganisationFeatureType
 from pydantic import ValidationError
 from tornado.web import HTTPError
 
-from web.api.models import ThreadModel, ThreadResponseModel
+from web.api.models import ThreadModel, ThreadPostRequestModel, ThreadResponseModel
 from web.api.utils import BaseRequestHandler, authenticated
 from web.utils.streamlit_application import st_app
 
@@ -55,10 +55,9 @@ class ChatThreadHandler(BaseRequestHandler):
     @authenticated
     def post(self: Self) -> None:
         """Handle POST request."""
-        topic = self.get_argument("topic")
-
         try:
-            thread_id = rq.create_history_thread(topic, self.feature)
+            body = ThreadPostRequestModel.model_validate_json(self.request.body)
+            thread_id = rq.create_history_thread(body.topic, self.feature)
             thread = rq.list_thread_history(self.feature, thread_id)
             self.write(ThreadResponseModel(response=[ThreadModel(**_get_thread_object(thread[0]))]).model_dump())
 

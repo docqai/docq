@@ -36,7 +36,10 @@ class ThreadModel(BaseModel):
     topic: str
     created_at: str
 
-
 class ThreadResponseModel(BaseModel):
     """Pydantic model for the response body."""
     response: list[ThreadModel]
+
+class ThreadPostRequestModel(BaseModel):
+    """Pydantic model for the request body."""
+    topic: str
