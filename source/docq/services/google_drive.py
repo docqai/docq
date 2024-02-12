@@ -52,7 +52,7 @@ def get_flow() -> InstalledAppFlow:
         )
     else:
         flow = InstalledAppFlow.from_client_config(
-            CREDENTIAL_JSON, SCOPES
+            json.loads(str(CREDENTIAL_JSON)), SCOPES
         )
     flow.redirect_uri = FLOW_REDIRECT_URI
     return flow

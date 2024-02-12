@@ -373,7 +373,7 @@ def _verify_hash(user_id: str, timestamp: str, hash_: str) -> bool:
 
 def handle_verify_email() -> bool:
     """Handle email verification."""
-    user_info = st.experimental_get_query_params().get("token", [None])[0]
+    user_info = st.query_params.get("token", None)
     if user_info:
         decoded = unquote_plus(base64.b64decode(user_info).decode("utf-8"))
         user_id, timestamp, hash_ = decoded.split("::")
@@ -966,7 +966,7 @@ def handle_get_gravatar_url() -> str:
 
 def get_query_param(key: str, type_: type = int) -> Any | None:
     """Get query param and cast to type."""
-    param = st.experimental_get_query_params().get(key, [None])[0]
+    param = st.query_params.get(key, None)
     if param is None:
         return None
     if param == "default":
