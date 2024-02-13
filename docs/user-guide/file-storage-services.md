@@ -1,12 +1,14 @@
 # File Storage Services
 
-Docq supports multiple cloud file storage services as a data source. This section covers how to set up the supported file storage services.
+Audience: Docq Admins
 
-## File storage: Google Drive
+Docq can be configured to support multiple cloud file storage services as a data source. This section covers how to set up the supported file storage services.
 
-This guide aims to assist developers in integrating Google Drive with Docq. The focus will be on setting up the Google Drive API and obtaining the necessary credentials.
+## File store: Google Drive
 
-### Setup and Configure Google Cloud project
+At a high-level this involves setting up an application identity for your running instance of Docq for standard OAuth flow. This enables users of your instance of Docq to safely give permission to access their G Drive files for indexing in a Space.
+
+### Setup an Identity with Google Cloud for your instance of Docq
 
 - [Create a Google Cloud project](https://console.cloud.google.com/projectcreate) for your Docq web application.
 - [Enable the Google Drive API](https://console.cloud.google.com/flows/enableapi?apiid=drive.googleapis.com) in the project you just created.
@@ -14,10 +16,13 @@ This guide aims to assist developers in integrating Google Drive with Docq. The 
   - `https://www.googleapis.com/auth/drive.readonly`
   - `https://www.googleapis.com/auth/userinfo.email`
   - `openid`
+
+### Configure credentials for G Drive API
+
 - Go to Menu > APIs & Services > [Credentials](https://console.cloud.google.com/apis/credentials) then click create credentials.
 - Click `+ CREATE CREDENTIALS` > OAuth client ID then Fill the form with the following details:
   - Application type: Web application
-  - Authorized redirect URIs: `/Admin_Spaces/`, e.g. `http://localhost:8501/Admin_Spaces/`
+  - Authorized redirect URIs: `/Admin_Section/`, e.g. `http://localhost:8501/Admin_Section/`
 - Click create and download the credentials.json file.
   
 The more detailed guide can be found [here](https://developers.google.com/drive/api/quickstart/python).
@@ -26,12 +31,12 @@ The more detailed guide can be found [here](https://developers.google.com/drive/
 
 After setting up the Google Cloud project and configuring the Google Drive API, you need to configure the Docq web application. This involves configuring the following environment variables:
 
-- `DOCQ_GOOGLE_APPLICATION_CREDENTIALS`: The path to the credentials.json file.
+- `DOCQ_GOOGLE_APPLICATION_CREDENTIALS_JSON`: contents of the credentials.json. OR `DOCQ_GOOGLE_APPLICATION_CREDENTIALS`: The path to the credentials.json file. If both are configured `DOCQ_GOOGLE_APPLICATION_CREDENTIALS_JSON` wins.
 - `DOCQ_GOOGLE_AUTH_REDIRECT_URL`: The redirect URL, e.g. `http://localhost:8501/Admin_Spaces/`. This must be an exact match to the Authorized redirect URIs in the Google Cloud Console.
 
 Note: The Google Drive data source will be automatically disabled if any of the above environment variables are not set.
 
-## File storage: OneDrive
+## File store: OneDrive
 
 This guide aims to assist developers in integrating OneDrive with Docq. The focus will be on setting up the Microsoft Graph API and obtaining the necessary credentials.
 
