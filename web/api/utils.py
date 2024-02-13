@@ -184,7 +184,6 @@ def authenticated(method: Callable[..., Any]) -> Callable[..., Any]:
 
 def validate_api_key(key: str) -> bool:
     """Validate the token. This is just a placeholder, replace with your own validation logic."""
-    #TODO: add token validation logic
     is_valid = False
     secret = os.environ.get(ENV_VAR_DOCQ_API_SECRET, None)
     if secret is not None or secret != "":
