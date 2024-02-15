@@ -21,4 +21,5 @@ from . import (
     chat_thread_handler,  # noqa: F401 DO NOT REMOVE
     hello_handler,  # noqa: F401 DO NOT REMOVE
     rag_completion_handler,  # noqa: F401 DO NOT REMOVE
+    token_handler,  # noqa: F401 DO NOT REMOVE
 )
