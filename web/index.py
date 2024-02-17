@@ -22,7 +22,7 @@ from utils.observability import baggage_as_attributes, tracer
 with tracer().start_as_current_span("home_page", attributes=baggage_as_attributes()):
     render_docq_logo()
 
-    render_page_title_and_favicon(page_display_title="Docq.AI, :violet[your second brain].")
+    render_page_title_and_favicon(page_display_title="Docq.AI, :violet[your second brain].", browser_title="Docq.AI - Private & Secure ChatGPT alternative.")
 
     init_with_pretty_error_ui()
     production_layout()

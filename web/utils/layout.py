@@ -279,7 +279,7 @@ def __always_hidden_pages() -> None:
     hide_pages(["widget", "signup", "verify", "Admin_Spaces"])
 
 
-def render_page_title_and_favicon(page_display_title: Optional[str] = None) -> None:
+def render_page_title_and_favicon(page_display_title: Optional[str] = None, browser_title: Optional[str] = None) -> None:
     """Handle setting browser page title and favicon. Separately render in app page title with icon defined in show_pages().
 
     Args:
@@ -316,13 +316,13 @@ def render_page_title_and_favicon(page_display_title: Optional[str] = None) -> N
         ctx._set_page_config_allowed = True
         st.set_page_config(
             page_icon=favicon_path,
-            page_title=f"{browser_title_prefix} - {_page_display_title}",
+            page_title= browser_title if browser_title else f"{browser_title_prefix} - {_page_display_title}",
             menu_items={"About": about_menu_content},
         )
     except StreamlitAPIException:
         pass
 
-    if page_icon:
+    if page_icon and not page_display_title:
         st.title(f"{translate_icon(page_icon)} {_page_display_title}")
     else:
         st.title(_page_display_title)
