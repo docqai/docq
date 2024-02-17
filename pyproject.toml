@@ -20,7 +20,7 @@ docx2txt = "^0.8"
 argon2-cffi = "^21.3.0"
 azure-core = "^1.27.1"
 opendal = "^0.41.0"
-transformers = "4.33.2"
+transformers = "4.36.0"
 optimum = { extras = ["exporters"], version = "1.13.2" }
 torch = "^2.0.0, !=2.0.1, !=2.1.0"
 cryptography = "^42.0.2"
