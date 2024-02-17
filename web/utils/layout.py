@@ -328,6 +328,14 @@ def render_page_title_and_favicon(page_display_title: Optional[str] = None) -> N
         st.title(_page_display_title)
 
 
+def render_docq_logo() -> None:
+    """Render the Docq logo."""
+    st.markdown(
+        "<img src='https://raw.githubusercontent.com/docqai/docq/main/docs/assets/logo.jpg'  width='100' alt='Docq.AI Logo'/>",
+        unsafe_allow_html=True,
+    )
+
+
 def __resend_verification_ui(
     username: str,
     form: str,
@@ -346,8 +354,14 @@ def __resend_verification_ui(
 @tracer.start_as_current_span("render __login_form")
 def __login_form() -> None:
     __no_admin_menu()
+
     if system_feature_enabled(SystemFeatureType.FREE_USER_SIGNUP, show_message=False):
-        st.markdown('Dont have an account? signup <a href="/signup" target="_self">here</a>', unsafe_allow_html=True)
+        st.markdown("Don't have an account? Signup <a href='/signup' target='_self'>here</a>", unsafe_allow_html=True)
+    else:
+        st.markdown(
+            "Don't have an account? Subscribe on our website <a href='https://docq.ai/#plans' target='_blank'>here</a>",
+            unsafe_allow_html=True,
+        )
 
     st.markdown("### Please login to continue")
     form_validator, form_name = st.empty(), "login-form"

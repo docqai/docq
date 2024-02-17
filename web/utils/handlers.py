@@ -204,19 +204,19 @@ def handle_logout() -> None:
 
 
 def handle_fire_extensions_callbacks(event_name: str, _context: Optional[ExtensionContext] = None) -> None:
-    """Handle fire extensions callbacks.
+    """Handle firing callbacks. The place you call this function becomes an extension point.
 
-    This function can be called form anywhere in the web code base to fire callbacks event that extensions can hook into.
+    This function can be called from anywhere in the web code base to fire callback events that extensions can hook into.
 
     Args:
-        event_name (str): The name of the event. format <webui|webapi|dal><thing>.<action as past tense verb>
+        event_name (str): The name of the event. format <webui | webapi | dal>.<thing>.<action as past tense verb>
         _context (ExtensionContext): The context of the event.
     """
     log.debug("fire_extensions_callbacks() called with event: %s", event_name)
 
     ctx = _context or ExtensionContext()
     ctx.extension_register = _registered_extensions
-    log.debug("About the call callback_handler() for '%s' extensions", len(_registered_extensions.keys()))
+    log.debug("About to call callback_handler() for '%s' extensions", len(_registered_extensions.keys()))
     for _, ext_cls in _registered_extensions.items():
         log.debug("%s", ext_cls.class_name())
         ext_cls.callback_handler(event_name, ctx)
