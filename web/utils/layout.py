@@ -279,7 +279,7 @@ def __always_hidden_pages() -> None:
     hide_pages(["widget", "signup", "verify", "Admin_Spaces"])
 
 
-def render_page_title_and_favicon(page_display_title: Optional[str] = None) -> None:
+def render_page_title_and_favicon(page_display_title: Optional[str] = None, browser_title: Optional[str] = None) -> None:
     """Handle setting browser page title and favicon. Separately render in app page title with icon defined in show_pages().
 
     Args:
@@ -316,16 +316,24 @@ def render_page_title_and_favicon(page_display_title: Optional[str] = None) -> N
         ctx._set_page_config_allowed = True
         st.set_page_config(
             page_icon=favicon_path,
-            page_title=f"{browser_title_prefix} - {_page_display_title}",
+            page_title= browser_title if browser_title else f"{browser_title_prefix} - {_page_display_title}",
             menu_items={"About": about_menu_content},
         )
     except StreamlitAPIException:
         pass
 
-    if page_icon:
+    if page_icon and not page_display_title:
         st.title(f"{translate_icon(page_icon)} {_page_display_title}")
     else:
         st.title(_page_display_title)
+
+
+def render_docq_logo() -> None:
+    """Render the Docq logo."""
+    st.markdown(
+        "<img src='https://raw.githubusercontent.com/docqai/docq/main/docs/assets/logo.jpg'  width='100' alt='Docq.AI Logo'/>",
+        unsafe_allow_html=True,
+    )
 
 
 def __resend_verification_ui(
@@ -346,8 +354,14 @@ def __resend_verification_ui(
 @tracer.start_as_current_span("render __login_form")
 def __login_form() -> None:
     __no_admin_menu()
+
     if system_feature_enabled(SystemFeatureType.FREE_USER_SIGNUP, show_message=False):
-        st.markdown('Dont have an account? signup <a href="/signup" target="_self">here</a>', unsafe_allow_html=True)
+        st.markdown("Don't have an account? Signup <a href='/signup' target='_self'>here</a>", unsafe_allow_html=True)
+    else:
+        st.markdown(
+            "Don't have an account? Subscribe on our website <a href='https://docq.ai/#plans' target='_blank'>here</a>",
+            unsafe_allow_html=True,
+        )
 
     st.markdown("### Please login to continue")
     form_validator, form_name = st.empty(), "login-form"
