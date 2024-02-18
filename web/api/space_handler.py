@@ -66,9 +66,10 @@ class FileUploadHandler(BaseRequestHandler):
             data = PostRequestModel.model_validate_json(self.request.body)
             try:
                 thread_id = data.thread_id if data.thread_id else rq.create_history_thread(data.title, self.feature)
-                m_spaces.create_thread_space(
+                space = m_spaces.create_thread_space(
                     self.selected_org_id, thread_id, data.summary, SpaceDataSources.MANUAL_UPLOAD.name,
                 )
+                self.write(space.value())
             except Exception as e:
                 raise HTTPError(500, reason="Internal server error") from e
         except ValidationError as e:
