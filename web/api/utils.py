@@ -4,7 +4,7 @@ import logging as log
 import os
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Iterable, Literal, Mapping, Optional, Self
+from typing import Any, Callable, Iterable, Literal, Mapping, Optional
 
 import jwt.exceptions as jwt_exceptions
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
@@ -14,9 +14,10 @@ from docq.config import ENV_VAR_DOCQ_API_SECRET
 from jwt import JWT, jwk_from_pem
 from jwt.utils import get_int_from_datetime
 from opentelemetry import trace
-from pydantic import BaseModel, ValidationError
-from tornado.web import HTTPError, RequestHandler
+from pydantic import BaseModel
+from tornado.web import HTTPError
 
+from web.api.base import BaseRequestHandler
 from web.api.models import UserModel
 
 tracer = trace.get_tracer(__name__)
@@ -83,44 +84,6 @@ class CamelModel(BaseModel):
         """Pydantic model configuration."""
         alias_generator = to_camel
         population_by_name = True
-
-
-class BaseRequestHandler(RequestHandler):
-    """Base request Handler."""
-    def check_origin(self: Self, origin: Any) -> bool:
-        """Override the origin check if it's causing problems."""
-        return True
-
-    def check_xsrf_cookie(self: Self) -> bool:
-        """Override the XSRF cookie check."""
-        # If `True`, POST, PUT, and DELETE are block unless the `_xsrf` cookie is set.
-        # Safe with token based authN
-        return False
-
-    @tracer.start_as_current_span("get_current_user")
-    def get_current_user(self: Self) -> UserModel:
-        """Retrieve user data from token."""
-        span = trace.get_current_span()
-
-        auth_header = self.request.headers.get("Authorization")
-        if not auth_header:
-            error_msg = "Missing Authorization header"
-            span.set_status(trace.Status(trace.StatusCode.ERROR))
-            span.record_exception(ValueError(error_msg))
-            raise HTTPError(401, reason=error_msg, log_message=error_msg)
-
-        scheme, token = auth_header.split(" ")
-        if scheme.lower() != "bearer":
-            span.set_status(trace.Status(trace.StatusCode.ERROR))
-            span.record_exception(ValueError("Authorization scheme must be Bearer"))
-            raise HTTPError(401, reason="Authorization scheme must be Bearer")
-
-        try:
-            payload = decode_jwt(token)
-            user = UserModel.model_validate(payload.get("data"))
-            return user
-        except ValidationError as e:
-            raise HTTPError(401, reason="Unauthorized: Validation error") from e
 
 
 def encode_jwt(data: UserModel) -> Optional[str]:

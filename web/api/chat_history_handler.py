@@ -7,8 +7,9 @@ import docq.run_queries as rq
 from pydantic import ValidationError
 from tornado.web import HTTPError
 
+from web.api.base import BaseRequestHandler
 from web.api.models import ChatHistoryModel, MessageModel
-from web.api.utils import BaseRequestHandler, authenticated
+from web.api.utils import authenticated
 from web.utils.streamlit_application import st_app
 
 

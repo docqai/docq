@@ -1,17 +1,14 @@
 """Spaces handler endpoint for the API. /api/spaces handler."""
 from typing import Optional, Self
 
-import docq.manage_organisations as m_orgs
 import docq.manage_spaces as m_spaces
 import docq.run_queries as rq
-from docq.config import SpaceType
 from docq.data_source.list import SpaceDataSources
-from docq.domain import FeatureKey, OrganisationFeatureType, SpaceKey
 from pydantic import BaseModel, ValidationError
 from tornado.web import HTTPError
 
-from web.api.utils import BaseRequestHandler, authenticated
-from web.utils.handlers import _default_org_id as get_default_org_id
+from web.api.base import BaseRagRequestHandler
+from web.api.utils import authenticated
 from web.utils.streamlit_application import st_app
 
 
@@ -22,33 +19,8 @@ class PostRequestModel(BaseModel):
     thread_id: Optional[int] = None
 
 @st_app.api_route(r"/api/space")
-class FileUploadHandler(BaseRequestHandler):
+class FileUploadHandler(BaseRagRequestHandler):
     """Handle /api/space requests."""
-
-    __selected_org_id: Optional[int] = None
-
-    @property
-    def selected_org_id(self: Self) -> int:
-        """Get the selected org id."""
-        if self.__selected_org_id is None:
-            u = self.current_user
-            member_orgs = m_orgs.list_organisations(user_id=self.current_user.uid)
-            self.__selected_org_id = get_default_org_id(member_orgs, (u.uid, u.fullname, u.super_admin, u.username))
-        return self.__selected_org_id
-
-    @property
-    def feature(self: Self) -> FeatureKey:
-        """Get the feature key."""
-        return FeatureKey(OrganisationFeatureType.ASK_SHARED, self.current_user.uid)
-
-    @property
-    def space(self: Self) -> SpaceKey:
-        """Get the space key."""
-        if self.selected_org_id is None:
-            raise HTTPError(401, "User is not a member of any organisation.")
-        user_id = self.current_user.uid
-        summary = self.get_argument("summary", None)
-        return SpaceKey(SpaceType.THREAD, int(user_id), org_id=self.selected_org_id, summary=summary)
 
     @authenticated
     def get(self: Self) -> None:
@@ -74,7 +46,3 @@ class FileUploadHandler(BaseRequestHandler):
                 raise HTTPError(500, reason="Internal server error") from e
         except ValidationError as e:
             raise HTTPError(400, reason="Bad request") from e
-
-
-
-

@@ -5,8 +5,9 @@ from typing import Literal, Optional, Self
 import docq.manage_users as m_users
 from pydantic import BaseModel, ValidationError
 
+from web.api.base import BaseRequestHandler
 from web.api.models import UserModel
-from web.api.utils import BaseRequestHandler, decode_jwt, encode_jwt
+from web.api.utils import decode_jwt, encode_jwt
 from web.utils.streamlit_application import st_app
 
 

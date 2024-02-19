@@ -9,8 +9,9 @@ from docq.model_selection.main import get_model_settings_collection
 from pydantic import Field, ValidationError
 from tornado.web import HTTPError
 
+from web.api.base import BaseRequestHandler
 from web.api.models import MessageModel, MessageResponseModel
-from web.api.utils import BaseRequestHandler, CamelModel, authenticated
+from web.api.utils import CamelModel, authenticated
 from web.utils.streamlit_application import st_app
 
 

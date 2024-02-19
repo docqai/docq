@@ -10,9 +10,10 @@ from llama_index import Response
 from pydantic import Field, ValidationError
 from tornado.web import HTTPError
 
+from web.api.base import BaseRequestHandler
 from web.utils.streamlit_application import st_app
 
-from .utils import BaseRequestHandler, CamelModel, authenticated
+from .utils import CamelModel, authenticated
 
 
 class PostRequestModel(CamelModel):
