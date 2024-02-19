@@ -1,9 +1,9 @@
 """Handle /api/chat/history requests."""
 from datetime import datetime
-from typing import Self
+from typing import Literal, Self
 
-import docq.domain as domain
 import docq.run_queries as rq
+from docq.domain import FeatureKey, OrganisationFeatureType
 from pydantic import ValidationError
 from tornado.web import HTTPError
 
@@ -23,19 +23,30 @@ def _format_chat_message(message: tuple[int, str, bool, datetime, int]) -> Messa
         thread_id=message[4],
     )
 
-@st_app.api_route(r"/api/chat/history/([^/]+)?")
+@st_app.api_route(r"/api/([^/]+)/history/([^/]+)?")
 class ChatHistoryHandler(BaseRequestHandler):
     """Handle /api/<chat|rag>/history<id> requests."""
 
+    __feature: FeatureKey
 
     @property
-    def feature(self: Self) -> domain.FeatureKey:
+    def feature(self: Self) -> FeatureKey:
         """Get the feature key."""
-        return domain.FeatureKey(domain.OrganisationFeatureType.CHAT_PRIVATE, self.current_user.uid)
+        return self.__feature
+
+    @feature.setter
+    def feature(self: Self, mode: Literal["rag", "chat"]) -> None:
+        """Set the feature key."""
+        if mode not in ["rag", "chat"]:
+            raise HTTPError(status_code=400, reason="Invalid mode")
+
+        self.__feature = FeatureKey(OrganisationFeatureType.CHAT_PRIVATE, self.current_user.uid) if mode == "chat" else FeatureKey(OrganisationFeatureType.ASK_SHARED, self.current_user.uid)
 
     @authenticated
-    def get(self: Self, id_: str) -> None:
+    def get(self: Self, mode: Literal["rag", "chat"], id_: str) -> None:
         """Handle GET request."""
+        self.feature = mode
+
         size = self.get_argument("size", "10")
         try:
             chat_history = rq._retrieve_messages(datetime.now(), int(size), self.feature, int(id_))

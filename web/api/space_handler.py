@@ -24,12 +24,8 @@ class FileUploadHandler(BaseRagRequestHandler):
 
     @authenticated
     def get(self: Self) -> None:
-        """Handle GET request."""
-        thread_id = self.get_argument("thread_id")
-        space = m_spaces.get_thread_space(self.selected_org_id, int(thread_id))
-        if space is None:
-            raise HTTPError(404, reason="Space Not found")
-        self.write(space.value())
+        """GET /api/space?thread_id=x."""
+        self.write(self.space.value())
 
     @authenticated
     def post(self: Self) -> None:
