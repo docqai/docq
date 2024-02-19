@@ -18,6 +18,11 @@ class PostRequestModel(BaseModel):
     summary: str
     thread_id: Optional[int] = None
 
+class PostResponseModel(BaseModel):
+    """Post response model."""
+    thread_id: int
+    space_value: str
+
 @st_app.api_route(r"/api/space")
 class FileUploadHandler(BaseRagRequestHandler):
     """Handle /api/space requests."""
@@ -37,7 +42,7 @@ class FileUploadHandler(BaseRagRequestHandler):
                 space = m_spaces.create_thread_space(
                     self.selected_org_id, thread_id, data.summary, SpaceDataSources.MANUAL_UPLOAD.name,
                 )
-                self.write(space.value())
+                self.write(PostResponseModel(thread_id=thread_id, space_value=space.value()).model_dump_json())
             except Exception as e:
                 raise HTTPError(500, reason="Internal server error") from e
         except ValidationError as e:
