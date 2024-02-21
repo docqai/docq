@@ -2,6 +2,7 @@
 
 import logging as log
 import os
+import token
 from typing import Any, Dict
 
 import docq
@@ -21,11 +22,14 @@ from llama_index.indices.base import BaseIndex
 from llama_index.indices.composability import ComposableGraph
 from llama_index.llms.base import LLM, ChatMessage, MessageRole
 from llama_index.llms.litellm import LiteLLM
+from llama_index.llms.openai import OpenAI
+from llama_index.llms.openai_like import OpenAILike
 from llama_index.node_parser import NodeParser, SentenceSplitter
 from llama_index.prompts.base import ChatPromptTemplate
 from llama_index.response.schema import RESPONSE_TYPE
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
+from regex import F
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
@@ -55,11 +59,11 @@ ERROR: {error}
 
 TEXT_QA_SYSTEM_PROMPT = ChatMessage(
     content=(
-        "You are an expert Q&A system that is trusted around the world.\n"
+        "You are an expert Q&A system that is trusted around the world."
         "Always answer the query using the provided context information and chat message history, "
-        "and not prior knowledge.\n"
-        "Some rules to follow:\n"
-        "1. Never directly reference the given context in your answer.\n"
+        "and not prior knowledge."
+        "Some rules to follow:"
+        "1. Never directly reference the given context in your answer."
         "2. Avoid statements like 'Based on the context, ...' or "
         "'The context information ...' or '... given context information.' or anything along "
         "those lines."
@@ -72,17 +76,17 @@ TEXT_QA_PROMPT_TMPL_MSGS = [
     TEXT_QA_SYSTEM_PROMPT,
     ChatMessage(
         content=(
-            "Chat message history is below:\n"
-            "---------------------\n"
-            "{history_str}\n"
-            "---------------------\n\n"
-            "Context information is below:\n"
-            "---------------------\n"
-            "{context_str}\n"
-            "---------------------\n"
+            "Chat message history is below:"
+            "---------------------"
+            "{history_str}"
+            "---------------------"
+            "Context information is below:"
+            "---------------------"
+            "{context_str}"
+            "---------------------"
             "Given the context information and chat message history but not prior knowledge from your training, "
-            "answer the query below in British English.\n"
-            "Query: {query_str}\n"
+            "answer the query below in British English."
+            "Query: {query_str}"
             "Answer: "
         ),
         role=MessageRole.USER,
@@ -166,10 +170,36 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
             )
             litellm.VertexAIConfig()
             litellm.vertex_location = sc.additional_properties["vertex_location"]
+        elif chat_model_settings.service_instance_config.vendor == ModelVendor.GROQ_META:
+            model = LiteLLM(
+                temperature=chat_model_settings.temperature,
+                model=f"openai/{sc.model_name}",
+                api_key=sc.api_key,
+                api_base=sc.api_base,
+                max_tokens=4096,
+                callback_manager=_callback_manager,
+            )
+            # model = OpenAILike(
+            #     temperature=chat_model_settings.temperature,
+            #     model=sc.model_name,
+            #     api_key=sc.api_key or "",
+            #     api_base=sc.api_base or "",
+            #     api_version=sc.api_version or "",
+            #     max_tokens=4096,
+            #     callback_manager=_callback_manager,
+            # )
+            # model.default_headers = {"Content-Type": "application/json"}
+            _env_missing = not bool(sc.api_key)
+            if _env_missing:
+                log.warning("Chat model: env var values missing.")
         else:
             raise ValueError("Chat model: model settings with a supported model vendor not found.")
 
         model.max_retries = 3
+
+        print("model: ", model)
+        print("model_settings_collection: ", model_settings_collection)
+
         return model
 
 

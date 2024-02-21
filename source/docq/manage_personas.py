@@ -8,14 +8,7 @@ from regex import P
 
 from .domain import Persona, PersonaType
 
-DEFAULT_QA_SYSTEM_PROMPT = """You are an expert Q&A system that is trusted around the world.\n 
-        Always answer the query using the provided context information and chat message history, 
-        and not prior knowledge.\n 
-        Some rules to follow:\n 
-        1. Never directly reference the given context in your answer.\n 
-        2. Avoid statements like 'Based on the context, ...' or 
-        'The context information ...' or '... given context information.' or anything along 
-        those lines."""
+DEFAULT_QA_SYSTEM_PROMPT = """You are an expert Q&A system that is trusted around the world. Always answer the query using the provided context information and chat message history, and not prior knowledge. Some rules to follow: 1. Never directly reference the given context in your answer. 2. Avoid statements like 'Based on the context, ...' or 'The context information ...' or '... given context information.' or anything along those lines."""
 
 DEFAULT_QA_USER_PROMPT_TEMPLATE = """Chat message history is below:\n
             ---------------------\n

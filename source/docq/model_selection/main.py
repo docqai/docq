@@ -14,7 +14,7 @@ from typing import Any, Dict, Mapping, Optional
 
 from vertexai.preview.generative_models import HarmBlockThreshold, HarmCategory
 
-from ..config import OrganisationSettingsKey
+from ..config import ENV_VAR_DOCQ_GROQ_API_KEY, OrganisationSettingsKey
 from ..manage_settings import get_organisation_settings
 
 
@@ -28,6 +28,7 @@ class ModelVendor(str, Enum):
     OPENAI = "OpenAI"
     AZURE_OPENAI = "Azure OpenAI"
     AZURE_ML_LLAMA = "Azure ML Llama"
+    GROQ_META = "Groq Meta"
     AWS_BEDROCK_AMAZON = "AWS Bedrock Amazon"
     AWS_BEDROCK_AI21LABs = "AWS Bedrock AI21labs"
     AWS_BEDROCK_COHERE = "AWS Bedrock Cohere"
@@ -57,6 +58,7 @@ class ModelCapability(str, Enum):
 @dataclass
 class LlmServiceInstanceConfig:
     """Config related to a running instance of an LLM aka a deployed model."""
+
     vendor: ModelVendor
     model_name: str
     """Each LLM hosting provider defines string name to identify different versions of models."""
@@ -102,22 +104,60 @@ class LlmUsageSettingsCollection:
 
 
 LLM_SERVICE_INSTANCES = {
-    "openai-gpt35turbo": LlmServiceInstanceConfig(vendor=ModelVendor.OPENAI, model_name="gpt-3.5-turbo", api_key=os.getenv("DOCQ_OPENAI_API_KEY")),
-    "openai-ada-002": LlmServiceInstanceConfig(vendor=ModelVendor.OPENAI, model_name="text-embedding-ada-002", api_key=os.getenv("DOCQ_OPENAI_API_KEY")),
-    "azure-openai-gpt35turbo": LlmServiceInstanceConfig(vendor=ModelVendor.AZURE_OPENAI, model_name="gpt-35-turbo", model_deployment_name="gpt-35-turbo", api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "", api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "", api_version=os.environ.get("DOCQ_AZURE_OPENAI_API_VERSION", "2023-05-15")),
-    "azure-openai-ada-002": LlmServiceInstanceConfig(vendor=ModelVendor.AZURE_OPENAI, model_name="text-embedding-ada-002", model_deployment_name="text-embedding-ada-002", api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "", api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",),
-    "google-vertexai-palm2": LlmServiceInstanceConfig(vendor=ModelVendor.GOOGLE_VERTEXAI_PALM2, model_name="chat-bison@002"),
-    "google-vertexai-gemini-pro": LlmServiceInstanceConfig(vendor=ModelVendor.GOOGLE_VERTEXTAI_GEMINI_PRO, model_name="gemini-pro", additional_properties={"vertex_location": "us-central1"}),
-    "optimum-bge-small-en-v1.5": LlmServiceInstanceConfig(vendor=ModelVendor.HUGGINGFACE_OPTIMUM_BAAI, model_name="BAAI/bge-small-en-v1.5", license_="MIT",
-                citation="""@misc{bge_embedding,
+    "openai-gpt35turbo": LlmServiceInstanceConfig(
+        vendor=ModelVendor.OPENAI, model_name="gpt-3.5-turbo", api_key=os.getenv("DOCQ_OPENAI_API_KEY")
+    ),
+    "openai-ada-002": LlmServiceInstanceConfig(
+        vendor=ModelVendor.OPENAI, model_name="text-embedding-ada-002", api_key=os.getenv("DOCQ_OPENAI_API_KEY")
+    ),
+    "azure-openai-gpt35turbo": LlmServiceInstanceConfig(
+        vendor=ModelVendor.AZURE_OPENAI,
+        model_name="gpt-35-turbo",
+        model_deployment_name="gpt-35-turbo",
+        api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
+        api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
+        api_version=os.environ.get("DOCQ_AZURE_OPENAI_API_VERSION", "2023-05-15"),
+    ),
+    "azure-openai-ada-002": LlmServiceInstanceConfig(
+        vendor=ModelVendor.AZURE_OPENAI,
+        model_name="text-embedding-ada-002",
+        model_deployment_name="text-embedding-ada-002",
+        api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
+        api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
+    ),
+    "google-vertexai-palm2": LlmServiceInstanceConfig(
+        vendor=ModelVendor.GOOGLE_VERTEXAI_PALM2, model_name="chat-bison@002"
+    ),
+    "google-vertexai-gemini-pro": LlmServiceInstanceConfig(
+        vendor=ModelVendor.GOOGLE_VERTEXTAI_GEMINI_PRO,
+        model_name="gemini-pro",
+        additional_properties={"vertex_location": "us-central1"},
+    ),
+    "optimum-bge-small-en-v1.5": LlmServiceInstanceConfig(
+        vendor=ModelVendor.HUGGINGFACE_OPTIMUM_BAAI,
+        model_name="BAAI/bge-small-en-v1.5",
+        license_="MIT",
+        citation="""@misc{bge_embedding,
                             title={C-Pack: Packaged Resources To Advance General Chinese Embedding},
                             author={Shitao Xiao and Zheng Liu and Peitian Zhang and Niklas Muennighoff},
                             year={2023},
                             eprint={2309.07597},
                             archivePrefix={arXiv},
                             primaryClass={cs.CL}
-                            }""",),
-
+                            }""",
+    ),
+    "groq-meta-llama2-70b-4096": LlmServiceInstanceConfig(
+        vendor=ModelVendor.GROQ_META,
+        model_name="llama2-70b-4096",
+        api_key=os.getenv(ENV_VAR_DOCQ_GROQ_API_KEY),
+        api_base="https://api.groq.com/openai/v1",
+    ),
+    "groq-meta-mixtral-8x7b-32768": LlmServiceInstanceConfig(
+        vendor=ModelVendor.GROQ_META,
+        model_name="mixtral-8x7b-32768",
+        api_key=os.getenv(ENV_VAR_DOCQ_GROQ_API_KEY),
+        api_base="https://api.groq.com/openai/v1",
+    ),
 }
 
 
@@ -159,6 +199,34 @@ LLM_MODEL_COLLECTIONS = {
             ModelCapability.CHAT: LlmUsageSettings(
                 model_capability=ModelCapability.CHAT,
                 service_instance_config=LLM_SERVICE_INSTANCES["azure-openai-gpt35turbo"],
+            ),
+            ModelCapability.EMBEDDING: LlmUsageSettings(
+                model_capability=ModelCapability.EMBEDDING,
+                service_instance_config=LLM_SERVICE_INSTANCES["optimum-bge-small-en-v1.5"],
+            ),
+        },
+    ),
+    "groq_llma2_70b__with_local_embedding": LlmUsageSettingsCollection(
+        name="Groq Llama2 70B wth Local Embedding",
+        key="groq_llama2_70b_with_local_embedding",
+        model_usage_settings={
+            ModelCapability.CHAT: LlmUsageSettings(
+                model_capability=ModelCapability.CHAT,
+                service_instance_config=LLM_SERVICE_INSTANCES["groq-meta-llama2-70b-4096"],
+            ),
+            ModelCapability.EMBEDDING: LlmUsageSettings(
+                model_capability=ModelCapability.EMBEDDING,
+                service_instance_config=LLM_SERVICE_INSTANCES["optimum-bge-small-en-v1.5"],
+            ),
+        },
+    ),
+    "groq_mixtral_8x7b__with_local_embedding": LlmUsageSettingsCollection(
+        name="Groq Mixtral 8x7b wth Local Embedding",
+        key="groq_mixtral_8x7b_with_local_embedding",
+        model_usage_settings={
+            ModelCapability.CHAT: LlmUsageSettings(
+                model_capability=ModelCapability.CHAT,
+                service_instance_config=LLM_SERVICE_INSTANCES["groq-meta-mixtral-8x7b-32768"],
             ),
             ModelCapability.EMBEDDING: LlmUsageSettings(
                 model_capability=ModelCapability.EMBEDDING,
@@ -229,7 +297,7 @@ def get_saved_model_settings_collection(org_id: int) -> LlmUsageSettingsCollecti
         log.error("No saved model settings collection found for organisation: '%s'", org_id)
         raise KeyError(f"No saved setting for key 'MODEL_COLLECTION' found for organisation: {org_id}")
 
-    return get_model_settings_collection(saved_setting) # type: ignore
+    return get_model_settings_collection(saved_setting)  # type: ignore
 
 
 def list_available_model_settings_collections() -> dict:
