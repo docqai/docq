@@ -25,6 +25,15 @@ class BaseRequestHandler(RequestHandler):
         # Safe with token based authN
         return False
 
+    def _get_message_object(self: Self,result: tuple) -> dict:
+        return {
+            'id': result[0],
+            'message': result[1],
+            'human': result[2],
+            'timestamp': str(result[3]),
+            'thread_id': result[4]
+        }
+
     @tracer.start_as_current_span("get_current_user")
     def get_current_user(self: Self) -> UserModel:
         """Retrieve user data from token."""
@@ -77,7 +86,9 @@ class BaseRagRequestHandler(BaseRequestHandler):
         """Get the space key."""
         if self.selected_org_id is None:
             raise HTTPError(401, "User is not a member of any organisation.")
-        thread_id = self.get_argument("thread_id")
+        thread_id = self.get_body_argument("thread_id", None)
+        if thread_id is None:
+            thread_id = self.get_argument("thread_id")
         space = m_spaces.get_thread_space(self.selected_org_id, int(thread_id))
         if space is None:
             raise HTTPError(404, reason="Space Not found")

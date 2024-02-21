@@ -24,16 +24,6 @@ class PostRequestModel(CamelModel):
     persona_key: Optional[str] = Field(None)
 
 
-def _get_message_object(result: tuple) -> dict:
-    return {
-        'id': result[0],
-        'message': result[1],
-        'human': result[2],
-        'timestamp': str(result[3]),
-        'thread_id': result[4]
-    }
-
-
 @st_app.api_route("/api/chat/completion")
 class ChatCompletionHandler(BaseRequestHandler):
     """Handle /api/chat/completion requests."""
@@ -75,7 +65,7 @@ class ChatCompletionHandler(BaseRequestHandler):
             result = rq.query(input_=request_model.input_, feature=self.feature, thread_id=thread_id, model_settings_collection=model_usage_settings, persona=persona )
 
             messages = [
-                MessageModel(**_get_message_object(result[i])) for i in range(2)
+                MessageModel(**self._get_message_object(result[i])) for i in range(2)
             ]
 
             response_model = MessageResponseModel(response=messages, meta={"model_settings": model_usage_settings.key})

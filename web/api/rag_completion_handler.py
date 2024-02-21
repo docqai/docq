@@ -1,16 +1,14 @@
 """Handle /api/rag/completion requests."""
 from typing import Optional, Self
 
-from docq.domain import SpaceKey, SpaceType
+import docq.run_queries as rq
 from docq.manage_assistants import get_personas_fixed
-from docq.manage_spaces import list_public_spaces
 from docq.model_selection.main import get_model_settings_collection
-from docq.support.llm import run_ask
-from llama_index import Response
 from pydantic import Field, ValidationError
 from tornado.web import HTTPError
 
-from web.api.base import BaseRequestHandler
+from web.api.base import BaseRagRequestHandler
+from web.api.models import MessageModel, MessageResponseModel
 from web.utils.streamlit_application import st_app
 
 from .utils import CamelModel, authenticated
@@ -19,11 +17,9 @@ from .utils import CamelModel, authenticated
 class PostRequestModel(CamelModel):
     """Pydantic model for the request body."""
     input_: str = Field(..., alias="input")
-    history: Optional[str] = None
-    space_group_id: Optional[int] = Field(None)
-    org_id: Optional[int] = Field(None)
+    thread_id: int
     llm_settings_collection_name: Optional[str] = Field(None)
-    persona_name: str
+    persona_name: Optional[str] = Field(None)
 
 
 class PostResponseModel(CamelModel):
@@ -32,7 +28,7 @@ class PostResponseModel(CamelModel):
 
 
 @st_app.api_route("/api/rag/completion")
-class RagCompletionHandler(BaseRequestHandler):
+class RagCompletionHandler(BaseRagRequestHandler):
     """Handle /api/rag/completion requests."""
 
     @authenticated
@@ -42,30 +38,27 @@ class RagCompletionHandler(BaseRequestHandler):
         try:
             request_model = PostRequestModel.model_validate_json(body)
 
-            space_keys: list[SpaceKey] = []
-            if request_model.space_group_id:
-                spaces = list_public_spaces(request_model.space_group_id)
-                for s in spaces:
-                    space_keys.append(SpaceKey(id_ = s[0], type_=SpaceType.PUBLIC, org_id=request_model.org_id if request_model.org_id else 0, summary=s[3]))
-
             try:
                 model_usage_settings = get_model_settings_collection(request_model.llm_settings_collection_name) if request_model.llm_settings_collection_name else get_model_settings_collection("azure_openai_latest")
             except ValueError as e:
                 raise HTTPError(400, "Invalid modelSettingsCollectionName") from e
 
-            history = request_model.history if request_model.history else ""
             persona_name = request_model.persona_name
-            persona = get_personas_fixed()[persona_name]
-            persona = persona if persona else get_personas_fixed()["default"]
-            result = run_ask(input_=request_model.input_, history=history, model_settings_collection=model_usage_settings, persona=persona)
+            persona = get_personas_fixed()[persona_name] if persona_name else get_personas_fixed()["default"]
+            result = rq.query(
+                input_=request_model.input_,
+                feature=self.feature,
+                thread_id=request_model.thread_id,
+                model_settings_collection=model_usage_settings,
+                persona=persona,
+                spaces=[self.space],
+            )
 
             if result:
-                if isinstance(result, Response) and result.response:
-                    response_model = PostResponseModel(response=result.response)
-                    # Dump the model to a dictionary
-                    self.write(response_model.model_dump())
-                else:
-                    self.write({"error": "Response type not supported by web API"})
+                messages = [MessageModel(**self._get_message_object(msg)) for msg in result]
+                self.write(MessageResponseModel(response=messages).model_dump_json())
+            else:
+                raise HTTPError(500, "Internal server error")
         except ValidationError as e:
             raise HTTPError(400, "Invalid request body") from e
 
