@@ -23,4 +23,5 @@ from . import (
     space_handler,  # noqa: F401 DO NOT REMOVE
     thread_handler,  # noqa: F401 DO NOT REMOVE
     token_handler,  # noqa: F401 DO NOT REMOVE
+    top_questions_handler,  # noqa: F401 DO NOT REMOVE
 )
