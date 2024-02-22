@@ -2,13 +2,15 @@
 
 from typing import Any, Self
 
-from docq.model_selection.main import get_saved_model_settings_collection
-from llama_index import DocumentSummaryIndex
+from docq.domain import SpaceKey
+from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
+from docq.support.llm import _get_service_context, _get_storage_context
+from llama_index import DocumentSummaryIndex, load_index_from_storage
+from llama_index.indices.base import BaseIndex
 from tornado.web import HTTPError
 
 from web.api.base import BaseRagRequestHandler
 from web.api.utils import authenticated
-from web.ml_eng_tools.visualise_index import _load_index
 from web.utils.streamlit_application import st_app
 
 
@@ -20,10 +22,16 @@ class FileUploadHandler(BaseRagRequestHandler):
         thread_id: int (required) - The thread id.
     """
 
+    def _load_index(self: Self, space: SpaceKey, model_settings_collection: LlmUsageSettingsCollection) -> BaseIndex:
+        """Load index from storage."""
+        storage_context = _get_storage_context(space)
+        service_context = _get_service_context(model_settings_collection)
+        return load_index_from_storage(storage_context=storage_context, service_context=service_context)
+
     def get_summary_questions(self: Self) -> Any:
         """Get top possible questions from a document index."""
         model_settings = get_saved_model_settings_collection(self.selected_org_id)
-        index = _load_index(self.space, model_settings)
+        index = self._load_index(self.space, model_settings)
         if not isinstance(index, DocumentSummaryIndex):
             raise HTTPError(404, reason="DocumentSummaryIndex not found")
 
