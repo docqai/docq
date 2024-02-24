@@ -1009,17 +1009,17 @@ def chat_ui(feature: FeatureKey) -> None:
             query_chat_history(feature)
 
     with st.container():
-        day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
-        st.markdown(f"#### {day}")
+        # day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
+        # st.markdown(f"#### {day}")
 
         chat_history = get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY)
 
         if chat_history:
             for x in chat_history:
                 # x = (id, text, is_user, time, thread_id)
-                if format_datetime(x[3]) != day:
-                    day = format_datetime(x[3])
-                    st.markdown(f"#### {day}")
+                # if format_datetime(x[3]) != day:
+                #     day = format_datetime(x[3])
+                #     st.markdown(f"#### {day}")
 
                 agent_output = None
                 with contextlib.suppress(Exception):
