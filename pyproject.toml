@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "docq"
-version = "0.8.4"
+version = "0.8.5"
 description = "Docq.AI - private and secure ChatGPT alternative that unlocks knowledge from your confidential documents."
 authors = ["Docq.AI Team <support@docqai.com>"]
 maintainers = ["Docq.AI Team <support@docqai.com>"]
