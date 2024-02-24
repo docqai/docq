@@ -11,3 +11,18 @@ with tracer().start_as_current_span("visualise_agent_messages", attributes=bagga
     render_page_title_and_favicon()
     auth_required(requiring_selected_org_admin=True)
 
+
+
+
+def render_assistant_selector():
+    """Render assistants selector dropdown list."""
+    st.selectbox(
+        "Assistant",
+        ["Assistant 1", "Assistant 2", "Assistant 3"],
+        format_func=lambda x: x,
+        label_visibility="visible",
+        index=0,
+    )
+
+def render_assistants_create_edit( ):
+    pass
