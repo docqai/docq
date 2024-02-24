@@ -113,7 +113,9 @@ class Persona:
     """A persona is system prompt and user prompt template that represent a particular persona we want an LLM to emulate."""
 
     key: str
+    """Unique ID for a Persona instance"""
     name: str
+    """Friendly name for the persona"""
     system_prompt_content: str
     user_prompt_template_content: str
 

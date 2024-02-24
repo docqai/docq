@@ -88,6 +88,20 @@ ASK_PERSONAS = {
     },
 }
 
+# Keep DB schema simple an applicable to types of Gen models.
+# The data model will provide further abstractions over this especially for things that map back to a system prompt or user prompt.
+SQL_CREATE_ORGS_TABLE = """
+CREATE TABLE IF NOT EXISTS personas (
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE, -- friendly display name
+    archived BOOL DEFAULT 0,
+    system_prompt_template TEXT, -- py format string template
+    user_prompt_template TEXT, -- py format string template
+    model_settings_collection_key TEXT, -- key for a valid Docq model settings collection
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+"""
 
 def llama_index_chat_prompt_template_from_persona(persona: Persona) -> ChatPromptTemplate:
     """Get the prompt template for the llama index."""
