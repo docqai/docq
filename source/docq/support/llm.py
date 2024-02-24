@@ -2,8 +2,6 @@
 
 import logging as log
 import os
-import token
-from sys import api_version
 from typing import Any, Dict
 
 import docq
@@ -23,14 +21,11 @@ from llama_index.indices.base import BaseIndex
 from llama_index.indices.composability import ComposableGraph
 from llama_index.llms.base import LLM, ChatMessage, MessageRole
 from llama_index.llms.litellm import LiteLLM
-from llama_index.llms.openai import OpenAI
-from llama_index.llms.openai_like import OpenAILike
 from llama_index.node_parser import NodeParser, SentenceSplitter
 from llama_index.prompts.base import ChatPromptTemplate
 from llama_index.response.schema import RESPONSE_TYPE
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
-from regex import F
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
@@ -183,16 +178,6 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
                     "set_verbose": True,
                 },
             )
-            # model = OpenAILike(
-            #     temperature=chat_model_settings.temperature,
-            #     model=sc.model_name,
-            #     api_key=sc.api_key or "",
-            #     api_base=sc.api_base or "",
-            #     api_version=sc.api_version or "",
-            #     max_tokens=4096,
-            #     callback_manager=_callback_manager,
-            # )
-            # model.default_headers = {"Content-Type": "application/json"}
             _env_missing = not bool(sc.api_key)
             if _env_missing:
                 log.warning("Chat model: env var values missing.")
@@ -276,6 +261,10 @@ def _get_service_context(model_settings_collection: LlmUsageSettingsCollection) 
         node_parser=_node_parser,
         embed_model=_get_embed_model(model_settings_collection),
         callback_manager=_node_parser.callback_manager,
+        context_window=model_settings_collection.model_usage_settings[
+            ModelCapability.CHAT
+        ].service_instance_config.context_window_size,
+        num_output=256,  # default in lama-index but we need to be explicit here because it's not being set everywhere.
     )
 
 
@@ -419,7 +408,7 @@ def run_ask(
                 span.set_status(status=Status(StatusCode.ERROR))
                 span.record_exception(e)
                 log.error(
-                    "Failed to create ComposableGraph. Maybe there was an issue with one of the Space indexes. Error message: %s",
+                    "run_ask(): Failed to create ComposableGraph. Maybe there was an issue with one of the Space indexes. Error message: %s",
                     e,
                 )
                 span.set_status(status=Status(StatusCode.ERROR))

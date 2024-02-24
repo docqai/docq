@@ -73,6 +73,8 @@ class LlmServiceInstanceConfig:
     """This value is defined in the infrastructure. LLM hosting services such as AzureML Online Endpoints and AWS SageMaker Endpoints require a deployment name be given to each instance of a model deployed behind an endpoint. This is used to route traffic to the correct model."""
     citation: Optional[str] = None
     """Any citation information for the model. Typically applies to open source models."""
+    context_window_size: Optional[int] = None
+    """The maximum context size to be sent to the LLM. This can't be larger than the maximum context size supported by the LLM."""
     license_: Optional[str] = None
     """The licenses under which the model is released. Especially important for open source models."""
     additional_properties: Dict[str, Any] = field(default_factory=dict)
@@ -117,6 +119,7 @@ LLM_SERVICE_INSTANCES = {
         api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
         api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
         api_version=os.environ.get("DOCQ_AZURE_OPENAI_API_VERSION", "2023-05-15"),
+        context_window_size=4096,
     ),
     "azure-openai-ada-002": LlmServiceInstanceConfig(
         vendor=ModelVendor.AZURE_OPENAI,
@@ -126,12 +129,19 @@ LLM_SERVICE_INSTANCES = {
         api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
     ),
     "google-vertexai-palm2": LlmServiceInstanceConfig(
-        vendor=ModelVendor.GOOGLE_VERTEXAI_PALM2, model_name="chat-bison@002"
+        vendor=ModelVendor.GOOGLE_VERTEXAI_PALM2, model_name="chat-bison@002", context_window_size=8196
     ),
     "google-vertexai-gemini-pro": LlmServiceInstanceConfig(
         vendor=ModelVendor.GOOGLE_VERTEXTAI_GEMINI_PRO,
         model_name="gemini-pro",
         additional_properties={"vertex_location": "us-central1"},
+        context_window_size=32000,
+    ),
+    "google-vertexai-gemini-1.0-pro-001": LlmServiceInstanceConfig(
+        vendor=ModelVendor.GOOGLE_VERTEXTAI_GEMINI_PRO,
+        model_name="gemini-1.0-pro-001",
+        additional_properties={"vertex_location": "us-central1"},
+        context_window_size=32000,
     ),
     "optimum-bge-small-en-v1.5": LlmServiceInstanceConfig(
         vendor=ModelVendor.HUGGINGFACE_OPTIMUM_BAAI,
@@ -145,6 +155,7 @@ LLM_SERVICE_INSTANCES = {
                             archivePrefix={arXiv},
                             primaryClass={cs.CL}
                             }""",
+        context_window_size=1024,
     ),
     "groq-meta-llama2-70b-4096": LlmServiceInstanceConfig(
         vendor=ModelVendor.GROQ_META,
@@ -152,6 +163,7 @@ LLM_SERVICE_INSTANCES = {
         api_key=os.getenv(ENV_VAR_DOCQ_GROQ_API_KEY),
         api_base="https://api.groq.com/openai/v1",
         api_version="2023-05-15",  # not used by groq but checked by the downstream lib
+        context_window_size=4096,
     ),
     "groq-meta-mixtral-8x7b-32768": LlmServiceInstanceConfig(
         vendor=ModelVendor.GROQ_META,
@@ -159,6 +171,7 @@ LLM_SERVICE_INSTANCES = {
         api_key=os.getenv(ENV_VAR_DOCQ_GROQ_API_KEY),
         api_base="https://api.groq.com/openai/v1",
         api_version="2023-05-15",  # not used by groq but checked by the downstream lib
+        context_window_size=32768,
     ),
 }
 
@@ -172,6 +185,7 @@ LLM_MODEL_COLLECTIONS = {
         model_usage_settings={
             ModelCapability.CHAT: LlmUsageSettings(
                 model_capability=ModelCapability.CHAT,
+                temperature=0.7,
                 service_instance_config=LLM_SERVICE_INSTANCES["openai-gpt35turbo"],
             ),
             ModelCapability.EMBEDDING: LlmUsageSettings(
@@ -186,6 +200,7 @@ LLM_MODEL_COLLECTIONS = {
         model_usage_settings={
             ModelCapability.CHAT: LlmUsageSettings(
                 model_capability=ModelCapability.CHAT,
+                temperature=0.7,
                 service_instance_config=LLM_SERVICE_INSTANCES["azure-openai-gpt35turbo"],
             ),
             ModelCapability.EMBEDDING: LlmUsageSettings(
@@ -200,6 +215,7 @@ LLM_MODEL_COLLECTIONS = {
         model_usage_settings={
             ModelCapability.CHAT: LlmUsageSettings(
                 model_capability=ModelCapability.CHAT,
+                temperature=0.7,
                 service_instance_config=LLM_SERVICE_INSTANCES["azure-openai-gpt35turbo"],
             ),
             ModelCapability.EMBEDDING: LlmUsageSettings(
@@ -214,6 +230,7 @@ LLM_MODEL_COLLECTIONS = {
         model_usage_settings={
             ModelCapability.CHAT: LlmUsageSettings(
                 model_capability=ModelCapability.CHAT,
+                temperature=0.7,
                 service_instance_config=LLM_SERVICE_INSTANCES["groq-meta-llama2-70b-4096"],
             ),
             ModelCapability.EMBEDDING: LlmUsageSettings(
@@ -228,6 +245,7 @@ LLM_MODEL_COLLECTIONS = {
         model_usage_settings={
             ModelCapability.CHAT: LlmUsageSettings(
                 model_capability=ModelCapability.CHAT,
+                temperature=0.7,
                 service_instance_config=LLM_SERVICE_INSTANCES["groq-meta-mixtral-8x7b-32768"],
             ),
             ModelCapability.EMBEDDING: LlmUsageSettings(
@@ -242,6 +260,7 @@ LLM_MODEL_COLLECTIONS = {
         model_usage_settings={
             ModelCapability.CHAT: LlmUsageSettings(
                 model_capability=ModelCapability.CHAT,
+                temperature=0.7,
                 service_instance_config=LLM_SERVICE_INSTANCES["google-vertexai-palm2"],
             ),
             ModelCapability.EMBEDDING: LlmUsageSettings(
@@ -257,14 +276,14 @@ LLM_MODEL_COLLECTIONS = {
             ModelCapability.CHAT: LlmUsageSettings(
                 model_capability=ModelCapability.CHAT,
                 service_instance_config=LLM_SERVICE_INSTANCES["google-vertexai-gemini-pro"],
-                temperature=0.0,
+                temperature=0.7,
                 additional_args={
                     "safety_settings": {
                         HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
                         HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
                         HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
                         HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-                    }
+                    },
                 },
             ),
             ModelCapability.EMBEDDING: LlmUsageSettings(
