@@ -16,7 +16,7 @@ import docq
 from . import manage_organisations
 from . import manage_settings as msettings
 from .constants import DEFAULT_ADMIN_FULLNAME, DEFAULT_ADMIN_ID, DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_USERNAME
-from .support.store import get_sqlite_system_file
+from .support.store import get_sqlite_global_system_file
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
@@ -51,7 +51,7 @@ PH = PasswordHasher()
 def _init() -> None:
     """Initialize the database."""
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_USERS_TABLE)
         cursor.execute(SQL_CREATE_ORG_MEMBERS_TABLE)
@@ -61,7 +61,7 @@ def _init() -> None:
 def _init_admin_if_necessary() -> bool:
     created = False
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         (count,) = cursor.execute("SELECT COUNT(*) FROM users WHERE super_admin = ?", (1,)).fetchone()
         if int(count) > 0:
@@ -100,7 +100,7 @@ def authenticate(username: str, password: str) -> Tuple[int, str, bool, str] | N
     log.debug("Authenticating user: %s", username)
     span = trace.get_current_span()
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         selected = cursor.execute(
             "SELECT id, password, fullname, super_admin, verified FROM users WHERE username = ? AND archived = 0",
@@ -162,7 +162,7 @@ def get_user(user_id: int = None, username: str = None) -> Tuple[int, str, str, 
         raise ValueError("Either user_id or username must be provided")
 
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         return cursor.execute(
             query,
@@ -181,7 +181,7 @@ def list_users(username_match: str = None) -> List[Tuple[int, str, str, bool, bo
     """
     log.debug("Listing users: %s", username_match)
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         return cursor.execute(
             "SELECT id, username, fullname, super_admin, archived, created_at, updated_at FROM users WHERE username LIKE ?",
@@ -217,7 +217,7 @@ def list_users_by_org(
         )
 
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         return cursor.execute(query, tuple(params)).fetchall()
 
@@ -233,7 +233,7 @@ def list_selected_users(ids_: List[int]) -> List[Tuple[int, str, str, bool, bool
     """
     log.debug("Listing users: %s", ids_)
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         return cursor.execute(
             "SELECT id, username, fullname, super_admin, archived, created_at, updated_at FROM users WHERE id IN ({})".format(  # noqa: S608
@@ -295,7 +295,7 @@ def update_user(
     log.debug("Query: %s | Params: %s", query, params)
 
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(query, tuple(params))
         connection.commit()
@@ -333,7 +333,7 @@ def create_user(
     user_id = None
     personal_org_id = None
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         try:
             cursor.execute("BEGIN TRANSACTION")
@@ -382,7 +382,7 @@ def set_user_as_verified(id_: int) -> bool:
     """Verify a user."""
     log.debug("Verifying user: %d", id_)
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             "UPDATE users SET verified = ?, updated_at = ? WHERE id = ?",
@@ -405,7 +405,7 @@ def check_account_activated(username: str) -> bool:
     Returns:
         bool: True if the user's account is activated, False otherwise.
     """
-    with closing(sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)) as connection:
+    with closing(sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)) as connection:
         return (
             connection.execute(
                 "SELECT id FROM users WHERE username = ? AND verified = ?",
@@ -428,7 +428,7 @@ def reset_password(id_: int, password: str) -> bool:
     log.debug("Resetting password for user: %d", id)
     hashed_password = PH.hash(password)
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             "UPDATE users SET password = ?, updated_at = ? WHERE id = ?",
@@ -453,7 +453,7 @@ def archive_user(id_: int) -> bool:
     """
     log.debug("Archiving user: %d", id_)
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             "UPDATE users SET archived = 1, updated_at = ? WHERE id = ?",
@@ -486,7 +486,7 @@ def add_organisation_member(org_id: int, user_id: int, org_admin: bool = False) 
     log.debug("Adding user: %s to org: %s", user_id, org_id)
     success = False
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         try:
             _add_organisation_member_sql(cursor, org_id, user_id, org_admin)
@@ -512,7 +512,7 @@ def user_is_org_member(org_id: int, user_id: int) -> bool:
     """
     log.debug("Checking if user: %s is a member of org: %s", user_id, org_id)
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         return (
             cursor.execute(
@@ -536,7 +536,7 @@ def update_organisation_members(org_id: int, users: List[Tuple[int, bool]]) -> b
     log.debug("Updating org members for org_id: %s", org_id)
     success = False
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         try:
             cursor.execute("BEGIN TRANSACTION")

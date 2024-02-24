@@ -9,7 +9,7 @@ from llama_index.llms.base import ChatMessage, MessageRole
 from regex import P
 
 from .domain import Persona, PersonaType
-from .support.store import get_sqlite_system_file
+from .support.store import get_sqlite_global_system_file, get_sqlite_org_system_file
 
 DEFAULT_QA_SYSTEM_PROMPT = """You are an expert Q&A system that is trusted around the world. Always answer the query using the provided context information and chat message history, and not prior knowledge. Some rules to follow: 1. Never directly reference the given context in your answer. 2. Avoid statements like 'Based on the context, ...' or 'The context information ...' or '... given context information.' or anything along those lines."""
 
@@ -109,14 +109,23 @@ CREATE TABLE IF NOT EXISTS personas (
 
 def _init() -> None:
     """Initialize the database."""
+    _init_orgs_scope_table()
+    _init_user_scope_table()
+
+def _init_orgs_scope_table() -> None:
+    """Initialize the database."""
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_org_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_ORGS_TABLE)
         connection.commit()
 
-
-
+def _init_user_scope_table() -> None:
+    with closing(
+        sqlite3.connect(get_sqlite_user_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(SQL_CREATE_ORGS_TABLE)
+        connection.commit()
 
 
 def llama_index_chat_prompt_template_from_persona(persona: Persona) -> ChatPromptTemplate:

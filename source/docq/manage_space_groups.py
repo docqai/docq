@@ -6,7 +6,7 @@ from contextlib import closing
 from datetime import datetime
 from typing import List, Tuple
 
-from .support.store import get_sqlite_system_file
+from .support.store import get_sqlite_global_system_file
 
 SQL_CREATE_SPACE_GROUPS_TABLE = """
 CREATE TABLE IF NOT EXISTS space_groups (
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS space_group_members (
 def _init() -> None:
     """Initialize the database."""
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_SPACE_GROUPS_TABLE)
         cursor.execute(SQL_CREATE_SPACE_GROUP_MEMBERS_TABLE)
@@ -54,7 +54,7 @@ def list_space_groups(
     """
     log.debug("Listing space groups: %s", name_match)
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         space_groups = cursor.execute(
             "SELECT id, org_id, name, summary, created_at, updated_at FROM space_groups WHERE org_id = ? AND name LIKE ?",
@@ -88,7 +88,7 @@ def create_space_group(org_id: int, name: str, summary: str = None) -> bool:
     """
     log.debug("Creating space group: %s", name)
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             "INSERT INTO space_groups (org_id, name, summary) VALUES (?, ?, ?)",
@@ -135,7 +135,7 @@ def update_space_group(id_: int, org_id: int, members: List[int], name: str = No
     params.append(org_id)
 
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(query, params)
         cursor.execute("DELETE FROM space_group_members WHERE group_id = ?", (id_,))
@@ -158,7 +158,7 @@ def delete_space_group(id_: int, org_id: int) -> bool:
     """
     log.debug("Deleting group: %d", id_)
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute("DELETE FROM space_group_members WHERE group_id = ?", (id_,))
         cursor.execute("DELETE FROM space_groups WHERE id = ? AND org_id = ?", (id_, org_id))
