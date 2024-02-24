@@ -36,7 +36,7 @@ class TokenResponseModel(BaseModel):
     expires_in: int
     refresh_token: Optional[str] = None
 
-class ToeknErrorResponseModel(BaseModel):
+class TokenErrorResponseModel(BaseModel):
     """General error response model."""
 
     error: str
@@ -51,7 +51,7 @@ class TokenHandler(BaseRequestHandler):
     def token_error(self: Self, reason: str, status: int = 400) -> None:
         """Handle token error."""
         self.set_status(status)
-        self.write(ToeknErrorResponseModel(error="invalid_request", error_description=reason).json())
+        self.write(TokenErrorResponseModel(error="invalid_request", error_description=reason).json())
         self.finish()
 
     def post(self: Self) -> None:
