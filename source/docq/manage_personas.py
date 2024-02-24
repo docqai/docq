@@ -94,6 +94,7 @@ SQL_CREATE_ORGS_TABLE = """
 CREATE TABLE IF NOT EXISTS personas (
     id INTEGER PRIMARY KEY,
     name TEXT UNIQUE, -- friendly display name
+    type TEXT, -- persona_type enum
     archived BOOL DEFAULT 0,
     system_prompt_template TEXT, -- py format string template
     user_prompt_template TEXT, -- py format string template
