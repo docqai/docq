@@ -7,7 +7,7 @@ from docq.model_selection.main import get_model_settings_collection, get_saved_m
 from pydantic import Field, ValidationError
 from tornado.web import HTTPError
 
-from web.api.base import BaseRagRequestHandler
+from web.api.base_handlers import BaseRagRequestHandler
 from web.api.models import MessageModel, MessageResponseModel
 from web.utils.streamlit_application import st_app
 

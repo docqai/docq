@@ -17,7 +17,7 @@ from opentelemetry import trace
 from pydantic import BaseModel
 from tornado.web import HTTPError
 
-from web.api.base import BaseRequestHandler
+from web.api.base_handlers import BaseRequestHandler
 from web.api.models import UserModel
 
 tracer = trace.get_tracer(__name__)

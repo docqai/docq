@@ -9,7 +9,7 @@ from llama_index import DocumentSummaryIndex, load_index_from_storage
 from llama_index.indices.base import BaseIndex
 from tornado.web import HTTPError
 
-from web.api.base import BaseRagRequestHandler
+from web.api.base_handlers import BaseRagRequestHandler
 from web.api.utils import authenticated
 from web.utils.streamlit_application import st_app
 
