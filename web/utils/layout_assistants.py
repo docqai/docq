@@ -57,16 +57,26 @@ def render_assistant_create_edit_ui(org_id: Optional[int] = None, assistant_data
 
 
 
-def render_assistants_selector_ui(assistants_data: list[ASSISTANT]) -> ASSISTANT | None:
+def render_assistants_selector_ui(
+    assistants_data: list[ASSISTANT], selected_assistant_id: Optional[int] = None
+) -> ASSISTANT | None:
     """Render assistants selector and create/edit assistant form."""
-    selected = st.selectbox(
+    selected_index = 0
+    selected_assistant = None
+    if selected_assistant_id:
+        for i, assistant in enumerate(assistants_data):
+            if assistant[0] == selected_assistant_id:
+                selected_assistant = assistant
+                selected_index = i
+                break
+    selected_assistant = st.selectbox(
         "Assistant",
         options=[assistant for assistant in assistants_data],
         format_func=lambda x: x[1],
         label_visibility="visible",
-        index=0,
+        index=selected_index,
     )
-    return selected
+    return selected_assistant
 
 
 def render_assistants_listing_ui(assistants_data: list[ASSISTANT], org_id: Optional[int] = None) -> None:
