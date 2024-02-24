@@ -29,7 +29,7 @@ from docq.agents.main import run_agent
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions
-from docq.manage_personas import get_persona
+from docq.manage_personas import get_persona_fixed
 from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
 from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
@@ -630,7 +630,7 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
             persona_key = get_selected_persona()
             persona_key = persona_key if persona_key else "default"
 
-            persona = get_persona(persona_key)
+            persona = get_persona_fixed(persona_key)
 
             result = run_queries.query(req, feature, thread_id, saved_model_settings, persona, spaces)
 

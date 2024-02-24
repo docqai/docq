@@ -23,7 +23,7 @@ from docq.config import (
 )
 from docq.domain import ConfigKey, DocumentListItem, FeatureKey, PersonaType, SpaceKey
 from docq.extensions import ExtensionContext
-from docq.manage_personas import get_personas
+from docq.manage_personas import get_personas_fixed
 from docq.model_selection.main import (
     LlmUsageSettingsCollection,
     get_model_settings_collection,
@@ -843,7 +843,7 @@ def _render_persona_selection(feature: FeatureKey) -> None:
 
         #selected_key_index = 0
         persona_type = PersonaType.SIMPLE_CHAT if feature.type_ == OrganisationFeatureType.CHAT_PRIVATE else PersonaType.ASK
-        _personas = get_personas(persona_type=persona_type)
+        _personas = get_personas_fixed(persona_type=persona_type)
 
         # try:
         #     st.session_state["persona_selection_changed"]

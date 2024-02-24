@@ -2,7 +2,7 @@
 from typing import Optional, Self
 
 from docq.domain import SpaceKey, SpaceType
-from docq.manage_personas import get_personas
+from docq.manage_personas import get_personas_fixed
 from docq.manage_spaces import list_public_spaces
 from docq.model_selection.main import get_model_settings_collection
 from docq.support.llm import run_ask
@@ -63,8 +63,8 @@ class RagCompletionHandler(RequestHandler):
 
             history = request_model.history if request_model.history else ""
             persona_name = request_model.persona_name
-            persona = get_personas()[persona_name]
-            persona = persona if persona else get_personas()["default"]
+            persona = get_personas_fixed()[persona_name]
+            persona = persona if persona else get_personas_fixed()["default"]
             result = run_ask(input_=request_model.input_, history=history, model_settings_collection=model_usage_settings, persona=persona)
 
             if result:
