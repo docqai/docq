@@ -1,4 +1,6 @@
 """prompt templates that represent a persona."""
+import sqlite3
+from contextlib import closing
 from os import system
 from typing import Optional, Self
 
@@ -7,6 +9,7 @@ from llama_index.llms.base import ChatMessage, MessageRole
 from regex import P
 
 from .domain import Persona, PersonaType
+from .support.store import get_sqlite_system_file
 
 DEFAULT_QA_SYSTEM_PROMPT = """You are an expert Q&A system that is trusted around the world. Always answer the query using the provided context information and chat message history, and not prior knowledge. Some rules to follow: 1. Never directly reference the given context in your answer. 2. Avoid statements like 'Based on the context, ...' or 'The context information ...' or '... given context information.' or anything along those lines."""
 
@@ -103,6 +106,18 @@ CREATE TABLE IF NOT EXISTS personas (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """
+
+def _init() -> None:
+    """Initialize the database."""
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(SQL_CREATE_ORGS_TABLE)
+        connection.commit()
+
+
+
+
 
 def llama_index_chat_prompt_template_from_persona(persona: Persona) -> ChatPromptTemplate:
     """Get the prompt template for the llama index."""

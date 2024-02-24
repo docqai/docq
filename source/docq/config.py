@@ -11,6 +11,8 @@ SESSION_COOKIE_NAME = "docqai/_docq"
 ENV_VAR_DOCQ_GROQ_API_KEY = "DOCQ_GROQ_API_KEY"
 
 
+
+
 class SpaceType(Enum):
     """Space types. These reflect scope of data access."""
 
