@@ -2,7 +2,7 @@
 from typing import Dict
 from unittest.mock import Mock, patch
 
-from docq.manage_personas import Persona
+from docq.manage_assistants import Persona
 from docq.model_selection.main import LlmUsageSettings, LlmUsageSettingsCollection, ModelCapability
 from llama_index import ServiceContext
 from llama_index.chat_engine import SimpleChatEngine

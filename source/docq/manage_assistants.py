@@ -97,7 +97,7 @@ ASK_PERSONAS = {
 
 # Keep DB schema simple an applicable to types of Gen models.
 # The data model will provide further abstractions over this especially for things that map back to a system prompt or user prompt.
-SQL_CREATE_PERSONAS_TABLE = """
+SQL_CREATE_ASSISTANTS_TABLE = """
 CREATE TABLE IF NOT EXISTS personas (
     id INTEGER PRIMARY KEY,
     name TEXT UNIQUE, -- friendly display name
@@ -106,12 +106,13 @@ CREATE TABLE IF NOT EXISTS personas (
     system_prompt_template TEXT, -- py format string template
     user_prompt_template TEXT, -- py format string template
     model_settings_collection_key TEXT, -- key for a valid Docq model settings collection
+    space_group_id INTEGER, -- space_group_id for knowledge
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """
 
-PERSONA = tuple[int, str, str, bool, str, str, str, datetime, datetime]
+ASSISTANT = tuple[int, str, str, bool, str, str, str, datetime, datetime]
 
 
 # def _init() -> None:
@@ -178,44 +179,40 @@ def get_persona_fixed(key: str) -> Persona:
 
 
 
-def list_personas(persona_id: int, user_id: Optional[int], org_id: Optional[int]) -> list[PERSONA]:
-    """List the personas."""
+def list_assistants(assistant_id: int, org_id: Optional[int]) -> list[ASSISTANT]:
+    """List the assistants."""
     with closing(
-        sqlite3.connect(_get_persona_sqlite_file(user_id=user_id, org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(_get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute("SELECT id, name, type, archived, system_prompt_template, user_prompt_template, model_settings_collection_key, created_at, modified_at FROM personas")
+        cursor.execute("SELECT id, name, type, archived, system_prompt_template, user_prompt_template, model_settings_collection_key, created_at, modified_at FROM assistant")
         rows = cursor.fetchall()
-        # return as list of tuple of PERSONA
         return [(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]) for row in rows]
 
-def get_persona(persona_id: int, user_id: Optional[int], org_id: Optional[int]) -> PERSONA:
-    """Get the persona.
+def get_assistant(assistant_id: int, org_id: Optional[int]) -> ASSISTANT:
+    """Get the assistant.
 
-    If just persona_id then will try to get from global scope table.
+    If just assistant_id then will try to get from global scope table.
     """
     with closing(
-        sqlite3.connect(_get_persona_sqlite_file(user_id=user_id, org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(_get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute("SELECT id, name, type, archived, system_prompt_template, user_prompt_template, model_settings_collection_key, created_at, modified_at FROM personas WHERE id = ?", (persona_id,))
+        cursor.execute("SELECT id, name, type, archived, system_prompt_template, user_prompt_template, model_settings_collection_key, created_at, modified_at FROM personas WHERE id = ?", (assistant_id,))
         row = cursor.fetchone()
         if row is None:
-            if user_id:
-                raise ValueError(f"No Persona with: id = '{persona_id}' that belongs to user user_id= '{user_id}'")
-            elif org_id:
-                raise ValueError(f"No Persona with: id = '{persona_id}' that belongs to org org_id= '{org_id}'")
+            if org_id:
+                raise ValueError(f"No Persona with: id = '{assistant_id}' that belongs to org org_id= '{org_id}'")
             else:
-                raise ValueError(f"No Persona with: id = '{persona_id}' in global scope.")
+                raise ValueError(f"No Persona with: id = '{assistant_id}' in global scope.")
         return (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8])
 
-def create_or_update_persona(
+def create_or_update_assistant(
     name: str,
     persona_type: PersonaType,
     archived: bool,
     system_prompt_template: str,
     user_prompt_template: str,
     model_settings_collection_key: str,
-    persona_id: Optional[int],
-    user_id: Optional[int],
+    assistant_id: Optional[int],
     org_id: Optional[int],
 ) -> None:
     """Create or update a persona.
@@ -229,20 +226,19 @@ def create_or_update_persona(
         system_prompt_template (str): The system prompt template.
         user_prompt_template (str): The user prompt template.
         model_settings_collection_key (str): The model settings collection key.
-        persona_id (Optional[int]): The persona id. If present then update else create.
-        user_id (Optional[int]): The user id.
+        assistant_id (Optional[int]): The assistant id. If present then update else create.
         org_id (Optional[int]): The org id.
     """
-    if persona_id is None:
-        sql = "INSERT INTO personas (name, type, archived, system_prompt_template, user_prompt_template, model_settings_collection_key) VALUES (?, ?, ?, ?, ?, ?,  )"
+    if assistant_id is None:
+        sql = "INSERT INTO assistants (name, type, archived, system_prompt_template, user_prompt_template, model_settings_collection_key) VALUES (?, ?, ?, ?, ?, ?,  )"
         params = (name, persona_type.name, archived, system_prompt_template, user_prompt_template, model_settings_collection_key)
 
     else:
-        sql = "UPDATE personas SET name = ?, type = ?, archived = ?, system_prompt_template = ?, user_prompt_template = ?, model_settings_collection_key = ? WHERE id = ?"
-        params = (name, persona_type.name, archived, system_prompt_template, user_prompt_template, model_settings_collection_key, persona_id)
+        sql = "UPDATE assistant SET name = ?, type = ?, archived = ?, system_prompt_template = ?, user_prompt_template = ?, model_settings_collection_key = ? WHERE id = ?"
+        params = (name, persona_type.name, archived, system_prompt_template, user_prompt_template, model_settings_collection_key, assistant_id)
 
     with closing(
-        sqlite3.connect(_get_persona_sqlite_file(user_id=user_id, org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(_get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             sql,
@@ -250,12 +246,12 @@ def create_or_update_persona(
         )
         connection.commit()
 
-def _get_persona_sqlite_file(org_id: Optional[int], user_id: Optional[int]) -> str:
-    """Get the SQLite file for a persona."""
+def _get_assistants_sqlite_file(org_id: Optional[int]) -> str:
+    """Get the SQLite file for a assistants."""
     path = ""
-    if user_id:
-        path = get_sqlite_user_system_file(user_id)
-    elif org_id:
+    # if user_id:
+    #     path = get_sqlite_user_system_file(user_id)
+    if org_id:  # noqa: SIM108
         path = get_sqlite_org_system_file(org_id)
     else:
         path = get_sqlite_global_system_file()

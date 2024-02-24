@@ -2,7 +2,7 @@
 from typing import Optional, Self
 
 from docq.domain import SpaceKey, SpaceType
-from docq.manage_personas import get_personas_fixed
+from docq.manage_assistants import get_personas_fixed
 from docq.manage_spaces import list_public_spaces
 from docq.model_selection.main import get_model_settings_collection
 from docq.support.llm import run_ask

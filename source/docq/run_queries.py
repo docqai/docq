@@ -10,8 +10,8 @@ from docq.model_selection.main import LlmUsageSettingsCollection
 
 from .config import OrganisationFeatureType
 from .domain import FeatureKey, SpaceKey
+from .manage_assistants import Persona, get_personas_fixed
 from .manage_documents import format_document_sources
-from .manage_personas import Persona, get_personas_fixed
 from .support.llm import query_error, run_ask, run_chat
 from .support.store import (
     get_history_table_name,

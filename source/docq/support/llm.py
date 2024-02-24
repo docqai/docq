@@ -29,7 +29,7 @@ from opentelemetry.trace import Status, StatusCode
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
-from ..manage_personas import Persona, llama_index_chat_prompt_template_from_persona
+from ..manage_assistants import Persona, llama_index_chat_prompt_template_from_persona
 from ..model_selection.main import (
     LLM_MODEL_COLLECTIONS,
     LlmUsageSettingsCollection,

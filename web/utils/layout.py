@@ -23,7 +23,7 @@ from docq.config import (
 )
 from docq.domain import ConfigKey, DocumentListItem, FeatureKey, PersonaType, SpaceKey
 from docq.extensions import ExtensionContext
-from docq.manage_personas import get_personas_fixed
+from docq.manage_assistants import get_personas_fixed
 from docq.model_selection.main import (
     LlmUsageSettingsCollection,
     get_model_settings_collection,
@@ -1788,3 +1788,4 @@ def verify_email_ui() -> None:
     else:
         st.error("Email verification failed!")
         st.info("Please try again or contact your administrator.")
+
