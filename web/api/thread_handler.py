@@ -8,7 +8,7 @@ from tornado.web import HTTPError
 
 from web.api.base_handlers import BaseRequestHandler
 from web.api.models import ThreadModel, ThreadPostRequestModel, ThreadResponseModel
-from web.api.utils import authenticated
+from web.api.utils.auth_utils import authenticated
 from web.utils.streamlit_application import st_app
 
 

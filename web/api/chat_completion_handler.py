@@ -11,7 +11,8 @@ from tornado.web import HTTPError
 
 from web.api.base_handlers import BaseRequestHandler
 from web.api.models import MessageModel, MessageResponseModel
-from web.api.utils import CamelModel, authenticated
+from web.api.utils.auth_utils import authenticated
+from web.api.utils.pydantic_utils import CamelModel
 from web.utils.streamlit_application import st_app
 
 
@@ -32,11 +33,6 @@ class ChatCompletionHandler(BaseRequestHandler):
     def feature(self: Self) -> FeatureKey:
         """Get the feature key."""
         return FeatureKey(OrganisationFeatureType.CHAT_PRIVATE, self.current_user.uid)
-
-    def get(self: Self) -> None:
-        """Handle GET request."""
-        self.write({"message": "hello world 2"})
-
 
     @authenticated
     def post(self: Self) -> None:

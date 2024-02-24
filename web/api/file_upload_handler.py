@@ -4,7 +4,7 @@ from typing import Self
 import docq.manage_documents as m_documents
 
 from web.api.base_handlers import BaseRagRequestHandler
-from web.api.utils import authenticated
+from web.api.utils.pydantic_utils import authenticated
 from web.utils.streamlit_application import st_app
 
 

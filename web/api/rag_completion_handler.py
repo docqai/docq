@@ -11,7 +11,8 @@ from web.api.base_handlers import BaseRagRequestHandler
 from web.api.models import MessageModel, MessageResponseModel
 from web.utils.streamlit_application import st_app
 
-from .utils import CamelModel, authenticated
+from .utils.auth_utils import authenticated
+from .utils.pydantic_utils import CamelModel
 
 
 class PostRequestModel(CamelModel):

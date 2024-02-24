@@ -5,7 +5,7 @@ from typing import Self
 import tornado.websocket
 from tornado.web import RequestHandler
 
-from web.api.utils import CamelModel
+from web.api.utils.pydantic_utils import CamelModel
 from web.utils.streamlit_application import st_app
 
 

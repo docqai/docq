@@ -53,7 +53,7 @@ class BaseRequestHandler(RequestHandler):
             raise HTTPError(401, reason="Authorization scheme must be Bearer")
 
         try:
-            from web.api.utils import decode_jwt
+            from web.api.utils.auth_utils import decode_jwt
 
             payload = decode_jwt(token)
             user = UserModel.model_validate(payload.get("data"))
