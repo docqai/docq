@@ -144,7 +144,7 @@ def test_chat_private_feature(features: dict[str, domain.FeatureKey], saved_mode
         INPUT: {input}
     """
 
-    persona = domain.Persona(
+    persona = domain.Assistant(
         key="test-persona",
         name="Test Persona",
         system_prompt_content=system_prompt,

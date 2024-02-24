@@ -7,7 +7,7 @@ from typing import Optional
 from llama_index import ChatPromptTemplate
 from llama_index.llms.base import ChatMessage, MessageRole
 
-from .domain import Persona, PersonaType
+from .domain import Assistant, AssistantType
 from .support.store import (
     get_sqlite_global_system_file,
     get_sqlite_org_system_file,
@@ -126,7 +126,7 @@ def _init(org_id: Optional[int] = None) -> None:
         cursor.execute(SQL_CREATE_ASSISTANTS_TABLE)
         connection.commit()
 
-def llama_index_chat_prompt_template_from_persona(persona: Persona) -> ChatPromptTemplate:
+def llama_index_chat_prompt_template_from_persona(persona: Assistant) -> ChatPromptTemplate:
     """Get the prompt template for the llama index."""
     _system_prompt_message = ChatMessage(
         content=persona.system_prompt_content,
@@ -141,34 +141,37 @@ def llama_index_chat_prompt_template_from_persona(persona: Persona) -> ChatPromp
     return ChatPromptTemplate(message_templates=[_system_prompt_message, _user_prompt_message])
 
 
-def get_personas_fixed(persona_type: Optional[PersonaType] = None) -> dict[str, Persona]:
+def get_personas_fixed(persona_type: Optional[AssistantType] = None) -> dict[str, Assistant]:
     """Get the personas."""
     result = {}
-    if persona_type == PersonaType.SIMPLE_CHAT:
-        result = {key: Persona(key=key, **persona) for key, persona in SIMPLE_CHAT_PERSONAS.items()}
-    elif persona_type == PersonaType.AGENT:
-        result = {key: Persona(key=key, **persona) for key, persona in AGENT_PERSONAS.items()}
-    elif persona_type == PersonaType.ASK:
-        result = {key: Persona(key=key, **persona) for key, persona in ASK_PERSONAS.items()}
+    if persona_type == AssistantType.SIMPLE_CHAT:
+        result = {key: Assistant(key=key, **persona) for key, persona in SIMPLE_CHAT_PERSONAS.items()}
+    elif persona_type == AssistantType.AGENT:
+        result = {key: Assistant(key=key, **persona) for key, persona in AGENT_PERSONAS.items()}
+    elif persona_type == AssistantType.ASK:
+        result = {key: Assistant(key=key, **persona) for key, persona in ASK_PERSONAS.items()}
     else:
         result = {
-            **{key: Persona(key=key, **persona) for key, persona in SIMPLE_CHAT_PERSONAS.items()},
-            **{key: Persona(key=key, **persona) for key, persona in AGENT_PERSONAS.items()},
-            **{key: Persona(key=key, **persona) for key, persona in ASK_PERSONAS.items()},
+            **{key: Assistant(key=key, **persona) for key, persona in SIMPLE_CHAT_PERSONAS.items()},
+            **{key: Assistant(key=key, **persona) for key, persona in AGENT_PERSONAS.items()},
+            **{key: Assistant(key=key, **persona) for key, persona in ASK_PERSONAS.items()},
         }
     return result
 
 
-def get_persona_fixed(key: str, org_id: Optional[int] = None) -> Persona:
+def get_assistant_or_default(assistant_id: Optional[int] = None, org_id: Optional[int] = None) -> Assistant:
     """Get the persona."""
-    #TODO: refactor to remove key and simplify. We only need one fixed assistant persona as a fallback.
-    if key in SIMPLE_CHAT_PERSONAS:
-        return Persona(key=key, **SIMPLE_CHAT_PERSONAS[key])
-    elif isinstance(key, int):
-        assistant = get_assistant(key, org_id=org_id)
-        return Persona(key=str(assistant[0]), name=assistant[1], system_prompt_content=assistant[4], user_prompt_template_content=assistant[5])
+    if assistant_id:
+        assistant_data = get_assistant(assistant_id=assistant_id, org_id=org_id)
+        return Assistant(
+            key=str(assistant_data[0]),
+            name=assistant_data[1],
+            system_prompt_content=assistant_data[4],
+            user_prompt_template_content=assistant_data[5],
+        )
     else:
-        raise ValueError(f"No Persona with: key = '{key}'. Must be a valid assistant_id or key for a fixed persona.")
+        key = "default"
+        return Assistant(key=key, **SIMPLE_CHAT_PERSONAS[key])
 
 
 def list_assistants(org_id: Optional[int] = None) -> list[ASSISTANT]:
@@ -209,7 +212,7 @@ def get_assistant(assistant_id: int, org_id: Optional[int]) -> ASSISTANT:
 
 def create_or_update_assistant(
     name: str,
-    assistant_type: PersonaType,
+    assistant_type: AssistantType,
     archived: bool,
     system_prompt_template: str,
     user_prompt_template: str,
@@ -223,7 +226,7 @@ def create_or_update_assistant(
 
     Args:
         name (str): The name.
-        assistant_type (PersonaType): The type.
+        assistant_type (AssistantType): The type.
         archived (bool): The archived.
         system_prompt_template (str): The system prompt template.
         user_prompt_template (str): The user prompt template.

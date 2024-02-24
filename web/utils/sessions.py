@@ -6,7 +6,7 @@ from typing import Any, Optional
 import docq
 import streamlit as st
 from docq import config, manage_users
-from docq.manage_assistants import Persona, get_personas_fixed
+from docq.manage_assistants import Assistant, get_personas_fixed
 from docq.support.auth_utils import set_cache_auth_session
 from opentelemetry import trace
 

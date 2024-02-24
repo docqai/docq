@@ -3,7 +3,7 @@
 from typing import Optional
 
 import streamlit as st
-from docq.domain import PersonaType
+from docq.domain import AssistantType
 from docq.manage_assistants import ASSISTANT, create_or_update_assistant
 from docq.model_selection.main import LLM_MODEL_COLLECTIONS
 from docq.support.store import _DataScope
@@ -32,11 +32,11 @@ def render_assistant_create_edit_ui(org_id: Optional[int] = None, assistant_data
         print([key for key, _ in LLM_MODEL_COLLECTIONS.items()])
         st.selectbox(
             "Type",
-            options=[persona_type for persona_type in PersonaType],
+            options=[persona_type for persona_type in AssistantType],
             format_func=lambda x: x.value,
             label_visibility="visible",
             key=f"assistant_edit_type_{key_suffix}",
-            index=[persona_type.name for persona_type in PersonaType].index(assistant_data[2]) if assistant_data else 1,
+            index=[persona_type.name for persona_type in AssistantType].index(assistant_data[2]) if assistant_data else 1,
         )
         st.text_area(label="System Prompt Template", placeholder="", key=f"assistant_edit_system_prompt_template_{key_suffix}", value=assistant_data[4] if assistant_data else None, height=200)
         st.text_area(label="User Prompt Template", placeholder="", key=f"assistant_edit_user_prompt_template_{key_suffix}", value=assistant_data[5] if assistant_data else None, height=200)
@@ -82,11 +82,11 @@ def render_assistants_listing_ui(assistants_data: list[ASSISTANT], org_id: Optio
 
 def handle_assistant_create_edit(org_id: Optional[int] = None, assistant_id: Optional[int] = None, key_suffix: Optional[str] = "new") -> None:
     """Handle assistant create/edit form submission."""
-    if st.session_state[f"assistant_edit_type_{key_suffix}"] not in PersonaType:
+    if st.session_state[f"assistant_edit_type_{key_suffix}"] not in AssistantType:
         set_error_state_for_ui(key=f"assistant_edit_form_error_{key_suffix}", error=str(ValueError("Invalid assistant type")), message="Invalid Assistant Type")
 
     try:
-        persona_type: PersonaType = st.session_state[f"assistant_edit_type_{key_suffix}"]
+        persona_type: AssistantType = st.session_state[f"assistant_edit_type_{key_suffix}"]
         print("system prompt: ", st.session_state[f"assistant_edit_system_prompt_template_{key_suffix}"])
         create_or_update_assistant(
             name=st.session_state[f"assistant_edit_name_{key_suffix}"],
