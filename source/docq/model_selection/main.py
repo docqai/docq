@@ -151,12 +151,14 @@ LLM_SERVICE_INSTANCES = {
         model_name="llama2-70b-4096",
         api_key=os.getenv(ENV_VAR_DOCQ_GROQ_API_KEY),
         api_base="https://api.groq.com/openai/v1",
+        api_version="2023-05-15",  # not used by groq but checked by the downstream lib
     ),
     "groq-meta-mixtral-8x7b-32768": LlmServiceInstanceConfig(
         vendor=ModelVendor.GROQ_META,
         model_name="mixtral-8x7b-32768",
         api_key=os.getenv(ENV_VAR_DOCQ_GROQ_API_KEY),
         api_base="https://api.groq.com/openai/v1",
+        api_version="2023-05-15",  # not used by groq but checked by the downstream lib
     ),
 }
 

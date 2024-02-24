@@ -3,6 +3,7 @@
 import logging as log
 import os
 import token
+from sys import api_version
 from typing import Any, Dict
 
 import docq
@@ -178,6 +179,9 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
                 api_base=sc.api_base,
                 max_tokens=4096,
                 callback_manager=_callback_manager,
+                kwargs={
+                    "set_verbose": True,
+                },
             )
             # model = OpenAILike(
             #     temperature=chat_model_settings.temperature,

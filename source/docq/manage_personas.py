@@ -10,17 +10,20 @@ from .domain import Persona, PersonaType
 
 DEFAULT_QA_SYSTEM_PROMPT = """You are an expert Q&A system that is trusted around the world. Always answer the query using the provided context information and chat message history, and not prior knowledge. Some rules to follow: 1. Never directly reference the given context in your answer. 2. Avoid statements like 'Based on the context, ...' or 'The context information ...' or '... given context information.' or anything along those lines."""
 
-DEFAULT_QA_USER_PROMPT_TEMPLATE = """Chat message history is below:\n
-            ---------------------\n
-            {history_str}\n
-            ---------------------\n\n
-            Context information is below:\n
-            ---------------------\n
-            {context_str}\n
-            ---------------------\n
-            Given the context information and chat message history but not prior knowledge from your training, 
-            answer the query below in British English.\n
-            Query: {query_str}\n
+DEFAULT_QA_SYSTEM_PROMPT = """You are a friendly and helpful assistant."""
+
+
+DEFAULT_QA_USER_PROMPT_TEMPLATE = """Chat message history is below:
+            ---------------------
+            {history_str}
+            ---------------------
+            Context information is below:
+            ---------------------
+            {context_str}
+            ---------------------
+            Given the context information and chat message history but not prior knowledge from your training,
+            answer the query below in British English.
+            Query: {query_str}
             Answer: """
 
 
