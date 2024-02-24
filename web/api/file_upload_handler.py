@@ -8,7 +8,7 @@ from web.api.utils.auth_utils import authenticated
 from web.utils.streamlit_application import st_app
 
 
-@st_app.api_route(r"/api/file/upload")
+@st_app.api_route(r"/api/v1/file/upload")
 class FileUploadHandler(BaseRagRequestHandler):
     """Handle /api/file/upload requests.
 

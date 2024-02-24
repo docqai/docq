@@ -25,7 +25,7 @@ class PostRequestModel(CamelModel):
     persona_key: Optional[str] = Field(None)
 
 
-@st_app.api_route("/api/chat/completion")
+@st_app.api_route("/api/v1/chat/completion")
 class ChatCompletionHandler(BaseRequestHandler):
     """Handle /api/chat/completion requests."""
 
@@ -41,7 +41,7 @@ class ChatCompletionHandler(BaseRequestHandler):
         Example:
         ```shell
         curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer expected_token" -d /
-        '{"input":"what's the sun?", "modelSettingsCollectionName"}' http://localhost:8501/api/chat/completion
+        '{"input":"what's the sun?", "modelSettingsCollectionName"}' http://localhost:8501/api/v1/chat/completion
         ```
         """
         body = self.request.body

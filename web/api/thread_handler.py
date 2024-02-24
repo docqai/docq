@@ -20,9 +20,14 @@ def _get_thread_object(result: tuple) -> dict:
     }
 
 
-@st_app.api_route(r"/api/([^/]+)/thread/([^/]+)?")
+@st_app.api_route(r"/api/v1/([^/]+)/thread/([^/]+)?")
 class ChatThreadHandler(BaseRequestHandler):
-    """Handle /api/chat/thread requests."""
+    """Handle /api/v1/{thread_type}threads/{thread_id} requests.
+
+    /api/v1/threads/{thread_id} - get a single thread by id.
+    /api/v1/{thread_type}/threads?page=1&page_size=10&order=desc
+    /api/v1/{thread_type}/threads/ - list threads. should default to page 1 and page_size 10 or 20 or something.
+    """
 
     __feature: FeatureKey
 

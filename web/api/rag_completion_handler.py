@@ -28,9 +28,9 @@ class PostResponseModel(CamelModel):
     response: str
 
 
-@st_app.api_route("/api/rag/completion")
+@st_app.api_route("/api/v1/rag/completion")
 class RagCompletionHandler(BaseRagRequestHandler):
-    """Handle /api/rag/completion requests."""
+    """Handle /api/v1/rag/completion requests."""
 
     @authenticated
     def post(self: Self) -> None:

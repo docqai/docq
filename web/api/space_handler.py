@@ -29,9 +29,9 @@ class PostResponseModel(BaseModel):
     thread_id: Optional[int] = None
     space_value: str
 
-@st_app.api_route("/api/spaces")
+@st_app.api_route("/api/v1/spaces")
 class SpacesHandler(BaseRagRequestHandler):
-    """Handle /api/space requests."""
+    """Handle /api/spaces requests."""
 
     @authenticated
     def post(self: Self) -> None:
@@ -62,7 +62,7 @@ class SpacesHandler(BaseRagRequestHandler):
             raise HTTPError(400, reason="Bad request") from e
 
 
-@st_app.api_route("/api/spaces/{space_id}")
+@st_app.api_route("/api/v1/spaces/{space_id}")
 class SpaceHandler(BaseRagRequestHandler):
     """Handle /api/space requests."""
 

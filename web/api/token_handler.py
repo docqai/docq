@@ -44,7 +44,7 @@ class TokenErrorResponseModel(BaseModel):
 
 
 
-@st_app.api_route("/api/token")
+@st_app.api_route("/api/v1/token")
 class TokenHandler(BaseRequestHandler):
     """Token handler endpoint for the API. /api/token handler."""
 

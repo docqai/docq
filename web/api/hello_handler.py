@@ -13,9 +13,9 @@ class ResponseModel(CamelModel):
     """Pydantic model for the response body."""
     response: str
 
-@st_app.api_route("/api/hello")
+@st_app.api_route("/api/v1/hello")
 class ChatCompletionHandler(RequestHandler):
-    """Handle /api/hello requests."""
+    """Handle /api/v1/hello requests."""
 
     def check_origin(self: Self, origin) -> bool:
         """Override the origin check if it's causing problems."""

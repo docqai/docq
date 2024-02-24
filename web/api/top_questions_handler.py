@@ -10,13 +10,13 @@ from llama_index.indices.base import BaseIndex
 from tornado.web import HTTPError
 
 from web.api.base_handlers import BaseRagRequestHandler
-from web.api.utils.pydantic_utils import authenticated
+from web.api.utils.auth_utils import authenticated
 from web.utils.streamlit_application import st_app
 
 
-@st_app.api_route(r"/api/top-questions")
+@st_app.api_route(r"/api/v1/top-questions")
 class FileUploadHandler(BaseRagRequestHandler):
-    """Handle GET /api/top-questions requests.
+    """Handle GET /api/v1/top-questions requests.
 
     Query Parameters:
         thread_id: int (required) - The thread id.
