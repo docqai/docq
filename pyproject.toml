@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "docq"
-version = "0.8.4"
+version = "0.8.5"
 description = "Docq.AI - private and secure ChatGPT alternative that unlocks knowledge from your confidential documents."
 authors = ["Docq.AI Team <support@docqai.com>"]
 maintainers = ["Docq.AI Team <support@docqai.com>"]
@@ -47,15 +47,15 @@ google-auth-oauthlib = "^1.1.0"
 google-api-python-client = "^2.104.0"
 google-auth-httplib2 = "^0.1.1"
 microsoftgraph-python = "^1.1.6"
-llama-index = "^0.9.8.post1"
 pydantic = "^2.5.2"
 mkdocs-material = "^9.4.14"
 pyautogen = "^0.2.2"
 termcolor = "^2.4.0"
 google-cloud-aiplatform = "^1.38.0"
-litellm = "^1.14.1"
+litellm = "^1.26.6"
 semantic-kernel = "^0.4.3.dev0"
 imap-tools = "^1.5.0"
+llama-index = "0.9.8.post1"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.18.1"

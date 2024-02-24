@@ -55,11 +55,11 @@ ERROR: {error}
 
 TEXT_QA_SYSTEM_PROMPT = ChatMessage(
     content=(
-        "You are an expert Q&A system that is trusted around the world.\n"
+        "You are an expert Q&A system that is trusted around the world."
         "Always answer the query using the provided context information and chat message history, "
-        "and not prior knowledge.\n"
-        "Some rules to follow:\n"
-        "1. Never directly reference the given context in your answer.\n"
+        "and not prior knowledge."
+        "Some rules to follow:"
+        "1. Never directly reference the given context in your answer."
         "2. Avoid statements like 'Based on the context, ...' or "
         "'The context information ...' or '... given context information.' or anything along "
         "those lines."
@@ -72,17 +72,17 @@ TEXT_QA_PROMPT_TMPL_MSGS = [
     TEXT_QA_SYSTEM_PROMPT,
     ChatMessage(
         content=(
-            "Chat message history is below:\n"
-            "---------------------\n"
-            "{history_str}\n"
-            "---------------------\n\n"
-            "Context information is below:\n"
-            "---------------------\n"
-            "{context_str}\n"
-            "---------------------\n"
+            "Chat message history is below:"
+            "---------------------"
+            "{history_str}"
+            "---------------------"
+            "Context information is below:"
+            "---------------------"
+            "{context_str}"
+            "---------------------"
             "Given the context information and chat message history but not prior knowledge from your training, "
-            "answer the query below in British English.\n"
-            "Query: {query_str}\n"
+            "answer the query below in British English."
+            "Query: {query_str}"
             "Answer: "
         ),
         role=MessageRole.USER,
@@ -166,10 +166,29 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
             )
             litellm.VertexAIConfig()
             litellm.vertex_location = sc.additional_properties["vertex_location"]
+        elif chat_model_settings.service_instance_config.vendor == ModelVendor.GROQ_META:
+            model = LiteLLM(
+                temperature=chat_model_settings.temperature,
+                model=f"openai/{sc.model_name}",
+                api_key=sc.api_key,
+                api_base=sc.api_base,
+                max_tokens=4096,
+                callback_manager=_callback_manager,
+                kwargs={
+                    "set_verbose": True,
+                },
+            )
+            _env_missing = not bool(sc.api_key)
+            if _env_missing:
+                log.warning("Chat model: env var values missing.")
         else:
             raise ValueError("Chat model: model settings with a supported model vendor not found.")
 
         model.max_retries = 3
+
+        print("model: ", model)
+        print("model_settings_collection: ", model_settings_collection)
+
         return model
 
 
@@ -242,6 +261,10 @@ def _get_service_context(model_settings_collection: LlmUsageSettingsCollection) 
         node_parser=_node_parser,
         embed_model=_get_embed_model(model_settings_collection),
         callback_manager=_node_parser.callback_manager,
+        context_window=model_settings_collection.model_usage_settings[
+            ModelCapability.CHAT
+        ].service_instance_config.context_window_size,
+        num_output=256,  # default in lama-index but we need to be explicit here because it's not being set everywhere.
     )
 
 
@@ -385,7 +408,7 @@ def run_ask(
                 span.set_status(status=Status(StatusCode.ERROR))
                 span.record_exception(e)
                 log.error(
-                    "Failed to create ComposableGraph. Maybe there was an issue with one of the Space indexes. Error message: %s",
+                    "run_ask(): Failed to create ComposableGraph. Maybe there was an issue with one of the Space indexes. Error message: %s",
                     e,
                 )
                 span.set_status(status=Status(StatusCode.ERROR))
