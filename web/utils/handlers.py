@@ -606,11 +606,17 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
     if select_org_id is None:
         raise ValueError("Selected org id was None")
 
+    assistant_id = get_selected_assistant()
+
+    assistant = get_assistant_or_default(assistant_id, org_id=select_org_id)
+
     if req.startswith("/agent"):
         data = []
         user_request_message = req.split("/agent")[1].strip()
         data.append((user_request_message, True, datetime.now(), thread_id))
-        output_message = run_agent() if user_request_message == "" else run_agent(user_request_message)
+        output_message = (
+            run_agent() if user_request_message == "" else run_agent(user_request_message, assistant=assistant)
+        )
         data.append((RootModel[Message](output_message).model_dump_json(), False, datetime.now(), thread_id))
         result = run_queries._save_messages(data, feature)
 
@@ -627,9 +633,6 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
 
             saved_model_settings = get_saved_model_settings_collection(select_org_id)
 
-            assistant_id = get_selected_assistant()
-
-            assistant = get_assistant_or_default(assistant_id, org_id=select_org_id)
             st.write(assistant)
             result = run_queries.query(req, feature, thread_id, saved_model_settings, assistant, spaces)
 
