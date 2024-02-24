@@ -43,9 +43,9 @@ class _DataScope(Enum):
     PUBLIC = "public"
     """Data that associated with anonymous users like interaction with a public chat bot."""
     SHARED = "shared"
-    """DEPRECATED. don't use for new features. Here for backwards compatibility."""
+    """DEPRECATED. don't use for new features. Use GLOBAL instead. Here for backwards compatibility."""
     THREAD = "thread"
-    """DEPRECATED. don't use for new features. Here for backwards compatibility."""
+    """DEPRECATED. don't use for new features. Typically should use PERSONAL instead. Here for backwards compatibility."""
 
 
 HISTORY_TABLE_NAME = "history_{feature}"
@@ -153,11 +153,16 @@ def get_public_sqlite_usage_file(id_: str) -> str:
         store=_StoreDir.SQLITE, data_scope=_DataScope.PUBLIC, subtype=id_, filename=_SqliteFilename.USAGE.value
     )
 
-def get_sqlite_global_system_file() -> str:
+def get_sqlite_shared_system_file() -> str:
     """Get the SQLite file for storing global scoped system data."""
-    # TODO: change to use DataScope.SYSTEM. Requires migration scripts.
+    # TODO: migrate old features over to use DataScope.GLOBAL. Requires migration scripts.
     return _get_path(store=_StoreDir.SQLITE, data_scope=_DataScope.SHARED, filename=_SqliteFilename.SYSTEM.value)
 
+def get_sqlite_global_system_file() -> str:
+    """Get the SQLite file for storing global scoped system data."""
+    # TODO: migrate old features over to use DataScope.GLOBAL. Requires migration scripts.
+    return _get_path(store=_StoreDir.SQLITE, data_scope=_DataScope.GLOBAL, filename=_SqliteFilename.SYSTEM.value)
+    
 def get_sqlite_user_system_file(user_id: int) -> str:
     """Get the SQLite file for storing user scoped system data."""
     return _get_path(store=_StoreDir.SQLITE, data_scope=_DataScope.PERSONAL, subtype=str(user_id), filename=_SqliteFilename.SYSTEM.value)

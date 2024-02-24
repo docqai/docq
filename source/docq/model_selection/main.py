@@ -104,7 +104,7 @@ class LlmUsageSettingsCollection:
     """Unique key for the model collection."""
     model_usage_settings: Dict[ModelCapability, LlmUsageSettings]
 
-
+# The configuration of the deployed instances of models. Basically service discovery.
 LLM_SERVICE_INSTANCES = {
     "openai-gpt35turbo": LlmServiceInstanceConfig(
         vendor=ModelVendor.OPENAI, model_name="gpt-3.5-turbo", api_key=os.getenv("DOCQ_OPENAI_API_KEY")

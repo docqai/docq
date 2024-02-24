@@ -49,8 +49,8 @@ from .sessions import (
     get_authenticated_user_id,
     get_chat_session,
     get_public_space_group_id,
+    get_selected_assistant,
     get_selected_org_id,
-    get_selected_persona,
     get_username,
     is_current_user_selected_org_admin,
     reset_session_state,
@@ -627,10 +627,10 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
 
             saved_model_settings = get_saved_model_settings_collection(select_org_id)
 
-            persona_key = get_selected_persona()
-            persona_key = persona_key if persona_key else "default"
+            assistant_id = get_selected_assistant()
+            assistant_id = assistant_id if assistant_id else "default"
 
-            persona = get_persona_fixed(persona_key)
+            persona = get_persona_fixed(assistant_id)
 
             result = run_queries.query(req, feature, thread_id, saved_model_settings, persona, spaces)
 
