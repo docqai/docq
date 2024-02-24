@@ -3,16 +3,16 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime
 from typing import Optional
+from unittest import result
 
 from llama_index import ChatPromptTemplate
 from llama_index.llms.base import ChatMessage, MessageRole
+from sympy import N
 
 from .domain import Persona, PersonaType
 from .support.store import (
-    _DataScope,
     get_sqlite_global_system_file,
     get_sqlite_org_system_file,
-    get_sqlite_user_system_file,
 )
 
 DEFAULT_QA_SYSTEM_PROMPT = """You are an expert Q&A system that is trusted around the world. Always answer the query using the provided context information and chat message history, and not prior knowledge. Some rules to follow: 1. Never directly reference the given context in your answer. 2. Avoid statements like 'Based on the context, ...' or 'The context information ...' or '... given context information.' or anything along those lines."""
@@ -98,14 +98,14 @@ ASK_PERSONAS = {
 # Keep DB schema simple an applicable to types of Gen models.
 # The data model will provide further abstractions over this especially for things that map back to a system prompt or user prompt.
 SQL_CREATE_ASSISTANTS_TABLE = """
-CREATE TABLE IF NOT EXISTS personas (
+CREATE TABLE IF NOT EXISTS assistants (
     id INTEGER PRIMARY KEY,
     name TEXT UNIQUE, -- friendly display name
     type TEXT, -- persona_type enum
     archived BOOL DEFAULT 0,
     system_prompt_template TEXT, -- py format string template
     user_prompt_template TEXT, -- py format string template
-    model_settings_collection_key TEXT, -- key for a valid Docq model settings collection
+    llm_settings_collection_key TEXT, -- key for a valid Docq llm settings collection
     space_group_id INTEGER, -- space_group_id for knowledge
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -114,28 +114,19 @@ CREATE TABLE IF NOT EXISTS personas (
 
 ASSISTANT = tuple[int, str, str, bool, str, str, str, datetime, datetime]
 
+def _init(org_id: Optional[int] = None) -> None:
+    """Initialize the database.
 
-# def _init() -> None:
-#     """Initialize the database."""
-#     _init_orgs_scope_table()
-#     _init_user_scope_table()
-#     # we'll leave global personas hard coded for now.
+    Needs to be called twice with the current context org_id and without org_id, to create the global scope table and the org scope table.
 
-# def _init_orgs_scope_table() -> None:
-#     """Initialize the database."""
-#     with closing(
-#         sqlite3.connect(get_sqlite_org_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
-#     ) as connection, closing(connection.cursor()) as cursor:
-#         cursor.execute(SQL_CREATE_PERSONAS_TABLE)
-#         connection.commit()
-
-# def _init_user_scope_table() -> None:
-#     with closing(
-#         sqlite3.connect(get_sqlite_user_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
-#     ) as connection, closing(connection.cursor()) as cursor:
-#         cursor.execute(SQL_CREATE_PERSONAS_TABLE)
-#         connection.commit()
-
+    Args:
+        org_id (Optional[int]): The org id. If None then will initialise the global scope table.
+    """
+    with closing(
+        sqlite3.connect(__get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(SQL_CREATE_ASSISTANTS_TABLE)
+        connection.commit()
 
 def llama_index_chat_prompt_template_from_persona(persona: Persona) -> ChatPromptTemplate:
     """Get the prompt template for the llama index."""
@@ -170,21 +161,31 @@ def get_personas_fixed(persona_type: Optional[PersonaType] = None) -> dict[str, 
     return result
 
 
-def get_persona_fixed(key: str) -> Persona:
+def get_persona_fixed(key: str, org_id: Optional[int] = None) -> Persona:
     """Get the persona."""
-    if key not in SIMPLE_CHAT_PERSONAS:
-        raise ValueError(f"No Persona with: {key}")
-    return Persona(key=key, **SIMPLE_CHAT_PERSONAS[key])
+    #TODO: refactor to remove key and simplify. We only need one fixed assistant persona as a fallback.
+    if key in SIMPLE_CHAT_PERSONAS:
+        return Persona(key=key, **SIMPLE_CHAT_PERSONAS[key])
+    elif isinstance(key, int):
+        assistant = get_assistant(key, org_id=org_id)
+        return Persona(key=str(assistant[0]), name=assistant[1], system_prompt_content=assistant[4], user_prompt_template_content=assistant[5])
+    else:
+        raise ValueError(f"No Persona with: key = '{key}'. Must be a valid assistant_id or key for a fixed persona.")
 
 
+def list_assistants(org_id: Optional[int] = None) -> list[ASSISTANT]:
+    """List the assistants.
 
+    Args:
+        org_id (Optional[int]): The current org id. If None then will try to get from global scope table.
+    """
+    if org_id:
+        _init(org_id)
 
-def list_assistants(assistant_id: int, org_id: Optional[int]) -> list[ASSISTANT]:
-    """List the assistants."""
     with closing(
-        sqlite3.connect(_get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(__get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute("SELECT id, name, type, archived, system_prompt_template, user_prompt_template, model_settings_collection_key, created_at, modified_at FROM assistant")
+        cursor.execute("SELECT id, name, type, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, created_at, updated_at FROM assistants")
         rows = cursor.fetchall()
         return [(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]) for row in rows]
 
@@ -193,10 +194,13 @@ def get_assistant(assistant_id: int, org_id: Optional[int]) -> ASSISTANT:
 
     If just assistant_id then will try to get from global scope table.
     """
+    if org_id:
+        _init(org_id)
+
     with closing(
-        sqlite3.connect(_get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(__get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute("SELECT id, name, type, archived, system_prompt_template, user_prompt_template, model_settings_collection_key, created_at, modified_at FROM personas WHERE id = ?", (assistant_id,))
+        cursor.execute("SELECT id, name, type, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, created_at, updated_at FROM assistants WHERE id = ?", (assistant_id,))
         row = cursor.fetchone()
         if row is None:
             if org_id:
@@ -207,14 +211,14 @@ def get_assistant(assistant_id: int, org_id: Optional[int]) -> ASSISTANT:
 
 def create_or_update_assistant(
     name: str,
-    persona_type: PersonaType,
+    assistant_type: PersonaType,
     archived: bool,
     system_prompt_template: str,
     user_prompt_template: str,
-    model_settings_collection_key: str,
-    assistant_id: Optional[int],
-    org_id: Optional[int],
-) -> None:
+    llm_settings_collection_key: str,
+    assistant_id: Optional[int] = None,
+    org_id: Optional[int] = None,
+) -> int | None:
     """Create or update a persona.
 
     If user_id and org_id are None then will try to create or update in global scope table.
@@ -225,28 +229,40 @@ def create_or_update_assistant(
         archived (bool): The archived.
         system_prompt_template (str): The system prompt template.
         user_prompt_template (str): The user prompt template.
-        model_settings_collection_key (str): The model settings collection key.
+        llm_settings_collection_key (str): The LLM settings collection key.
         assistant_id (Optional[int]): The assistant id. If present then update else create.
         org_id (Optional[int]): The org id.
+
+    Returns:
+        int | None: The assistant ID if successful.
     """
+    result_id = None
+    if org_id:
+        _init(org_id)
+
+    print("assistant org_id: ", org_id)
     if assistant_id is None:
-        sql = "INSERT INTO assistants (name, type, archived, system_prompt_template, user_prompt_template, model_settings_collection_key) VALUES (?, ?, ?, ?, ?, ?,  )"
-        params = (name, persona_type.name, archived, system_prompt_template, user_prompt_template, model_settings_collection_key)
+        sql = "INSERT INTO assistants (name, type, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key) VALUES (?, ?, ?, ?, ?, ?)"
+        params = (name, assistant_type.name, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key)
 
     else:
-        sql = "UPDATE assistant SET name = ?, type = ?, archived = ?, system_prompt_template = ?, user_prompt_template = ?, model_settings_collection_key = ? WHERE id = ?"
-        params = (name, persona_type.name, archived, system_prompt_template, user_prompt_template, model_settings_collection_key, assistant_id)
+        sql = "UPDATE assistants SET name = ?, type = ?, archived = ?, system_prompt_template = ?, user_prompt_template = ?, llm_settings_collection_key = ? WHERE id = ?"
+        params = (name, assistant_type.name, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, assistant_id)
+        result_id = assistant_id
 
     with closing(
-        sqlite3.connect(_get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(__get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             sql,
             params,
         )
         connection.commit()
+        if assistant_id is None:
+            result_id = cursor.lastrowid
+    return result_id
 
-def _get_assistants_sqlite_file(org_id: Optional[int]) -> str:
+def __get_assistants_sqlite_file(org_id: Optional[int]) -> str:
     """Get the SQLite file for a assistants."""
     path = ""
     # if user_id:
