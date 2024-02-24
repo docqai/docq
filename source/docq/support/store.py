@@ -153,19 +153,18 @@ def get_public_sqlite_usage_file(id_: str) -> str:
         store=_StoreDir.SQLITE, data_scope=_DataScope.PUBLIC, subtype=id_, filename=_SqliteFilename.USAGE.value
     )
 
-
 def get_sqlite_global_system_file() -> str:
     """Get the SQLite file for storing global scoped system data."""
     # TODO: change to use DataScope.SYSTEM. Requires migration scripts.
     return _get_path(store=_StoreDir.SQLITE, data_scope=_DataScope.SHARED, filename=_SqliteFilename.SYSTEM.value)
 
-def get_sqlite_user_system_file() -> str:
+def get_sqlite_user_system_file(user_id: int) -> str:
     """Get the SQLite file for storing user scoped system data."""
-    return _get_path(store=_StoreDir.SQLITE, data_scope=_DataScope.PERSONAL, filename=_SqliteFilename.SYSTEM.value)
+    return _get_path(store=_StoreDir.SQLITE, data_scope=_DataScope.PERSONAL, subtype=str(user_id), filename=_SqliteFilename.SYSTEM.value)
 
-def get_sqlite_org_system_file() -> str:
+def get_sqlite_org_system_file(org_id: int) -> str:
     """Get the SQLite file for the storing org scoped system data."""
-    return _get_path(store=_StoreDir.SQLITE, data_scope=_DataScope.ORG, filename=_SqliteFilename.SYSTEM.value)
+    return _get_path(store=_StoreDir.SQLITE, data_scope=_DataScope.ORG, subtype=str(org_id), filename=_SqliteFilename.SYSTEM.value)
 
 
 def get_history_table_name(type_: OrganisationFeatureType) -> str:
