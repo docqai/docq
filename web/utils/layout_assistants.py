@@ -29,6 +29,7 @@ def render_assistant_create_edit_ui(org_id: Optional[int] = None, assistant_data
             key=f"assistant_edit_name_{key_suffix}",
             value=assistant_data[1] if assistant_data else None,
         )
+        print([key for key, _ in LLM_MODEL_COLLECTIONS.items()])
         st.selectbox(
             "Type",
             options=[persona_type for persona_type in PersonaType],
@@ -37,14 +38,15 @@ def render_assistant_create_edit_ui(org_id: Optional[int] = None, assistant_data
             key=f"assistant_edit_type_{key_suffix}",
             index=[persona_type.name for persona_type in PersonaType].index(assistant_data[2]) if assistant_data else 1,
         )
-        st.text_input(label="System Prompt Template", placeholder="", key=f"assistant_edit_system_prompt_template_{key_suffix}")
-        st.text_input(label="User Prompt Template", placeholder="", key=f"assistant_edit_user_prompt_template_{key_suffix}")
+        st.text_area(label="System Prompt Template", placeholder="", key=f"assistant_edit_system_prompt_template_{key_suffix}", value=assistant_data[4] if assistant_data else None, height=200)
+        st.text_area(label="User Prompt Template", placeholder="", key=f"assistant_edit_user_prompt_template_{key_suffix}", value=assistant_data[5] if assistant_data else None, height=200)
         st.selectbox(
             "LLM Settings Collection",
             options=[llm_settings_collection for _, llm_settings_collection in LLM_MODEL_COLLECTIONS.items()],
             format_func=lambda x: x.name,
             label_visibility="visible",
             key=f"assistant_edit_model_settings_collection_{key_suffix}",
+            index=[key for key, _ in LLM_MODEL_COLLECTIONS.items()].index(assistant_data[6]) if assistant_data else 0,
         )
         st.text_input(
             label="Space Group ID", placeholder="(Optional) Space group for knowledge", key=f"assistant_edit_space_group_id_{key_suffix}"
@@ -85,7 +87,7 @@ def handle_assistant_create_edit(org_id: Optional[int] = None, assistant_id: Opt
 
     try:
         persona_type: PersonaType = st.session_state[f"assistant_edit_type_{key_suffix}"]
-
+        print("system prompt: ", st.session_state[f"assistant_edit_system_prompt_template_{key_suffix}"])
         create_or_update_assistant(
             name=st.session_state[f"assistant_edit_name_{key_suffix}"],
             assistant_type=persona_type,

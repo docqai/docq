@@ -3,11 +3,9 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime
 from typing import Optional
-from unittest import result
 
 from llama_index import ChatPromptTemplate
 from llama_index.llms.base import ChatMessage, MessageRole
-from sympy import N
 
 from .domain import Persona, PersonaType
 from .support.store import (
@@ -225,7 +223,7 @@ def create_or_update_assistant(
 
     Args:
         name (str): The name.
-        persona_type (PersonaType): The type.
+        assistant_type (PersonaType): The type.
         archived (bool): The archived.
         system_prompt_template (str): The system prompt template.
         user_prompt_template (str): The user prompt template.
@@ -246,20 +244,25 @@ def create_or_update_assistant(
         params = (name, assistant_type.name, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key)
 
     else:
-        sql = "UPDATE assistants SET name = ?, type = ?, archived = ?, system_prompt_template = ?, user_prompt_template = ?, llm_settings_collection_key = ? WHERE id = ?"
-        params = (name, assistant_type.name, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, assistant_id)
+        sql = "UPDATE assistants SET name = ?, type = ?, archived = ?, system_prompt_template = ?, user_prompt_template = ?, llm_settings_collection_key = ?, updated_at = ? WHERE id = ?"
+        params = (name, assistant_type.name, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, datetime.utcnow(), assistant_id)
         result_id = assistant_id
 
-    with closing(
-        sqlite3.connect(__get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
-    ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute(
-            sql,
-            params,
-        )
-        connection.commit()
-        if assistant_id is None:
-            result_id = cursor.lastrowid
+    print("sql: ", sql)
+    print("params: ", params)
+    try:
+        with closing(
+            sqlite3.connect(__get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
+        ) as connection, closing(connection.cursor()) as cursor:
+            cursor.execute(
+                sql,
+                params,
+            )
+            connection.commit()
+            if assistant_id is None:
+                result_id = cursor.lastrowid
+    except Exception as e:
+        raise e
     return result_id
 
 def __get_assistants_sqlite_file(org_id: Optional[int]) -> str:

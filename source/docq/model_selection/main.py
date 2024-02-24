@@ -254,7 +254,7 @@ LLM_MODEL_COLLECTIONS = {
             ),
         },
     ),
-    "google_vertexai_palm2": LlmUsageSettingsCollection(
+    "google_vertexai_palm2_latest": LlmUsageSettingsCollection(
         name="Google VertexAI Palm2 Latest",
         key="google_vertexai_palm2_latest",
         model_usage_settings={
@@ -269,7 +269,7 @@ LLM_MODEL_COLLECTIONS = {
             ),
         },
     ),
-    "google_vertexai_gemini_pro": LlmUsageSettingsCollection(
+    "google_vertexai_gemini_pro_latest": LlmUsageSettingsCollection(
         name="Google VertexAI Gemini Pro Latest",
         key="google_vertexai_gemini_pro_latest",
         model_usage_settings={
