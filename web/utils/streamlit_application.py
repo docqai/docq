@@ -84,16 +84,18 @@ class StreamlitApplication:
           Note that the regex we use limits values to 150 characters. This is a security measure to prevent a bad actor from DOSing the server with a very long paths
           cause high memory consumption. Values longer than 150 characters will not match the route and will return a 404.
         """
+        pattern = r"{(\w+)(?::\s*(\w+))?\s*}"
 
-        def convert_args_in_path_to_regex(path: str) -> str:
+        def convert_args_in_path_to_regex(match: re.Match) -> str:
             """Convert the path to a regex pattern."""
-            # Replace any '{var}' pattern with '([^/]{1,100})'
-            regex_path = re.sub(r"\{[^}]+\}", r"([^/]{1,150})", path)
-            # Add the raw string indicator 'r' and replace any '/' with '\/'
-            regex_path = 'r"' + regex_path.replace("/", r"\/") + '"'
-            return regex_path
+            type_ = match.group(2) if match.group(2) else "str"
 
-        path = convert_args_in_path_to_regex(path)
+            regex = r"([^/]{1,150})" # Limit to 150 characters
+
+            return r"(\d{1,150})" if type_ == "int" else regex
+
+        path = re.sub(pattern, convert_args_in_path_to_regex, path)
+        path = fr"^{path}$"
 
         def decorator(cls: Type[RequestHandler]) -> Type[RequestHandler]:
             logging.debug("Decorator adding route handler: %s", cls)
