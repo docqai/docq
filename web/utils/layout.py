@@ -884,14 +884,15 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
     if feature.type_ != OrganisationFeatureType.ASK_SHARED:
         return None
 
-
-    st.markdown("""
+    st.markdown(
+        """
     <style>
       div[data-testid="stFileUploader"] label {
         display: none;
       }
       section[data-testid="stFileUploadDropzone"] {
-        height: 2rem;
+        height: 2.1rem;
+        margin-left: 0.2rem;
       }
       section[data-testid="stFileUploadDropzone"] div {
         flex-direction: row;
@@ -912,7 +913,7 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
       }
       section[data-testid="stFileUploadDropzone"] button[data-testid="baseButton-secondary"] {
         min-height: unset;
-        height: 1.5rem;
+        height: 1.8rem;
         font-size: 0.8rem;
       }
       div[data-testid="stFileUploader"]:has(.uploadedFile) section[data-testid="stFileUploadDropzone"] {
@@ -927,7 +928,7 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
       }
     </style>
     """,
-    unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
     input_key = f"chat_file_uploader_{feature.value()}_{key_suffix}"
     if st.file_uploader(":paperclip:", key=input_key, type=ALLOWED_DOC_EXTS):
