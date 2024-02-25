@@ -633,7 +633,6 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
 
             saved_model_settings = get_saved_model_settings_collection(select_org_id)
 
-            st.write(assistant)
             result = run_queries.query(req, feature, thread_id, saved_model_settings, assistant, spaces)
 
     get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY).extend(result)

@@ -116,6 +116,7 @@ from .sessions import (
     get_chat_session,
     get_public_session_id,
     get_public_space_group_id,
+    get_selected_assistant,
     get_selected_org_id,
     is_current_user_super_admin,
     reset_session_state,
@@ -835,7 +836,11 @@ def _render_assistant_selection(feature: FeatureKey) -> None:
         selected_org_id = get_selected_org_id()
         assistants_data = list_assistants(org_id=selected_org_id)
 
-        selected = render_assistants_selector_ui(assistants_data=assistants_data)
+        selected_assisted_id = get_selected_assistant()
+
+        selected = render_assistants_selector_ui(
+            assistants_data=assistants_data, selected_assistant_id=selected_assisted_id
+        )
 
         if selected:
             selected_assisted_id = selected[0]
