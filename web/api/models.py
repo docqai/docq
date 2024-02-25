@@ -37,6 +37,12 @@ class ThreadModel(BaseModel):
     topic: str
     created_at: str
 
+class SpaceModel(BaseModel):
+    """Pydantic model for the response body."""
+    id_: int = Field(..., alias="id")
+    space_type: SPACE_TYPE
+    created_at: str
+
 class ThreadResponseModel(BaseModel):
     """Pydantic model for the response body."""
     response: list[ThreadModel]

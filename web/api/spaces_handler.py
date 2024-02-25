@@ -17,7 +17,7 @@ from web.utils.streamlit_application import st_app
 class PostRequestModel(BaseModel):
     """Post request model."""
 
-    title: str
+    title: Optional[str] = None
     summary: str
     thread_id: Optional[int] = None
 
@@ -44,7 +44,7 @@ class SpacesHandler(BaseRagRequestHandler):
                     thread_id = (
                         request.thread_id
                         if request.thread_id
-                        else rq.create_history_thread(request.title, self.feature)
+                        else rq.create_history_thread(request.title or "New thread", self.feature)
                     )
                     space = m_spaces.create_thread_space(
                         self.selected_org_id,
@@ -54,7 +54,7 @@ class SpacesHandler(BaseRagRequestHandler):
                     )
                     self.write(PostResponseModel(thread_id=thread_id, space_value=space.value()).model_dump_json())
                 except Exception as e:
-                    raise HTTPError(500, reason="Internal server error") from e
+                    raise HTTPError(500, reason="Error creating space") from e
             elif space_type in ["personal", "shared", "public"]:
                 # raise not implemented error
                 raise HTTPError(501, reason="Not implemented")
@@ -68,9 +68,21 @@ class SpaceHandler(BaseRagRequestHandler):
 
     @authenticated
     def get(self: Self, space_type: SPACE_TYPE, space_id: int) -> None:
-        """GET /api/spaces/{space_id}."""
+        """GET /api/v1/spaces/space_type/{space_id}."""
         self.space = space_type, space_id
         self.write(self.space.value())
+
+    @authenticated
+    def delete(self: Self, space_type: SPACE_TYPE, space_id: int) -> None:
+        """DELETE /api/v1/spaces/space_type/{space_id}."""
+        self.space = space_type, space_id
+        raise HTTPError(501, reason="Not implemented")
+
+    @authenticated
+    def update(self: Self, space_type: SPACE_TYPE, space_id: int) -> None:
+        """UPDATE /api/v1/spaces/space_type/{space_id}."""
+        self.space = space_type, space_id
+        raise HTTPError(501, reason="Not implemented")
 
 
 @st_app.api_route("/api/v1/spaces/{space_type}/{space_id: int}/files/upload")
@@ -90,5 +102,5 @@ class SpaceFileUploadHandler(BaseRagRequestHandler):
         if len(fileinfo["body"]) > self.__FILE_SIZE_LIMIT:
             raise HTTPError(400, reason="File too large", log_message="File size exceeds the limit")
 
-        upload(fname[: self.__FILE_NAME_LIMIT], fileinfo["body"], self.space)
+        upload(fname[:self.__FILE_NAME_LIMIT], fileinfo["body"], self.space)
         self.write(f"File {fname} is uploaded successfully.")

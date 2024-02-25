@@ -30,10 +30,8 @@ class RagCompletionHandler(BaseRagRequestHandler):
     @authenticated
     def post(self: Self) -> None:
         """Handle POST request."""
-        self.feature = "rag"
-        request = self.request.body
         try:
-            request_model = PostRequestModel.model_validate_json(request)
+            request_model = PostRequestModel.model_validate_json(self.request.body)
             self.thread_space = request_model.thread_id
             collection_key = request_model.llm_settings_collection_name
             model_settings_collection = get_model_settings_collection(collection_key) if collection_key else get_saved_model_settings_collection(self.selected_org_id)

@@ -93,6 +93,10 @@ class BaseRagRequestHandler(BaseRequestHandler):
     __thread_space: Optional[SpaceKey] = None
     __space: Optional[SpaceKey] = None
 
+    def prepare(self: Self) -> None:
+        """Prepare the request."""
+        self.feature = "rag"
+
     @property
     def selected_org_id(self: Self) -> int:
         """Get the selected org id."""
@@ -131,7 +135,7 @@ class BaseRagRequestHandler(BaseRequestHandler):
             else SpaceType.THREAD
         )
 
-        space = m_spaces.get_space(self.selected_org_id, space_id)
+        space = m_spaces.get_space(space_id, self.selected_org_id)
         if space is None:
             raise HTTPError(404, reason="Not Found", log_message="Space not found")
 

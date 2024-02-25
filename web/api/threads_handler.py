@@ -108,18 +108,15 @@ class ThreadHandler(BaseRequestHandler):
         except ValidationError as e:
             raise HTTPError(status_code=400, reason="Bad request", log_message=str(e)) from e
 
+    @authenticated
+    def delete(self: Self, feature: Literal["rag", "chat"], thread_id: str) -> None:
+        """Handle POST request."""
+        self.feature = feature
 
-@st_app.api_route("/api/v1/{feature}/threads/{thread_id: int}/delete")
-class ThreadDeleteHandler(BaseRequestHandler):
-    """Handle /api/v1/{thread_type}threads/{thread_id}/delete requests.
-
-    Path Parameters:
-        feature (Literal["rag", "chat"]): The feature type, used to select between general chat and shared ask.
-        thread_id (str): The thread id.
-    """
+        raise HTTPError(status_code=501, reason="Not implemented")
 
     @authenticated
-    def post(self: Self, feature: Literal["rag", "chat"], thread_id: str) -> None:
+    def update(self: Self, feature: Literal["rag", "chat"], thread_id: str) -> None:
         """Handle POST request."""
         self.feature = feature
 
