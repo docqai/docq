@@ -12,36 +12,34 @@ from web.utils.streamlit_application import st_app
 
 
 def _get_user_dict(result: tuple) -> dict:
-    return {
-        'uid': result[0],
-        'fullname': result[1],
-        'super_admin': result[2],
-        'username': result[3]
-    }
+    return {"uid": result[0], "fullname": result[1], "super_admin": result[2], "username": result[3]}
 
 
 class TokenRequestModel(BaseModel):
     """Token request model."""
-    grant_type: Literal['authorization_code', 'refresh_token'] = 'authorization_code'
+
+    grant_type: Literal["authorization_code", "refresh_token"] = "authorization_code"
     code: Optional[str] = None
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
     redirect_uri: str
     refresh_token: Optional[str] = None
 
+
 class TokenResponseModel(BaseModel):
     """Token response model."""
+
     access_token: str
-    token_type: Literal['bearer'] = 'bearer'
+    token_type: Literal["bearer"] = "bearer"
     expires_in: int
     refresh_token: Optional[str] = None
+
 
 class TokenErrorResponseModel(BaseModel):
     """General error response model."""
 
     error: str
     error_description: str
-
 
 
 @st_app.api_route("/api/v1/token")
@@ -62,7 +60,7 @@ class TokenHandler(BaseRequestHandler):
             self.token_error(str(e))
             return
 
-        if data.grant_type == 'authorization_code':
+        if data.grant_type == "authorization_code":
             username = self.get_argument("username", None)
             password = self.get_argument("password", None)
 
@@ -85,7 +83,7 @@ class TokenHandler(BaseRequestHandler):
             response = TokenResponseModel(access_token=token, expires_in=3600, refresh_token=token).model_dump_json()
             self.write(response)
 
-        elif data.grant_type == 'refresh_token':
+        elif data.grant_type == "refresh_token":
             if not data.refresh_token:
                 self.token_error("Refresh token is required", 400)
                 return
