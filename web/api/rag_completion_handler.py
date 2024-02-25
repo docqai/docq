@@ -8,7 +8,7 @@ from pydantic import Field, ValidationError
 from tornado.web import HTTPError
 
 from web.api.base_handlers import BaseRagRequestHandler
-from web.api.models import MessageModel, MessageResponseModel
+from web.api.models import MessageResponseModel
 from web.utils.streamlit_application import st_app
 
 from .utils.auth_utils import authenticated
@@ -23,11 +23,6 @@ class PostRequestModel(CamelModel):
     persona_key: Optional[str] = Field(None)
 
 
-class PostResponseModel(CamelModel):
-    """Pydantic model for the response body."""
-    response: str
-
-
 @st_app.api_route("/api/v1/rag/completion")
 class RagCompletionHandler(BaseRagRequestHandler):
     """Handle /api/v1/rag/completion requests."""
@@ -35,9 +30,11 @@ class RagCompletionHandler(BaseRagRequestHandler):
     @authenticated
     def post(self: Self) -> None:
         """Handle POST request."""
-        body = self.request.body
+        self.feature = "rag"
+        request = self.request.body
         try:
-            request_model = PostRequestModel.model_validate_json(body)
+            request_model = PostRequestModel.model_validate_json(request)
+            self.thread_space = request_model.thread_id
             collection_key = request_model.llm_settings_collection_name
             model_settings_collection = get_model_settings_collection(collection_key) if collection_key else get_saved_model_settings_collection(self.selected_org_id)
             persona = get_personas_fixed()[request_model.persona_key] if request_model.persona_key else get_personas_fixed().get("default")
@@ -49,11 +46,11 @@ class RagCompletionHandler(BaseRagRequestHandler):
                 thread_id=request_model.thread_id,
                 model_settings_collection=model_settings_collection,
                 persona=persona,
-                spaces=[self.space],
+                spaces=[self.thread_space],
             )
 
             if result:
-                messages = [MessageModel(**self._get_message_object(msg)) for msg in result]
+                messages = list(map(self._get_message_object, result))
                 self.write(MessageResponseModel(response=messages).model_dump_json())
             else:
                 raise HTTPError(500, "Internal server error")

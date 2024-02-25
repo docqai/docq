@@ -1,9 +1,10 @@
 """API models."""
 
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
+SPACE_TYPE = Literal["personal", "shared", "public", "thread"]
 
 class UserModel(BaseModel):
     """Pydantic model for user data."""

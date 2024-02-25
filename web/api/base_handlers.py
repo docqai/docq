@@ -1,20 +1,24 @@
 """Base request handlers."""
-from typing import Any, Optional, Self
+from datetime import datetime
+from typing import Any, Literal, Optional, Self
 
 import docq.manage_organisations as m_orgs
 import docq.manage_spaces as m_spaces
+from docq.config import SpaceType
 from docq.domain import FeatureKey, OrganisationFeatureType, SpaceKey
 from opentelemetry import trace
 from pydantic import ValidationError
 from tornado.web import HTTPError, RequestHandler
 
-from web.api.models import UserModel
+from web.api.models import SPACE_TYPE, MessageModel, UserModel
 from web.utils.handlers import _default_org_id as get_default_org_id
 
 tracer = trace.get_tracer(__name__)
 
+
 class BaseRequestHandler(RequestHandler):
     """Base request Handler."""
+
     def check_origin(self: Self, origin: Any) -> bool:
         """Override the origin check if it's causing problems."""
         return True
@@ -25,14 +29,34 @@ class BaseRequestHandler(RequestHandler):
         # Safe with token based authN
         return False
 
-    def _get_message_object(self: Self,result: tuple) -> dict:
-        return {
-            'id': result[0],
-            'message': result[1],
-            'human': result[2],
-            'timestamp': str(result[3]),
-            'thread_id': result[4]
-        }
+    __feature: FeatureKey
+
+    @property
+    def feature(self: Self) -> FeatureKey:
+        """Get the feature key."""
+        return self.__feature
+
+    @feature.setter
+    def feature(self: Self, mode: Literal["rag", "chat"]) -> None:
+        """Set the feature key."""
+        if mode not in ["rag", "chat"]:
+            raise HTTPError(status_code=404, reason="Not Found")
+
+        self.__feature = (
+            FeatureKey(OrganisationFeatureType.CHAT_PRIVATE, self.current_user.uid)
+            if mode == "chat"
+            else FeatureKey(OrganisationFeatureType.ASK_SHARED, self.current_user.uid)
+        )
+
+    def _get_message_object(self: Self, message: tuple[int, str, bool, datetime, int]) -> MessageModel:
+        """Format chat message."""
+        return MessageModel(
+            id=message[0],
+            message=message[1],
+            human=message[2],
+            timestamp=str(message[3]),
+            thread_id=message[4],
+        )
 
     @tracer.start_as_current_span("get_current_user")
     def get_current_user(self: Self) -> UserModel:
@@ -66,6 +90,8 @@ class BaseRagRequestHandler(BaseRequestHandler):
     """Base RequestHandler for RAG (Retrieval-Augmented Generation)."""
 
     __selected_org_id: Optional[int] = None
+    __thread_space: Optional[SpaceKey] = None
+    __space: Optional[SpaceKey] = None
 
     @property
     def selected_org_id(self: Self) -> int:
@@ -77,19 +103,57 @@ class BaseRagRequestHandler(BaseRequestHandler):
         return self.__selected_org_id
 
     @property
-    def feature(self: Self) -> FeatureKey:
-        """Get the feature key."""
-        return FeatureKey(OrganisationFeatureType.ASK_SHARED, self.current_user.uid)
-
-    @property
     def space(self: Self) -> SpaceKey:
-        """Get the space key."""
+        """Get the thread space key."""
+        if self.__space is None:
+            raise HTTPError(
+                401, reason="Thread space not set.", log_message="You must set the thread space before using it."
+            )
+        return self.__space
+
+    @space.setter
+    def space(self: Self, config: tuple[SPACE_TYPE, int]) -> None:
+        """Set the space key."""
         if self.selected_org_id is None:
             raise HTTPError(401, "User is not a member of any organisation.")
-        thread_id = self.get_body_argument("thread_id", None)
-        if thread_id is None:
-            thread_id = self.get_argument("thread_id")
-        space = m_spaces.get_thread_space(self.selected_org_id, int(thread_id))
+        space_type, space_id = config
+
+        if space_type not in ["personal", "shared", "public", "thread"]:
+            raise HTTPError(400, reason="Bad request", log_message="Invalid space type")
+
+        space_type_ = (
+            SpaceType.PERSONAL
+            if space_type == "personal"
+            else SpaceType.SHARED
+            if space_type == "shared"
+            else SpaceType.PUBLIC
+            if space_type == "public"
+            else SpaceType.THREAD
+        )
+
+        space = m_spaces.get_space(self.selected_org_id, space_id)
         if space is None:
-            raise HTTPError(404, reason="Space Not found")
-        return space
+            raise HTTPError(404, reason="Not Found", log_message="Space not found")
+
+        self.__space = SpaceKey(space_type_, space_id, self.selected_org_id, space[3])
+
+    @property
+    def thread_space(self: Self) -> SpaceKey:
+        """Get the thread space key."""
+        if self.__thread_space is None:
+            raise HTTPError(
+                401, reason="Thread space not set.", log_message="You must set the thread space before using it."
+            )
+        return self.__thread_space
+
+    @thread_space.setter
+    def thread_space(self: Self, thread_id: int) -> None:
+        """Set the thread space key."""
+        if self.selected_org_id is None:
+            raise HTTPError(401, "User is not a member of any organisation.")
+
+        space = m_spaces.get_thread_space(self.selected_org_id, thread_id)
+        if space is None:
+            raise HTTPError(404, reason="Not Found", log_message="Thread space not found")
+
+        self.__thread_space = space

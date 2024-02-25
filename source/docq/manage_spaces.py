@@ -461,3 +461,17 @@ def update_shared_space_permissions(id_: int, accessors: List[SpaceAccessor]) ->
                 )
         connection.commit()
         return True
+
+
+def get_space(space_id: int, org_id: int) -> Optional[SPACE]:
+    """Get a space."""
+    log.debug("get_space(): Getting space with id=%d", space_id)
+    with closing(
+        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(
+            "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, space_type, created_at, updated_at FROM spaces WHERE id = ? AND org_id = ?",
+            (space_id, org_id),
+        )
+        row = cursor.fetchone()
+        return _format_space(row) if row else None
