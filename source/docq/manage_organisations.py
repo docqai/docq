@@ -8,7 +8,7 @@ from typing import List, Tuple
 
 from . import manage_settings, manage_users
 from .constants import DEFAULT_ORG_ID, DEFAULT_ORG_NAME
-from .support.store import get_sqlite_global_system_file
+from .support.store import get_sqlite_shared_system_file
 
 SQL_CREATE_ORGS_TABLE = """
 CREATE TABLE IF NOT EXISTS orgs (
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS orgs (
 def _init() -> None:
     """Initialize the database."""
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_ORGS_TABLE)
         connection.commit()
@@ -32,7 +32,7 @@ def _init() -> None:
 def _init_default_org_if_necessary() -> bool:
     created = False
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         (count,) = cursor.execute("SELECT COUNT(*) FROM orgs WHERE id = ?", (DEFAULT_ORG_ID,)).fetchone()
         if int(count) > 0:
@@ -67,7 +67,7 @@ def list_organisations(
     """
     orgs = []
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         if user_id:
             log.debug("Listing orgs that user_id '%s' is member", user_id)
@@ -134,7 +134,7 @@ def create_organisation(name: str, creating_user_id: int) -> int | None:
     org_id = None
     log.debug("Creating org: %s", name)
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         try:
             cursor.execute("BEGIN TRANSACTION")
@@ -179,7 +179,7 @@ def update_organisation(id_: int, name: str = None) -> bool:
     params.append(id_)
     log.debug("Update org query: %s, params: %s", query, params)
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         try:
             cursor.execute(query, tuple(params))
@@ -201,7 +201,7 @@ def archive_organisation(id_: int) -> bool:
     """
     log.debug("Archiving user: %d", id_)
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             "UPDATE orgs SET archived = 1, updated_at = ? WHERE id = ?",

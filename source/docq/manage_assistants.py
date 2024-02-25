@@ -269,7 +269,10 @@ def create_or_update_assistant(
     return result_id
 
 def __get_assistants_sqlite_file(org_id: Optional[int]) -> str:
-    """Get the SQLite file for a assistants."""
+    """Get the SQLite file for a assistants based on scope.
+
+    If org_id is None then will return the global scope file otherwise the org scope file.
+    """
     path = ""
     # if user_id:
     #     path = get_sqlite_user_system_file(user_id)

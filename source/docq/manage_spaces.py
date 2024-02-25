@@ -19,7 +19,7 @@ from .data_source.list import SpaceDataSources
 from .domain import DocumentListItem, SpaceKey
 from .model_selection.main import LlmUsageSettingsCollection, ModelCapability, get_saved_model_settings_collection
 from .support.llm import _get_default_storage_context, _get_service_context
-from .support.store import get_index_dir, get_sqlite_global_system_file
+from .support.store import get_index_dir, get_sqlite_shared_system_file
 
 trace = trace.get_tracer(__name__, docq.__version_str__)
 
@@ -56,7 +56,7 @@ SPACE = tuple[int, int, str, str, bool, str, dict, str, datetime, datetime]
 def _init() -> None:
     """Initialize the database."""
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_SPACES_TABLE)
         cursor.execute(SQL_CREATE_SPACE_ACCESS_TABLE)
@@ -138,7 +138,7 @@ def create_space(
     log.debug("Creating space with params: %s", params)
     rowid = None
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             "INSERT INTO spaces (org_id, name, space_type, summary, datasource_type, datasource_configs) VALUES (?, ?, ?, ?, ?, ?)",
@@ -163,7 +163,7 @@ def list_space(org_id: int, space_type: Optional[str] = None) -> list[SPACE]:
         raise ValueError(f"Invalid space type {space_type}")
 
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         _query = "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, space_type, created_at, updated_at FROM spaces WHERE org_id = ?"
         params = (org_id,)
@@ -263,7 +263,7 @@ def get_shared_space(id_: int, org_id: int) -> Optional[SPACE]:
     """Get a shared space."""
     log.debug("get_shared_space(): Getting space with id=%d", id_)
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, space_type, created_at, updated_at FROM spaces WHERE id = ? AND org_id = ?",
@@ -282,7 +282,7 @@ def get_shared_spaces(space_ids: List[int]) -> list[SPACE]:
     """
     log.debug("get_shared_spaces(): Getting space with ids=%s", space_ids)
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         placeholders = ", ".join("?" * len(space_ids))
         query = "SELECT id, org_id, name, summary, archived, datasource_type, datasource_configs, space_type, created_at, updated_at FROM spaces WHERE id IN ({})".format(  # noqa: S608
@@ -329,7 +329,7 @@ def update_shared_space(
     log.debug("Updating space %d with query: %s | Params: %s", id_, query, params)
 
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(query, params)
         connection.commit()
@@ -369,7 +369,7 @@ def create_thread_space(org_id: int, thread_id: int, summary: str, datasource_ty
 def get_thread_space(org_id: int, thread_id: int) -> Optional[SpaceKey]:
     """Get a space for chat thread uploads."""
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         name = f"Thread-{thread_id} %"
         cursor.execute(
@@ -397,7 +397,7 @@ def list_thread_spaces(org_id: int) -> list[SPACE]:
 def list_public_spaces(selected_org_id: int, space_group_id: int) -> list[SPACE]:
     """List all public spaces from a given space group."""
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             """
@@ -420,7 +420,7 @@ def get_shared_space_permissions(id_: int, org_id: int) -> List[SpaceAccessor]:
     """Get the permissions for a shared space."""
     log.debug("get_shared_space_permissions(): Getting permissions for space with id=%d", id_)
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             "SELECT sa.access_type, u.id as user_id, u.username as user_name, g.id as group_id, g.name as group_name FROM spaces s LEFT JOIN space_access sa ON s.id = sa.space_id AND sa.space_id = ? AND s.org_id = ? LEFT JOIN users u ON sa.accessor_id = u.id LEFT JOIN user_groups g on sa.accessor_id = g.id",
@@ -446,7 +446,7 @@ def update_shared_space_permissions(id_: int, accessors: List[SpaceAccessor]) ->
     """Update the permissions for a shared space."""
     log.debug("update_shared_space_permissions(): Updating permissions for space with id=%d", id_)
     with closing(
-        sqlite3.connect(get_sqlite_global_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute("DELETE FROM space_access WHERE space_id = ?", (id_,))
         for accessor in accessors:

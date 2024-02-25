@@ -138,7 +138,9 @@ def register_extensions(extension_classes: list[type[DocqExtension]]) -> None:
         if issubclass(cls, DocqWebUiExtension):
             _registered_extensions[cls.class_name()] = cls()
         elif issubclass(cls, DocqDalExtension):
-            _registered_extensions[cls.class_name()] = cls(sqlite_system_file_path=store.get_sqlite_global_system_file())
+            _registered_extensions[cls.class_name()] = cls(
+                sqlite_system_file_path=store.get_sqlite_shared_system_file()
+            )
         elif issubclass(cls, DocqWebApiExtension):
             _registered_extensions[cls.class_name()] = cls()
 

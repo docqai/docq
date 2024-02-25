@@ -23,7 +23,7 @@ from .config import (
     SystemSettingsKey,
     UserSettingsKey,
 )
-from .support.store import get_sqlite_global_system_file, get_sqlite_usage_file
+from .support.store import get_sqlite_shared_system_file, get_sqlite_usage_file
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
@@ -81,7 +81,7 @@ def _init(user_id: Optional[int] = None) -> None:
 
 def _get_sqlite_file(user_id: Optional[int] = None) -> str:
     """Get the sqlite file for the given user."""
-    return get_sqlite_usage_file(user_id) if user_id else get_sqlite_global_system_file()
+    return get_sqlite_usage_file(user_id) if user_id else get_sqlite_shared_system_file()
 
 
 def _get_settings(org_id: int, user_id: int) -> dict[str, str]:
