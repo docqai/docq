@@ -62,7 +62,7 @@ class SpacesHandler(BaseRagRequestHandler):
             raise HTTPError(400, reason="Bad request") from e
 
 
-@st_app.api_route("/api/v1/spaces/{space_type}/{space_id}")
+@st_app.api_route("/api/v1/spaces/{space_type}/{space_id: int}")
 class SpaceHandler(BaseRagRequestHandler):
     """Handle /api/space requests."""
 
@@ -73,7 +73,7 @@ class SpaceHandler(BaseRagRequestHandler):
         self.write(self.space.value())
 
 
-@st_app.api_route("/api/v1/spaces/{space_type}/{space_id}/files/upload")
+@st_app.api_route("/api/v1/spaces/{space_type}/{space_id: int}/files/upload")
 class SpaceFileUploadHandler(BaseRagRequestHandler):
     """Handle /api/spaces/{space_id}/files/upload requests."""
 

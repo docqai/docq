@@ -80,7 +80,7 @@ class ThreadsHandler(BaseRequestHandler):
             raise HTTPError(status_code=400, reason="Invalid request body", log_message=str(e)) from e
 
 
-@st_app.api_route("/api/v1/{feature}/threads/{thread_id}")
+@st_app.api_route("/api/v1/{feature}/threads/{thread_id: int}")
 class ThreadHandler(BaseRequestHandler):
     """Handle /api/v1/{thread_type}threads/{thread_id} requests.
 
@@ -90,23 +90,13 @@ class ThreadHandler(BaseRequestHandler):
     """
 
     @authenticated
-    def get(self: Self, feature: Literal["rag", "chat"], thread_id: str) -> None:
+    def get(self: Self, feature: Literal["rag", "chat"], thread_id: int) -> None:
         """Handle GET request."""
         self.feature = feature
 
         try:
-            if thread_id == "latest":
-                thread = rq.get_latest_thread(self.feature)
-                thread_response = [ThreadModel(**_get_thread_object(thread))] if thread is not None else []
-
-            else:
-                try:
-                    thread_id_ = int(thread_id)
-                except ValueError as e:
-                    raise HTTPError(status_code=400, reason="Bad request", log_message="Invalid thread id") from e
-
-                thread = rq.list_thread_history(self.feature, thread_id_)
-                thread_response = [ThreadModel(**_get_thread_object(thread[0]))] if len(thread) > 0 else []
+            thread = rq.list_thread_history(self.feature, thread_id)
+            thread_response = [ThreadModel(**_get_thread_object(thread[0]))] if len(thread) > 0 else []
 
             response = (
                 ThreadResponseModel(response=thread_response).model_dump()
@@ -119,7 +109,7 @@ class ThreadHandler(BaseRequestHandler):
             raise HTTPError(status_code=400, reason="Bad request", log_message=str(e)) from e
 
 
-@st_app.api_route("/api/v1/{feature}/threads/{thread_id}/delete")
+@st_app.api_route("/api/v1/{feature}/threads/{thread_id: int}/delete")
 class ThreadDeleteHandler(BaseRequestHandler):
     """Handle /api/v1/{thread_type}threads/{thread_id}/delete requests.
 
@@ -136,7 +126,7 @@ class ThreadDeleteHandler(BaseRequestHandler):
         raise HTTPError(status_code=501, reason="Not implemented")
 
 
-@st_app.api_route("/api/v1/{feature}/threads/{thread_id}/history")
+@st_app.api_route("/api/v1/{feature}/threads/{thread_id: int}/history")
 class ThreadHistoryHandler(BaseRequestHandler):
     """Handle /api/v1/{thread_type}threads/{thread_id}/history requests.
 
@@ -163,7 +153,7 @@ class ThreadHistoryHandler(BaseRequestHandler):
             raise HTTPError(status_code=400, reason="Invalid page or limit") from e
 
 
-@st_app.api_route("/api/v1/rag/threads/{thread_id}/top-questions")
+@st_app.api_route("/api/v1/rag/threads/{thread_id: int}/top-questions")
 class TopQuestionsHandler(BaseRagRequestHandler):
     """Handle GET /api/v1/rag/threads/id/top-questions request."""
 
