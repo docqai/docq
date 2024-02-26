@@ -823,12 +823,13 @@ def _render_documents_list_ui(space: SpaceKey, read_only: bool = True, size: Lit
 
 def _render_show_thread_space_files(feature: FeatureKey) -> None:
     """Show file uploads within a chat thread space."""
-    with st.sidebar.container():
-        space = handle_get_thread_space(feature)
-        if space:
-            expander_label = "Knowledge"
-            with st.expander(expander_label):
-                _render_documents_list_ui(space, False, "sm", expander_label)
+    if feature.type_ == OrganisationFeatureType.ASK_SHARED:
+        with st.sidebar.container():
+            space = handle_get_thread_space(feature)
+            if space:
+                expander_label = "Knowledge"
+                with st.expander(expander_label):
+                    _render_documents_list_ui(space, False, "sm", expander_label)
 
 
 def _render_assistant_selection(feature: FeatureKey) -> None:
