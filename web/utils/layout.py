@@ -232,6 +232,7 @@ def __no_staff_menu() -> None:
 @tracer.start_as_current_span("__no_admin_menu")
 def __no_admin_menu() -> None:
     hide_pages(["Admin_Section"])
+    hide_pages(["ML Engineering"])
 
 
 def __embed_page_config() -> None:
