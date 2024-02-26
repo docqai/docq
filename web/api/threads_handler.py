@@ -80,7 +80,7 @@ class ThreadsHandler(BaseRequestHandler):
             raise HTTPError(status_code=400, reason="Invalid request body", log_message=str(e)) from e
 
 
-@st_app.api_route("/api/v1/{feature}/threads/{thread_id: int}")
+@st_app.api_route("/api/v1/{feature}/threads/{thread_id}")
 class ThreadHandler(BaseRequestHandler):
     """Handle /api/v1/{thread_type}threads/{thread_id} requests.
 
@@ -123,7 +123,7 @@ class ThreadHandler(BaseRequestHandler):
         raise HTTPError(status_code=501, reason="Not implemented")
 
 
-@st_app.api_route("/api/v1/{feature}/threads/{thread_id: int}/history")
+@st_app.api_route("/api/v1/{feature}/threads/{thread_id}/history")
 class ThreadHistoryHandler(BaseRequestHandler):
     """Handle /api/v1/{thread_type}threads/{thread_id}/history requests.
 
@@ -150,7 +150,7 @@ class ThreadHistoryHandler(BaseRequestHandler):
             raise HTTPError(status_code=400, reason="Invalid page or limit") from e
 
 
-@st_app.api_route("/api/v1/rag/threads/{thread_id: int}/top-questions")
+@st_app.api_route("/api/v1/rag/threads/{thread_id}/top-questions")
 class TopQuestionsHandler(BaseRagRequestHandler):
     """Handle GET /api/v1/rag/threads/id/top-questions request."""
 

@@ -62,7 +62,7 @@ class SpacesHandler(BaseRagRequestHandler):
             raise HTTPError(400, reason="Bad request") from e
 
 
-@st_app.api_route("/api/v1/spaces/{space_type}/{space_id: int}")
+@st_app.api_route("/api/v1/spaces/{space_type}/{space_id}")
 class SpaceHandler(BaseRagRequestHandler):
     """Handle /api/space requests."""
 
@@ -85,7 +85,7 @@ class SpaceHandler(BaseRagRequestHandler):
         raise HTTPError(501, reason="Not implemented")
 
 
-@st_app.api_route("/api/v1/spaces/{space_type}/{space_id: int}/files/upload")
+@st_app.api_route("/api/v1/spaces/{space_type}/{space_id}/files/upload")
 class SpaceFileUploadHandler(BaseRagRequestHandler):
     """Handle /api/spaces/{space_id}/files/upload requests."""
 
