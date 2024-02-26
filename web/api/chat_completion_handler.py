@@ -2,7 +2,7 @@
 from typing import Optional, Self
 
 import docq.run_queries as rq
-from docq.manage_personas import get_persona
+from docq.manage_assistants import get_personas_fixed
 from docq.model_selection.main import get_model_settings_collection
 from pydantic import Field, ValidationError
 from tornado.web import HTTPError
@@ -47,7 +47,9 @@ class ChatCompletionHandler(BaseRequestHandler):
                 if request.llm_settings_collection_name
                 else get_model_settings_collection("azure_openai_latest")
             )
-            persona = get_persona(request.persona_key if request.persona_key else "default")
+            persona = get_personas_fixed()[request.persona_key] if request.persona_key else get_personas_fixed().get("default")
+            if not persona:
+                raise HTTPError(400, reason="Invalid persona key")
             thread_id = request.thread_id
 
             result = rq.query(
