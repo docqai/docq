@@ -3,12 +3,14 @@ from typing import Optional, Self
 
 import docq.run_queries as rq
 from docq.manage_assistants import get_personas_fixed
+from docq.manage_spaces import get_thread_space
 from docq.model_selection.main import get_model_settings_collection, get_saved_model_settings_collection
 from pydantic import Field, ValidationError
 from tornado.web import HTTPError
 
-from web.api.base_handlers import BaseRagRequestHandler
+from web.api.base_handlers import BaseRequestHandler
 from web.api.models import MessageResponseModel
+from web.api.utils.docq_utils import get_feature_key, get_message_object
 from web.utils.streamlit_application import st_app
 
 from .utils.auth_utils import authenticated
@@ -24,13 +26,14 @@ class PostRequestModel(CamelModel):
 
 
 @st_app.api_route("/api/v1/rag/completion")
-class RagCompletionHandler(BaseRagRequestHandler):
+class RagCompletionHandler(BaseRequestHandler):
     """Handle /api/v1/rag/completion requests."""
 
     @authenticated
     def post(self: Self) -> None:
         """Handle POST request."""
         try:
+            feature = get_feature_key(self.current_user.uid)
             request_model = PostRequestModel.model_validate_json(self.request.body)
             self.thread_space = request_model.thread_id
             collection_key = request_model.llm_settings_collection_name
@@ -38,17 +41,20 @@ class RagCompletionHandler(BaseRagRequestHandler):
             persona = get_personas_fixed()[request_model.persona_key] if request_model.persona_key else get_personas_fixed().get("default")
             if not persona:
                 raise HTTPError(400, "Invalid persona key")
+            space = get_thread_space(self.selected_org_id, request_model.thread_id)
+            if space is None:
+                raise HTTPError(404, reason="Space not available")
             result = rq.query(
                 input_=request_model.input_,
-                feature=self.feature,
+                feature=feature,
                 thread_id=request_model.thread_id,
                 model_settings_collection=model_settings_collection,
                 persona=persona,
-                spaces=[self.thread_space],
+                spaces=[space],
             )
 
             if result:
-                messages = list(map(self._get_message_object, result))
+                messages = list(map(get_message_object, result))
                 self.write(MessageResponseModel(response=messages).model_dump_json())
             else:
                 raise HTTPError(500, "Internal server error")

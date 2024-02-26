@@ -1,5 +1,4 @@
 """Handle /api/chat/completion requests."""
-import random
 from typing import Optional, Self
 
 import docq.run_queries as rq
@@ -11,6 +10,7 @@ from tornado.web import HTTPError
 from web.api.base_handlers import BaseRequestHandler
 from web.api.models import MessageResponseModel
 from web.api.utils.auth_utils import authenticated
+from web.api.utils.docq_utils import get_feature_key, get_message_object
 from web.api.utils.pydantic_utils import CamelModel
 from web.utils.streamlit_application import st_app
 
@@ -19,7 +19,7 @@ class PostRequestModel(CamelModel):
     """Pydantic model for the request body."""
 
     input_: str = Field(..., alias="input")
-    thread_id: Optional[int] = Field(None)
+    thread_id: int
     history: Optional[str] = Field(None)
     llm_settings_collection_name: Optional[str] = Field(None)
     persona_key: Optional[str] = Field(None)
@@ -39,7 +39,7 @@ class ChatCompletionHandler(BaseRequestHandler):
         '{"input":"what is the sun?", "modelSettingsCollectionName"}' http://localhost:8501/api/v1/chat/completion
         ```
         """
-        self.feature = "chat"
+        feature = get_feature_key(self.current_user.uid, "chat")
         try:
             request = PostRequestModel.model_validate_json(self.request.body)
             model_usage_settings = (
@@ -50,20 +50,14 @@ class ChatCompletionHandler(BaseRequestHandler):
             persona = get_persona(request.persona_key if request.persona_key else "default")
             thread_id = request.thread_id
 
-            if thread_id is None:
-                thread_id = rq.create_history_thread(
-                    f"{request.input_[:100]}-{random.randint(1, 100000)}",  # noqa: S311
-                    self.feature,
-                )
-
             result = rq.query(
                 input_=request.input_,
-                feature=self.feature,
+                feature=feature,
                 thread_id=thread_id,
                 model_settings_collection=model_usage_settings,
                 persona=persona,
             )
-            messages = list(map(self._get_message_object, result))
+            messages = list(map(get_message_object, result))
             response_model = MessageResponseModel(response=messages, meta={"model_settings": model_usage_settings.key})
 
             self.write(response_model.model_dump())

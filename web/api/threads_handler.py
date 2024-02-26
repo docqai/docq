@@ -11,9 +11,10 @@ from llama_index.indices.base import BaseIndex
 from pydantic import ValidationError
 from tornado.web import HTTPError
 
-from web.api.base_handlers import BaseRagRequestHandler, BaseRequestHandler
-from web.api.models import ChatHistoryModel, ThreadModel, ThreadPostRequestModel, ThreadResponseModel
+from web.api.base_handlers import BaseRequestHandler
+from web.api.models import FEATURE, ChatHistoryModel, ThreadModel, ThreadPostRequestModel, ThreadResponseModel
 from web.api.utils.auth_utils import authenticated
+from web.api.utils.docq_utils import get_feature_key, get_message_object, get_thread_space
 from web.utils.streamlit_application import st_app
 
 
@@ -30,7 +31,7 @@ class ThreadsHandler(BaseRequestHandler):
     """
 
     @authenticated
-    def get(self: Self, feature: Literal["rag", "chat"]) -> None:
+    def get(self: Self, feature_: FEATURE) -> None:
         """Handle GET request.
 
         Query Parameters:
@@ -41,10 +42,10 @@ class ThreadsHandler(BaseRequestHandler):
         Response:
             ThreadResponseModel - Response object model.
         """
-        self.feature = feature
+        feature = get_feature_key(self.current_user.uid, feature_)
 
         try:
-            threads = rq.list_thread_history(self.feature)
+            threads = rq.list_thread_history(feature)
             thread_response = (
                 [ThreadModel(**_get_thread_object(threads[i])) for i in range(len(threads))] if len(threads) > 0 else []
             )
@@ -59,7 +60,7 @@ class ThreadsHandler(BaseRequestHandler):
             raise HTTPError(status_code=400, reason="Bad request", log_message=str(e)) from e
 
     @authenticated
-    def post(self: Self, feature: Literal["rag", "chat"]) -> None:
+    def post(self: Self, feature_: FEATURE) -> None:
         """Handle POST request.
 
         Request Body:
@@ -68,12 +69,12 @@ class ThreadsHandler(BaseRequestHandler):
         Response:
             ThreadResponseModel - Response object model.
         """
-        self.feature = feature
+        feature = get_feature_key(self.current_user.uid, feature_)
 
         try:
             request = ThreadPostRequestModel.model_validate_json(self.request.body)
-            thread_id = rq.create_history_thread(request.topic, self.feature)
-            thread = rq.list_thread_history(self.feature, thread_id)
+            thread_id = rq.create_history_thread(request.topic, feature)
+            thread = rq.list_thread_history(feature, thread_id)
             self.write(ThreadResponseModel(response=[ThreadModel(**_get_thread_object(thread[0]))]).model_dump())
 
         except ValidationError as e:
@@ -90,12 +91,12 @@ class ThreadHandler(BaseRequestHandler):
     """
 
     @authenticated
-    def get(self: Self, feature: Literal["rag", "chat"], thread_id: int) -> None:
+    def get(self: Self, feature_: FEATURE, thread_id: int) -> None:
         """Handle GET request."""
-        self.feature = feature
+        feature = get_feature_key(self.current_user.uid, feature_)
 
         try:
-            thread = rq.list_thread_history(self.feature, thread_id)
+            thread = rq.list_thread_history(feature, thread_id)
             thread_response = [ThreadModel(**_get_thread_object(thread[0]))] if len(thread) > 0 else []
 
             response = (
@@ -133,25 +134,25 @@ class ThreadHistoryHandler(BaseRequestHandler):
     """
 
     @authenticated
-    def get(self: Self, feature: Literal["rag", "chat"], thread_id: str) -> None:
+    def get(self: Self, feature_: FEATURE, thread_id: str) -> None:
         """Handle GET request."""
-        self.feature = feature
+        feature = get_feature_key(self.current_user.uid, feature_)
         page = self.get_argument("page", "1")  # noqa: F841
         page_size = self.get_argument("page_size", "10")
         order = self.get_argument("order", "desc")
 
         try:
             chat_history = rq._retrieve_messages(
-                datetime.now(), int(page_size), self.feature, int(thread_id), "ASC" if order == "asc" else "DESC"
+                datetime.now(), int(page_size), feature, int(thread_id), "ASC" if order == "asc" else "DESC"
             )
-            messages = list(map(self._get_message_object, chat_history))
+            messages = list(map(get_message_object, chat_history))
             self.write(ChatHistoryModel(response=messages).model_dump())
         except ValidationError as e:
             raise HTTPError(status_code=400, reason="Invalid page or limit") from e
 
 
 @st_app.api_route("/api/v1/rag/threads/{thread_id}/top-questions")
-class TopQuestionsHandler(BaseRagRequestHandler):
+class TopQuestionsHandler(BaseRequestHandler):
     """Handle GET /api/v1/rag/threads/id/top-questions request."""
 
     def _load_index(self: Self, space: SpaceKey, model_settings_collection: LlmUsageSettingsCollection) -> BaseIndex:
@@ -160,10 +161,10 @@ class TopQuestionsHandler(BaseRagRequestHandler):
         service_context = _get_service_context(model_settings_collection)
         return load_index_from_storage(storage_context=storage_context, service_context=service_context)
 
-    def get_summary_questions(self: Self) -> dict:
+    def get_summary_questions(self: Self, thread_space: SpaceKey) -> dict:
         """Get top possible questions from a document index."""
         model_settings = get_saved_model_settings_collection(self.selected_org_id)
-        index = self._load_index(self.thread_space, model_settings)
+        index = self._load_index(thread_space, model_settings)
         if not isinstance(index, DocumentSummaryIndex):
             raise HTTPError(404, reason="DocumentSummaryIndex not found")
 
@@ -180,9 +181,8 @@ class TopQuestionsHandler(BaseRagRequestHandler):
     @authenticated
     def get(self: Self, thread_id: int) -> None:
         """Handle GET top questions request."""
-        self.feature = "rag"
-        self.thread_space = thread_id
+        thread_space = get_thread_space(self.selected_org_id, thread_id)
         try:
-            self.write(self.get_summary_questions())
+            self.write(self.get_summary_questions(thread_space))
         except Exception as e:
             raise HTTPError(500, reason="Internal server error") from e
