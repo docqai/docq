@@ -148,7 +148,9 @@ def test_chat_private_feature(features: dict[str, domain.FeatureKey], saved_mode
         key="test-persona",
         name="Test Persona",
         system_prompt_content=system_prompt,
-        user_prompt_template_content=user_prompt_template_content,)
+        user_prompt_template_content=user_prompt_template_content,
+        llm_settings_collection_key=saved_model_settings.key,
+    )
 
     thread_id = 0
 
