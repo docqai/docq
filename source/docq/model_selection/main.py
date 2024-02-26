@@ -104,7 +104,7 @@ class LlmUsageSettingsCollection:
     """Unique key for the model collection."""
     model_usage_settings: Dict[ModelCapability, LlmUsageSettings]
 
-
+# The configuration of the deployed instances of models. Basically service discovery.
 LLM_SERVICE_INSTANCES = {
     "openai-gpt35turbo": LlmServiceInstanceConfig(
         vendor=ModelVendor.OPENAI, model_name="gpt-3.5-turbo", api_key=os.getenv("DOCQ_OPENAI_API_KEY")
@@ -224,7 +224,7 @@ LLM_MODEL_COLLECTIONS = {
             ),
         },
     ),
-    "groq_llma2_70b__with_local_embedding": LlmUsageSettingsCollection(
+    "groq_llma2_70b_with_local_embedding": LlmUsageSettingsCollection(
         name="Groq Llama2 70B wth Local Embedding",
         key="groq_llama2_70b_with_local_embedding",
         model_usage_settings={
@@ -239,7 +239,7 @@ LLM_MODEL_COLLECTIONS = {
             ),
         },
     ),
-    "groq_mixtral_8x7b__with_local_embedding": LlmUsageSettingsCollection(
+    "groq_mixtral_8x7b_with_local_embedding": LlmUsageSettingsCollection(
         name="Groq Mixtral 8x7b wth Local Embedding",
         key="groq_mixtral_8x7b_with_local_embedding",
         model_usage_settings={
@@ -254,7 +254,7 @@ LLM_MODEL_COLLECTIONS = {
             ),
         },
     ),
-    "google_vertexai_palm2": LlmUsageSettingsCollection(
+    "google_vertexai_palm2_latest": LlmUsageSettingsCollection(
         name="Google VertexAI Palm2 Latest",
         key="google_vertexai_palm2_latest",
         model_usage_settings={
@@ -269,7 +269,7 @@ LLM_MODEL_COLLECTIONS = {
             ),
         },
     ),
-    "google_vertexai_gemini_pro": LlmUsageSettingsCollection(
+    "google_vertexai_gemini_pro_latest": LlmUsageSettingsCollection(
         name="Google VertexAI Gemini Pro Latest",
         key="google_vertexai_gemini_pro_latest",
         model_usage_settings={

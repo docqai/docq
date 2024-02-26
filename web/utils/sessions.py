@@ -6,7 +6,7 @@ from typing import Any, Optional
 import docq
 import streamlit as st
 from docq import config, manage_users
-from docq.manage_personas import Persona, get_personas
+from docq.manage_assistants import Assistant, get_personas_fixed
 from docq.support.auth_utils import set_cache_auth_session
 from opentelemetry import trace
 
@@ -133,14 +133,14 @@ def set_selected_org_id(org_id: int) -> None:
     """Set the selected org_id context."""
     _set_session_value(org_id, SessionKeySubName.AUTH, SessionKeyNameForAuth.SELECTED_ORG_ID.name)
 
-def set_selected_persona(key: str) -> None:
+def set_selected_assistant(assistant_id: int) -> None:
     """Set the selected person key in session settings."""
-    _set_session_value(key, SessionKeySubName.SETTINGS, SessionKeyNameForSettings.USER.name, "persona")
+    _set_session_value(assistant_id, SessionKeySubName.SETTINGS, SessionKeyNameForSettings.USER.name, "assistant_id")
 
-def get_selected_persona() -> str | None:
+def get_selected_assistant() -> int | None:
     """Get the selected person key from session settings."""
-    persona = _get_session_value(SessionKeySubName.SETTINGS, SessionKeyNameForSettings.USER.name, "persona")
-    return persona
+    assistant_id = _get_session_value(SessionKeySubName.SETTINGS, SessionKeyNameForSettings.USER.name, "assistant_id")
+    return assistant_id
 
 
 def get_username() -> str | None:

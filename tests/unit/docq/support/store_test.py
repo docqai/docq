@@ -9,7 +9,7 @@ from docq.domain import SpaceKey
 from docq.support.store import (
     get_history_table_name,
     get_index_dir,
-    get_sqlite_system_file,
+    get_sqlite_shared_system_file,
     get_sqlite_usage_file,
     get_upload_dir,
     get_upload_file,
@@ -70,7 +70,7 @@ class TestGetPath:
 
     def test_get_sqlite_system_file(self: Self) -> None:
         """Test get sqlite system file."""
-        assert get_sqlite_system_file() == DATA_DIR + "/sqlite/SHARED/system.db"
+        assert get_sqlite_shared_system_file() == DATA_DIR + "/sqlite/SHARED/system.db"
 
 
 @pytest.mark.parametrize(

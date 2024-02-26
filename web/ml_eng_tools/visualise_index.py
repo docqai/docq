@@ -31,6 +31,7 @@ def _load_index(
 
 selected_org_id = get_selected_org_id()
 spaces = []
+selected_space = None
 if selected_org_id:
     spaces.extend(list_space(selected_org_id, SpaceType.SHARED.name))
     spaces.extend(list_space(selected_org_id, SpaceType.THREAD.name))
@@ -100,16 +101,18 @@ def visualise_vector_store_index(_index: VectorStoreIndex) -> None:
                 x_count = len(doc_json["metadata"][entity_label])
                 st.write(f"Metadata Entity '{entity_label}' count: {x_count}")
 
-#print("selected_space: ", selected_space[7])
-space = SpaceKey(SpaceType[selected_space[7]], selected_space[0], selected_org_id)
+if selected_space and selected_org_id:
+    print("selected_space type: ", selected_space[7])
 
-saved_model_settings = get_saved_model_settings_collection(selected_org_id)
+    space = SpaceKey(SpaceType[selected_space[7]], selected_space[0], selected_org_id)
+
+    saved_model_settings = get_saved_model_settings_collection(selected_org_id)
 
 
-_index = _load_index(space, saved_model_settings)
-if isinstance(_index, DocumentSummaryIndex):
-    visualise_document_summary_index(_index)
-elif isinstance(_index, VectorStoreIndex):
-    visualise_vector_store_index(_index)
-else:
-    st.write("Visualiser not available for index type: ", _index.index_struct_cls.__name__)
+    _index = _load_index(space, saved_model_settings)
+    if isinstance(_index, DocumentSummaryIndex):
+        visualise_document_summary_index(_index)
+    elif isinstance(_index, VectorStoreIndex):
+        visualise_vector_store_index(_index)
+    else:
+        st.write("Visualiser not available for index type: ", _index.index_struct_cls.__name__)

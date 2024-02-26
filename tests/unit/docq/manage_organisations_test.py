@@ -19,13 +19,18 @@ def manage_orgs_test_dir() -> Generator:
 
     log.info("Setup manage organisations tests...")
 
-    with tempfile.TemporaryDirectory() as temp_dir, patch("docq.manage_organisations.get_sqlite_system_file"
-        ) as get_sqlite_system_file:
+    with tempfile.TemporaryDirectory() as temp_dir, patch(
+        "docq.manage_organisations.get_sqlite_shared_system_file"
+    ) as get_sqlite_shared_system_file:
         sqlite_system_file = os.path.join(temp_dir, "system.db")
-        get_sqlite_system_file.return_value = sqlite_system_file
+        get_sqlite_shared_system_file.return_value = sqlite_system_file
         _init()
 
-        yield  temp_dir, sqlite_system_file, get_sqlite_system_file,
+        yield (
+            temp_dir,
+            sqlite_system_file,
+            get_sqlite_shared_system_file,
+        )
 
     log.info("Teardown manage organisations tests...")
 
@@ -74,8 +79,8 @@ def test_list_organisations(manage_orgs_test_dir: tuple) -> None:
     from docq.manage_users import _init
 
     sqlite_system_file = manage_orgs_test_dir[1]
-    with patch("docq.manage_users.get_sqlite_system_file") as get_sqlite_system_file:
-        get_sqlite_system_file.return_value = sqlite_system_file
+    with patch("docq.manage_users.get_sqlite_shared_system_file") as get_sqlite_shared_system_file:
+        get_sqlite_shared_system_file.return_value = sqlite_system_file
         _init()
 
     org_names = ["Test_list_organisations_org_1", "Test_list_organisations_org_2"]

@@ -20,13 +20,17 @@ def manage_users_test_dir() -> Generator:
     log.info("Setup manage users tests...")
 
     with tempfile.TemporaryDirectory() as temp_dir, patch(
-        "docq.manage_users.get_sqlite_system_file"
-    ) as get_sqlite_system_file:
-        sqlite_system_file = os.path.join(temp_dir, "system.db")
-        get_sqlite_system_file.return_value = sqlite_system_file
+        "docq.manage_users.get_sqlite_shared_system_file"
+    ) as get_sqlite_shared_system_file:
+        sqlite_shared_system_file = os.path.join(temp_dir, "system.db")
+        get_sqlite_shared_system_file.return_value = sqlite_shared_system_file
         _init()
 
-        yield temp_dir, sqlite_system_file, get_sqlite_system_file,
+        yield (
+            temp_dir,
+            sqlite_shared_system_file,
+            get_sqlite_shared_system_file,
+        )
 
     log.info("Teardown manage users tests...")
 
@@ -161,8 +165,8 @@ def test_list_users_by_org(manage_users_test_dir: tuple) -> None:
     assert user_id is not None, "Test list users by org should be created"
     assert ctrl_user_id is not None, "Test list users by org should be created"
 
-    with patch("docq.manage_organisations.get_sqlite_system_file") as get_sqlite_system_file:
-        get_sqlite_system_file.return_value = sqlite_system_file
+    with patch("docq.manage_organisations.get_sqlite_shared_system_file") as get_sqlite_shared_system_file:
+        get_sqlite_shared_system_file.return_value = sqlite_system_file
         _init()
 
     with closing(

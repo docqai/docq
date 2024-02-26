@@ -2,7 +2,7 @@
 import logging
 import os
 import time
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import semantic_kernel
 
@@ -11,6 +11,7 @@ from docq.model_selection.main import ModelCapability, get_model_settings_collec
 from opentelemetry import trace
 from semantic_kernel.core_skills import ConversationSummarySkill, TextSkill, TimeSkill
 
+from ..domain import Assistant
 from ..llm_plugins.openai.sk_bing_plugin import BingPlugin
 from ..llm_plugins.openai.sk_web_pages_plugin import WebPagesPlugin
 from ..llm_plugins.openai.weather_plugin import WeatherPlugin
@@ -90,7 +91,9 @@ scratch_dir = os.path.join(user_dir, "scratch")
 DEFAULT_AGENT_REQUEST = "What's the weather in London today?"
 
 @tracer.start_as_current_span("run_agent")
-def run_agent(user_request_message: str = DEFAULT_AGENT_REQUEST) -> Message:  # Dict[Agent, List[Dict]]: #List[dict]:
+def run_agent(
+    user_request_message: str = DEFAULT_AGENT_REQUEST, assistant: Optional[Assistant] = None
+) -> Message:  # Dict[Agent, List[Dict]]: #List[dict]:
     """Run the agent."""
     bing_search_api_key = os.getenv("DOCQ_BING_SEARCH_API_KEY") or ""
     kernel = semantic_kernel.Kernel()
@@ -102,10 +105,10 @@ def run_agent(user_request_message: str = DEFAULT_AGENT_REQUEST) -> Message:  # 
     kernel.import_skill(TextSkill(), "text")
     kernel.import_skill(TimeSkill(), "time")
 
-    assistant = AssistantAgent(
-        "assistant1",
-        llm_config= generate_autogen_llm_config(chat_model_settings, kernel),
-        system_message=ASSISTANT_PERSONA,
+    assistant_agent = AssistantAgent(
+        name=assistant.name if assistant else "General Assistant 1",
+        llm_config=generate_autogen_llm_config(chat_model_settings, kernel),
+        system_message=assistant.system_prompt_content if assistant else ASSISTANT_PERSONA,
     )
 
     worker = UserProxyAgent(
@@ -123,12 +126,12 @@ def run_agent(user_request_message: str = DEFAULT_AGENT_REQUEST) -> Message:  # 
 
     start_time = time.time()
     worker.initiate_chat(
-        assistant,
+        assistant_agent,
         message=user_request_message,
     )
 
     metadata = {}
-    agent_chat_messages = worker.chat_messages[assistant]  # [len(history) :]
+    agent_chat_messages = worker.chat_messages[assistant_agent]  # [len(history) :]
     metadata["messages"] = agent_chat_messages
 
     successful_code_blocks = extract_successful_code_blocks(agent_chat_messages)

@@ -29,7 +29,7 @@ from opentelemetry.trace import Status, StatusCode
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
-from ..manage_personas import Persona, llama_index_chat_prompt_template_from_persona
+from ..manage_assistants import Assistant, llama_index_chat_prompt_template_from_persona
 from ..model_selection.main import (
     LLM_MODEL_COLLECTIONS,
     LlmUsageSettingsCollection,
@@ -314,15 +314,15 @@ def _load_index_from_storage(space: SpaceKey, model_settings_collection: LlmUsag
 
 @tracer.start_as_current_span(name="run_chat")
 def run_chat(
-    input_: str, history: str, model_settings_collection: LlmUsageSettingsCollection, persona: Persona
+    input_: str, history: str, model_settings_collection: LlmUsageSettingsCollection, assistant: Assistant
 ) -> AgentChatResponse:
     """Chat directly with a LLM with history."""
     ## chat engine handles tracking the history.
-    print("persona: ", persona.system_prompt_content)
+    print("chat persona: ", assistant.system_prompt_content)
     engine = SimpleChatEngine.from_defaults(
         service_context=_get_service_context(model_settings_collection),
         kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
-        system_prompt=persona.system_prompt_content
+        system_prompt=assistant.system_prompt_content
     )
     output = engine.chat(input_)
 
@@ -335,7 +335,7 @@ def run_ask(
     input_: str,
     history: str,
     model_settings_collection: LlmUsageSettingsCollection,
-    persona: Persona,
+    persona: Assistant,
     spaces: list[SpaceKey] | None = None,
 ) -> RESPONSE_TYPE | AGENT_CHAT_RESPONSE_TYPE:
     """Ask questions against existing index(es) with history."""
@@ -349,7 +349,6 @@ def run_ask(
         indices = []
         summaries = []
         output = _default_response()
-
         for s_ in spaces:
             try:
                 index_ = _load_index_from_storage(s_, model_settings_collection)
@@ -395,8 +394,8 @@ def run_ask(
                     text_qa_template=llama_index_chat_prompt_template_from_persona(persona).partial_format(history_str=history),
                 )
 
-                prompts_dict = query_engine.get_prompts()
-                print("prompts:", list(prompts_dict.keys()))
+                # prompts_dict = query_engine.get_prompts()
+                # print("prompts:", list(prompts_dict.keys()))
 
                 output = query_engine.query(input_)
                 span.add_event(
@@ -420,7 +419,7 @@ def run_ask(
 
         log.debug("runs_ask(): space is None. executing run_chat(), not ASK.")
         output = run_chat(
-            input_=input_, history=history, model_settings_collection=model_settings_collection, persona=persona
+            input_=input_, history=history, model_settings_collection=model_settings_collection, assistant=persona
         )
         span.add_event(name="ask_without_spaces", attributes={"question": input_, "answer": str(output)})
         # index = _load_index_from_storage(space=space, model_settings_collection=model_settings_collection)

@@ -7,7 +7,7 @@ from contextlib import closing
 from opentelemetry import trace
 
 import docq
-from docq.support.store import SpaceType, get_sqlite_system_file
+from docq.support.store import SpaceType, get_sqlite_shared_system_file
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
@@ -51,7 +51,9 @@ def add_space_type_to_spaces_table() -> None:
             span.add_event("Running migration add_space_type_to_spaces_table")
             logging.info("Running migration add_space_type_to_spaces_table")
 
-            with closing(sqlite3.connect(get_sqlite_system_file())) as connection, closing(connection.cursor()) as cursor:
+            with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection, closing(
+                connection.cursor()
+            ) as cursor:
                 cursor.execute("SELECT name FROM pragma_table_info('spaces') WHERE name = 'space_type'")
 
                 if cursor.fetchone() is None:

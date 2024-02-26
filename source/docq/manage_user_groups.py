@@ -6,7 +6,7 @@ from contextlib import closing
 from datetime import datetime
 from typing import List, Tuple
 
-from .support.store import get_sqlite_system_file
+from .support.store import get_sqlite_shared_system_file
 
 SQL_CREATE_USER_GROUPS_TABLE = """
 CREATE TABLE IF NOT EXISTS user_groups (
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS user_group_members (
 def _init() -> None:
     """Initialize the database."""
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_USER_GROUPS_TABLE)
         cursor.execute(SQL_CREATE_USER_GROUP_MEMBERS_TABLE)
@@ -58,7 +58,7 @@ def list_user_groups(
         raise ValueError("`org_id` cannot be None.")
 
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         user_groups = cursor.execute(
             "SELECT id, name, created_at, updated_at FROM user_groups WHERE org_id = ? AND name LIKE ?",
@@ -89,7 +89,7 @@ def create_user_group(name: str, org_id: int) -> bool:
     """
     log.debug("Creating user group: %s", name)
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(
             "INSERT INTO user_groups (name, org_id) VALUES (?, ?)",
@@ -125,7 +125,7 @@ def update_user_group(id_: int, members: List[int], name: str = None) -> bool:
     params.append(id_)
 
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(query, params)
         cursor.execute("DELETE FROM user_group_members WHERE group_id = ?", (id_,))
@@ -148,7 +148,7 @@ def delete_user_group(id_: int, org_id: int) -> bool:
     """
     log.debug("Deleting user group: %d", id_)
     with closing(
-        sqlite3.connect(get_sqlite_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute("DELETE FROM user_group_members WHERE group_id = ? ", (id_,))
         cursor.execute("DELETE FROM user_groups WHERE id = ? AND org_id = ?", (id_, org_id))

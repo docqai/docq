@@ -1,4 +1,8 @@
-"""Domain classes for Docq."""
+"""Domain classes for Docq.
+
+These classes should not be directly coupled to the database models. They should be used to represent the domain in code not persistance.
+Though coincidentally they might be the same name and shape.
+"""
 import logging as log
 import sys
 from dataclasses import dataclass
@@ -109,16 +113,20 @@ class DocumentListItem:
             raise e
 
 @dataclass
-class Persona:
-    """A persona is system prompt and user prompt template that represent a particular persona we want an LLM to emulate."""
+class Assistant:
+    """A assistant at it's core is a system prompt and user prompt template that tunes the LLM to take on a certain persona and behave a particular way."""
 
     key: str
+    """Unique ID for a Persona instance"""
     name: str
+    """Friendly name for the persona"""
     system_prompt_content: str
     user_prompt_template_content: str
+    llm_settings_collection_key: str
+    """The key of the LLM settings collection to use for LLM calls by this assistant"""
 
 
-class PersonaType(Enum):
+class AssistantType(Enum):
     """Persona type."""
 
     SIMPLE_CHAT = "Simple Chat"

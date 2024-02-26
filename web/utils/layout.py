@@ -21,9 +21,9 @@ from docq.config import (
     SystemFeatureType,
     SystemSettingsKey,
 )
-from docq.domain import ConfigKey, DocumentListItem, FeatureKey, PersonaType, SpaceKey
+from docq.domain import ConfigKey, DocumentListItem, FeatureKey, SpaceKey
 from docq.extensions import ExtensionContext
-from docq.manage_personas import get_personas
+from docq.manage_assistants import list_assistants
 from docq.model_selection.main import (
     LlmUsageSettingsCollection,
     get_model_settings_collection,
@@ -109,18 +109,19 @@ from .handlers import (
     prepare_for_chat,
     query_chat_history,
 )
+from .layout_assistants import render_assistants_selector_ui
 from .sessions import (
     get_auth_session,
     get_authenticated_user_id,
     get_chat_session,
     get_public_session_id,
     get_public_space_group_id,
+    get_selected_assistant,
     get_selected_org_id,
-    get_selected_persona,
     is_current_user_super_admin,
     reset_session_state,
     session_state_exists,
-    set_selected_persona,
+    set_selected_assistant,
 )
 from .streamlit_application import st_app
 
@@ -231,6 +232,7 @@ def __no_staff_menu() -> None:
 @tracer.start_as_current_span("__no_admin_menu")
 def __no_admin_menu() -> None:
     hide_pages(["Admin_Section"])
+    hide_pages(["ML Engineering"])
 
 
 def __embed_page_config() -> None:
@@ -822,49 +824,60 @@ def _render_documents_list_ui(space: SpaceKey, read_only: bool = True, size: Lit
 
 def _render_show_thread_space_files(feature: FeatureKey) -> None:
     """Show file uploads within a chat thread space."""
+    if feature.type_ == OrganisationFeatureType.ASK_SHARED:
+        with st.sidebar.container():
+            space = handle_get_thread_space(feature)
+            if space:
+                expander_label = "Knowledge"
+                with st.expander(expander_label):
+                    _render_documents_list_ui(space, False, "sm", expander_label)
+
+
+def _render_assistant_selection(feature: FeatureKey) -> None:
     with st.sidebar.container():
-        space = handle_get_thread_space(feature)
-        if space:
-            expander_label = "Knowledge"
-            with st.expander(expander_label):
-                _render_documents_list_ui(space, False, "sm", expander_label)
+        selected_org_id = get_selected_org_id()
+        assistants_data = list_assistants(org_id=selected_org_id)
 
+        selected_assisted_id = get_selected_assistant()
 
-def _render_agent_selection(feature: FeatureKey) -> None:
-    with st.sidebar.container().expander("Assistants"):
-        st.markdown("#### Assistants coming soon")
-
-
-def _render_persona_selection(feature: FeatureKey) -> None:
-
-    with st.sidebar.container():
-        # def selection_changed_cb():
-        #     st.session_state["persona_selection_changed"] = True
-
-        #selected_key_index = 0
-        persona_type = PersonaType.SIMPLE_CHAT if feature.type_ == OrganisationFeatureType.CHAT_PRIVATE else PersonaType.ASK
-        _personas = get_personas(persona_type=persona_type)
-
-        # try:
-        #     st.session_state["persona_selection_changed"]
-        # except KeyError:
-        #     st.session_state["persona_selection_changed"] = False
-
-        # if not st.session_state["persona_selection_changed"]:
-        #     selected_persona_key = get_selected_persona()
-        #     selected_key_index = list(_personas.keys()).index(selected_persona_key) if selected_persona_key else 0
-        #     st.session_state["persona_selection_from_session"] = False
-
-        selected = st.selectbox(
-            "Persona:",
-            options=_personas.items(),
-            key="select_box_persona",
-            format_func=lambda x: x[1].name,
-            help="Select a persona related to your helps tune Docq to your needs.",
+        selected = render_assistants_selector_ui(
+            assistants_data=assistants_data, selected_assistant_id=selected_assisted_id
         )
+
         if selected:
-            selected_persona_key = selected[0]
-            set_selected_persona(selected_persona_key)
+            selected_assisted_id = selected[0]
+            set_selected_assistant(selected_assisted_id)
+
+# def _render_persona_selection(feature: FeatureKey) -> None:
+
+#     with st.sidebar.container():
+#         # def selection_changed_cb():
+#         #     st.session_state["persona_selection_changed"] = True
+
+#         #selected_key_index = 0
+#         persona_type = PersonaType.SIMPLE_CHAT if feature.type_ == OrganisationFeatureType.CHAT_PRIVATE else PersonaType.ASK
+#         _personas = get_personas_fixed(persona_type=persona_type)
+
+#         # try:
+#         #     st.session_state["persona_selection_changed"]
+#         # except KeyError:
+#         #     st.session_state["persona_selection_changed"] = False
+
+#         # if not st.session_state["persona_selection_changed"]:
+#         #     selected_persona_key = get_selected_persona()
+#         #     selected_key_index = list(_personas.keys()).index(selected_persona_key) if selected_persona_key else 0
+#         #     st.session_state["persona_selection_from_session"] = False
+
+#         selected = st.selectbox(
+#             "Persona:",
+#             options=_personas.items(),
+#             key="select_box_persona",
+#             format_func=lambda x: x[1].name,
+#             help="Select a persona related to your helps tune Docq to your needs.",
+#         )
+#         if selected:
+#             selected_persona_key = selected[0]
+#             set_selected_assistant(selected_persona_key)
 
 
 
@@ -873,14 +886,15 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
     if feature.type_ != OrganisationFeatureType.ASK_SHARED:
         return None
 
-
-    st.markdown("""
+    st.markdown(
+        """
     <style>
       div[data-testid="stFileUploader"] label {
         display: none;
       }
       section[data-testid="stFileUploadDropzone"] {
-        height: 2rem;
+        height: 2.1rem;
+        margin-left: 0.2rem;
       }
       section[data-testid="stFileUploadDropzone"] div {
         flex-direction: row;
@@ -901,7 +915,7 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
       }
       section[data-testid="stFileUploadDropzone"] button[data-testid="baseButton-secondary"] {
         min-height: unset;
-        height: 1.5rem;
+        height: 1.8rem;
         font-size: 0.8rem;
       }
       div[data-testid="stFileUploader"]:has(.uploadedFile) section[data-testid="stFileUploadDropzone"] {
@@ -916,7 +930,7 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
       }
     </style>
     """,
-    unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
     input_key = f"chat_file_uploader_{feature.value()}_{key_suffix}"
     if st.file_uploader(":paperclip:", key=input_key, type=ALLOWED_DOC_EXTS):
@@ -1003,17 +1017,17 @@ def chat_ui(feature: FeatureKey) -> None:
             query_chat_history(feature)
 
     with st.container():
-        day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
-        st.markdown(f"#### {day}")
+        # day = format_datetime(get_chat_session(feature.type_, SessionKeyNameForChat.CUTOFF))
+        # st.markdown(f"#### {day}")
 
         chat_history = get_chat_session(feature.type_, SessionKeyNameForChat.HISTORY)
 
         if chat_history:
             for x in chat_history:
                 # x = (id, text, is_user, time, thread_id)
-                if format_datetime(x[3]) != day:
-                    day = format_datetime(x[3])
-                    st.markdown(f"#### {day}")
+                # if format_datetime(x[3]) != day:
+                #     day = format_datetime(x[3])
+                #     st.markdown(f"#### {day}")
 
                 agent_output = None
                 with contextlib.suppress(Exception):
@@ -1072,8 +1086,7 @@ def chat_ui(feature: FeatureKey) -> None:
         _render_chat_file_uploader(feature, len(chat_history) if chat_history else 0)
 
     _render_show_thread_space_files(feature)
-    _render_agent_selection(feature)
-    _render_persona_selection(feature)
+    _render_assistant_selection(feature)
     _show_chat_histories(feature)
     _chat_ui_script()
 
@@ -1788,3 +1801,4 @@ def verify_email_ui() -> None:
     else:
         st.error("Email verification failed!")
         st.info("Please try again or contact your administrator.")
+

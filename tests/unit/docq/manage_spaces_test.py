@@ -23,14 +23,15 @@ def manage_spaces_test_dir() -> Generator:
     from docq.manage_spaces import _init
     log.info("Setup manage spaces test.")
 
-    with tempfile.TemporaryDirectory() as temp_dir, patch("docq.manage_spaces.get_sqlite_system_file"
-        ) as mock_get_sqlite_system_file:
+    with tempfile.TemporaryDirectory() as temp_dir, patch(
+        "docq.manage_spaces.get_sqlite_shared_system_file"
+    ) as mock_get_sqlite_shared_system_file:
         sqlite_system_file = f"{temp_dir}/sql_system.db"
-        mock_get_sqlite_system_file.return_value = sqlite_system_file
+        mock_get_sqlite_shared_system_file.return_value = sqlite_system_file
 
         _init()
 
-        yield temp_dir, sqlite_system_file, mock_get_sqlite_system_file
+        yield temp_dir, sqlite_system_file, mock_get_sqlite_shared_system_file
 
     log.info("Teardown manage spaces test.")
 
@@ -296,8 +297,8 @@ def test_list_public_spaces(manage_spaces_test_dir: tuple) -> None:
 
     sqlite_system_file = manage_spaces_test_dir[1]
 
-    with patch("docq.manage_space_groups.get_sqlite_system_file") as _get_sqlite_system_file:
-        _get_sqlite_system_file.return_value = sqlite_system_file
+    with patch("docq.manage_space_groups.get_sqlite_shared_system_file") as _get_sqlite_shared_system_file:
+        _get_sqlite_shared_system_file.return_value = sqlite_system_file
         _init()
 
     space_id1 = insert_test_space(sqlite_system_file, "list_public_space test 1")
@@ -329,7 +330,9 @@ def test_get_shared_space_permissions(manage_spaces_test_dir: tuple) -> None:
     from docq.manage_spaces import get_shared_space_permissions
 
     sqlite_system_file = manage_spaces_test_dir[1]
-    with patch("docq.manage_users.get_sqlite_system_file") as p1, patch("docq.manage_user_groups.get_sqlite_system_file") as p2:
+    with patch("docq.manage_users.get_sqlite_shared_system_file") as p1, patch(
+        "docq.manage_user_groups.get_sqlite_shared_system_file"
+    ) as p2:
         p1.return_value = sqlite_system_file
         p2.return_value = sqlite_system_file
         manage_users._init()
