@@ -224,7 +224,7 @@ LLM_MODEL_COLLECTIONS = {
             ),
         },
     ),
-    "groq_llma2_70b__with_local_embedding": LlmUsageSettingsCollection(
+    "groq_llma2_70b_with_local_embedding": LlmUsageSettingsCollection(
         name="Groq Llama2 70B wth Local Embedding",
         key="groq_llama2_70b_with_local_embedding",
         model_usage_settings={
@@ -239,7 +239,7 @@ LLM_MODEL_COLLECTIONS = {
             ),
         },
     ),
-    "groq_mixtral_8x7b__with_local_embedding": LlmUsageSettingsCollection(
+    "groq_mixtral_8x7b_with_local_embedding": LlmUsageSettingsCollection(
         name="Groq Mixtral 8x7b wth Local Embedding",
         key="groq_mixtral_8x7b_with_local_embedding",
         model_usage_settings={

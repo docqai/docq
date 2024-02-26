@@ -349,7 +349,6 @@ def run_ask(
         indices = []
         summaries = []
         output = _default_response()
-
         for s_ in spaces:
             try:
                 index_ = _load_index_from_storage(s_, model_settings_collection)
@@ -395,8 +394,8 @@ def run_ask(
                     text_qa_template=llama_index_chat_prompt_template_from_persona(persona).partial_format(history_str=history),
                 )
 
-                prompts_dict = query_engine.get_prompts()
-                print("prompts:", list(prompts_dict.keys()))
+                # prompts_dict = query_engine.get_prompts()
+                # print("prompts:", list(prompts_dict.keys()))
 
                 output = query_engine.query(input_)
                 span.add_event(

@@ -114,7 +114,7 @@ class DocumentListItem:
 
 @dataclass
 class Assistant:
-    """A persona is system prompt and user prompt template that represent a particular persona we want an LLM to emulate."""
+    """A assistant at it's core is a system prompt and user prompt template that tunes the LLM to take on a certain persona and behave a particular way."""
 
     key: str
     """Unique ID for a Persona instance"""
@@ -122,6 +122,8 @@ class Assistant:
     """Friendly name for the persona"""
     system_prompt_content: str
     user_prompt_template_content: str
+    llm_settings_collection_key: str
+    """The key of the LLM settings collection to use for LLM calls by this assistant"""
 
 
 class AssistantType(Enum):

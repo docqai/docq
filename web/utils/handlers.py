@@ -30,7 +30,11 @@ from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions
 from docq.manage_assistants import get_assistant_or_default
-from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
+from docq.model_selection.main import (
+    LlmUsageSettingsCollection,
+    get_model_settings_collection,
+    get_saved_model_settings_collection,
+)
 from docq.services.smtp_service import mailer_ready, send_verification_email
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
 from opentelemetry import baggage, trace
@@ -631,7 +635,9 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
             if _thread_space is not None:
                 spaces.append(_thread_space)
 
-            saved_model_settings = get_saved_model_settings_collection(select_org_id)
+            saved_model_settings = get_model_settings_collection(
+                assistant.llm_settings_collection_key
+            )  # get_saved_model_settings_collection(select_org_id)
 
             result = run_queries.query(req, feature, thread_id, saved_model_settings, assistant, spaces)
 

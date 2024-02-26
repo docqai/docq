@@ -168,6 +168,7 @@ def get_assistant_or_default(assistant_id: Optional[int] = None, org_id: Optiona
             name=assistant_data[1],
             system_prompt_content=assistant_data[4],
             user_prompt_template_content=assistant_data[5],
+            llm_settings_collection_key=assistant_data[6],
         )
     else:
         key = "default"

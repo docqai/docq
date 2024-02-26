@@ -10,6 +10,23 @@ from docq.support.store import _DataScope
 from utils.error_ui import _handle_error_state_ui, set_error_state_for_ui
 from utils.validation_ui import _handle_validation_state_ui, set_validation_state_for_ui
 
+EXAMPLE_USER_PROMPT_TEMPLATE = """Given the <context> information and chat message <history>
+answer the <query> below in British English.
+<history>
+{history_str}
+</history>
+<context>
+{context_str}
+</context>
+<query>{query_str}</query>
+Answer: """
+
+EXAMPLE_SYSTEM_PROMPT = """You are a world-class expert in X.
+You do Y.
+You are do Z.
+Do not use prior knowledge from your training,
+"""
+
 
 def render_assistant_create_edit_ui(org_id: Optional[int] = None, assistant_data: Optional[ASSISTANT] = None, key_suffix: Optional[str] = "new") -> None:
     """Render assistant create/edit form."""
@@ -38,8 +55,20 @@ def render_assistant_create_edit_ui(org_id: Optional[int] = None, assistant_data
             key=f"assistant_edit_type_{key_suffix}",
             index=[persona_type.name for persona_type in AssistantType].index(assistant_data[2]) if assistant_data else 1,
         )
-        st.text_area(label="System Prompt Template", placeholder="", key=f"assistant_edit_system_prompt_template_{key_suffix}", value=assistant_data[4] if assistant_data else None, height=200)
-        st.text_area(label="User Prompt Template", placeholder="", key=f"assistant_edit_user_prompt_template_{key_suffix}", value=assistant_data[5] if assistant_data else None, height=200)
+        st.text_area(
+            label="System Prompt Template",
+            placeholder="",
+            key=f"assistant_edit_system_prompt_template_{key_suffix}",
+            value=assistant_data[4] if assistant_data else EXAMPLE_SYSTEM_PROMPT,
+            height=200,
+        )
+        st.text_area(
+            label="User Prompt Template",
+            placeholder="",
+            key=f"assistant_edit_user_prompt_template_{key_suffix}",
+            value=assistant_data[5] if assistant_data else EXAMPLE_USER_PROMPT_TEMPLATE,
+            height=200,
+        )
         st.selectbox(
             "LLM Settings Collection",
             options=[llm_settings_collection for _, llm_settings_collection in LLM_MODEL_COLLECTIONS.items()],
