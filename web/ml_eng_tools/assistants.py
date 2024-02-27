@@ -27,11 +27,10 @@ with tracer().start_as_current_span("visualise_agent_messages", attributes=bagga
             st.stop()
         st.write(f"Selected Organisation: {current_org_id}")
 
-    assistants_data = list_assistants(current_org_id)
+    assistants_data = list_assistants(org_id=current_org_id)
 
     render_assistants_selector_ui(assistants_data=assistants_data)
     with st.expander("+New Assistant", expanded=False):
         render_assistant_create_edit_ui(current_org_id)
 
     render_assistants_listing_ui(assistants_data=assistants_data, org_id=current_org_id)
-
