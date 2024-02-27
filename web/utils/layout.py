@@ -21,7 +21,7 @@ from docq.config import (
     SystemFeatureType,
     SystemSettingsKey,
 )
-from docq.domain import ConfigKey, DocumentListItem, FeatureKey, SpaceKey
+from docq.domain import AssistantType, ConfigKey, DocumentListItem, FeatureKey, SpaceKey
 from docq.extensions import ExtensionContext
 from docq.manage_assistants import list_assistants
 from docq.model_selection.main import (
@@ -836,7 +836,15 @@ def _render_show_thread_space_files(feature: FeatureKey) -> None:
 def _render_assistant_selection(feature: FeatureKey) -> None:
     with st.sidebar.container():
         selected_org_id = get_selected_org_id()
-        assistants_data = list_assistants(org_id=selected_org_id)
+
+        if feature.type_ == OrganisationFeatureType.CHAT_PRIVATE:
+            assistant_type = AssistantType.SIMPLE_CHAT
+        elif feature.type_ == OrganisationFeatureType.ASK_SHARED:
+            assistant_type = AssistantType.ASK
+
+        assistants_data_org = list_assistants(org_id=selected_org_id, assistant_type=assistant_type)
+        assistants_data_global = list_assistants(assistant_type=assistant_type)
+        assistants_data = assistants_data_org + assistants_data_global
 
         selected_assisted_id = get_selected_assistant()
 
@@ -847,39 +855,6 @@ def _render_assistant_selection(feature: FeatureKey) -> None:
         if selected:
             selected_assisted_id = selected[0]
             set_selected_assistant(selected_assisted_id)
-
-# def _render_persona_selection(feature: FeatureKey) -> None:
-
-#     with st.sidebar.container():
-#         # def selection_changed_cb():
-#         #     st.session_state["persona_selection_changed"] = True
-
-#         #selected_key_index = 0
-#         persona_type = PersonaType.SIMPLE_CHAT if feature.type_ == OrganisationFeatureType.CHAT_PRIVATE else PersonaType.ASK
-#         _personas = get_personas_fixed(persona_type=persona_type)
-
-#         # try:
-#         #     st.session_state["persona_selection_changed"]
-#         # except KeyError:
-#         #     st.session_state["persona_selection_changed"] = False
-
-#         # if not st.session_state["persona_selection_changed"]:
-#         #     selected_persona_key = get_selected_persona()
-#         #     selected_key_index = list(_personas.keys()).index(selected_persona_key) if selected_persona_key else 0
-#         #     st.session_state["persona_selection_from_session"] = False
-
-#         selected = st.selectbox(
-#             "Persona:",
-#             options=_personas.items(),
-#             key="select_box_persona",
-#             format_func=lambda x: x[1].name,
-#             help="Select a persona related to your helps tune Docq to your needs.",
-#         )
-#         if selected:
-#             selected_persona_key = selected[0]
-#             set_selected_assistant(selected_persona_key)
-
-
 
 def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
     """Upload files to chat."""

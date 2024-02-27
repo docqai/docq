@@ -6,6 +6,7 @@ from typing import Optional
 
 from llama_index import ChatPromptTemplate
 from llama_index.llms.base import ChatMessage, MessageRole
+from networkx import prominent_group
 
 from .domain import Assistant, AssistantType
 from .support.store import (
@@ -112,6 +113,7 @@ CREATE TABLE IF NOT EXISTS assistants (
 
 ASSISTANT = tuple[int, str, str, bool, str, str, str, datetime, datetime]
 
+
 def _init(org_id: Optional[int] = None) -> None:
     """Initialize the database.
 
@@ -125,6 +127,9 @@ def _init(org_id: Optional[int] = None) -> None:
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(SQL_CREATE_ASSISTANTS_TABLE)
         connection.commit()
+
+    __create_default_assistants_if_needed()
+
 
 def llama_index_chat_prompt_template_from_persona(persona: Assistant) -> ChatPromptTemplate:
     """Get the prompt template for the llama index."""
@@ -141,14 +146,14 @@ def llama_index_chat_prompt_template_from_persona(persona: Assistant) -> ChatPro
     return ChatPromptTemplate(message_templates=[_system_prompt_message, _user_prompt_message])
 
 
-def get_personas_fixed(persona_type: Optional[AssistantType] = None) -> dict[str, Assistant]:
+def get_personas_fixed(assistant_type: Optional[AssistantType] = None) -> dict[str, Assistant]:
     """Get the personas."""
     result = {}
-    if persona_type == AssistantType.SIMPLE_CHAT:
+    if assistant_type == AssistantType.SIMPLE_CHAT:
         result = {key: Assistant(key=key, **persona) for key, persona in SIMPLE_CHAT_PERSONAS.items()}
-    elif persona_type == AssistantType.AGENT:
+    elif assistant_type == AssistantType.AGENT:
         result = {key: Assistant(key=key, **persona) for key, persona in AGENT_PERSONAS.items()}
-    elif persona_type == AssistantType.ASK:
+    elif assistant_type == AssistantType.ASK:
         result = {key: Assistant(key=key, **persona) for key, persona in ASK_PERSONAS.items()}
     else:
         result = {
@@ -175,21 +180,30 @@ def get_assistant_or_default(assistant_id: Optional[int] = None, org_id: Optiona
         return Assistant(key=key, **SIMPLE_CHAT_PERSONAS[key])
 
 
-def list_assistants(org_id: Optional[int] = None) -> list[ASSISTANT]:
+def list_assistants(org_id: Optional[int] = None, assistant_type: Optional[AssistantType] = None) -> list[ASSISTANT]:
     """List the assistants.
 
     Args:
         org_id (Optional[int]): The current org id. If None then will try to get from global scope table.
+        assistant_type (Optional[AssistantType]): The assistant type.
     """
     if org_id:
         _init(org_id)
 
+    sql = ""
+    params = ()
+    sql = "SELECT id, name, type, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, created_at, updated_at FROM assistants"
+    if assistant_type:
+        sql += " WHERE type = ?"
+        params = (assistant_type.name,)
+
     with closing(
         sqlite3.connect(__get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute("SELECT id, name, type, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, created_at, updated_at FROM assistants")
+        cursor.execute(sql, params)
         rows = cursor.fetchall()
         return [(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]) for row in rows]
+
 
 def get_assistant(assistant_id: int, org_id: Optional[int]) -> ASSISTANT:
     """Get the assistant.
@@ -202,7 +216,10 @@ def get_assistant(assistant_id: int, org_id: Optional[int]) -> ASSISTANT:
     with closing(
         sqlite3.connect(__get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-        cursor.execute("SELECT id, name, type, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, created_at, updated_at FROM assistants WHERE id = ?", (assistant_id,))
+        cursor.execute(
+            "SELECT id, name, type, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, created_at, updated_at FROM assistants WHERE id = ?",
+            (assistant_id,),
+        )
         row = cursor.fetchone()
         if row is None:
             if org_id:
@@ -210,6 +227,7 @@ def get_assistant(assistant_id: int, org_id: Optional[int]) -> ASSISTANT:
             else:
                 raise ValueError(f"No Persona with: id = '{assistant_id}' in global scope.")
         return (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8])
+
 
 def create_or_update_assistant(
     name: str,
@@ -242,18 +260,34 @@ def create_or_update_assistant(
     if org_id:
         _init(org_id)
 
-    print("assistant org_id: ", org_id)
+    print("assistant type: ", assistant_type.name)
+    sql = ""
+    params = ()
     if assistant_id is None:
         sql = "INSERT INTO assistants (name, type, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key) VALUES (?, ?, ?, ?, ?, ?)"
-        params = (name, assistant_type.name, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key)
+        params = (
+            name,
+            assistant_type.name,
+            archived,
+            system_prompt_template,
+            user_prompt_template,
+            llm_settings_collection_key,
+        )
 
     else:
         sql = "UPDATE assistants SET name = ?, type = ?, archived = ?, system_prompt_template = ?, user_prompt_template = ?, llm_settings_collection_key = ?, updated_at = ? WHERE id = ?"
-        params = (name, assistant_type.name, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, datetime.utcnow(), assistant_id)
+        params = (
+            name,
+            assistant_type.name,
+            archived,
+            system_prompt_template,
+            user_prompt_template,
+            llm_settings_collection_key,
+            datetime.utcnow(),
+            assistant_id,
+        )
         result_id = assistant_id
 
-    print("sql: ", sql)
-    print("params: ", params)
     try:
         with closing(
             sqlite3.connect(__get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
@@ -269,6 +303,7 @@ def create_or_update_assistant(
         raise e
     return result_id
 
+
 def __get_assistants_sqlite_file(org_id: Optional[int]) -> str:
     """Get the SQLite file for a assistants based on scope.
 
@@ -282,3 +317,55 @@ def __get_assistants_sqlite_file(org_id: Optional[int]) -> str:
     else:
         path = get_sqlite_global_system_file()
     return path
+
+
+def __create_default_assistants_if_needed() -> None:
+    """Create the default personas."""
+    with closing(
+        sqlite3.connect(__get_assistants_sqlite_file(org_id=None), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute(
+            "SELECT id, name, type, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, created_at, updated_at FROM assistants WHERE name in ('General Q&A','General Q&A Assistant','Elon Musk')"
+        )
+        rows = cursor.fetchall()
+
+        rows.reverse()
+
+    names = [row[1] for row in rows]
+    print("names: ", names)
+
+    if "General Q&A" not in names:
+        chat_default = SIMPLE_CHAT_PERSONAS["default"]
+        create_or_update_assistant(
+            name="General Q&A",
+            assistant_type=AssistantType.SIMPLE_CHAT,
+            archived=False,
+            system_prompt_template=chat_default["system_prompt_content"],
+            user_prompt_template=chat_default["user_prompt_template_content"],
+            llm_settings_collection_key="azure_openai_with_local_embedding",
+        )
+    if "General Q&A Assistant" not in names:
+        elon = SIMPLE_CHAT_PERSONAS["elon-musk"]
+        create_or_update_assistant(
+            name="General Q&A Assistant",
+            assistant_type=AssistantType.ASK,
+            archived=False,
+            system_prompt_template=elon["system_prompt_content"],
+            user_prompt_template=elon["user_prompt_template_content"],
+            llm_settings_collection_key="azure_openai_with_local_embedding",
+        )
+
+    if "Elon Musk" not in names:
+        ask_default = ASK_PERSONAS["default"]
+        create_or_update_assistant(
+            name="Elon Musk",
+            assistant_type=AssistantType.SIMPLE_CHAT,
+            archived=False,
+            system_prompt_template=chat_default["system_prompt_content"],
+            user_prompt_template=ask_default["user_prompt_template_content"],
+            llm_settings_collection_key="azure_openai_with_local_embedding",
+        )
+
+    # print(rows[0][2])
+    # print(rows[1][2])
+    # print(rows[2][2])
