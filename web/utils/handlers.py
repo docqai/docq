@@ -746,6 +746,7 @@ def _prepare_space_data_source(prefix: str) -> Tuple[str, dict]:
     ds_type = st.session_state[f"{prefix}ds_type"][0]
     ds_config_keys = SpaceDataSources.__members__[ds_type].value.get_config_keys()
     ds_configs = {key.key: st.session_state[f"{prefix}ds_config_{key.key}"] for key in ds_config_keys}
+    print("save space ds_config ", ds_configs)
     return ds_type, ds_configs
 
 
