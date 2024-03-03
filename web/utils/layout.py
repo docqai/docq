@@ -21,7 +21,7 @@ from docq.config import (
     SystemFeatureType,
     SystemSettingsKey,
 )
-from docq.domain import AssistantType, ConfigKey, DocumentListItem, FeatureKey, SpaceKey
+from docq.domain import AssistantType, ConfigKey, DocumentListItem, FeatureKey, SourcePageType, SpaceKey
 from docq.extensions import ExtensionContext
 from docq.manage_assistants import list_assistants
 from docq.model_selection.main import (
@@ -1351,6 +1351,19 @@ def _handle_custom_input_field(configkey: ConfigKey, key: str, configs: Optional
         _render_file_storage_credential_request(configkey, key, configs)
     elif configkey.options and configkey.options.get("type") == "root_path":
         _render_file_storage_root_path_options(configkey, key, configs)
+    if configkey.options and configkey.options.get("type") == "selectbox":
+        if configs:
+            source_page_type_str = configs.get("source_page_type")
+
+        options_data: dict[str, str] = configkey.options.get("select_box_options", [])
+        st.selectbox(
+            label=f"{configkey.name}{'' if configkey.is_optional else ' *'}",
+            options=options_data.items(),
+            format_func=lambda x: x[1],
+            index=list(options_data.keys()).index(source_page_type_str[0]) if source_page_type_str else 0,
+            key=key,
+            help="Index Page: A url to a page web page with a list of links to scrape. Page List: a command separated list of URLs to scrape",
+        )
     else:
         log.error("Unknown custom input field type: %s", str(configkey.options))
 
@@ -1375,7 +1388,6 @@ def _render_space_data_source_config_input_fields(
                 help=configkey.ref_link,
                 autocomplete="off",  # disable autofill by password manager etc.
             )
-
 
 def _get_create_space_form_values() -> Tuple[str, str, str]:
     """Get default values for space creation from query string."""
@@ -1436,7 +1448,7 @@ def _render_view_space_details_with_container(
 def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> None:
     id_, org_id, name, summary, archived, ds_type, ds_configs, *_ = space_data
     has_edit_perm = org_id == get_selected_org_id()
-
+    print("load space data:", space_data)
     if has_edit_perm:
         with st.expander("Edit space", expanded=True):
             st.text_input("Name", value=name, key=f"update_space_details_{id_}_name")
@@ -1450,8 +1462,12 @@ def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> No
                 disabled=True,
                 format_func=lambda x: x[1],
             )
+            print(">>>>>>1")
             _render_space_data_source_config_input_fields(data_source, f"update_space_details_{id_}_", ds_configs)
-            if st.button("Save", key=_get_random_key("_save_btn_key")):
+            print(">>>>>>2")
+            # if st.button("Save", key=_get_random_key("_save_btn_key")):
+            if st.button("Save", key="space_update_save_btn_key"):
+                print(">>>>>>3")
                 handle_update_space_details(id_)
 
 

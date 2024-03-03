@@ -57,6 +57,14 @@ class SpaceKey:
         return _join_properties(_SEPARATOR_FOR_VALUE, self.type_.name, self.org_id, self.id_)
 
 
+
+class SourcePageType(Enum):
+    """Source page type."""
+
+    index_page = "Index Page"
+    page_list = "Page List"
+
+
 @dataclass
 class ConfigKey:
     """Config key."""
