@@ -146,20 +146,20 @@ def llama_index_chat_prompt_template_from_persona(persona: Assistant) -> ChatPro
     return ChatPromptTemplate(message_templates=[_system_prompt_message, _user_prompt_message])
 
 
-def get_personas_fixed(assistant_type: Optional[AssistantType] = None) -> dict[str, Assistant]:
+def get_personas_fixed(llm_settings_collection_key: str, assistant_type: Optional[AssistantType] = None) -> dict[str, Assistant]:
     """Get the personas."""
     result = {}
     if assistant_type == AssistantType.SIMPLE_CHAT:
-        result = {key: Assistant(key=key, **persona) for key, persona in SIMPLE_CHAT_PERSONAS.items()}
+        result = {key: Assistant(key=key, **persona, llm_settings_collection_key=llm_settings_collection_key) for key, persona in SIMPLE_CHAT_PERSONAS.items()}
     elif assistant_type == AssistantType.AGENT:
-        result = {key: Assistant(key=key, **persona) for key, persona in AGENT_PERSONAS.items()}
+        result = {key: Assistant(key=key, **persona, llm_settings_collection_key=llm_settings_collection_key) for key, persona in AGENT_PERSONAS.items()}
     elif assistant_type == AssistantType.ASK:
-        result = {key: Assistant(key=key, **persona) for key, persona in ASK_PERSONAS.items()}
+        result = {key: Assistant(key=key, **persona, llm_settings_collection_key=llm_settings_collection_key) for key, persona in ASK_PERSONAS.items()}
     else:
         result = {
-            **{key: Assistant(key=key, **persona) for key, persona in SIMPLE_CHAT_PERSONAS.items()},
-            **{key: Assistant(key=key, **persona) for key, persona in AGENT_PERSONAS.items()},
-            **{key: Assistant(key=key, **persona) for key, persona in ASK_PERSONAS.items()},
+            **{key: Assistant(key=key, **persona, llm_settings_collection_key=llm_settings_collection_key) for key, persona in SIMPLE_CHAT_PERSONAS.items()},
+            **{key: Assistant(key=key, **persona, llm_settings_collection_key=llm_settings_collection_key) for key, persona in AGENT_PERSONAS.items()},
+            **{key: Assistant(key=key, **persona, llm_settings_collection_key=llm_settings_collection_key) for key, persona in ASK_PERSONAS.items()},
         }
     return result
 

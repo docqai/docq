@@ -38,7 +38,8 @@ class RagCompletionHandler(BaseRequestHandler):
             self.thread_space = request_model.thread_id
             collection_key = request_model.llm_settings_collection_name
             model_settings_collection = get_model_settings_collection(collection_key) if collection_key else get_saved_model_settings_collection(self.selected_org_id)
-            persona = get_personas_fixed()[request_model.persona_key] if request_model.persona_key else get_personas_fixed().get("default")
+            persona_key = request_model.persona_key if request_model.persona_key else "default"
+            persona = get_personas_fixed(model_settings_collection.key)[persona_key]
             if not persona:
                 raise HTTPError(400, "Invalid persona key")
             space = get_thread_space(self.selected_org_id, request_model.thread_id)

@@ -42,12 +42,10 @@ class ChatCompletionHandler(BaseRequestHandler):
         feature = get_feature_key(self.current_user.uid, "chat")
         try:
             request = PostRequestModel.model_validate_json(self.request.body)
-            model_usage_settings = (
-                get_model_settings_collection(request.llm_settings_collection_name)
-                if request.llm_settings_collection_name
-                else get_model_settings_collection("azure_openai_latest")
-            )
-            persona = get_personas_fixed()[request.persona_key] if request.persona_key else get_personas_fixed().get("default")
+            llm_settings_collection_name = request.llm_settings_collection_name or "azure_openai_latest"
+            model_usage_settings = get_model_settings_collection(llm_settings_collection_name)
+            persona_key = request.persona_key if request.persona_key else "default"
+            persona = get_personas_fixed(model_usage_settings.key)[persona_key]
             if not persona:
                 raise HTTPError(400, reason="Invalid persona key")
             thread_id = request.thread_id
