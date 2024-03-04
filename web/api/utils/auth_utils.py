@@ -32,7 +32,7 @@ def authenticated(method: Callable[..., Any]) -> Callable[..., Any]:
     def wrapper(self: BaseRequestHandler, *args: Any, **kwargs: Any) -> Any:
         span = trace.get_current_span()
         try:
-            api_key = self.get_argument("key")
+            api_key = self.request.headers.get("X-API-Key", "")
 
             if not validate_api_key(api_key):
                 span.set_status(trace.Status(trace.StatusCode.ERROR))
