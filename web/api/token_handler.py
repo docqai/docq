@@ -23,8 +23,10 @@ class TokenRequestModel(BaseModel):
     code: Optional[str] = None
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
-    redirect_uri: str
+    redirect_uri: Optional[str] = None
     refresh_token: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
 
 
 class TokenResponseModel(BaseModel):
@@ -43,18 +45,16 @@ class TokenHandler(BaseRequestHandler):
     def post(self: Self) -> None:
         """Handle POST requests."""
         try:
-            data = TokenRequestModel.model_validate_json(self.request.body)
+            request = TokenRequestModel.model_validate_json(self.request.body)
         except ValidationError as e:
             raise HTTPError(400, reason="Bad request", log_message=str(e)) from e
 
-        if data.grant_type == "authorization_code":
-            username = self.get_argument("username", None)
-            password = self.get_argument("password", None)
+        if request.grant_type == "authorization_code":
 
-            if not username or not password:
+            if not request.username or not request.password:
                 raise HTTPError(400, reason="Bad request", log_message="Username and password are required")
 
-            result = m_users.authenticate(username, password)
+            result = m_users.authenticate(request.username, request.password)
             if not result:
                 raise HTTPError(401, reason="Unauthorized", log_message="Invalid username or password")
 
@@ -67,11 +67,11 @@ class TokenHandler(BaseRequestHandler):
             response = TokenResponseModel(access_token=token, expires_in=3600, refresh_token=token).model_dump_json()
             self.write(response)
 
-        elif data.grant_type == "refresh_token":
-            if not data.refresh_token:
+        elif request.grant_type == "refresh_token":
+            if not request.refresh_token:
                 raise HTTPError(400, reason="Bad request", log_message="Refresh token is required")
 
-            user = decode_jwt(data.refresh_token, check_expired=False)
+            user = decode_jwt(request.refresh_token, check_expired=False)
             if not user:
                 raise HTTPError(401, reason="Unauthorized", log_message="Invalid refresh token")
 
