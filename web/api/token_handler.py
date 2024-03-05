@@ -84,3 +84,20 @@ class TokenHandler(BaseRequestHandler):
 
         else:
             raise HTTPError(400, reason="Bad request", log_message="Invalid grant type")
+
+
+@st_app.api_route("/api/v1/token/validate")
+class TokenValidationHandler(BaseRequestHandler):
+    """Token validation handler endpoint for the API. /api/token/validate handler."""
+
+    def get(self: Self) -> None:
+        """Handle GET requests."""
+        token = self.get_argument("token", None)
+        if not token:
+            raise HTTPError(400, reason="Bad request", log_message="Token is required")
+
+        user = decode_jwt(token, check_expired=False)
+        if not user:
+            raise HTTPError(401, reason="Unauthorized", log_message="Invalid token")
+
+        self.write("OK")
