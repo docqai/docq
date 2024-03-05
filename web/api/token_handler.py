@@ -101,3 +101,25 @@ class TokenValidationHandler(BaseRequestHandler):
             raise HTTPError(401, reason="Unauthorized", log_message="Invalid token")
 
         self.write("OK")
+
+
+@st_app.api_route("/api/v1/token/refresh")
+class TokenRefreshHandler(BaseRequestHandler):
+    """Token refresh handler endpoint for the API. /api/token/refresh handler."""
+
+    def post(self: Self) -> None:
+        """Handle POST requests."""
+        token = self.get_argument("token", None)
+        if not token:
+            raise HTTPError(400, reason="Bad request", log_message="Token is required")
+
+        user = decode_jwt(token, check_expired=False)
+        if not user:
+            raise HTTPError(401, reason="Unauthorized", log_message="Invalid token")
+
+        token = encode_jwt(UserModel.model_validate(user.get("data")))
+        if not token:
+            raise HTTPError(500, reason="Internal server error", log_message="Failed to generate token")
+
+        response = TokenResponseModel(access_token=token, expires_in=3600, refresh_token=token).model_dump_json()
+        self.write(response)
