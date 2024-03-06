@@ -133,14 +133,23 @@ def set_selected_org_id(org_id: int) -> None:
     """Set the selected org_id context."""
     _set_session_value(org_id, SessionKeySubName.AUTH, SessionKeyNameForAuth.SELECTED_ORG_ID.name)
 
-def set_selected_assistant(assistant_id: int) -> None:
+def set_selected_assistant(assistant_scoped_id: str) -> None:
     """Set the selected person key in session settings."""
-    _set_session_value(assistant_id, SessionKeySubName.SETTINGS, SessionKeyNameForSettings.USER.name, "assistant_id")
+    _set_session_value(
+        assistant_scoped_id, SessionKeySubName.SETTINGS, SessionKeyNameForSettings.USER.name, "assistant_scoped_id"
+    )
 
-def get_selected_assistant() -> int | None:
-    """Get the selected person key from session settings."""
-    assistant_id = _get_session_value(SessionKeySubName.SETTINGS, SessionKeyNameForSettings.USER.name, "assistant_id")
-    return assistant_id
+
+def get_selected_assistant() -> str | None:
+    """Get the selected person key from session settings.
+
+    Returns:
+        str | None: The selected assistant scoped id which is unique across tables.
+    """
+    assistant_scoped_id = _get_session_value(
+        SessionKeySubName.SETTINGS, SessionKeyNameForSettings.USER.name, "assistant_scoped_id"
+    )
+    return assistant_scoped_id
 
 
 def get_username() -> str | None:
