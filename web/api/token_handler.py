@@ -29,6 +29,12 @@ class TokenRequestModel(BaseModel):
     password: Optional[str] = None
 
 
+class TokenValidationRequestModel(BaseModel):
+    """Token validation request model."""
+
+    token: str
+
+
 class TokenResponseModel(BaseModel):
     """Token response model."""
 
@@ -92,15 +98,15 @@ class TokenValidationHandler(BaseRequestHandler):
 
     def get(self: Self) -> None:
         """Handle GET requests."""
-        token = self.get_argument("token", None)
-        if not token:
-            raise HTTPError(400, reason="Bad request", log_message="Token is required")
+        try:
+            request = TokenValidationRequestModel.model_validate_json(self.request.body)
+            user = decode_jwt(request.token, check_expired=False)
+            if not user:
+                raise HTTPError(401, reason="Unauthorized", log_message="Invalid token")
 
-        user = decode_jwt(token, check_expired=False)
-        if not user:
-            raise HTTPError(401, reason="Unauthorized", log_message="Invalid token")
-
-        self.write("OK")
+            self.write("OK")
+        except ValidationError as e:
+            raise HTTPError(400, reason="Bad request") from e
 
 
 @st_app.api_route("/api/v1/token/refresh")
@@ -109,17 +115,17 @@ class TokenRefreshHandler(BaseRequestHandler):
 
     def post(self: Self) -> None:
         """Handle POST requests."""
-        token = self.get_argument("token", None)
-        if not token:
-            raise HTTPError(400, reason="Bad request", log_message="Token is required")
+        try:
+            request = TokenValidationRequestModel.model_validate_json(self.request.body)
+            user = decode_jwt(request.token, check_expired=False)
+            if not user:
+                raise HTTPError(401, reason="Unauthorized", log_message="Invalid token")
 
-        user = decode_jwt(token, check_expired=False)
-        if not user:
-            raise HTTPError(401, reason="Unauthorized", log_message="Invalid token")
+            token = encode_jwt(UserModel.model_validate(user.get("data")))
+            if not token:
+                raise HTTPError(500, reason="Internal server error", log_message="Failed to generate token")
 
-        token = encode_jwt(UserModel.model_validate(user.get("data")))
-        if not token:
-            raise HTTPError(500, reason="Internal server error", log_message="Failed to generate token")
-
-        response = TokenResponseModel(access_token=token, expires_in=3600, refresh_token=token).model_dump_json()
-        self.write(response)
+            response = TokenResponseModel(access_token=token, expires_in=3600, refresh_token=token).model_dump_json()
+            self.write(response)
+        except ValidationError as e:
+            raise HTTPError(400, reason="Bad request") from e
