@@ -21,6 +21,7 @@ class PostRequestModel(BaseModel):
     title: Optional[str] = None
     summary: str
     thread_id: Optional[int] = None
+    space_type: SPACE_TYPE
 
 
 class PostResponseModel(BaseModel):
@@ -30,17 +31,17 @@ class PostResponseModel(BaseModel):
     space_value: str
 
 
-@st_app.api_route("/api/v1/spaces/{space_type}")
+@st_app.api_route("/api/v1/spaces")
 class SpacesHandler(BaseRequestHandler):
     """Handle /api/spaces requests."""
 
     @authenticated
-    def post(self: Self, space_type: SPACE_TYPE) -> None:
+    def post(self: Self) -> None:
         """Handle post request: Create a thread space."""
         try:
             request = PostRequestModel.model_validate_json(self.request.body)
             feature = get_feature_key(self.current_user.uid)
-            if space_type == "thread":
+            if request.space_type == "thread":
                 try:
                     thread_id = (
                         request.thread_id
@@ -56,35 +57,35 @@ class SpacesHandler(BaseRequestHandler):
                     self.write(PostResponseModel(thread_id=thread_id, space_value=space.value()).model_dump_json())
                 except Exception as e:
                     raise HTTPError(500, reason="Error creating space") from e
-            elif space_type in ["personal", "shared", "public"]:
+            elif request.space_type in ["personal", "shared", "public"]:
                 # raise not implemented error
                 raise HTTPError(501, reason="Not implemented")
         except ValidationError as e:
             raise HTTPError(400, reason="Bad request") from e
 
 
-@st_app.api_route("/api/v1/spaces/{space_type}/{space_id}")
+@st_app.api_route("/api/v1/spaces/{space_id}")
 class SpaceHandler(BaseRequestHandler):
     """Handle /api/space requests."""
 
     @authenticated
-    def get(self: Self, space_type: SPACE_TYPE, space_id: int) -> None:
+    def get(self: Self, space_id: int) -> None:
         """GET /api/v1/spaces/space_type/{space_id}."""
-        space = get_space(self.selected_org_id, space_id, space_type)
+        space = get_space(self.selected_org_id, space_id)
         self.write(space.value())
 
     @authenticated
-    def delete(self: Self, space_type: SPACE_TYPE, space_id: int) -> None:
-        """DELETE /api/v1/spaces/space_type/{space_id}."""
+    def delete(self: Self, space_id: int) -> None:
+        """DELETE /api/v1/spaces/{space_id}."""
         raise HTTPError(501, reason="Not implemented")
 
     @authenticated
-    def update(self: Self, space_type: SPACE_TYPE, space_id: int) -> None:
-        """UPDATE /api/v1/spaces/space_type/{space_id}."""
+    def update(self: Self, space_id: int) -> None:
+        """UPDATE /api/v1/spaces/{space_id}."""
         raise HTTPError(501, reason="Not implemented")
 
 
-@st_app.api_route("/api/v1/spaces/{space_type}/{space_id}/files/upload")
+@st_app.api_route("/api/v1/spaces/{space_id}/files/upload")
 class SpaceFileUploadHandler(BaseRequestHandler):
     """Handle /api/spaces/{space_id}/files/upload requests."""
 
@@ -92,9 +93,9 @@ class SpaceFileUploadHandler(BaseRequestHandler):
     __FILE_NAME_LIMIT = 100
 
     @authenticated
-    def post(self: Self, space_type: SPACE_TYPE, space_id: int) -> None:
+    def post(self: Self, space_id: int) -> None:
         """Handle POST request."""
-        space = get_space(self.selected_org_id, space_id, space_type)
+        space = get_space(self.selected_org_id, space_id)
         fileinfo = self.request.files["filearg"][0]
         fname = fileinfo["filename"]
 

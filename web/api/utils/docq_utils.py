@@ -6,7 +6,7 @@ from docq.config import OrganisationFeatureType, SpaceType
 from docq.domain import FeatureKey, SpaceKey
 from tornado.web import HTTPError
 
-from web.api.models import FEATURE, SPACE_TYPE, MessageModel
+from web.api.models import FEATURE, MessageModel
 
 
 def get_feature_key(user_id: int, feature: FEATURE = "rag") -> FeatureKey:
@@ -18,24 +18,12 @@ def get_feature_key(user_id: int, feature: FEATURE = "rag") -> FeatureKey:
     )
 
 
-def get_space(org_id: int, space_id: int, space_type: SPACE_TYPE) -> SpaceKey:
+def get_space(org_id: int, space_id: int) -> SpaceKey:
     """Get space key from space id and space type."""
-    if space_type not in ["personal", "shared", "public", "thread"]:
-        raise HTTPError(400, reason="Bad request", log_message="Invalid space type")
-
-    space_type_ = (
-        SpaceType.PERSONAL
-        if space_type == "personal"
-        else SpaceType.SHARED
-        if space_type == "shared"
-        else SpaceType.PUBLIC
-        if space_type == "public"
-        else SpaceType.THREAD
-    )
     space = m_spaces.get_space(space_id, org_id)
     if space is None:
         raise HTTPError(404, reason="Not Found", log_message="Space not found")
-    return SpaceKey(space_type_, space_id, org_id, space[3])
+    return SpaceKey(SpaceType[space[7]], space_id, org_id, space[3])
 
 
 def get_thread_space(org_id: int, thread_id: int) -> SpaceKey:
