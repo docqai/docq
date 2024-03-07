@@ -15,9 +15,9 @@
 [![Slack][slack-shield]][slack-url]
 [![X (formerly Twitter) Follow][twitter-shield]][twitter-url]
 
-# Docq - Private & Secure ChatGPT alternative that unlocks Knowledge Insight from your confidential documents
+# Your private ChatGPT alternative
 
-**Give your employees' a second-brain that knows your business**
+**Securely unlock knowledge from your business documents. Give your employees' a second-brain.**
 
 ![Docq overview in a single diagram](https://docqai.github.io/docq/assets/docq-diag-nov2023.png)
 

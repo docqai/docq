@@ -846,15 +846,16 @@ def _render_assistant_selection(feature: FeatureKey) -> None:
         assistants_data_global = list_assistants(assistant_type=assistant_type)
         assistants_data = assistants_data_org + assistants_data_global
 
-        selected_assisted_id = get_selected_assistant()
+        selected_assistant_scoped_id = get_selected_assistant()
 
         selected = render_assistants_selector_ui(
-            assistants_data=assistants_data, selected_assistant_id=selected_assisted_id
+            assistants_data=assistants_data, selected_assistant_scoped_id=selected_assistant_scoped_id
         )
 
         if selected:
-            selected_assisted_id = selected[0]
-            set_selected_assistant(selected_assisted_id)
+            selected_assistant_scoped_id = selected[9]
+            set_selected_assistant(selected_assistant_scoped_id)
+
 
 def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
     """Upload files to chat."""

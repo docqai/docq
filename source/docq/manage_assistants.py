@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS assistants (
 )
 """
 
-ASSISTANT = tuple[int, str, str, bool, str, str, str, datetime, datetime]
+ASSISTANT = tuple[int, str, str, bool, str, str, str, datetime, datetime, str]
 
 
 def _init(org_id: Optional[int] = None) -> None:
@@ -164,10 +164,10 @@ def get_personas_fixed(llm_settings_collection_key: str, assistant_type: Optiona
     return result
 
 
-def get_assistant_or_default(assistant_id: Optional[int] = None, org_id: Optional[int] = None) -> Assistant:
+def get_assistant_or_default(assistant_scoped_id: Optional[int] = None, org_id: Optional[int] = None) -> Assistant:
     """Get the persona."""
-    if assistant_id:
-        assistant_data = get_assistant(assistant_id=assistant_id, org_id=org_id)
+    if assistant_scoped_id:
+        assistant_data = get_assistant(assistant_scoped_id=assistant_scoped_id, org_id=org_id)
         return Assistant(
             key=str(assistant_data[0]),
             name=assistant_data[1],
@@ -186,8 +186,13 @@ def list_assistants(org_id: Optional[int] = None, assistant_type: Optional[Assis
     Args:
         org_id (Optional[int]): The current org id. If None then will try to get from global scope table.
         assistant_type (Optional[AssistantType]): The assistant type.
+
+    Returns:
+        list[ASSISTANT]: The list of assistants. This includes a compound ID that of ID + scope. This is to avoid ID clashes between global and org scope tables on gets.
     """
+    scope = "global"
     if org_id:
+        scope = "org"
         _init(org_id)
 
     sql = ""
@@ -202,31 +207,43 @@ def list_assistants(org_id: Optional[int] = None, assistant_type: Optional[Assis
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(sql, params)
         rows = cursor.fetchall()
-        return [(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]) for row in rows]
+        return [
+            (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], f"{scope}_{row[0]}")
+            for row in rows
+        ]
 
 
-def get_assistant(assistant_id: int, org_id: Optional[int]) -> ASSISTANT:
+def get_assistant(assistant_scoped_id: str, org_id: Optional[int]) -> ASSISTANT:
     """Get the assistant.
 
     If just assistant_id then will try to get from global scope table.
     """
+    scope, id_ = assistant_scoped_id.split("_")
+
     if org_id:
         _init(org_id)
 
-    with closing(
-        sqlite3.connect(__get_assistants_sqlite_file(org_id=org_id), detect_types=sqlite3.PARSE_DECLTYPES)
-    ) as connection, closing(connection.cursor()) as cursor:
+    if scope == "org" and org_id:
+        path = __get_assistants_sqlite_file(org_id=org_id)
+    else:
+        path = __get_assistants_sqlite_file(org_id=None)
+
+    with closing(sqlite3.connect(path, detect_types=sqlite3.PARSE_DECLTYPES)) as connection, closing(
+        connection.cursor()
+    ) as cursor:
         cursor.execute(
             "SELECT id, name, type, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, created_at, updated_at FROM assistants WHERE id = ?",
-            (assistant_id,),
+            (id_,),
         )
         row = cursor.fetchone()
         if row is None:
-            if org_id:
-                raise ValueError(f"No Persona with: id = '{assistant_id}' that belongs to org org_id= '{org_id}'")
+            if org_id and scope == "org":
+                raise ValueError(
+                    f"No Persona with: id = '{assistant_scoped_id}' that belongs to org org_id= '{org_id}', scope= '{scope}'"
+                )
             else:
-                raise ValueError(f"No Persona with: id = '{assistant_id}' in global scope.")
-        return (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8])
+                raise ValueError(f"No Persona with: id = '{assistant_scoped_id}' in global scope. scope= '{scope}'")
+        return (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], assistant_scoped_id)
 
 
 def create_or_update_assistant(

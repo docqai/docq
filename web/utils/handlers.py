@@ -610,9 +610,9 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
     if select_org_id is None:
         raise ValueError("Selected org id was None")
 
-    assistant_id = get_selected_assistant()
+    assistant_scoped_id = get_selected_assistant()
 
-    assistant = get_assistant_or_default(assistant_id, org_id=select_org_id)
+    assistant = get_assistant_or_default(assistant_scoped_id, org_id=select_org_id)
 
     if req.startswith("/agent"):
         data = []
