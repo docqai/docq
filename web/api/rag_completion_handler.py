@@ -22,7 +22,7 @@ class PostRequestModel(CamelModel):
     input_: str = Field(..., alias="input")
     thread_id: int
     llm_settings_collection_name: Optional[str] = Field(None)
-    persona_key: Optional[str] = Field(None)
+    assistant_key: Optional[str] = Field(None)
 
 
 @st_app.api_route("/api/v1/rag/completion")
@@ -38,10 +38,10 @@ class RagCompletionHandler(BaseRequestHandler):
             self.thread_space = request_model.thread_id
             collection_key = request_model.llm_settings_collection_name
             model_settings_collection = get_model_settings_collection(collection_key) if collection_key else get_saved_model_settings_collection(self.selected_org_id)
-            persona_key = request_model.persona_key if request_model.persona_key else "default"
-            persona = get_personas_fixed(model_settings_collection.key)[persona_key]
-            if not persona:
-                raise HTTPError(400, "Invalid persona key")
+            assistant_key = request_model.assistant_key if request_model.assistant_key else "default"
+            assistant = get_personas_fixed(model_settings_collection.key)[assistant_key]
+            if not assistant:
+                raise HTTPError(400, "Invalid assistant key")
             space = get_thread_space(self.selected_org_id, request_model.thread_id)
             if space is None:
                 raise HTTPError(404, reason="Space not available")
@@ -50,7 +50,7 @@ class RagCompletionHandler(BaseRequestHandler):
                 feature=feature,
                 thread_id=request_model.thread_id,
                 model_settings_collection=model_settings_collection,
-                persona=persona,
+                persona=assistant,
                 spaces=[space],
             )
 

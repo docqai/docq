@@ -22,7 +22,7 @@ class PostRequestModel(CamelModel):
     thread_id: int
     history: Optional[str] = Field(None)
     llm_settings_collection_name: Optional[str] = Field(None)
-    persona_key: Optional[str] = Field(None)
+    assistant_key: Optional[str] = Field(None)
 
 
 @st_app.api_route("/api/v1/chat/completion")
@@ -44,9 +44,9 @@ class ChatCompletionHandler(BaseRequestHandler):
             request = PostRequestModel.model_validate_json(self.request.body)
             llm_settings_collection_name = request.llm_settings_collection_name or "azure_openai_latest"
             model_usage_settings = get_model_settings_collection(llm_settings_collection_name)
-            persona_key = request.persona_key if request.persona_key else "default"
-            persona = get_personas_fixed(model_usage_settings.key)[persona_key]
-            if not persona:
+            assistant_key = request.assistant_key if request.assistant_key else "default"
+            assistant = get_personas_fixed(model_usage_settings.key)[assistant_key]
+            if not assistant:
                 raise HTTPError(400, reason="Invalid persona key")
             thread_id = request.thread_id
 
@@ -55,7 +55,7 @@ class ChatCompletionHandler(BaseRequestHandler):
                 feature=feature,
                 thread_id=thread_id,
                 model_settings_collection=model_usage_settings,
-                persona=persona,
+                persona=assistant,
             )
             messages = list(map(get_message_object, result))
             response_model = MessageResponseModel(response=messages, meta={"model_settings": model_usage_settings.key})
