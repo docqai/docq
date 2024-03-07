@@ -32,7 +32,7 @@ class BaseRequestHandler(RequestHandler):
         """Get the selected org id."""
         if self.__selected_org_id is None:
             u = self.current_user
-            member_orgs = m_orgs.list_organisations(user_id=self.current_user.uid)
+            member_orgs = m_orgs.list_organisations(user_id=u.uid)
             self.__selected_org_id = get_default_org_id(member_orgs, (u.uid, u.fullname, u.super_admin, u.username))
         return self.__selected_org_id
 
