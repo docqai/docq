@@ -3,7 +3,7 @@ from typing import Self
 
 from tornado.web import RequestHandler
 
-from web.api.utils import CamelModel
+from web.api.utils.pydantic_utils import CamelModel
 from web.utils.streamlit_application import st_app
 
 
@@ -11,9 +11,9 @@ class ResponseModel(CamelModel):
     """Pydantic model for the response body."""
     response: str
 
-@st_app.api_route("/api/hello")
+@st_app.api_route("/api/v1/hello")
 class ChatCompletionHandler(RequestHandler):
-    """Handle /api/hello requests."""
+    """Handle /api/v1/hello requests."""
 
     def check_origin(self: Self, origin) -> bool:
         """Override the origin check if it's causing problems."""
@@ -28,5 +28,3 @@ class ChatCompletionHandler(RequestHandler):
         """Handle GET request."""
         response = ResponseModel(response="Hello World!")
         self.write(response.model_dump())
-
-

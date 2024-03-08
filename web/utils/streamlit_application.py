@@ -2,6 +2,7 @@
 
 import gc
 import logging
+import re
 from typing import Callable, List, Self, Type
 
 from tornado.routing import PathMatches, Rule
@@ -70,7 +71,31 @@ class StreamlitApplication:
               def get(self: Self) -> None:
                   self.write({"message": "hello world"})
           ```
+
+          With path arguments:
+          ```python
+          @st_app.api_route("/api/hello/user/{user_id}/name/{name}") // path arg names are just to make reading easier
+          class HelloHandler(RequestHandler):
+              def get(self: Self, user, name=None) -> None: // the args are passed in the order they appear in the path. 'name' is optional
+                  self.write({"message": "hello world"})
+          ```
+
+          The above path arguments syntax is replaced with the regex `([^/]{1,150})` as regex is what Tornado uses to match the path.
+          Note that the regex we use limits values to 150 characters. This is a security measure to prevent a bad actor from DOSing the server with a very long paths
+          cause high memory consumption. Values longer than 150 characters will not match the route and will return a 404.
         """
+        pattern = r"{(\w+)(?::\s*(\w+))?\s*}"
+
+        def convert_args_in_path_to_regex(match: re.Match) -> str:
+            """Convert the path to a regex pattern."""
+            type_ = match.group(2) if match.group(2) else "str"
+
+            regex = r"([^/]{1,150})" # Limit to 150 characters
+
+            return r"(\d{1,150})" if type_ == "int" else regex
+
+        path = re.sub(pattern, convert_args_in_path_to_regex, path)
+        path = fr"^{path}$"
 
         def decorator(cls: Type[RequestHandler]) -> Type[RequestHandler]:
             logging.debug("Decorator adding route handler: %s", cls)

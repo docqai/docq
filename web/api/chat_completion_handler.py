@@ -1,70 +1,66 @@
 """Handle /api/chat/completion requests."""
-from typing import Any, Optional, Self
+from typing import Optional, Self
 
-from docq.manage_personas import get_persona
+import docq.run_queries as rq
+from docq.manage_assistants import get_personas_fixed
 from docq.model_selection.main import get_model_settings_collection
-from docq.run_queries import run_chat
 from pydantic import Field, ValidationError
-from tornado.web import HTTPError, RequestHandler
+from tornado.web import HTTPError
 
-from web.api.utils import CamelModel, authenticated
+from web.api.base_handlers import BaseRequestHandler
+from web.api.models import MessageResponseModel
+from web.api.utils.auth_utils import authenticated
+from web.api.utils.docq_utils import get_feature_key, get_message_object
+from web.api.utils.pydantic_utils import CamelModel
 from web.utils.streamlit_application import st_app
 
 
 class PostRequestModel(CamelModel):
     """Pydantic model for the request body."""
+
     input_: str = Field(..., alias="input")
+    thread_id: int
     history: Optional[str] = Field(None)
     llm_settings_collection_name: Optional[str] = Field(None)
-    persona_key: Optional[str] = Field(None)
+    assistant_key: Optional[str] = Field(None)
 
-class PostResponseModel(CamelModel):
-    """Pydantic model for the response body."""
-    response: str
-    meta: Optional[dict[str,str]] = None
 
-@st_app.api_route("/api/chat/completion")
-class ChatCompletionHandler(RequestHandler):
+@st_app.api_route("/api/v1/chat/completion")
+class ChatCompletionHandler(BaseRequestHandler):
     """Handle /api/chat/completion requests."""
-
-    def check_origin(self: Self, origin: Any) -> bool:
-        """Override the origin check if it's causing problems."""
-        return True
-
-    def check_xsrf_cookie(self: Self) -> bool:
-        """Override the XSRF cookie check."""
-        # If `True`, POST, PUT, and DELETE are block unless the `_xsrf` cookie is set.
-        # Safe with token based authN
-        return False
-
-    def get(self: Self) -> None:
-        """Handle GET request."""
-        self.write({"message": "hello world 2"})
-
-
 
     @authenticated
     def post(self: Self) -> None:
         """Handle POST request.
 
         Example:
-        ```shell
+        ```sh
         curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer expected_token" -d /
-        '{"input":"what's the sun?", "modelSettingsCollectionName"}' http://localhost:8501/api/chat/completion
+        '{"input":"what is the sun?", "modelSettingsCollectionName"}' http://localhost:8501/api/v1/chat/completion
         ```
         """
-        body = self.request.body
-
+        feature = get_feature_key(self.current_user.uid, "chat")
         try:
-            request_model = PostRequestModel.model_validate_json(body)
-            history = request_model.history if request_model.history else ""
-            model_usage_settings = get_model_settings_collection(request_model.llm_settings_collection_name) if request_model.llm_settings_collection_name else get_model_settings_collection("azure_openai_latest")
-            persona = get_persona(request_model.persona_key if request_model.persona_key else "default")
-            result = run_chat(input_=request_model.input_, history=history, model_settings_collection=model_usage_settings, persona=persona)
-            response_model = PostResponseModel(response=result.response, meta={"model_settings": model_usage_settings.key})
+            request = PostRequestModel.model_validate_json(self.request.body)
+            llm_settings_collection_name = request.llm_settings_collection_name or "azure_openai_latest"
+            model_usage_settings = get_model_settings_collection(llm_settings_collection_name)
+            assistant_key = request.assistant_key if request.assistant_key else "default"
+            assistant = get_personas_fixed(model_usage_settings.key)[assistant_key]
+            if not assistant:
+                raise HTTPError(400, reason="Invalid persona key")
+            thread_id = request.thread_id
+
+            result = rq.query(
+                input_=request.input_,
+                feature=feature,
+                thread_id=thread_id,
+                model_settings_collection=model_usage_settings,
+                persona=assistant,
+            )
+            messages = list(map(get_message_object, result))
+            response_model = MessageResponseModel(response=messages, meta={"model_settings": model_usage_settings.key})
 
             self.write(response_model.model_dump())
 
         except ValidationError as e:
             raise HTTPError(status_code=400, reason="Invalid request body", log_message=str(e)) from e
-

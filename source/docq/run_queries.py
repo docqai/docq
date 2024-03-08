@@ -107,7 +107,7 @@ def _retrieve_messages(
     return rows
 
 
-def list_thread_history(feature: FeatureKey) -> list[tuple[int, str, int]]:
+def list_thread_history(feature: FeatureKey, id_: Optional[int] = None) -> list[tuple[int, str, int]]:
     """List the history of threads."""
     tablename = get_history_thread_table_name(feature.type_)
     rows = None
@@ -119,7 +119,10 @@ def list_thread_history(feature: FeatureKey) -> list[tuple[int, str, int]]:
                 table=tablename,
             )
         )
-        rows = cursor.execute(f"SELECT id, topic, created_at FROM {tablename} ORDER BY created_at DESC").fetchall()  # noqa: S608
+        if id_:
+            rows = cursor.execute(f"SELECT id, topic, created_at FROM {tablename} WHERE id = ?", (id_,)).fetchall()  # noqa: S608
+        else:
+            rows = cursor.execute(f"SELECT id, topic, created_at FROM {tablename} ORDER BY created_at DESC").fetchall()  # noqa: S608
 
     return rows
 
