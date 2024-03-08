@@ -225,6 +225,14 @@ def test_create_thread_space(manage_spaces_test_dir: tuple) -> None:
     space_datasource_type = "create_thread_space test ds_type"
     test_thread_id = 1234
 
+    def assert_pattern(thread_id: str, space_summary: str, thread_space_name: str) -> None:
+        import re
+
+        pattern = rf"Thread-{test_thread_id} {space_summary} \d+"
+        assert (
+            re.fullmatch(pattern, thread_space_name) is not None
+        ), f"{thread_space_name} does not match pattern {pattern}"
+
     with patch("docq.manage_spaces.reindex") as reindex:
         from docq.manage_spaces import create_thread_space
         space = create_thread_space(
@@ -239,9 +247,10 @@ def test_create_thread_space(manage_spaces_test_dir: tuple) -> None:
         cursor.execute("SELECT name, summary, datasource_type, datasource_configs FROM spaces WHERE id = ?", (space.id_,))
         result = cursor.fetchone()
         assert result is not None, "Space not found."
-        assert result[0] == f"Thread-{test_thread_id} {space_summary}", "Space name mismatch."
+        # assert result[0] == f"Thread-{test_thread_id} {space_summary}", "Space name mismatch."
         assert result[1] == space_summary, "Space summary mismatch."
         assert result[2] == space_datasource_type, "Space datasource_type mismatch."
+        assert_pattern(str(test_thread_id), space_summary, result[0])
 
     reindex.assert_called_once_with(space)
 
