@@ -2,6 +2,7 @@
 
 import json
 import logging as log
+import random
 import sqlite3
 from contextlib import closing
 from datetime import datetime
@@ -48,6 +49,8 @@ CREATE TABLE IF NOT EXISTS space_access (
     UNIQUE (space_id, access_type, accessor_id)
 )
 """
+
+THREAD_SPACE_NAME_TEMPLATE = "Thread-{thread_id} {summary}"
 
 SPACE = tuple[int, int, str, str, bool, str, dict, str, datetime, datetime]
 
@@ -355,7 +358,9 @@ def create_shared_space(
 @trace.start_as_current_span("manage_spaces.create_thread_space")
 def create_thread_space(org_id: int, thread_id: int, summary: str, datasource_type: str) -> SpaceKey:
     """Create a spcace for chat thread uploads."""
-    name = f"Thread-{thread_id} {summary}"
+    rnd = str(random.randint(56450, 9999999999))
+    name = f"Thread-{thread_id} {summary} {rnd}"
+    print(f"Creating thread space with name: '{name}'")
     return create_space(
         org_id=org_id,
         name=name,
@@ -366,21 +371,41 @@ def create_thread_space(org_id: int, thread_id: int, summary: str, datasource_ty
     )
 
 
-def get_thread_space(org_id: int, thread_id: int) -> Optional[SpaceKey]:
-    """Get a space for chat thread uploads."""
+def get_thread_space(org_id: int, thread_id: int) -> SpaceKey | None:
+    """Get a space for chat thread uploads.
+
+    NOTE: if this doesn't return it doesn't mean the space doesn't exist as it's filtered by org_id. Use space_name_exists() to check if a space with name already exists.
+    """
+    result = None
     with closing(
         sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
+
         name = f"Thread-{thread_id} %"
         cursor.execute(
             "SELECT id FROM spaces WHERE org_id = ? AND name LIKE ? AND space_type = ?",
             (org_id, name, SpaceType.THREAD.name),
         )
         row = cursor.fetchone()
-        if row is None:
-            return None
-        log.debug("Found space with rowid: %d", row[0])
-        return SpaceKey(SpaceType.THREAD, row[0], org_id)
+        if row:
+            result = SpaceKey(SpaceType.THREAD, row[0], org_id)
+            log.debug("Found space with Id: %d", row[0])
+    return result
+
+
+def thread_space_exists(thread_id: int) -> bool:
+    """Check if a thread space exists. Space names are unique. Thread spaces have a special naming convention based on thread_id. Use this to check if a Space with the generated name already exists."""
+    exists = True  # default to true as the safer option
+    name = f"Thread-{thread_id} %"
+    with closing(
+        sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
+    ) as connection, closing(connection.cursor()) as cursor:
+        cursor.execute("SELECT id, name FROM spaces WHERE name LIKE ?", (name,))
+        row = cursor.fetchone()
+        exists = row is not None
+
+    print(f"Thread space exists: {exists}")
+    return exists
 
 
 def list_shared_spaces(org_id: int, user_id: Optional[int] = None) -> list[SPACE]:

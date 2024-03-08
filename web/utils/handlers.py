@@ -6,6 +6,7 @@ import logging as log
 import math
 import random
 import re
+import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import unquote_plus
@@ -583,7 +584,12 @@ def _setup_chat_thread_space(feature: domain.FeatureKey, org_id:int, thread_id: 
     """Create a thread space or add more files and index if the space already exists."""
     space: Optional[SpaceKey] = None
 
-    space = manage_spaces.get_thread_space(org_id, thread_id)
+    space_exists = manage_spaces.thread_space_exists(thread_id=thread_id)
+
+    if space_exists:
+        # space exists globally, check if it's in this org_id
+        space = manage_spaces.get_thread_space(org_id, thread_id)
+
     if space is None:
         topic = run_queries.get_thread_topic(feature, thread_id)
         space = manage_spaces.create_thread_space(org_id, thread_id, topic, SpaceDataSources.MANUAL_UPLOAD.name)
@@ -918,9 +924,11 @@ def get_max_number_of_documents():
 
 
 def _create_new_thread(feature: domain.FeatureKey) -> int:
-    rnd = str(random.randint(1, 1000000))
+    rnd = str(random.randint(1000, 1000000000000))
+    milliseconds = str(time.time() * 1000)
     # TODO: add code to generate a topic name and update the DB after the first question is asked.
-    topic = f"New thread {rnd}"
+    topic = f"New thread {rnd}{milliseconds}"
+
     thread_id = run_queries.create_history_thread(topic, feature)
     return thread_id
 

@@ -920,7 +920,6 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
 def chat_ui(feature: FeatureKey) -> None:
     """Chat UI layout."""
     prepare_for_chat(feature)
-    # Style for formatting sources list.
     st.markdown(
         """<style>
             [data-testid="stMarkdownContainer"] h6 {
@@ -1058,8 +1057,11 @@ def chat_ui(feature: FeatureKey) -> None:
     if new_chat.button("New chat"):
         handle_create_new_chat(feature)
         st.rerun()
+
+    thread_id = get_chat_session(feature.type_, SessionKeyNameForChat.THREAD)
+
     with uploader:
-        _render_chat_file_uploader(feature, len(chat_history) if chat_history else 0)
+        _render_chat_file_uploader(feature, thread_id)
 
     _render_show_thread_space_files(feature)
     _render_assistant_selection(feature)
