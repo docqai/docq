@@ -151,20 +151,6 @@ files = [
 frozenlist = ">=1.1.0"
 
 [[package]]
-name = "aiostream"
-version = "0.5.2"
-description = "Generator-based operators for asynchronous iteration"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "aiostream-0.5.2-py3-none-any.whl", hash = "sha256:054660370be9d37f6fe3ece3851009240416bd082e469fd90cc8673d3818cf71"},
-    {file = "aiostream-0.5.2.tar.gz", hash = "sha256:b71b519a2d66c38f0872403ab86417955b77352f08d9ad02ad46fc3926b389f4"},
-]
-
-[package.dependencies]
-typing-extensions = "*"
-
-[[package]]
 name = "altair"
 version = "5.1.2"
 description = "Vega-Altair: A declarative statistical visualization library for Python."
@@ -376,27 +362,6 @@ files = [
     {file = "backoff-2.2.1-py3-none-any.whl", hash = "sha256:63579f9a0628e06278f7e47b7d7d5b6ce20dc65c5e96a6f3ca99a6adca0396e8"},
     {file = "backoff-2.2.1.tar.gz", hash = "sha256:03f829f5bb1923180821643f8753b0502c3b682293992485b0eef2807afa5cba"},
 ]
-
-[[package]]
-name = "beautifulsoup4"
-version = "4.12.3"
-description = "Screen-scraping library"
-optional = false
-python-versions = ">=3.6.0"
-files = [
-    {file = "beautifulsoup4-4.12.3-py3-none-any.whl", hash = "sha256:b80878c9f40111313e55da8ba20bdba06d8fa3969fc68304167741bbf9e082ed"},
-    {file = "beautifulsoup4-4.12.3.tar.gz", hash = "sha256:74e3d1928edc070d21748185c46e3fb33490f22f52a3addee9aee0f4f7781051"},
-]
-
-[package.dependencies]
-soupsieve = ">1.2"
-
-[package.extras]
-cchardet = ["cchardet"]
-chardet = ["chardet"]
-charset-normalizer = ["charset-normalizer"]
-html5lib = ["html5lib"]
-lxml = ["lxml"]
 
 [[package]]
 name = "black"
@@ -1331,12 +1296,12 @@ files = [
 google-auth = ">=2.14.1,<3.0.dev0"
 googleapis-common-protos = ">=1.56.2,<2.0.dev0"
 grpcio = [
-    {version = ">=1.49.1,<2.0dev", optional = true, markers = "python_version >= \"3.11\" and extra == \"grpc\""},
     {version = ">=1.33.2,<2.0dev", optional = true, markers = "python_version < \"3.11\" and extra == \"grpc\""},
+    {version = ">=1.49.1,<2.0dev", optional = true, markers = "python_version >= \"3.11\" and extra == \"grpc\""},
 ]
 grpcio-status = [
-    {version = ">=1.49.1,<2.0.dev0", optional = true, markers = "python_version >= \"3.11\" and extra == \"grpc\""},
     {version = ">=1.33.2,<2.0.dev0", optional = true, markers = "python_version < \"3.11\" and extra == \"grpc\""},
+    {version = ">=1.49.1,<2.0.dev0", optional = true, markers = "python_version >= \"3.11\" and extra == \"grpc\""},
 ]
 protobuf = ">=3.19.5,<3.20.0 || >3.20.0,<3.20.1 || >3.20.1,<4.21.0 || >4.21.0,<4.21.1 || >4.21.1,<4.21.2 || >4.21.2,<4.21.3 || >4.21.3,<4.21.4 || >4.21.4,<4.21.5 || >4.21.5,<5.0.0.dev0"
 requests = ">=2.18.0,<3.0.0.dev0"
@@ -2228,24 +2193,23 @@ proxy = ["PyJWT (>=2.8.0,<3.0.0)", "apscheduler (>=3.10.4,<4.0.0)", "backoff", "
 
 [[package]]
 name = "llama-index"
-version = "0.9.8.post1"
+version = "0.9.36"
 description = "Interface between LLMs and your data"
 optional = false
-python-versions = ">=3.8.1,<3.12"
+python-versions = ">=3.8.1,<4.0"
 files = [
-    {file = "llama_index-0.9.8.post1-py3-none-any.whl", hash = "sha256:e93515654b1c9d37563bf122b51bd9a2aa5d46979a1f7c950a45fe22713f37cd"},
-    {file = "llama_index-0.9.8.post1.tar.gz", hash = "sha256:8a3d9b04a1e62038a80a8ac13549eecc0389afb9523caaf3f7785c9f0e999173"},
+    {file = "llama_index-0.9.36-py3-none-any.whl", hash = "sha256:1d538876e52b391326c787d4e65932821c3138e2f686766714af86cbe69dc7e7"},
+    {file = "llama_index-0.9.36.tar.gz", hash = "sha256:c0470875fdb63809e2e94eb90f5ac82a07af5cd1df43d73574986269c791bb34"},
 ]
 
 [package.dependencies]
 aiohttp = ">=3.8.6,<4.0.0"
-aiostream = ">=0.5.2,<0.6.0"
-beautifulsoup4 = ">=4.12.2,<5.0.0"
 dataclasses-json = "*"
 deprecated = ">=1.2.9.3"
 fsspec = ">=2023.5.0"
 httpx = "*"
 nest-asyncio = ">=1.5.8,<2.0.0"
+networkx = ">=3.0"
 nltk = ">=3.8.1,<4.0.0"
 numpy = "*"
 openai = ">=1.1.0"
@@ -2258,10 +2222,12 @@ typing-extensions = ">=4.5.0"
 typing-inspect = ">=0.8.0"
 
 [package.extras]
+gradientai = ["gradientai (>=1.4.0)"]
+html = ["beautifulsoup4 (>=4.12.2,<5.0.0)"]
 langchain = ["langchain (>=0.0.303)"]
-local-models = ["optimum[onnxruntime] (>=1.13.2,<2.0.0)", "sentencepiece (>=0.1.99,<0.2.0)", "transformers[torch] (>=4.34.0,<5.0.0)"]
-postgres = ["asyncpg (>=0.28.0,<0.29.0)", "pgvector (>=0.1.0,<0.2.0)", "psycopg-binary (>=3.1.12,<4.0.0)"]
-query-tools = ["guidance (>=0.0.64,<0.0.65)", "jsonpath-ng (>=1.6.0,<2.0.0)", "lm-format-enforcer (>=0.4.3,<0.5.0)", "rank-bm25 (>=0.2.2,<0.3.0)", "scikit-learn (<1.3.0)", "spacy (>=3.7.1,<4.0.0)"]
+local-models = ["optimum[onnxruntime] (>=1.13.2,<2.0.0)", "sentencepiece (>=0.1.99,<0.2.0)", "transformers[torch] (>=4.33.1,<5.0.0)"]
+postgres = ["asyncpg (>=0.28.0,<0.29.0)", "pgvector (>=0.1.0,<0.2.0)", "psycopg2-binary (>=2.9.9,<3.0.0)"]
+query-tools = ["guidance (>=0.0.64,<0.0.65)", "jsonpath-ng (>=1.6.0,<2.0.0)", "lm-format-enforcer (>=0.4.3,<0.5.0)", "rank-bm25 (>=0.2.2,<0.3.0)", "scikit-learn", "spacy (>=3.7.1,<4.0.0)"]
 
 [[package]]
 name = "mako"
@@ -3798,8 +3764,8 @@ files = [
 
 [package.dependencies]
 numpy = [
-    {version = ">=1.23.2,<2", markers = "python_version == \"3.11\""},
     {version = ">=1.22.4,<2", markers = "python_version < \"3.11\""},
+    {version = ">=1.23.2,<2", markers = "python_version == \"3.11\""},
 ]
 python-dateutil = ">=2.8.2"
 pytz = ">=2020.1"
@@ -5671,17 +5637,6 @@ files = [
 ]
 
 [[package]]
-name = "soupsieve"
-version = "2.5"
-description = "A modern CSS selector implementation for Beautiful Soup."
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "soupsieve-2.5-py3-none-any.whl", hash = "sha256:eaa337ff55a1579b6549dc679565eac1e3d000563bcb1c8ab0d0fefbc0c2cdc7"},
-    {file = "soupsieve-2.5.tar.gz", hash = "sha256:5663d5a7b3bfaeee0bc4372e7fc48f9cff4940b3eec54a6451cc5299f1097690"},
-]
-
-[[package]]
 name = "span-marker"
 version = "1.5.0"
 description = "Named Entity Recognition using Span Markers"
@@ -6899,4 +6854,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.12"
-content-hash = "10b1d6dc0d1a45cfab95f5d7e215a105ef0df6f57381c9777e185d2ee1a6a5d8"
+content-hash = "20274d7dcace3b01824817a38a8407f340d53e3d2b138eebd775c70b211b2687"
