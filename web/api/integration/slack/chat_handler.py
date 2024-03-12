@@ -2,8 +2,8 @@
 
 from slack_bolt.context.say import Say
 
-from web.slack.slack_application import slack_app
-from web.slack.utils import chat_completion
+from web.api.integration.slack.slack_application import slack_app
+from web.api.integration.utils import chat_completion
 
 CHANNEL_TEMPLATE = "<@{user}> {response}"
 

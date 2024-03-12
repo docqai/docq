@@ -20,7 +20,6 @@ from utils.layout import (
 from utils.observability import baggage_as_attributes, tracer
 
 import web.api.index_handler  # noqa F401 don't remove this line, it's used to register api routes
-import web.slack.index_handler  # noqa F401 don't remove this line, it's used to register slackbot handlers
 
 with tracer().start_as_current_span("home_page", attributes=baggage_as_attributes()):
     render_docq_logo()

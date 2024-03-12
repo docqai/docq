@@ -8,6 +8,6 @@ from web.utils.streamlit_application import st_app
 slack_app = App()
 
 
-@st_app.api_route("/slack/events", dict(app=slack_app))
+@st_app.api_route("/api/integration/slack/v1/events", dict(app=slack_app))
 class SlackEventHandler(SlackEventsHandler, BaseRequestHandler):
     """Handle /slack/events requests."""

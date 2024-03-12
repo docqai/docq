@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from web.slack.slack_application import slack_app
+from web.api.integration.slack.slack_application import slack_app
 
 
 @slack_app.event("app_home_opened")
