@@ -1,8 +1,8 @@
-site_name: Docq - Private & Secure ChatGPT AI Knowledge Insight
+site_name: Your private ChatGPT alternative.
 site_url: https://docqai.github.io/docq
 site_description: Docq offers self-hosted, private and secure ChatGPT on your private data with minimal onboarding and operational effort.
 site_author: Docq Contributors
-copyright: Copyright &copy; 2023 Docq Contributors
+copyright: Copyright &copy; 2023 - 2024 Docq Contributors
 site_dir: html
 repo_name: docqai/docq
 repo_url: https://github.com/docqai/docq
@@ -34,6 +34,21 @@ extra:
   analytics:
     provider: google
     property: G-SML7XH761K
+  social:
+    - icon: fontawesome/brands/x-twitter
+      link: https://twitter.com/docqai
+      name: docqai
+    - icon: fontawesome/brands/slack
+      link: https://join.slack.com/t/docqai/shared_invite/zt-27p17lu6v-6KLJxSmt61vfNqCavSE73A
+      name: Join Slack
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/company/docqai
+      name: linkedin.com/company/docqai
+    - icon: fontawesome/brands/medium
+      link: https://medium.com/@docqai
+      name: Blog
+    - icon: fontawesome/regular/envelope
+      link: mailto:<hi@docqai.com>
 
 extra_css:
   - stylesheets/extra.css
@@ -43,7 +58,7 @@ theme:
   logo: assets/logo.jpg
   favicon: assets/favicon.png
   language: en
-  palette:
+  palette:    
     - media: "(prefers-color-scheme: light)"
       scheme: docq
       accent: purple
@@ -51,6 +66,7 @@ theme:
         icon: material/lightbulb-outline
         name: Switch to light mode
     - media: "(prefers-color-scheme: dark)"
+      primary: custom
       scheme: slate
       accent: purple
       toggle:

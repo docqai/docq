@@ -1,8 +1,12 @@
+:root {
+  --md-typeset-a-color: #542CF2;
+}
+
 [data-md-color-scheme="docq"] {
   --md-primary-fg-color:        #202020;
   --md-primary-fg-color--light: #373737;
   --md-primary-fg-color--dark:  #373737;
-  --md-typeset-a-color: #542CF2;
+  //--md-typeset-a-color: #542CF2;
   //--md-typeset-a-color: #4cae4f;
 }
 
@@ -12,6 +16,7 @@
   --md-primary-fg-color--dark:  #373737;
   --md-typeset-a-color: #542CF2;
   //--md-typeset-a-color: #71c174;
+  --md-hue: 240;
 }
 
 .mkapi-node code.mkapi-item-name, code.mkapi-object-parenthesis, code.mkapi-object-signature, span.mkapi-item-type, span.mkapi-item-dash, mkapi-item-description {
@@ -20,7 +25,7 @@
 }
 
 .mkapi-node code.mkapi-item-name {
-  color: var(--md-typeset-a-color);
+  //color: var(--md-typeset-a-color);
 }
 
 .mkapi-node ul.mkapi-items {
@@ -40,4 +45,10 @@
 
 .mkapi-section-name {
   color: var(--md-default-fg-color);
+}
+
+.md-header {
+  background-color: #542CF2;
+  background-image: linear-gradient(6deg, #784fed 40%, rgba(84,44,242,0.008) 80%);
+  
 }
