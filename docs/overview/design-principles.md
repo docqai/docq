@@ -27,4 +27,4 @@ All of these are reflected in Docq's user interface and user experience design.
 
 ### Commercially-friendly Licensing & Support
 
-Last but not least, we release Docq under a licensing structure where any business could use it as-is free-of-charge. For situations where a business wants to have a commercial agreement with both licensing and support for Docq, we can make the arrangement accordingly.
+Last but not least, we release Docq under a licensing structure where any business could use it as-is free-of-charge. For situations where a business wants to have a commercial agreement with both licensing and support for Docq, we can make the arrangements accordingly.

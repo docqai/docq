@@ -1,27 +1,21 @@
 <!-- ## Deployment Scenarios -->
+Docq can be deployed in several configurations trading off data isolation for operational convenience.
 
-Docq is a **self-hosted, turnkey** software which means **for data security and privacy reasons we, the Docq Team does NOT offer a hosted service** because we believe that the best place to operate Docq is within your existing cloud infrastructure setup.
+- **Isolated In Your Data centre**: Deploy on-prem on servers in your data centre. The most isolated hence most secure deployment. All your data stays within your data centre and enterprise network. LLMs will also have to be deployed on-premise to benefit from this option. We are happy to support you with a bespoke setup. **Bring LLMs to your data.**
 
-It also lets a business adopting Docq operate exactly in the same way as they currently operate their IT infrastructure. You know best about your own operations.
+- **Isolated In Your Cloud**: Deploy in your organisation's cloud account (Azure, AWS, GCP etc.). LLMs will need to be self-hosted in your cloud account. Similar to on-premise hosting, your data remains within network boundaries you control. **Bring LLMs to your data.**
 
-Docq mainly caters for two deployment scenarios:
+- **Flexible In Your Cloud**: Docq is deployed in your cloud account similar to the _Secure Cloud Deployment_ option above. But it's configured to use a serverless LLM service provided by one of the major cloud providers such as Azure OpenAI, AWS Bedrock Claude, or GCP Vertex Gemini Pro. This is suitable for organisations with less sensitive data.
 
-- **Secure Cloud Deployment**: For businesses that prefer to keep all their organisational data private, Docq can be deployed and configured to operate within an organisation's cloud account (i.e. network boundary) in order to guarantee that **no data is sent to any 3rd-party** intentionally or accidentally.
-- **Flexible Cloud Deployment**: For businesses having less stringent requirements on their data and 3rd-party access, Docq can be
-  - deployed in any major cloud infrastructure provider;
-  - and configured to use any major 3rd-party AI/LLMs vendors via their APIs.
+- **SaaS Dedicated** - Your own dedicated instance of Docq hosted and operated by us in a Azure account dedicated to you. Your instance doesn't share any infrastructure with other organisations.
 
-Plus
+- **SaaS Multi-tenant Standard** aka [app.docq.ai](https://app.docq.ai) - An instance of Docq hosted and operated in our cloud provider account (Azure UK South region). Each organisations data is isolated but you are sharing a single instance of Docq and LLMs. This is the fastest way to get started with Docq. Head over to [https://docq.ai/#plans](https://docq.ai/#plans) to subscribe.
 
-- **SaaS Multi-tenant** - An instance of Docq hosted and operated in our cloud provider account (Azure UK South region). Each organisations data is isolated but you are sharing a single instance of Docq and LLMs. This is the fast way to get going. Head over to [https://docq.ai/#plans](https://docq.ai/#plans) to subscribe.
-- **SaaS Dedicated** - Your own dedicated instance of Docq hosted and operated in our cloud account. You don't share any infrastructure with other organisations.
-- **On-Premise Deployment**: It is another option and we are happy to support you with a bespoke setup.
-
-Docq has been designed from ground up for the secure cloud and on-prem deployment scenarios with strict data security and privacy requirement in mind. However it should not stop all other businesses from adopting Docq with the flexible deployment setup if it suits their requirements.
+Docq has been designed from ground up to be able to cater for the scenarios with the strictest data privacy and security requirements. This will require one of the isolated deployment options. If you are working with less sensitive data you can leverage one of the other deployment options to lower setup and operational costs.
 
 ![Docq network overview](../assets/Docq_network_overview.png)
 
-The diagram above demonstrates the possibilities of have different deployment setup for:
+The diagram above visualises some of the different deployment configurations.
 
 - **Data ingestion**: across-boundary _SaaS data connectors_ versus within-boundary _data storage locations_
 - **LLMs utilisation**: across-boundary models via _3rd-party APIs_ versus within-boundary _vendor-hosted & self-hosted_ models
@@ -36,8 +30,12 @@ If your business have clear data security and privacy guidelines, we recommend o
 
 Do consult your chosen cloud vendor for compliance.
 
+We have infrastructure automation for Azure. We'll develop support for the others based on demand.
+
 ### Flexible Cloud Deployment
 
 As an OSS product, Docq comes with source code that anybody could download and run anywhere in the world. Within each release, Docq offers Docker container images to be dropped into any container runtime. The choice is yours and it usually depends on your existing IT infrastructure.
 
-The key configuration difference between _Secure_ and _Flexible_ deployments is **whether to allow 3rd-party LLMs access from Docq**, via these vendors' APIs. In a flexible deployment, it is up to you to decide the behaviour which may have implications on the compliance of your organisation's data security and privacy requirements.
+The one requirement is to be able to mount a persistent drive into the container.
+
+The key configuration difference between _Isolated_ and _Flexible_ deployments is **whether to allow Docq to use serverless LLMs hosted by cloud vendors or LLM providers them self**. In a flexible deployment, it is up to you to decide the behaviour which may have implications on the compliance of your organisation's data security and privacy requirements.
