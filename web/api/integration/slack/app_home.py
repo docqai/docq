@@ -5,6 +5,12 @@ from typing import Any
 from web.api.integration.slack.slack_application import slack_app
 
 
+@slack_app.event("app_installed")
+def app_installed(event: Any, logger: Any) -> None:
+    """App installed event."""
+    logger.info(event)
+
+
 @slack_app.event("app_home_opened")
 def handle_app_home_opened_events(client: Any, event: Any, logger: Any) -> None:
     """Handle app home opened events."""
