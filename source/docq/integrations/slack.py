@@ -32,7 +32,7 @@ def _init() -> None:
         connection.commit()
 
 
-def create_docq_installation(app_id: str, team_name: str, org_id: int) -> None:
+def create_docq_slack_installation(app_id: str, team_name: str, org_id: int) -> None:
     """Create a Docq installation."""
     with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
         connection.execute(
