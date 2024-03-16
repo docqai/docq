@@ -5,25 +5,27 @@ import os
 from typing import Any, Dict
 
 import docq
-from llama_index import (
-    Response,
-    ServiceContext,
-    StorageContext,
-    SummaryIndex,
-    load_index_from_storage,
-)
-from llama_index.callbacks.base import CallbackManager
-from llama_index.chat_engine import SimpleChatEngine
-from llama_index.chat_engine.types import AGENT_CHAT_RESPONSE_TYPE, AgentChatResponse
-from llama_index.embeddings import AzureOpenAIEmbedding, OpenAIEmbedding, OptimumEmbedding
-from llama_index.embeddings.base import BaseEmbedding
-from llama_index.indices.base import BaseIndex
-from llama_index.indices.composability import ComposableGraph
-from llama_index.llms.base import LLM, ChatMessage, MessageRole
+from llama_index.core.base.llms.types import ChatMessage, MessageRole
+from llama_index.core.base.response.schema import RESPONSE_TYPE, Response
+from llama_index.core.callbacks.base import CallbackManager
+from llama_index.core.chat_engine import SimpleChatEngine
+from llama_index.core.chat_engine.types import AGENT_CHAT_RESPONSE_TYPE, AgentChatResponse
+from llama_index.core.embeddings import BaseEmbedding
+from llama_index.core.indices import SummaryIndex
+from llama_index.core.indices.base import BaseIndex
+from llama_index.core.indices.composability import ComposableGraph
+from llama_index.core.indices.loading import load_index_from_storage
+from llama_index.core.llms import LLM
+from llama_index.core.node_parser import NodeParser, SentenceSplitter
+from llama_index.core.prompts.base import ChatPromptTemplate
+from llama_index.core.service_context import ServiceContext
+
+# load_index_from_storage
+from llama_index.core.storage import StorageContext
+from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
+from llama_index.embeddings.huggingface_optimum import OptimumEmbedding
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.litellm import LiteLLM
-from llama_index.node_parser import NodeParser, SentenceSplitter
-from llama_index.prompts.base import ChatPromptTemplate
-from llama_index.response.schema import RESPONSE_TYPE
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 

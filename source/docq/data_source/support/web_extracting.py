@@ -9,8 +9,8 @@ from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from llama_index import Document
-from llama_index.readers.base import BaseReader
+from llama_index.core.readers.base import BaseReader
+from llama_index.core.schema import Document
 from opentelemetry import trace
 
 from ...domain import DocumentListItem, SourcePageType

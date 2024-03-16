@@ -8,7 +8,7 @@ from dataclasses import asdict
 from enum import Enum
 from typing import List, Self
 
-from llama_index import Document
+from llama_index.core.schema import Document
 from opentelemetry import trace
 
 from ..domain import ConfigKey, DocumentListItem, SpaceKey

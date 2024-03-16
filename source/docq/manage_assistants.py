@@ -4,9 +4,8 @@ from contextlib import closing
 from datetime import datetime
 from typing import Optional
 
-from llama_index import ChatPromptTemplate
-from llama_index.llms.base import ChatMessage, MessageRole
-from networkx import prominent_group
+from llama_index.core.base.llms.types import ChatMessage, MessageRole
+from llama_index.core.prompts import ChatPromptTemplate
 
 from .domain import Assistant, AssistantType
 from .support.store import (
@@ -167,7 +166,7 @@ def get_personas_fixed(llm_settings_collection_key: str, assistant_type: Optiona
 def get_assistant_or_default(assistant_scoped_id: Optional[int] = None, org_id: Optional[int] = None) -> Assistant:
     """Get the persona."""
     if assistant_scoped_id:
-        assistant_data = get_assistant(assistant_scoped_id=assistant_scoped_id, org_id=org_id)
+        assistant_data = get_assistant(assistant_scoped_id=str(assistant_scoped_id), org_id=org_id)
         return Assistant(
             key=str(assistant_data[0]),
             name=assistant_data[1],

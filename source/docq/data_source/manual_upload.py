@@ -4,7 +4,8 @@ import os
 from datetime import datetime
 from typing import List
 
-from llama_index import Document, SimpleDirectoryReader
+from llama_index.core.readers import SimpleDirectoryReader
+from llama_index.core.schema import Document
 
 from ..domain import ConfigKey, DocumentListItem, SpaceKey
 from ..support.store import get_upload_dir

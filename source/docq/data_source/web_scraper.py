@@ -4,7 +4,7 @@ import logging as log
 from datetime import datetime
 from typing import List, Optional, Self
 
-from llama_index import Document
+from llama_index.core.schema import Document
 
 from ..domain import ConfigKey, SourcePageType, SpaceKey
 from ..support.store import get_index_dir
