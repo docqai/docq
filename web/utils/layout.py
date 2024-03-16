@@ -1358,15 +1358,27 @@ def _handle_custom_input_field(configkey: ConfigKey, key: str, configs: Optional
         if configs:
             source_page_type_str = configs.get("source_page_type")
 
-        options_data: dict[str, str] = configkey.options.get("select_box_options", [])
-        st.selectbox(
-            label=f"{configkey.name}{'' if configkey.is_optional else ' *'}",
-            options=options_data.items(),
-            format_func=lambda x: x[1],
-            index=list(options_data.keys()).index(source_page_type_str[0]) if source_page_type_str else 0,
-            key=key,
-            help="Index Page: A url to a page web page with a list of links to scrape. Page List: a command separated list of URLs to scrape",
-        )
+            options_data: dict[str, str] = configkey.options.get("select_box_options", [])
+            selected_option_index = 0
+            try:
+                selected_option_index = (
+                    list(options_data.keys()).index(source_page_type_str[0]) if source_page_type_str else 0
+                )
+            except ValueError:
+                log.error("source_page_type_str '%s' not a key in the 'select_box_options' list.", source_page_type_str)
+
+            st.selectbox(
+                label=f"{configkey.name}{'' if configkey.is_optional else ' *'}",
+                options=options_data.items(),
+                format_func=lambda x: x[1],
+                index=selected_option_index,
+                key=key,
+                help="Index Page: A url to a page web page with a list of links to scrape. Page List: a command separated list of URLs to scrape",
+            )
+        else:
+            log.error(
+                "input field type 'selectbox' requires options with 'select_box_options' object", str(configkey.options)
+            )
     else:
         log.error("Unknown custom input field type: %s", str(configkey.options))
 
@@ -1377,6 +1389,7 @@ def _render_space_data_source_config_input_fields(
     config_key_list: List[ConfigKey] = data_source[2]
 
     for configkey in config_key_list:
+        print("configkey", configkey)
         _input_key = prefix + "ds_config_" + configkey.key
         if configkey.options and configkey.options.get("type", None):
             _handle_custom_input_field(configkey, _input_key, configs)
