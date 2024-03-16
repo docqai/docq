@@ -83,7 +83,7 @@ theme:
     - navigation.sections
 
   icon:
-    repo: fontawesome/brands/github-alt
+    repo: fontawesome/brands/github
     admonition:
       note: fontawesome/solid/note-sticky
       abstract: fontawesome/solid/book
