@@ -33,17 +33,17 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Self, Type, Union, cast
 
 import opendal
-from llama_index.readers.base import BaseReader
-from llama_index.readers.file.docs_reader import DocxReader, PDFReader
-from llama_index.readers.file.epub_reader import EpubReader
-from llama_index.readers.file.image_reader import ImageReader
-from llama_index.readers.file.ipynb_reader import IPYNBReader
-from llama_index.readers.file.markdown_reader import MarkdownReader
-from llama_index.readers.file.mbox_reader import MboxReader
-from llama_index.readers.file.slides_reader import PptxReader
-from llama_index.readers.file.tabular_reader import PandasCSVReader
-from llama_index.readers.file.video_audio_reader import VideoAudioReader
-from llama_index.schema import Document
+from llama_index.core.readers.base import BaseReader
+from llama_index.core.schema import Document
+from llama_index.readers.file.docs import DocxReader, PDFReader
+from llama_index.readers.file.epub import EpubReader
+from llama_index.readers.file.image import ImageReader
+from llama_index.readers.file.ipynb import IPYNBReader
+from llama_index.readers.file.markdown import MarkdownReader
+from llama_index.readers.file.mbox import MboxReader
+from llama_index.readers.file.slides import PptxReader
+from llama_index.readers.file.tabular import PandasCSVReader
+from llama_index.readers.file.video_audio import VideoAudioReader
 
 from .... import services
 from ....domain import DocumentListItem
@@ -132,9 +132,7 @@ class OpendalReader(BaseReader):
 
         with tempfile.TemporaryDirectory() as temp_dir:
             if not self.path.endswith("/"):
-                result = asyncio.run(
-                    download_file_from_opendal(self.async_op, temp_dir, self.path, file_metadata=self.file_metadata)
-                )
+                result = asyncio.run(download_file_from_opendal(self.async_op, temp_dir, self.path))
                 self.downloaded_files.append(result)
             else:
                 self.downloaded_files = asyncio.run(download_dir_from_opendal(self.async_op, temp_dir, self.path))
@@ -351,8 +349,12 @@ async def download_from_gdrive(files: List[dict], temp_dir: str, service: Any,) 
     return downloaded_files
 
 
-async def download_file_from_opendal(op: Any, temp_dir: str, path: str) -> tuple[str, int, int]:
-    """Download file from OpenDAL."""
+async def download_file_from_opendal(op: Any, temp_dir: str, path: str) -> tuple[str, str, int, int]:
+    """Download file from OpenDAL.
+
+    Returns:
+        a tuple (source path, local path, indexed_on, size)
+    """
     import opendal
 
     log.debug("downloading file using OpenDAL: %s", path)
@@ -368,7 +370,7 @@ async def download_file_from_opendal(op: Any, temp_dir: str, path: str) -> tuple
             w.write(b)
             file_size = len(b)
 
-    return (filepath, int(indexed_on), file_size)
+    return (filepath, filepath, int(indexed_on), file_size)
 
 
 async def download_dir_from_opendal(
@@ -392,11 +394,11 @@ async def download_dir_from_opendal(
     import opendal
 
     log.debug("downloading dir using OpenDAL: %s", download_dir)
-    downloaded_files: List[tuple[str, str, int, int]] = []
+    downloaded_files: List[tuple[str, str, int, int]] = []  # (source path, local path, indexed_on, size)
     op = cast(opendal.AsyncOperator, op)
     objs = await op.scan(download_dir)
     async for obj in objs:
-        filepath, indexed_on, size = await download_file_from_opendal(op, temp_dir, obj.path)
+        filepath, _, indexed_on, size = await download_file_from_opendal(op, temp_dir, obj.path)
         downloaded_files.append((obj.path, filepath, indexed_on, size))  # source path, local path
 
     return downloaded_files
