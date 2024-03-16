@@ -3,9 +3,9 @@ import inspect
 import logging
 from typing import Any, Dict, List, Optional, Self, Tuple
 
-import llama_index
-from llama_index.callbacks.base_handler import BaseCallbackHandler
-from llama_index.callbacks.schema import CBEventType, EventPayload
+import llama_index.core
+from llama_index.core.callbacks.base_handler import BaseCallbackHandler
+from llama_index.core.callbacks.schema import CBEventType, EventPayload
 from opentelemetry import trace
 from opentelemetry.trace import NonRecordingSpan
 
@@ -27,7 +27,10 @@ class OtelCallbackHandler(BaseCallbackHandler):
         self.event_starts_to_ignore = tuple(start_ignore)
         self.event_ends_to_ignore = tuple(end_ignore)
         #module_name, function_name = get_caller_function_and_module()
-        self._tracer = tracer_provider.get_tracer(instrumenting_module_name="docq.llama_index_otel_callbackhandler", instrumenting_library_version=llama_index.__version__)
+        self._tracer = tracer_provider.get_tracer(
+            instrumenting_module_name="docq.llama_index_otel_callbackhandler",
+            instrumenting_library_version=llama_index.core.__version__,
+        )
 
         super().__init__(
             event_starts_to_ignore=start_ignore,

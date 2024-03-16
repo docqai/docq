@@ -8,8 +8,9 @@ from contextlib import closing
 from datetime import datetime
 from typing import Any, List, Optional
 
-from llama_index import Document, DocumentSummaryIndex, VectorStoreIndex
-from llama_index.indices.base import BaseIndex
+from llama_index.core.indices import DocumentSummaryIndex, VectorStoreIndex
+from llama_index.core.indices.base import BaseIndex
+from llama_index.core.schema import Document
 from opentelemetry import trace
 
 import docq

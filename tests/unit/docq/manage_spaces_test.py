@@ -12,8 +12,8 @@ from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.config import SpaceType
 from docq.domain import SpaceKey
 from docq.model_selection.main import ModelCapability, get_model_settings_collection
-from llama_index import DocumentSummaryIndex
-from llama_index.schema import Document
+from llama_index.core.indices import DocumentSummaryIndex
+from llama_index.core.schema import Document
 
 TEST_ORG_ID = 1000
 

@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List
 from urllib.parse import urlparse
 
-from llama_index import Document
+from llama_index.core.schema import Document
 
 from ..domain import ConfigKey, SpaceKey
 from ..support.store import get_index_dir

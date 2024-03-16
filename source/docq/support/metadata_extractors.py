@@ -35,7 +35,7 @@
 
 # import llama_index.async_utils as async_utils
 # from llama_index.extractors import BaseExtractor
-# from llama_index.schema import BaseNode, TextNode
+# from llama_index.core.schema import BaseNode, TextNode
 # from pydantic import Field, PrivateAttr
 
 # from .store import get_models_dir

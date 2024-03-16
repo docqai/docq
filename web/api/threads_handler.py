@@ -6,8 +6,8 @@ import docq.run_queries as rq
 from docq.domain import SpaceKey
 from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
 from docq.support.llm import _get_service_context, _get_storage_context
-from llama_index import DocumentSummaryIndex, load_index_from_storage
-from llama_index.indices.base import BaseIndex
+from llama_index.core.indices import DocumentSummaryIndex, load_index_from_storage
+from llama_index.core.indices.base import BaseIndex
 from pydantic import ValidationError
 from tornado.web import HTTPError
 

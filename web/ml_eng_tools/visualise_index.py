@@ -1,5 +1,6 @@
+"""ML Eng - Visualise index."""
 import json
-from typing import cast
+from typing import Optional, cast
 
 import streamlit as st
 from docq.config import SpaceType
@@ -7,11 +8,9 @@ from docq.domain import SpaceKey
 from docq.manage_spaces import list_space
 from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
 from docq.support.llm import _get_service_context, _get_storage_context
-
-#from docq.support.metadata_extractors import DEFAULT_ENTITY_MAP
-from llama_index import DocumentSummaryIndex, VectorStoreIndex, load_index_from_storage
-from llama_index.indices.base import BaseIndex
-from llama_index.schema import TextNode
+from llama_index.core.indices import DocumentSummaryIndex, VectorStoreIndex, load_index_from_storage
+from llama_index.core.indices.base import BaseIndex
+from llama_index.core.schema import TextNode
 from utils.layout import auth_required, render_page_title_and_favicon
 from utils.sessions import get_selected_org_id
 
@@ -21,7 +20,7 @@ auth_required(requiring_selected_org_admin=True)
 
 
 def _load_index(
-    space: SpaceKey, model_settings_collection: LlmUsageSettingsCollection, exp_id: str = None
+    space: SpaceKey, model_settings_collection: LlmUsageSettingsCollection, exp_id: Optional[str] = None
 ) -> BaseIndex:
     """Load index from storage."""
     storage_context = _get_storage_context(space)
@@ -96,10 +95,11 @@ def visualise_vector_store_index(_index: VectorStoreIndex) -> None:
             keyword_count = len(doc_json["metadata"]["excerpt_keywords"].split(", "))
             st.write(f"Metadata Keyword Count: {keyword_count}")
 
-        for key, entity_label in DEFAULT_ENTITY_MAP.items():
-            if entity_label in metadata_keys:
-                x_count = len(doc_json["metadata"][entity_label])
-                st.write(f"Metadata Entity '{entity_label}' count: {x_count}")
+        # for key, entity_label in DEFAULT_ENTITY_MAP.items():
+        #     if entity_label in metadata_keys:
+        #         x_count = len(doc_json["metadata"][entity_label])
+        #         st.write(f"Metadata Entity '{entity_label}' count: {x_count}")
+
 
 if selected_space and selected_org_id:
     print("selected_space type: ", selected_space[7])

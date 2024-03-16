@@ -4,7 +4,7 @@ import logging as log
 from datetime import datetime
 from typing import Any, List, Self
 
-from llama_index import Document
+from llama_index.core.schema import Document
 
 from .. import services
 from ..domain import ConfigKey, SpaceKey

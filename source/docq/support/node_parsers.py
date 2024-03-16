@@ -8,7 +8,7 @@
 # from llama_index.callbacks.schema import CBEventType, EventPayload
 # from llama_index.node_parser import SimpleNodeParser
 # from llama_index.node_parser.node_utils import get_nodes_from_node
-# from llama_index.schema import BaseNode, Document, TextNode
+# from llama_index.core.schema import BaseNode, Document, TextNode
 # from llama_index.utils import get_tqdm_iterable
 # from opentelemetry import trace
 

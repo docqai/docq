@@ -7,7 +7,7 @@ from datetime import datetime
 from mimetypes import guess_type
 from typing import Optional
 
-from llama_index.schema import NodeWithScore
+from llama_index.core.schema import NodeWithScore
 from streamlit import runtime
 
 from .data_source.main import DocumentMetadata
