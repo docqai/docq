@@ -1,11 +1,10 @@
 """Tests for docq.support.llm."""
-from typing import Dict
 from unittest.mock import Mock, patch
 
 from docq.manage_assistants import Assistant
 from docq.model_selection.main import LlmUsageSettings, LlmUsageSettingsCollection, ModelCapability
-from llama_index import ServiceContext
-from llama_index.chat_engine import SimpleChatEngine
+from llama_index.core import ServiceContext
+from llama_index.core.chat_engine import SimpleChatEngine
 
 
 #@patch("docq.support.metadata_extractors.DEFAULT_MODEL_PATH")
