@@ -398,8 +398,8 @@ async def download_dir_from_opendal(
     op = cast(opendal.AsyncOperator, op)
     objs = await op.scan(download_dir)
     async for obj in objs:
-        filepath, _, indexed_on, size = await download_file_from_opendal(op, temp_dir, obj.path)
-        downloaded_files.append((obj.path, filepath, indexed_on, size))  # source path, local path
+        src_path, local_path, indexed_on, size = await download_file_from_opendal(op, temp_dir, obj.path)
+        downloaded_files.append((src_path, local_path, indexed_on, size))  # source path, local path
 
     return downloaded_files
 

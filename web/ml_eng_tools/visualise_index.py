@@ -1,5 +1,6 @@
 """ML Eng - Visualise index."""
 import json
+import token
 from typing import Optional, cast
 
 import streamlit as st
@@ -8,15 +9,44 @@ from docq.domain import SpaceKey
 from docq.manage_spaces import list_space
 from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
 from docq.support.llm import _get_service_context, _get_storage_context
+from docq.support.store import get_models_dir
+from llama_index.core import Settings
 from llama_index.core.indices import DocumentSummaryIndex, VectorStoreIndex, load_index_from_storage
 from llama_index.core.indices.base import BaseIndex
 from llama_index.core.schema import TextNode
+from llama_index.embeddings.huggingface_optimum import OptimumEmbedding
+from transformers import AutoTokenizer
 from utils.layout import auth_required, render_page_title_and_favicon
 from utils.sessions import get_selected_org_id
 
 render_page_title_and_favicon()
 auth_required(requiring_selected_org_admin=True)
 
+
+test1 = st.button("Embedding Test")
+
+if test1:
+    OptimumEmbedding.create_and_save_optimum_model("BAAI/bge-small-en-v1.5", "./.persisted/models/bge_onnx")
+    # embed_model = OptimumEmbedding(folder_name=get_models_dir("BAAI/bge-small-en-v1.5"))
+    embed_model = OptimumEmbedding(folder_name="./.persisted/models/bge_onnx")
+    # _tokenizer = AutoTokenizer.from_pretrained("./.persisted/models/bge_onnx")
+    # sentences = ["Hello World!"]
+    # encoded_input = _tokenizer(
+    #     sentences,
+    #     padding=True,
+    #     max_length=512,
+    #     truncation=True,
+    #     return_tensors="pt",
+    # )
+    # print(encoded_input)
+    # encoded_input.pop("token_type_ids", None)
+    # print(encoded_input)
+    # embed_model = OptimumEmbedding(folder_name="./.persisted/models/bge_onnx", tokenizer=_tokenizer)
+
+    # Settings.embed_model = embed_model
+    embeddings = embed_model.get_text_embedding("Hello World!")
+    print("embedding len: ", len(embeddings))
+    print("embedding", embeddings[:5])
 
 
 def _load_index(
