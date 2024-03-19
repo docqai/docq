@@ -1119,7 +1119,6 @@ def handle_add_slack_integration() -> None:
 def handle_list_slack_channels(team_id: str) -> Any:
     """Handle list slack channels."""
     channel_lists = list_team_channels(team_id)
-    print(f"\x1b[31mDebug channel list: {channel_lists}\x1b[0m")
     return channel_lists
 
 
@@ -1127,7 +1126,7 @@ def handle_list_slack_installations() -> list[dict[str, Union[str, int]]]:
     """Handle list slack installations."""
     selected_org_id = get_selected_org_id()
     if selected_org_id is not None:
-        return slack.list_slack_installations(selected_org_id)
+        return slack.list_docq_slack_installations(selected_org_id)
     return []
 
 

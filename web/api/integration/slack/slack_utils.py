@@ -65,4 +65,4 @@ def list_team_channels( team_id: str ) -> list[dict[str, Union[str, dict[str, st
     """List team channels."""
     client = get_slack_client()
     response = client.conversations_list(types="public_channel,private_channel", team_id=team_id)
-    return [ channel for channel in response["channels"] if  channel["is_member"] ]
+    return [ channel for channel in response["channels"] ]
