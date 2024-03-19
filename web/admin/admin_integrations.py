@@ -1,1 +1,0 @@
-"""Docq admin integrations."""

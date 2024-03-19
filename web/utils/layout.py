@@ -56,6 +56,7 @@ from .handlers import (
     get_shared_space_permissions,
     get_space_data_source,
     get_space_data_source_choice_by_type,
+    handle_add_slack_integration,
     handle_archive_org,
     handle_chat_input,
     handle_check_account_activated,
@@ -75,12 +76,15 @@ from .handlers import (
     handle_fire_extensions_callbacks,
     handle_get_chat_history_threads,
     handle_get_gravatar_url,
+    handle_get_slack_team_name,
     handle_get_system_settings,
     handle_get_thread_space,
     handle_get_user_email,
     handle_index_thread_space,
     handle_list_documents,
     handle_list_orgs,
+    handle_list_slack_channels,
+    handle_list_slack_installations,
     handle_login,
     handle_logout,
     handle_manage_space_permissions,
@@ -1809,3 +1813,39 @@ def verify_email_ui() -> None:
         st.error("Email verification failed!")
         st.info("Please try again or contact your administrator.")
 
+
+def render_integrations() -> None:
+    """Render integrations."""
+    channels = handle_list_slack_installations()
+    st.selectbox(
+        "Select a slack team",
+        options=channels,
+        format_func=lambda x: handle_get_slack_team_name(x[1]) or x[1],
+        key="selected_slack_team"
+    )
+
+
+def render_slack_channels() -> None:
+    """Render slack channels."""
+    team_id = st.session_state.get("selected_slack_team", None)
+    if team_id:
+        channels = handle_list_slack_channels(team_id[1])
+        space_groups = list_space_groups()
+
+        for channel in channels:
+            with st.expander(f"### {channel['name']}"):
+                st.write(channel['purpose']['value'])
+                st.selectbox(
+                    "Select a space group",
+                    options=space_groups,
+                    format_func=lambda x: x[2],
+                    key=f"selected_space_group_{channel['id']}",
+                    index=None
+                )
+                _, save_btn, _ = st.columns([1, 1, 1])
+                save_btn.button("Save Space Group Selection", key=f"save_selected_space_group_:{channel['id']}")
+
+        if not channels:
+            st.info("No slack channels found")
+    else:
+        st.info("No slack teams found")

@@ -1,29 +1,26 @@
 """Slack event."""
 import os
+from typing import Callable
 
-from docq.integrations.slack import slack_installation_store
+from docq.integrations.slack import is_slack_admin_user
+from docq.support.store import get_sqlite_shared_system_file
 from slack_bolt import App, BoltResponse
 from slack_bolt.adapter.tornado import SlackEventsHandler, SlackOAuthHandler
+from slack_bolt.oauth import OAuthFlow
 from slack_bolt.oauth.callback_options import CallbackOptions, FailureArgs, SuccessArgs
-from slack_bolt.oauth.oauth_settings import OAuthSettings
-from slack_sdk.oauth.state_store import FileOAuthStateStore
 
 from web.api.base_handlers import BaseRequestHandler
 from web.utils.streamlit_application import st_app
 
 CLIENT_ID = os.environ.get("SLACK_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("SLACK_CLIENT_SECRET")
-SCOPES = ["app_mentions:read", "im:history", "chat:write"]
+SCOPES = ["app_mentions:read", "im:history", "chat:write", "channels:read", "groups:read", "im:read", "mpim:read"]
 USER_SCOPES = ["admin"]
-FILE_STATE_STORE = FileOAuthStateStore(
-    expiration_seconds=300,
-    base_dir="./streamlit/slack/.bolt-app-oauth-state",
-    client_id=CLIENT_ID
-)
 
 def success_callback(success_args: SuccessArgs) -> BoltResponse:
     """Success callback."""
     return success_args.default.success(success_args)
+
 
 def failure_callback(failure_args: FailureArgs) -> BoltResponse:
     """Failure callback."""
@@ -31,30 +28,35 @@ def failure_callback(failure_args: FailureArgs) -> BoltResponse:
 
 
 slack_app = App(
-    signing_secret=os.environ.get("SLACK_SIGNING_SECRET"),
-    installation_store=slack_installation_store,
-    oauth_settings=OAuthSettings(
+    oauth_flow=OAuthFlow.sqlite3(
+        database=get_sqlite_shared_system_file(),
+        install_path="/api/integration/slack/v1/install",
+        redirect_uri_path="/api/integration/slack/v1/oauth_redirect",
         client_id=CLIENT_ID,
         client_secret=CLIENT_SECRET,
         scopes=SCOPES,
         user_scopes=USER_SCOPES,
-        install_path="/api/integration/slack/v1/install",
-        redirect_uri_path="/api/integration/slack/v1/oauth_redirect",
-        installation_store=slack_installation_store,
-        state_store=FILE_STATE_STORE,
         callback_options=CallbackOptions(success=success_callback, failure=failure_callback),
-    ),
+    )
 )
+
+@slack_app.message("setup docq")
+def setup_string(ack: Callable, body: dict, say: Callable) -> None:
+    """Setup DocQ slack integration."""
+    ack()
+    if is_slack_admin_user(body["event"]["user"]):
+        say(f"Use `slack-{body['team_id']}-{body['api_app_id']}` to setup Docq.AI slack integration.")
+        return
+    say(f"Sorry <@{body['event']['user']}> you do not have sufficient permissions to do this.")
+
 
 @st_app.api_route("/api/integration/slack/v1/events", dict(app=slack_app))
 class SlackEventHandler(SlackEventsHandler, BaseRequestHandler):
     """Handle /slack/events requests."""
 
-
 @st_app.api_route("/api/integration/slack/v1/install", dict(app=slack_app))
 class SlackInstallHandler(SlackOAuthHandler, BaseRequestHandler):
     """Handle /slack/install requests."""
-
 
 @st_app.api_route("/api/integration/slack/v1/oauth_redirect", dict(app=slack_app))
 class SlackOAuthRedirectHandler(SlackOAuthHandler, BaseRequestHandler):

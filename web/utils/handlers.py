@@ -8,7 +8,7 @@ import random
 import re
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 from urllib.parse import unquote_plus
 
 import streamlit as st
@@ -30,6 +30,7 @@ from docq.agents.main import run_agent
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions
+from docq.integrations import slack
 from docq.manage_assistants import get_assistant_or_default
 from docq.model_selection.main import (
     LlmUsageSettingsCollection,
@@ -41,6 +42,8 @@ from docq.support.auth_utils import reset_cache_and_cookie_auth_session
 from opentelemetry import baggage, trace
 from pydantic import RootModel
 from streamlit.components.v1 import html
+
+from web.api.integration.slack.slack_utils import list_team_channels
 
 from .constants import (
     NUMBER_OF_MSGS_TO_LOAD,
@@ -1082,3 +1085,52 @@ def handle_click_chat_history_thread(feature: domain.FeatureKey, thread_id: int)
     set_chat_session(datetime.now(), feature.type_, SessionKeyNameForChat.CUTOFF)
     set_chat_session([], feature.type_, SessionKeyNameForChat.HISTORY)
     query_chat_history(feature)
+
+
+def handle_add_slack_integration() -> None:
+    """Handle add integration."""
+    integration_config: str = st.session_state["add_integration_config_slack"]
+    fmt, team_id, app_id = integration_config.split("-")
+
+    if fmt != "slack" or not team_id or not app_id:
+        st.error("Invalid integration config. send 'docq config' within your slack workspace to get the config string.")
+        st.info("Config string format: 'slack-<team_id>-<app_id>'")
+        return
+
+    if not slack.app_exists(app_id):
+        st.error(f"Application _{app_id}_ does not exist.")
+        return
+
+    if not slack.team_exists(team_id):
+        st.error(f"Team _{team_id}_ does not exist.")
+        return
+
+    selected_org_id = get_selected_org_id()
+    if selected_org_id is not None:
+        if slack.integration_exists(app_id, team_id, selected_org_id):
+            st.error("Integration already exists.")
+            return
+        slack.add_slack_integration(app_id=app_id, team_id=team_id, selected_org_id=selected_org_id)
+        st.info("Integration added successfully.")
+    else:
+        st.error("No organization selected.")
+
+
+def handle_list_slack_channels(team_id: str) -> Any:
+    """Handle list slack channels."""
+    channel_lists = list_team_channels(team_id)
+    print(f"\x1b[31mDebug channel list: {channel_lists}\x1b[0m")
+    return channel_lists
+
+
+def handle_list_slack_installations() -> list[dict[str, Union[str, int]]]:
+    """Handle list slack installations."""
+    selected_org_id = get_selected_org_id()
+    if selected_org_id is not None:
+        return slack.list_slack_installations(selected_org_id)
+    return []
+
+
+def handle_get_slack_team_name(team_id: str) -> str:
+    """Handle get slack app name."""
+    return slack.get_team_name(team_id)
