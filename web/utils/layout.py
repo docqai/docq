@@ -1817,23 +1817,21 @@ def verify_email_ui() -> None:
 def render_integrations() -> None:
     """Render integrations."""
     teams = handle_list_slack_installations()
-    st.selectbox(
+    team: Optional[SlackInstallation] = st.selectbox(
         "Select a slack team",
         options=teams,
         format_func=lambda x: x.team_name,
         key="selected_slack_team"
     )
 
+    st.divider()
+    st.write("### Channels")
 
-def render_slack_channels() -> None:
-    """Render slack channels."""
-    team: Optional[SlackInstallation] = st.session_state.get("selected_slack_team", None)
     if team is not None:
-        print(f"\x1b[31mDebug slack team: {team.team_name} - {team.team_id}\x1b[0m")
-    if team:
         channels = handle_list_slack_channels(team.team_id)
         space_groups = list_space_groups()
 
+        print(f"\x1b[31mDebug team: {team.team_id}\nchannels: {channels}\x1b[0m")
         for channel in channels:
             with st.expander(f"### {channel['name']}"):
                 st.write(channel['purpose']['value'])
@@ -1855,5 +1853,7 @@ def render_slack_channels() -> None:
 
 def render_slack_installation_button() -> None:
     """Render slack installation button."""
-    if st.button("Install Slack"):
-        handle_install_docq_slack_application()
+    _, center, _ = st.columns([1, 1, 1])
+    with center:
+        if st.button("Install Docq Slack Application", type="primary"):
+            handle_install_docq_slack_application()

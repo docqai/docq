@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from web.utils.layout import auth_required, render_integrations, render_slack_channels, render_slack_installation_button
+from web.utils.layout import auth_required, render_integrations, render_slack_installation_button
 
 integrations = [
     {
@@ -34,9 +34,6 @@ if integration == "Slack":
 
     render_integrations()
 
-    st.divider()
-    st.write("### Channels")
-    render_slack_channels()
 
 else:
     st.info("Coming soon! :construction:")

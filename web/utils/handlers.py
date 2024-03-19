@@ -32,7 +32,7 @@ from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions
 from docq.integrations import slack
-from docq.integrations.models import SlackChannel, SlackInstallation
+from docq.integrations.models import SlackInstallation
 from docq.manage_assistants import get_assistant_or_default
 from docq.model_selection.main import (
     LlmUsageSettingsCollection,
@@ -45,8 +45,6 @@ from docq.support.auth_utils import reset_cache_and_cookie_auth_session
 from opentelemetry import baggage, trace
 from pydantic import RootModel
 from streamlit.components.v1 import html
-
-from web.api.integration.slack.slack_utils import list_team_channels
 
 from .constants import (
     NUMBER_OF_MSGS_TO_LOAD,
@@ -1090,9 +1088,12 @@ def handle_click_chat_history_thread(feature: domain.FeatureKey, thread_id: int)
     query_chat_history(feature)
 
 
+@st.cache_data
 def handle_list_slack_channels(team_id: str) -> Any:
     """Handle list slack channels."""
-    channel_lists = list_team_channels(team_id)
+    from web.api.integration.slack.slack_utils import list_slack_team_channels
+
+    channel_lists = list_slack_team_channels(team_id)
     return channel_lists
 
 
