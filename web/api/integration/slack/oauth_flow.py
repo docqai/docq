@@ -88,7 +88,8 @@ class SlackOAuthFlow(OAuthFlow):
 
         for cookie in cookies:
             if cookie.startswith(name):
-                return cookie.split("=")[1]
+                cookie_ = cookie.split("=")[1]
+                return cookie_.split(";")[0]
         return None
 
     def save_docq_slack_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
@@ -96,6 +97,7 @@ class SlackOAuthFlow(OAuthFlow):
         docq_slack_app_state =  self.get_cookie("docq_slack_app_state", request.headers.get("cookie"))
         if docq_slack_app_state is not None:
             _, selected_org_id = docq_slack_app_state.split(":")
+            print("\x1b[31mDocq slack app state: ", docq_slack_app_state, "\x1b[0m")
             create_docq_slack_installation(installation, int(selected_org_id))
         else:
             raise SlackApiError("Not Authenticated.", request)

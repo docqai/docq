@@ -2,7 +2,6 @@
 
 import streamlit as st
 
-from web.utils.handlers import handle_add_slack_integration
 from web.utils.layout import auth_required, render_integrations, render_slack_channels, render_slack_installation_button
 
 integrations = [

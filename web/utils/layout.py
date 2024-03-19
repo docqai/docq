@@ -21,8 +21,9 @@ from docq.config import (
     SystemFeatureType,
     SystemSettingsKey,
 )
-from docq.domain import AssistantType, ConfigKey, DocumentListItem, FeatureKey, SourcePageType, SpaceKey
+from docq.domain import AssistantType, ConfigKey, DocumentListItem, FeatureKey, SpaceKey
 from docq.extensions import ExtensionContext
+from docq.integrations.models import SlackInstallation
 from docq.manage_assistants import list_assistants
 from docq.model_selection.main import (
     LlmUsageSettingsCollection,
@@ -56,7 +57,6 @@ from .handlers import (
     get_shared_space_permissions,
     get_space_data_source,
     get_space_data_source_choice_by_type,
-    handle_add_slack_integration,
     handle_archive_org,
     handle_chat_input,
     handle_check_account_activated,
@@ -76,7 +76,6 @@ from .handlers import (
     handle_fire_extensions_callbacks,
     handle_get_chat_history_threads,
     handle_get_gravatar_url,
-    handle_get_slack_team_name,
     handle_get_system_settings,
     handle_get_thread_space,
     handle_get_user_email,
@@ -1817,20 +1816,22 @@ def verify_email_ui() -> None:
 
 def render_integrations() -> None:
     """Render integrations."""
-    channels = handle_list_slack_installations()
+    teams = handle_list_slack_installations()
     st.selectbox(
         "Select a slack team",
-        options=channels,
-        format_func=lambda x: handle_get_slack_team_name(x[1]) or x[1],
+        options=teams,
+        format_func=lambda x: x.team_name,
         key="selected_slack_team"
     )
 
 
 def render_slack_channels() -> None:
     """Render slack channels."""
-    team_id = st.session_state.get("selected_slack_team", None)
-    if team_id:
-        channels = handle_list_slack_channels(team_id[1])
+    team: Optional[SlackInstallation] = st.session_state.get("selected_slack_team", None)
+    if team is not None:
+        print(f"\x1b[31mDebug slack team: {team.team_name} - {team.team_id}\x1b[0m")
+    if team:
+        channels = handle_list_slack_channels(team.team_id)
         space_groups = list_space_groups()
 
         for channel in channels:

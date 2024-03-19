@@ -1090,35 +1090,6 @@ def handle_click_chat_history_thread(feature: domain.FeatureKey, thread_id: int)
     query_chat_history(feature)
 
 
-def handle_add_slack_integration() -> None:
-    """Handle add integration."""
-    integration_config: str = st.session_state["add_integration_config_slack"]
-    fmt, team_id, app_id = integration_config.split("-")
-
-    if fmt != "slack" or not team_id or not app_id:
-        st.error("Invalid integration config. send 'docq config' within your slack workspace to get the config string.")
-        st.info("Config string format: 'slack-<team_id>-<app_id>'")
-        return
-
-    if not slack.app_exists(app_id):
-        st.error(f"Application _{app_id}_ does not exist.")
-        return
-
-    if not slack.team_exists(team_id):
-        st.error(f"Team _{team_id}_ does not exist.")
-        return
-
-    selected_org_id = get_selected_org_id()
-    if selected_org_id is not None:
-        if slack.integration_exists(app_id, team_id, selected_org_id):
-            st.error("Integration already exists.")
-            return
-        slack.add_slack_integration(app_id=app_id, team_id=team_id, selected_org_id=selected_org_id)
-        st.info("Integration added successfully.")
-    else:
-        st.error("No organization selected.")
-
-
 def handle_list_slack_channels(team_id: str) -> Any:
     """Handle list slack channels."""
     channel_lists = list_team_channels(team_id)
