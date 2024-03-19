@@ -6,11 +6,12 @@ from docq.integrations.slack import is_slack_admin_user
 from docq.support.store import get_sqlite_shared_system_file
 from slack_bolt import App, BoltResponse
 from slack_bolt.adapter.tornado import SlackEventsHandler, SlackOAuthHandler
-from slack_bolt.oauth import OAuthFlow
 from slack_bolt.oauth.callback_options import CallbackOptions, FailureArgs, SuccessArgs
 
 from web.api.base_handlers import BaseRequestHandler
 from web.utils.streamlit_application import st_app
+
+from .oauth_flow import SlackOAuthFlow
 
 CLIENT_ID = os.environ.get("SLACK_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("SLACK_CLIENT_SECRET")
@@ -28,7 +29,7 @@ def failure_callback(failure_args: FailureArgs) -> BoltResponse:
 
 
 slack_app = App(
-    oauth_flow=OAuthFlow.sqlite3(
+    oauth_flow=SlackOAuthFlow.sqlite3(
         database=get_sqlite_shared_system_file(),
         install_path="/api/integration/slack/v1/install",
         redirect_uri_path="/api/integration/slack/v1/oauth_redirect",

@@ -1142,4 +1142,4 @@ def handle_install_docq_slack_application() -> None:
     selected_org_id = get_selected_org_id()
     base_url = os.getenv("DOCQ_SERVER_ADDRESS")
     path = "/api/integration/slack/v1/install"
-    handle_redirect_to_url(f"{base_url}{path}?org_id={selected_org_id}", "slack-install")
+    handle_redirect_to_url(f"{base_url}{path}", "slack-install")

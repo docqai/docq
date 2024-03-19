@@ -3,7 +3,7 @@
 import streamlit as st
 
 from web.utils.handlers import handle_add_slack_integration
-from web.utils.layout import auth_required, render_integrations, render_slack_channels
+from web.utils.layout import auth_required, render_integrations, render_slack_channels, render_slack_installation_button
 
 integrations = [
     {
@@ -31,10 +31,7 @@ integration = st.selectbox(
 )
 
 if integration == "Slack":
-    with st.expander("New Integration"):
-        st.text_input("Paste your configuration string here", key="add_integration_config_slack")
-        if st.button("Add Integration"):
-            handle_add_slack_integration()
+    render_slack_installation_button()
 
     render_integrations()
 
