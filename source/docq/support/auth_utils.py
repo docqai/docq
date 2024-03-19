@@ -45,15 +45,18 @@ def init_session_cache() -> None:
         raise ValueError("DOCQ_COOKIE_HMAC_SECRET_KEY must be 32 or more characters")
 
 
-def _set_cookie(cookie: str) -> None:
+def _set_cookie(cookie: str, name: Optional[str] = None, expiry: Optional[datetime] = None) -> None:
     """Set client cookie for authentication."""
-    try:
+    if name is None:
+        name = SESSION_COOKIE_NAME
+    if expiry is None:
         expiry = datetime.now() + timedelta(hours=TTL_HOURS)
+    try:
         html(
             f"""
         <script>
             const secure = location.protocol === "https:" ? " secure;" : "";
-            document.cookie = "{SESSION_COOKIE_NAME}={cookie}; expires={expiry.strftime('%a, %d %b %Y %H:%M:%S GMT')}; path=/; SameSite=Secure;" + secure;
+            document.cookie = "{name}={cookie}; expires={expiry.strftime('%a, %d %b %Y %H:%M:%S GMT')}; path=/; SameSite=Secure;" + secure;
         </script>
         """,
             width=0,

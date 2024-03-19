@@ -6,18 +6,16 @@ from logging import Logger
 from typing import Optional, Self, Sequence
 
 from docq.integrations.slack import create_docq_slack_installation
-from docq.support.auth_utils import get_cache_auth_session
 from slack_bolt.oauth.callback_options import CallbackOptions
 from slack_bolt.oauth.oauth_flow import OAuthFlow
 from slack_bolt.oauth.oauth_settings import OAuthSettings
 from slack_bolt.request import BoltRequest
+from slack_sdk.errors import SlackApiError
 from slack_sdk.oauth import OAuthStateUtils
 from slack_sdk.oauth.installation_store import Installation
 from slack_sdk.oauth.installation_store.sqlite3 import SQLite3InstallationStore
 from slack_sdk.oauth.state_store.sqlite3 import SQLite3OAuthStateStore
 from slack_sdk.web import WebClient
-
-from web.utils.constants import SessionKeyNameForAuth
 
 
 class SlackOAuthFlow(OAuthFlow):
@@ -60,8 +58,8 @@ class SlackOAuthFlow(OAuthFlow):
                 scopes=scopes,
                 user_scopes=user_scopes,
                 redirect_uri=redirect_uri,
-                install_path=install_path, # type: ignore
-                redirect_uri_path=redirect_uri_path, # type: ignore
+                install_path=install_path,  # type: ignore
+                redirect_uri_path=redirect_uri_path,  # type: ignore
                 callback_options=callback_options,
                 success_url=success_url,
                 failure_url=failure_url,
@@ -69,40 +67,43 @@ class SlackOAuthFlow(OAuthFlow):
                 installation_store=SQLite3InstallationStore(
                     database=database,
                     client_id=client_id,
-                    logger=logger, # type: ignore
+                    logger=logger,  # type: ignore
                 ),
                 installation_store_bot_only=installation_store_bot_only,
                 token_rotation_expiration_minutes=token_rotation_expiration_minutes,
                 state_store=SQLite3OAuthStateStore(
                     database=database,
                     expiration_seconds=state_expiration_seconds,
-                    logger=logger, # type: ignore
+                    logger=logger,  # type: ignore
                 ),
                 state_cookie_name=state_cookie_name,
                 state_expiration_seconds=state_expiration_seconds,
             ),
         )
 
-    def save_docq_slack_installation(self: Self, installation: Installation) -> None:
+    def get_cookie(self: Self, name: str, cookies: Optional[Sequence[str]]) -> Optional[str]:
+        """Get a cookie."""
+        if not cookies:
+            return None
+
+        for cookie in cookies:
+            if cookie.startswith(name):
+                return cookie.split("=")[1]
+        return None
+
+    def save_docq_slack_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
         """Save a Docq slack installation."""
-        auth_session = get_cache_auth_session()
-        if  auth_session is not None:
-            print(f"\x1b[31mAuth session found: {auth_session}\x1b[0m")
-            selected_org_id = auth_session.get(SessionKeyNameForAuth.SELECTED_ORG_ID.name)
-            if selected_org_id is not None:
-                create_docq_slack_installation(installation, int(selected_org_id))
-            else:
-                self.logger.error("No selected org id in the session.")
-                raise Exception("Not Authenticated.")
+        docq_slack_app_state =  self.get_cookie("docq_slack_app_state", request.headers.get("cookie"))
+        if docq_slack_app_state is not None:
+            _, selected_org_id = docq_slack_app_state.split(":")
+            create_docq_slack_installation(installation, int(selected_org_id))
         else:
-            print(f"\x1b[31mNo auth session found: {auth_session}\x1b[0m")
-            self.logger.error("No auth session found.")
-            raise Exception("Not Authenticated.")
+            raise SlackApiError("Not Authenticated.", request)
 
     def store_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
         """Store an installation."""
         # may raise BoltError
-        self.save_docq_slack_installation(installation)
+        self.save_docq_slack_installation(request, installation)
         self.settings.installation_store.save(installation)
 
     def build_install_page_html(self: Self, url: str, request: BoltRequest) -> str:

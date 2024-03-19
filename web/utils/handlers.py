@@ -8,7 +8,7 @@ import os
 import random
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import unquote_plus
 
@@ -40,6 +40,7 @@ from docq.model_selection.main import (
     get_saved_model_settings_collection,
 )
 from docq.services.smtp_service import mailer_ready, send_verification_email
+from docq.support.auth_utils import _set_cookie as set_cookie
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
 from opentelemetry import baggage, trace
 from pydantic import RootModel
@@ -1140,6 +1141,9 @@ def handle_get_slack_team_name(team_id: str) -> Optional[str]:
 def handle_install_docq_slack_application() -> None:
     """Handle install docq slack application."""
     selected_org_id = get_selected_org_id()
+    slack_app_state = f"state:{selected_org_id}"
+    expiry = datetime.now() + timedelta(minutes=5)
+    set_cookie(name="docq_slack_app_state", cookie=slack_app_state, expiry=expiry)
     base_url = os.getenv("DOCQ_SERVER_ADDRESS")
     path = "/api/integration/slack/v1/install"
     handle_redirect_to_url(f"{base_url}{path}", "slack-install")

@@ -1,8 +1,6 @@
 """Slack event."""
 import os
-from typing import Callable
 
-from docq.integrations.slack import is_slack_admin_user
 from docq.support.store import get_sqlite_shared_system_file
 from slack_bolt import App, BoltResponse
 from slack_bolt.adapter.tornado import SlackEventsHandler, SlackOAuthHandler
@@ -40,15 +38,6 @@ slack_app = App(
         callback_options=CallbackOptions(success=success_callback, failure=failure_callback),
     )
 )
-
-@slack_app.message("setup docq")
-def setup_string(ack: Callable, body: dict, say: Callable) -> None:
-    """Setup DocQ slack integration."""
-    ack()
-    if is_slack_admin_user(body["event"]["user"]):
-        say(f"Use `slack-{body['team_id']}-{body['api_app_id']}` to setup Docq.AI slack integration.")
-        return
-    say(f"Sorry <@{body['event']['user']}> you do not have sufficient permissions to do this.")
 
 
 @st_app.api_route("/api/integration/slack/v1/events", dict(app=slack_app))
