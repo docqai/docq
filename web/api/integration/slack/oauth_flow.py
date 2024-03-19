@@ -102,7 +102,6 @@ class SlackOAuthFlow(OAuthFlow):
 
     def store_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
         """Store an installation."""
-        # may raise BoltError
         self.save_docq_slack_installation(request, installation)
         self.settings.installation_store.save(installation)
 
