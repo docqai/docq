@@ -4,11 +4,12 @@ import base64
 import hashlib
 import logging as log
 import math
+import os
 import random
 import re
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import unquote_plus
 
 import streamlit as st
@@ -31,6 +32,7 @@ from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions
 from docq.integrations import slack
+from docq.integrations.models import SlackChannel, SlackInstallation
 from docq.manage_assistants import get_assistant_or_default
 from docq.model_selection.main import (
     LlmUsageSettingsCollection,
@@ -1122,7 +1124,7 @@ def handle_list_slack_channels(team_id: str) -> Any:
     return channel_lists
 
 
-def handle_list_slack_installations() -> list[dict[str, Union[str, int]]]:
+def handle_list_slack_installations() -> list [SlackInstallation]:
     """Handle list slack installations."""
     selected_org_id = get_selected_org_id()
     if selected_org_id is not None:
@@ -1130,6 +1132,14 @@ def handle_list_slack_installations() -> list[dict[str, Union[str, int]]]:
     return []
 
 
-def handle_get_slack_team_name(team_id: str) -> str:
+def handle_get_slack_team_name(team_id: str) -> Optional[str]:
     """Handle get slack app name."""
     return slack.get_team_name(team_id)
+
+
+def handle_install_docq_slack_application() -> None:
+    """Handle install docq slack application."""
+    selected_org_id = get_selected_org_id()
+    base_url = os.getenv("DOCQ_SERVER_ADDRESS")
+    path = "/api/integration/slack/v1/install"
+    handle_redirect_to_url(f"{base_url}{path}?org_id={selected_org_id}", "slack-install")

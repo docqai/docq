@@ -81,6 +81,7 @@ from .handlers import (
     handle_get_thread_space,
     handle_get_user_email,
     handle_index_thread_space,
+    handle_install_docq_slack_application,
     handle_list_documents,
     handle_list_orgs,
     handle_list_slack_channels,
@@ -1849,3 +1850,9 @@ def render_slack_channels() -> None:
             st.info("No slack channels found")
     else:
         st.info("No slack teams found")
+
+
+def render_slack_installation_button() -> None:
+    """Render slack installation button."""
+    if st.button("Install Slack"):
+        handle_install_docq_slack_application()
