@@ -1088,6 +1088,7 @@ def handle_click_chat_history_thread(feature: domain.FeatureKey, thread_id: int)
     query_chat_history(feature)
 
 
+@st.cache_data(ttl=300)
 def handle_list_slack_channels(app_id: str, team_id: str) -> Any:
     """Handle list slack channels."""
     from web.api.integration.slack.slack_utils import list_slack_team_channels
@@ -1105,11 +1106,6 @@ def handle_list_slack_installations() -> list [SlackInstallation]:
     return []
 
 
-def handle_get_slack_team_name(team_id: str) -> Optional[str]:
-    """Handle get slack app name."""
-    return slack.get_team_name(team_id)
-
-
 def handle_install_docq_slack_application() -> None:
     """Handle install docq slack application."""
     selected_org_id = get_selected_org_id()
@@ -1119,3 +1115,27 @@ def handle_install_docq_slack_application() -> None:
     base_url = os.getenv("DOCQ_SERVER_ADDRESS")
     path = "/api/integration/slack/v1/install"
     handle_redirect_to_url(f"{base_url}{path}", "slack-install")
+
+
+def handle_link_slack_channel_to_space_group(channel_id: str, channel_name: str) -> None:
+    """Handle link slack channel to space group."""
+    selected_org_id = get_selected_org_id()
+    space_group = st.session_state[f"selected_space_group_{channel_id}"]
+    print(f"\x1b[31mLinking slack channel: {channel_id}\n{space_group}\x1b[0m")
+    if selected_org_id is not None:
+        slack.link_space_group_to_slack_channel(
+            org_id=selected_org_id, channel_id=channel_id,
+            channel_name=channel_name,
+            space_group_id=space_group[0]
+        )
+
+
+def handle_get_linked_space_group_index(channel_id: str, space_groups: list[tuple]) -> Optional[int]:
+    """Get linked space group id."""
+    selected_org_id = get_selected_org_id()
+    if selected_org_id is not None:
+        space_group_id = slack.get_slack_channel_linked_space_group_id(selected_org_id, channel_id)
+        for i, space_group in enumerate(space_groups):
+            if space_group[0] == space_group_id:
+                return i
+    return None

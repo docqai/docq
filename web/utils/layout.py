@@ -76,11 +76,13 @@ from .handlers import (
     handle_fire_extensions_callbacks,
     handle_get_chat_history_threads,
     handle_get_gravatar_url,
+    handle_get_linked_space_group_index,
     handle_get_system_settings,
     handle_get_thread_space,
     handle_get_user_email,
     handle_index_thread_space,
     handle_install_docq_slack_application,
+    handle_link_slack_channel_to_space_group,
     handle_list_documents,
     handle_list_orgs,
     handle_list_slack_channels,
@@ -1831,7 +1833,6 @@ def render_integrations() -> None:
         channels = handle_list_slack_channels(team.app_id, team.team_id)
         space_groups = list_space_groups()
 
-        print(f"\x1b[31mDebug team: {team.team_id}\nchannels: {channels}\x1b[0m")
         for channel in channels:
             with st.expander(f"### {channel['name']}"):
                 st.write(channel['purpose']['value'])
@@ -1840,10 +1841,15 @@ def render_integrations() -> None:
                     options=space_groups,
                     format_func=lambda x: x[2],
                     key=f"selected_space_group_{channel['id']}",
-                    index=None
+                    index=handle_get_linked_space_group_index(channel['id'], space_groups)
                 )
                 _, save_btn, _ = st.columns([1, 1, 1])
-                save_btn.button("Save Space Group Selection", key=f"save_selected_space_group_:{channel['id']}")
+                save_btn.button(
+                    "Save Space Group Selection", 
+                    on_click=handle_link_slack_channel_to_space_group,
+                    key=f"save_space_group_selection_{channel['id']}",
+                    args=(channel['id'], channel['name'])
+                )
 
         if not channels:
             st.info("No slack channels found")

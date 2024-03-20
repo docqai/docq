@@ -5,6 +5,8 @@ import sqlite3
 from contextlib import closing
 from typing import Optional
 
+from docq.config import SpaceType
+from docq.domain import SpaceKey
 from docq.support.store import get_sqlite_shared_system_file
 from slack_sdk.oauth.installation_store import Installation
 
@@ -170,25 +172,30 @@ def insert_or_update_slack_channel(channel_id: str, channel_name: str, org_id: i
         connection.commit()
 
 
-def link_space_group_to_slack_channel(channel_id: str, space_group_id: int) -> None:
+def link_space_group_to_slack_channel(org_id: int, channel_id: str, channel_name: str, space_group_id: int,) -> None:
     """Add a space group to a channel."""
     with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
         connection.execute(
-            "UPDATE docq_slack_channels SET space_group_id = ? WHERE channel_id = ?",
-            (space_group_id, channel_id),
+            "INSERT OR REPLACE INTO docq_slack_channels (space_group_id, channel_id, channel_name, org_id) VALUES (?, ?, ?, ?)",
+            (space_group_id, channel_id, channel_name, org_id),
         )
         connection.commit()
 
 
-def get_slack_channel_linked_space_group_id(channel_id: str) -> int:
+def get_slack_channel_linked_space_group_id(org_id: int, channel_id: str) -> Optional[int]:
     """Get a channel space group id."""
     with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
         cursor = connection.cursor()
-        cursor.execute(
-            "SELECT space_group_id FROM docq_slack_channels WHERE channel_id = ?",
-            (channel_id,),
-        )
-        return cursor.fetchone()[0]
+        try:
+            cursor.execute(
+                "SELECT space_group_id FROM docq_slack_channels WHERE channel_id = ? AND org_id = ?",
+                (channel_id, org_id),
+            )
+            result = cursor.fetchone()
+            return result[0] if result is not None else None
+        except sqlite3.OperationalError:
+            logging.error("No installations found.")
+            return None
 
 
 def list_slack_channels(org_id: int) -> list[SlackChannel]:
@@ -221,3 +228,32 @@ def get_slack_bot_token(app_id: str, team_id: str) -> str:
             "SELECT bot_token from slack_bots WHERE app_id = ? AND team_id = ?", (app_id, team_id)
         )
         return cursor.fetchone()[0]
+
+def get_rag_spaces(channel_id: str) -> Optional[list[SpaceKey]]:
+    """Get a list of spaces configured for the given channel."""
+    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            SELECT s.id, s.org_id, s.name, s.summary, s.archived, s.datasource_type, s.datasource_configs, s.space_type, s.created_at, s.updated_at
+            FROM spaces s
+            JOIN space_group_members ON s.id = space_group_members.space_id
+            JOIN docq_slack_channels ON space_group_members.group_id = docq_slack_channels.space_group_id
+            WHERE docq_slack_channels.channel_id = ?
+            """,
+            (channel_id,),
+        )
+        spaces = cursor.fetchall()
+
+        return [ SpaceKey(SpaceType[row[7]], row[0], row[1], row[3]) for row in spaces ] if spaces else None
+
+
+def get_org_id_from_channel_id(channel_id: str) -> Optional[int]:
+    """Get the org id from a channel id."""
+    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT org_id FROM docq_slack_channels WHERE channel_id = ?", (channel_id,)
+        )
+        result = cursor.fetchone()
+        return result[0] if result is not None else None
