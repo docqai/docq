@@ -1,6 +1,6 @@
 """DocQ bot app home."""
 
-from typing import Any
+from typing import Any, Callable
 
 from slack_sdk import WebClient
 
@@ -44,8 +44,9 @@ def get_image_block() -> dict[str, Any]:
     }
 
 @slack_app.event("app_home_opened")
-def handle_app_home_opened_events(client: WebClient, event: Any, logger: Any) -> None:
+def handle_app_home_opened_events(ack: Callable, client: WebClient, event: Any, logger: Any) -> None:
     """Handle app home opened events."""
+    ack()
     client.views_publish(
         user_id=event["user"],
         view={
