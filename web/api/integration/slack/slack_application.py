@@ -27,6 +27,7 @@ def failure_callback(failure_args: FailureArgs) -> BoltResponse:
 
 
 slack_app = App(
+    process_before_response=True,
     oauth_flow=SlackOAuthFlow.sqlite3(
         database=get_sqlite_shared_system_file(),
         install_path="/api/integration/slack/v1/install",

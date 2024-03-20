@@ -22,8 +22,7 @@ def rag_completion(text: str, channel_id: str) -> str:
     org_id = get_org_id_from_channel_id(channel_id)
 
     if not spaces:
-        return f"""Channel <#{channel_id}> is not configured to any space groups yet.
-        Please contact your administrator to configure this channel to a space group with Docq.AI."""
+        return f"Channel <#{channel_id}> is not configured to any space groups yet.\n\nPlease contact your administrator to setup the channel."
 
     history = ""
     model_collection_settings = get_saved_model_settings_collection(org_id) if org_id else get_model_settings_collection("azure_openai_latest")
