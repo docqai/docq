@@ -14,7 +14,6 @@ class name: route replace capitalise route segments remove `/` and `_`. Example:
 """
 
 # for now we'll manually add imports. TODO: convert to walk the directory and dynamically import using importlib
-import importlib
 
 from . import (
     chat_completion_handler,  # noqa: F401 DO NOT REMOVE
@@ -24,5 +23,4 @@ from . import (
     threads_handler,  # noqa: F401 DO NOT REMOVE
     token_handler,  # noqa: F401 DO NOT REMOVE
 )
-
-importlib.import_module("web.api.integration.slack.index_handler")
+from .integration.slack import index_handler  # noqa: F401 DO NOT REMOVE

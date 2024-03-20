@@ -31,7 +31,7 @@ from docq.agents.main import run_agent
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions
-from docq.integrations import slack
+from docq.integrations import manage_slack
 from docq.integrations.models import SlackInstallation
 from docq.manage_assistants import get_assistant_or_default
 from docq.model_selection.main import (
@@ -40,7 +40,7 @@ from docq.model_selection.main import (
     get_saved_model_settings_collection,
 )
 from docq.services.smtp_service import mailer_ready, send_verification_email
-from docq.support.auth_utils import _set_cookie as set_cookie
+from docq.support.auth_utils import _get_cookies as get_cookies
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
 from opentelemetry import baggage, trace
 from pydantic import RootModel
@@ -1102,8 +1102,18 @@ def handle_list_slack_installations() -> list [SlackInstallation]:
     """Handle list slack installations."""
     selected_org_id = get_selected_org_id()
     if selected_org_id is not None:
-        return slack.list_docq_slack_installations(selected_org_id)
+        return manage_slack.list_docq_slack_installations(selected_org_id)
     return []
+
+
+def handle_set_cookie(name: str, value: str, expiry: datetime, path: str = "/", secure: bool = True) -> None:
+    """Handle set cookie."""
+    html(f"""
+        <script>
+            const p = window.parent.document || window.document;
+            p.cookie = "{name}={value};expires={expiry.strftime('%a, %d %b %Y %H:%M:%S GMT')};path={path};secure={secure};";
+        </script>
+    """, height=0)
 
 
 def handle_install_docq_slack_application() -> None:
@@ -1111,7 +1121,13 @@ def handle_install_docq_slack_application() -> None:
     selected_org_id = get_selected_org_id()
     slack_app_state = f"state:{selected_org_id}"
     expiry = datetime.now() + timedelta(minutes=5)
-    set_cookie(name="docq_slack_app_state", cookie=slack_app_state, expiry=expiry)
+    handle_set_cookie(name="docq_slack_app_state", value=slack_app_state, expiry=expiry)
+    cookies = get_cookies()
+
+    if (cookies and not cookies.get("docq_slack_app_state", None)) or not cookies:
+        # Note: This is a workaround to allow steamlit to grb the cookie from the client.
+        st.rerun()
+
     base_url = os.getenv("DOCQ_SERVER_ADDRESS")
     path = "/api/integration/slack/v1/install"
     handle_redirect_to_url(f"{base_url}{path}", "slack-install")
@@ -1121,9 +1137,8 @@ def handle_link_slack_channel_to_space_group(channel_id: str, channel_name: str)
     """Handle link slack channel to space group."""
     selected_org_id = get_selected_org_id()
     space_group = st.session_state[f"selected_space_group_{channel_id}"]
-    print(f"\x1b[31mLinking slack channel: {channel_id}\n{space_group}\x1b[0m")
     if selected_org_id is not None:
-        slack.link_space_group_to_slack_channel(
+        manage_slack.link_space_group_to_slack_channel(
             org_id=selected_org_id, channel_id=channel_id,
             channel_name=channel_name,
             space_group_id=space_group[0]
@@ -1134,7 +1149,7 @@ def handle_get_linked_space_group_index(channel_id: str, space_groups: list[tupl
     """Get linked space group id."""
     selected_org_id = get_selected_org_id()
     if selected_org_id is not None:
-        space_group_id = slack.get_slack_channel_linked_space_group_id(selected_org_id, channel_id)
+        space_group_id = manage_slack.get_slack_channel_linked_space_group_id(selected_org_id, channel_id)
         for i, space_group in enumerate(space_groups):
             if space_group[0] == space_group_id:
                 return i

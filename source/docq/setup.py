@@ -7,6 +7,7 @@ import docq
 from docq import db_migrations, extensions, manage_assistants
 
 from . import (
+    integrations,
     manage_organisations,
     manage_settings,
     manage_space_groups,
@@ -15,7 +16,6 @@ from . import (
     manage_users,
     services,
 )
-from .integrations import slack
 from .support import auth_utils, llm, store
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
@@ -39,7 +39,7 @@ def init() -> None:
         manage_assistants._init()
         db_migrations.run() # run db migrations after all tables are created
         services._init()
-        slack._init()
+        integrations._init()
         services.credential_utils.setup_all_service_credentials()
         store._init()
         manage_organisations._init_default_org_if_necessary()

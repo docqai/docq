@@ -49,7 +49,6 @@ with tracer().start_as_current_span("home_page", attributes=baggage_as_attribute
             Page("web/ml_eng_tools/assistants.py", "Assistants"),
             Page("web/ml_eng_tools/visualise_index.py", "Visualise Index"),
             Page("web/ml_eng_tools/visualise_agent_messages.py", "Visualise Agent Messages"),
-            Section("Integrations", icon="🔗"),
             Page("web/integrations.py", "Integrations"),
         ]
     )

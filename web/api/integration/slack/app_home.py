@@ -2,9 +2,8 @@
 
 from typing import Any, Callable
 
+import docq.integrations.slack_application as slack
 from slack_sdk import WebClient
-
-from web.api.integration.slack.slack_application import slack_app
 
 
 def get_header_block() -> dict[str, Any]:
@@ -43,8 +42,8 @@ def get_image_block() -> dict[str, Any]:
         "alt_text": "Docq overview"
     }
 
-@slack_app.event("app_home_opened")
-def handle_app_home_opened_events(ack: Callable, client: WebClient, event: Any, logger: Any) -> None:
+@slack.slack_app.event("app_home_opened")
+def handle_app_home_opened_events(ack: Callable, client: WebClient, event: Any) -> None:
     """Handle app home opened events."""
     ack()
     client.views_publish(

@@ -1,6 +1,6 @@
 """Slack utility functions."""
 
-from docq.integrations.slack import get_org_id_from_channel_id, get_rag_spaces
+import docq.integrations.manage_slack as m_slack
 from docq.manage_assistants import get_personas_fixed
 from docq.model_selection.main import get_model_settings_collection, get_saved_model_settings_collection
 from docq.support.llm import run_ask, run_chat
@@ -18,8 +18,8 @@ def chat_completion(text: str) -> str:
 
 def rag_completion(text: str, channel_id: str) -> str:
     """Middleware to handle RAG completion."""
-    spaces = get_rag_spaces(channel_id)
-    org_id = get_org_id_from_channel_id(channel_id)
+    spaces = m_slack.get_rag_spaces(channel_id)
+    org_id = m_slack.get_org_id_from_channel_id(channel_id)
 
     if not spaces:
         return f"Channel <#{channel_id}> is not configured to any space groups yet.\n\nPlease contact your administrator to setup the channel."

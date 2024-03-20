@@ -1845,7 +1845,7 @@ def render_integrations() -> None:
                 )
                 _, save_btn, _ = st.columns([1, 1, 1])
                 save_btn.button(
-                    "Save Space Group Selection", 
+                    "Save Space Group Selection",
                     on_click=handle_link_slack_channel_to_space_group,
                     key=f"save_space_group_selection_{channel['id']}",
                     args=(channel['id'], channel['name'])
@@ -1861,5 +1861,5 @@ def render_slack_installation_button() -> None:
     """Render slack installation button."""
     _, center, _ = st.columns([1, 1, 1])
     with center:
-        if st.button("Install Docq Slack Application", type="primary"):
+        if st.button("Install Docq Slack Application", type="primary", use_container_width=True):
             handle_install_docq_slack_application()

@@ -5,10 +5,11 @@ import sqlite3
 from contextlib import closing
 from typing import Optional
 
+from slack_sdk.oauth.installation_store import Installation
+
 from docq.config import SpaceType
 from docq.domain import SpaceKey
 from docq.support.store import get_sqlite_shared_system_file
-from slack_sdk.oauth.installation_store import Installation
 
 from .models import SlackChannel, SlackInstallation
 

@@ -5,7 +5,6 @@ import os
 from logging import Logger
 from typing import Optional, Self, Sequence
 
-from docq.integrations.slack import create_docq_slack_installation
 from slack_bolt.oauth.callback_options import CallbackOptions
 from slack_bolt.oauth.oauth_flow import OAuthFlow
 from slack_bolt.oauth.oauth_settings import OAuthSettings
@@ -16,6 +15,8 @@ from slack_sdk.oauth.installation_store import Installation
 from slack_sdk.oauth.installation_store.sqlite3 import SQLite3InstallationStore
 from slack_sdk.oauth.state_store.sqlite3 import SQLite3OAuthStateStore
 from slack_sdk.web import WebClient
+
+from .manage_slack import create_docq_slack_installation
 
 
 class SlackOAuthFlow(OAuthFlow):
@@ -97,7 +98,6 @@ class SlackOAuthFlow(OAuthFlow):
         docq_slack_app_state =  self.get_cookie("docq_slack_app_state", request.headers.get("cookie"))
         if docq_slack_app_state is not None:
             _, selected_org_id = docq_slack_app_state.split(":")
-            print("\x1b[31mDocq slack app state: ", docq_slack_app_state, "\x1b[0m")
             create_docq_slack_installation(installation, int(selected_org_id))
         else:
             raise SlackApiError("Not Authenticated.", request)
@@ -126,4 +126,4 @@ class SlackOAuthFlow(OAuthFlow):
               <p><a href="{html.escape(url)}"><img alt=""Add to Slack"" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a></p>
               </body>
             </html>
-            """
+        """

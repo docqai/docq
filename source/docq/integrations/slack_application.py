@@ -1,15 +1,12 @@
-"""Slack event."""
+"""Slack application."""
+
 import os
 
-from docq.support.store import get_sqlite_shared_system_file
 from slack_bolt import App, BoltResponse
-from slack_bolt.adapter.tornado import SlackEventsHandler, SlackOAuthHandler
 from slack_bolt.oauth.callback_options import CallbackOptions, FailureArgs, SuccessArgs
 
-from web.api.base_handlers import BaseRequestHandler
-from web.utils.streamlit_application import st_app
-
-from .oauth_flow import SlackOAuthFlow
+from docq.integrations.slack_oauth_flow import SlackOAuthFlow
+from docq.support.store import get_sqlite_shared_system_file
 
 CLIENT_ID = os.environ.get("SLACK_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("SLACK_CLIENT_SECRET")
@@ -39,16 +36,3 @@ slack_app = App(
         callback_options=CallbackOptions(success=success_callback, failure=failure_callback),
     )
 )
-
-
-@st_app.api_route("/api/integration/slack/v1/events", dict(app=slack_app))
-class SlackEventHandler(SlackEventsHandler, BaseRequestHandler):
-    """Handle /slack/events requests."""
-
-@st_app.api_route("/api/integration/slack/v1/install", dict(app=slack_app))
-class SlackInstallHandler(SlackOAuthHandler, BaseRequestHandler):
-    """Handle /slack/install requests."""
-
-@st_app.api_route("/api/integration/slack/v1/oauth_redirect", dict(app=slack_app))
-class SlackOAuthRedirectHandler(SlackOAuthHandler, BaseRequestHandler):
-    """Handle /slack/oauth_redirect requests."""
