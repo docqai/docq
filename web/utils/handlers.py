@@ -1088,13 +1088,13 @@ def handle_click_chat_history_thread(feature: domain.FeatureKey, thread_id: int)
     query_chat_history(feature)
 
 
-@st.cache_data
-def handle_list_slack_channels(team_id: str) -> Any:
+def handle_list_slack_channels(app_id: str, team_id: str) -> Any:
     """Handle list slack channels."""
     from web.api.integration.slack.slack_utils import list_slack_team_channels
 
-    channel_lists = list_slack_team_channels(team_id)
-    return channel_lists
+    with st.spinner("Loading channels..."):
+        channel_lists = list_slack_team_channels(app_id, team_id)
+        return channel_lists
 
 
 def handle_list_slack_installations() -> list [SlackInstallation]:

@@ -52,7 +52,7 @@ def create_docq_slack_installation(installation: Installation, org_id: int) -> N
     """Create a Docq installation."""
     with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
         connection.execute(
-            "INSERT INTO docq_slack_installations (app_id, team_id, team_name, org_id) VALUES (?, ?, ?, ?)",
+            "INSERT OR REPLACE INTO docq_slack_installations (app_id, team_id, team_name, org_id) VALUES (?, ?, ?, ?)",
             (installation.app_id, installation.team_id, installation.team_name, org_id),
         )
         connection.commit()
@@ -211,3 +211,13 @@ def get_slack_channel(channel_id: str) -> SlackChannel:
             (channel_id,),
         )
         return SlackChannel(cursor.fetchone())
+
+
+def get_slack_bot_token(app_id: str, team_id: str) -> str:
+    """Get a bot token."""
+    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT bot_token from slack_bots WHERE app_id = ? AND team_id = ?", (app_id, team_id)
+        )
+        return cursor.fetchone()[0]

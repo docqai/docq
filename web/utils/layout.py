@@ -1828,7 +1828,7 @@ def render_integrations() -> None:
     st.write("### Channels")
 
     if team is not None:
-        channels = handle_list_slack_channels(team.team_id)
+        channels = handle_list_slack_channels(team.app_id, team.team_id)
         space_groups = list_space_groups()
 
         print(f"\x1b[31mDebug team: {team.team_id}\nchannels: {channels}\x1b[0m")
