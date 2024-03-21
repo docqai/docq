@@ -1,6 +1,7 @@
 """Google drive datasource."""
 import json
 import logging as log
+import os
 from datetime import datetime
 from typing import Any, List, Self
 
@@ -72,6 +73,7 @@ class GDrive(SpaceDataSourceFileBased):
                 str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower(): self.__class__.__base__.__name__,
                 str(DocumentMetadata.SOURCE_URI.name).lower(): x,
                 str(DocumentMetadata.INDEXED_ON.name).lower(): datetime.timestamp(datetime.now().utcnow()),
+                "file_name": os.path.basename(x),
             }
 
         root_path = configs[self.root_path]

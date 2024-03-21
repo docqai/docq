@@ -1,7 +1,9 @@
 """Tests for the ManualUpload class."""
 
+import os
 import unittest
 from datetime import datetime
+from pathlib import Path
 from typing import Self
 from unittest.mock import MagicMock, patch
 
@@ -63,13 +65,12 @@ class TestManualUpload(unittest.TestCase):  # noqa: D101
                 documents[0].metadata[str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower()] == "SpaceDataSourceFileBased"
             )
 
-            assert (
-                documents[0].metadata[str(DocumentMetadata.FILE_PATH.name).lower()]
-                == "misc/test_files/Research-Revealing-the-True-GenAI-Data-Exposure-Risk.pdf"
+            assert documents[0].metadata[str(DocumentMetadata.FILE_PATH.name).lower()] == os.path.abspath(
+                "misc/test_files/Research-Revealing-the-True-GenAI-Data-Exposure-Risk.pdf"
             )
-            assert (
-                documents[0].metadata[str(DocumentMetadata.SOURCE_URI.name).lower()]
-                == "misc/test_files/Research-Revealing-the-True-GenAI-Data-Exposure-Risk.pdf"
+
+            assert documents[0].metadata[str(DocumentMetadata.SOURCE_URI.name).lower()] == os.path.abspath(
+                "misc/test_files/Research-Revealing-the-True-GenAI-Data-Exposure-Risk.pdf"
             )
             self.assertAlmostEqual(  # noqa: PT009
                 documents[0].metadata[str(DocumentMetadata.INDEXED_ON.name).lower()],

@@ -1,6 +1,7 @@
 """Data source backed by Azure Blob (container)."""
 
 import logging as log
+import os
 from datetime import datetime
 from typing import List
 from urllib.parse import urlparse
@@ -54,6 +55,7 @@ class AzureBlob(SpaceDataSourceFileBased):
                 str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower(): self.__class__.__base__.__name__,
                 str(DocumentMetadata.SOURCE_URI.name).lower(): x,
                 str(DocumentMetadata.INDEXED_ON.name).lower(): datetime.timestamp(datetime.now().utcnow()),
+                "file_name": os.path.basename(x),
             }
 
         parsed_endpoint = urlparse(configs["account_url"])
