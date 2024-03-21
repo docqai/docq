@@ -36,6 +36,7 @@ class ManualUpload(SpaceDataSourceFileBased):
                 str(DocumentMetadata.DATA_SOURCE_TYPE.name).lower(): self.__class__.__base__.__name__,
                 str(DocumentMetadata.SOURCE_URI.name).lower(): x,
                 str(DocumentMetadata.INDEXED_ON.name).lower(): datetime.timestamp(datetime.now().utcnow()),
+                "file_name": os.path.basename(x),
             }
 
         _documents = SimpleDirectoryReader(input_dir=get_upload_dir(space), file_metadata=lambda_metadata, exclude_hidden=False).load_data()

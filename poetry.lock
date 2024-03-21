@@ -2394,17 +2394,15 @@ version = "0.1.4"
 description = "llama-index embeddings huggingface optimum integration"
 optional = false
 python-versions = ">=3.8.1,<4.0"
-files = []
-develop = true
+files = [
+    {file = "llama_index_embeddings_huggingface_optimum-0.1.4-py3-none-any.whl", hash = "sha256:dd94f0e9667c273c506b61c113faab45d7388415f2a03be5902d2a5f2d274782"},
+    {file = "llama_index_embeddings_huggingface_optimum-0.1.4.tar.gz", hash = "sha256:597241d01a414bc8ec1eeb09ffc87a0fd331c6bd838a4b78ecb396a8c2364b5c"},
+]
 
 [package.dependencies]
-llama-index-core = "^0.10.1"
-llama-index-embeddings-huggingface = "^0.1.3"
-optimum = {version = "^1.16.2", extras = ["exporters"]}
-
-[package.source]
-type = "directory"
-url = "../../llama_index/llama-index-integrations/embeddings/llama-index-embeddings-huggingface-optimum"
+llama-index-core = ">=0.10.1,<0.11.0"
+llama-index-embeddings-huggingface = ">=0.1.3,<0.2.0"
+optimum = {version = ">=1.16.2,<2.0.0", extras = ["exporters"]}
 
 [[package]]
 name = "llama-index-embeddings-openai"
@@ -7456,4 +7454,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.12"
-content-hash = "3a33886d0cb44e099775fb1ec0e8c260d5c65365e45a641c5c91562f9ff1988c"
+content-hash = "b66d76fb0ac480aa25367630cf6916a61ad8744acdb4d2afe93a3e0ef74c84f2"
