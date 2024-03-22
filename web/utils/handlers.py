@@ -69,6 +69,7 @@ from .sessions import (
     set_selected_org_id,
     set_settings_session,
 )
+from .streamlit_application import st_app
 
 tracer = trace.get_tracer("docq.web.handler")
 
@@ -1108,6 +1109,9 @@ def handle_list_slack_installations() -> list [SlackInstallation]:
 
 def handle_set_cookie(name: str, value: str, expiry: datetime, path: str = "/", secure: bool = True) -> None:
     """Handle set cookie."""
+    from docq.support.auth_utils import encrypt_cookie_value
+
+    value = encrypt_cookie_value(value)
     html(f"""
         <script>
             const p = window.parent.document || window.document;
@@ -1116,18 +1120,12 @@ def handle_set_cookie(name: str, value: str, expiry: datetime, path: str = "/", 
     """, height=0)
 
 
-def handle_install_docq_slack_application() -> None:
+def handle_install_docq_slack_application(app_state: int = 0) -> None:
     """Handle install docq slack application."""
     selected_org_id = get_selected_org_id()
     slack_app_state = f"state:{selected_org_id}"
     expiry = datetime.now() + timedelta(minutes=5)
     handle_set_cookie(name="docq_slack_app_state", value=slack_app_state, expiry=expiry)
-    cookies = get_cookies()
-
-    if (cookies and not cookies.get("docq_slack_app_state", None)) or not cookies:
-        # Note: This is a workaround to allow steamlit to grb the cookie from the client.
-        st.rerun()
-
     base_url = os.getenv("DOCQ_SERVER_ADDRESS")
     path = "/api/integration/slack/v1/install"
     handle_redirect_to_url(f"{base_url}{path}", "slack-install")

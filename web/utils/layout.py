@@ -1650,6 +1650,7 @@ def init_with_pretty_error_ui() -> None:
     """UI to run setup and prevent showing errors to the user."""
     try:
         setup.init()
+        print(f"\x1b[32mDocq started successfully: {st_app.get_singleton_instance().settings}.\x1b[0m")
         log.debug("Tornado settings: %s ", st_app.get_singleton_instance().settings)
     except Exception as e:
         st.error("Something went wrong starting Docq.")

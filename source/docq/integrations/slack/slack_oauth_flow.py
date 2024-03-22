@@ -5,11 +5,11 @@ import os
 from logging import Logger
 from typing import Optional, Self, Sequence
 
+from slack_bolt.error import BoltError
 from slack_bolt.oauth.callback_options import CallbackOptions
 from slack_bolt.oauth.oauth_flow import OAuthFlow
 from slack_bolt.oauth.oauth_settings import OAuthSettings
 from slack_bolt.request import BoltRequest
-from slack_sdk.errors import SlackApiError
 from slack_sdk.oauth import OAuthStateUtils
 from slack_sdk.oauth.installation_store import Installation
 from slack_sdk.oauth.installation_store.sqlite3 import SQLite3InstallationStore
@@ -82,15 +82,20 @@ class SlackOAuthFlow(OAuthFlow):
             ),
         )
 
-    def get_cookie(self: Self, name: str, cookies: Optional[Sequence[str]]) -> Optional[str]:
+    def get_cookie(self: Self, name: str, cookies: Optional[str | Sequence[str]]) -> Optional[str]:
         """Get a cookie."""
+        from docq.support.auth_utils import decrypt_cookie_value
+
         if not cookies:
             return None
 
+        if isinstance(cookies, str):
+            cookies = [cookies]
         for cookie in cookies:
-            if cookie.startswith(name):
-                cookie_ = cookie.split("=")[1]
-                return cookie_.split(";")[0]
+            for item in cookie.split(";"):
+                key, value = item.split("=", 1)
+                if key.strip() == name:
+                    return decrypt_cookie_value(value)
         return None
 
     def save_docq_slack_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
@@ -100,7 +105,7 @@ class SlackOAuthFlow(OAuthFlow):
             _, selected_org_id = docq_slack_app_state.split(":")
             create_docq_slack_installation(installation, int(selected_org_id))
         else:
-            raise SlackApiError("Not Authenticated.", request)
+            raise BoltError("Login to Docq before installing the slack app.")
 
     def store_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
         """Store an installation."""
