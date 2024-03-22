@@ -3,7 +3,7 @@
 import os
 
 from docq.integrations.slack.slack_oauth_flow import SlackOAuthFlow
-from docq.support.store import get_sqlite_shared_system_file
+from docq.support.store import get_sqlite_external_system_file
 from slack_bolt import App, BoltResponse
 from slack_bolt.oauth.callback_options import CallbackOptions, FailureArgs, SuccessArgs
 
@@ -25,7 +25,7 @@ def failure_callback(failure_args: FailureArgs) -> BoltResponse:
 slack_app = App(
     process_before_response=True,
     oauth_flow=SlackOAuthFlow.sqlite3(
-        database=get_sqlite_shared_system_file(),
+        database=get_sqlite_external_system_file(),
         install_path="/api/integration/slack/v1/install",
         redirect_uri_path="/api/integration/slack/v1/oauth_redirect",
         client_id=CLIENT_ID,

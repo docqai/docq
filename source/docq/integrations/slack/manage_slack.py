@@ -5,11 +5,10 @@ import sqlite3
 from contextlib import closing
 from typing import Optional
 
-from slack_sdk.oauth.installation_store import Installation
-
 from docq.config import SpaceType
 from docq.domain import SpaceKey
-from docq.support.store import get_sqlite_shared_system_file
+from docq.support.store import get_sqlite_external_system_file, get_sqlite_shared_system_file
+from slack_sdk.oauth.installation_store import Installation
 
 from .models import SlackChannel, SlackInstallation, SlackMessage
 
@@ -109,65 +108,6 @@ def get_docq_slack_installation(app_id: str, team_id: str, org_id: int) -> Slack
         return SlackInstallation(cursor.fetchone())
 
 
-def is_slack_admin_user(user: str) -> bool:
-    """Check if a user is an admin."""
-    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
-        cursor = connection.cursor()
-        try:
-            cursor.execute(
-                "SELECT team_id FROM slack_installations WHERE user_id = ?",
-                (user,),
-            )
-            return cursor.fetchone()[0] is not None
-        except sqlite3.OperationalError:
-            logging.error("No installations found.")
-            return False
-
-
-def app_exists(app_id: str) -> bool:
-    """Check if an app exists."""
-    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
-        cursor = connection.cursor()
-        try:
-            cursor.execute(
-                "SELECT id FROM slack_installations WHERE app_id = ?",
-                (app_id,),
-            )
-            return cursor.fetchone() is not None
-        except sqlite3.OperationalError:
-            logging.error("No installations found.")
-            return False
-
-
-def get_team_name(team_id: str) -> Optional[str]:
-    """Get a team name."""
-    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
-        cursor = connection.cursor()
-        try:
-            cursor.execute(
-                "SELECT team_name FROM slack_installations WHERE team_id = ?",
-                (team_id,),
-            )
-            return cursor.fetchone()[0]
-        except sqlite3.OperationalError:
-            logging.error("No installations found.")
-
-
-def team_exists(team_id: str) -> bool:
-    """Check if a team exists."""
-    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
-        cursor = connection.cursor()
-        try:
-            cursor.execute(
-                "SELECT id FROM slack_installations WHERE team_id = ?",
-                (team_id,),
-            )
-            return cursor.fetchone() is not None
-        except sqlite3.OperationalError:
-            logging.error("No installations found.")
-            return False
-
-
 def integration_exists(app_id: str, team_id: str, selected_org_id: int) -> bool:
     """Check if an integration exists."""
     with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
@@ -239,10 +179,10 @@ def get_slack_channel(channel_id: str) -> SlackChannel:
 
 def get_slack_bot_token(app_id: str, team_id: str) -> str:
     """Get a bot token."""
-    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
+    with closing(sqlite3.connect(get_sqlite_external_system_file())) as connection:
         cursor = connection.cursor()
         cursor.execute(
-            "SELECT bot_token from slack_bots WHERE app_id = ? AND team_id = ?", (app_id, team_id)
+            "SELECT bot_token FROM slack_bots WHERE app_id = ? AND team_id = ?", (app_id, team_id)
         )
         return cursor.fetchone()[0]
 
