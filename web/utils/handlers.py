@@ -31,8 +31,8 @@ from docq.agents.main import run_agent
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions
-from docq.integrations import manage_slack
-from docq.integrations.models import SlackInstallation
+from docq.integrations.slack import manage_slack
+from docq.integrations.slack.models import SlackInstallation
 from docq.manage_assistants import get_assistant_or_default
 from docq.model_selection.main import (
     LlmUsageSettingsCollection,

@@ -23,7 +23,7 @@ from docq.config import (
 )
 from docq.domain import AssistantType, ConfigKey, DocumentListItem, FeatureKey, SpaceKey
 from docq.extensions import ExtensionContext
-from docq.integrations.models import SlackInstallation
+from docq.integrations.slack.models import SlackInstallation
 from docq.manage_assistants import list_assistants
 from docq.model_selection.main import (
     LlmUsageSettingsCollection,

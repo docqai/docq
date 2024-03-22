@@ -2,11 +2,10 @@
 
 import os
 
+from docq.integrations.slack.slack_oauth_flow import SlackOAuthFlow
+from docq.support.store import get_sqlite_shared_system_file
 from slack_bolt import App, BoltResponse
 from slack_bolt.oauth.callback_options import CallbackOptions, FailureArgs, SuccessArgs
-
-from docq.integrations.slack_oauth_flow import SlackOAuthFlow
-from docq.support.store import get_sqlite_shared_system_file
 
 CLIENT_ID = os.environ.get("SLACK_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("SLACK_CLIENT_SECRET")

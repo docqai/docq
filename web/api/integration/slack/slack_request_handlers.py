@@ -1,6 +1,6 @@
 """Slack application request handlers."""
 
-from docq.integrations.slack_application import slack_app
+from docq.integrations.slack.slack_application import slack_app
 from slack_bolt.adapter.tornado import SlackEventsHandler, SlackOAuthHandler
 
 from web.api.base_handlers import BaseRequestHandler

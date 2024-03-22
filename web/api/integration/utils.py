@@ -1,6 +1,6 @@
 """Slack utility functions."""
 
-import docq.integrations.manage_slack as m_slack
+import docq.integrations.slack.manage_slack as m_slack
 from docq.manage_assistants import get_personas_fixed
 from docq.model_selection.main import get_model_settings_collection, get_saved_model_settings_collection
 from docq.support.llm import run_ask, run_chat
@@ -22,7 +22,7 @@ def rag_completion(text: str, channel_id: str) -> str:
     org_id = m_slack.get_org_id_from_channel_id(channel_id)
 
     if not spaces:
-        return f"Channel <#{channel_id}> is not configured to any space groups yet.\n\nPlease contact your administrator to setup the channel."
+        return "This channel is not configured in Docq. Please contact your administrator to setup the channel.\nhttps:docq.ai"
 
     history = ""
     model_collection_settings = get_saved_model_settings_collection(org_id) if org_id else get_model_settings_collection("azure_openai_latest")

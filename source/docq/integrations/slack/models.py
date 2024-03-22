@@ -25,3 +25,18 @@ class SlackChannel:
         self.org_id = data[2]
         self.space_group_id = data[3]
         self.created_at = data[4]
+
+
+class SlackMessage:
+    """Slack message."""
+
+    def __init__(self: Self, data: tuple) -> None:
+        """Initialize."""
+        self.client_msg_id = data[0]
+        self.type = data[1]
+        self.channel = data[2]
+        self.team = data[3]
+        self.user = data[4]
+        self.text = data[5]
+        self.ts = data[6]
+        self.created_at = data[7]

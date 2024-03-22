@@ -11,16 +11,16 @@ from docq.config import SpaceType
 from docq.domain import SpaceKey
 from docq.support.store import get_sqlite_shared_system_file
 
-from .models import SlackChannel, SlackInstallation
+from .models import SlackChannel, SlackInstallation, SlackMessage
 
 SQL_CREATE_DOCQ_SLACK_APPLICATIONS_TABLE = """
 CREATE TABLE IF NOT EXISTS docq_slack_installations (
     id INTEGER PRIMARY KEY,
     app_id TEXT NOT NULL,
     team_id TEXT NOT NULL,
-    team_name TEXT NOT NULL,
+    team_name TEXT NOT NULL, -- References a slack workspace
     org_id INTEGER NOT NULL,
-    space_group_id INTEGER,
+    space_group_id INTEGER, -- TODO: Implement globally available content for the entire slack workspace
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (org_id) REFERENCES orgs(id),
     FOREIGN KEY (space_group_id) REFERENCES space_groups(id),
@@ -42,12 +42,28 @@ CREATE TABLE IF NOT EXISTS docq_slack_channels (
 );
 """
 
+SQL_CREATE_TABLE_DOCQ_SLACK_MESSAGES = """
+CREATE TABLE IF NOT EXISTS docq_slack_messages (
+    id INTEGER PRIMARY KEY,
+    client_msg_id TEXT NOT NULL, -- Unique identifier for the message
+    type TEXT NOT NULL,
+    channel TEXT NOT NULL,
+    team TEXT NOT NULL,
+    user TEXT NOT NULL,
+    text TEXT NOT NULL,
+    ts TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (channel) REFERENCES docq_slack_channels(channel_id),
+    FOREIGN KEY (team) REFERENCES docq_slack_installations(team_id)
+);
+"""
 
 def _init() -> None:
     """Initialize the Slack integration."""
     with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
         connection.execute(SQL_CREATE_DOCQ_SLACK_APPLICATIONS_TABLE)
         connection.execute(SQL_CREATE_DOCQ_SLACK_CHANNELS_TABLE)
+        connection.execute(SQL_CREATE_TABLE_DOCQ_SLACK_MESSAGES)
         connection.commit()
 
 
@@ -258,3 +274,35 @@ def get_org_id_from_channel_id(channel_id: str) -> Optional[int]:
         )
         result = cursor.fetchone()
         return result[0] if result is not None else None
+
+
+def insert_or_update_message(client_msg_id: str, type_: str, channel: str, team: str, user: str, text: str, ts: str) -> None:
+    """Insert or update a message."""
+    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
+        connection.execute(
+            "INSERT OR REPLACE INTO docq_slack_messages (client_msg_id, type, channel, team, user, text, ts) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (client_msg_id, type_, channel, team, user, text, ts),
+        )
+        connection.commit()
+
+
+def is_message_handled(client_msg_id: str, ts: str) -> bool:
+    """Check if a message exists."""
+    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT id FROM docq_slack_messages WHERE client_msg_id = ? AND ts = ?",
+            (client_msg_id, ts),
+        )
+        return cursor.fetchone() is not None
+
+
+def list_slack_messages(channel: str) -> list[SlackMessage]:
+    """Get a list of messages for a specific channnel."""
+    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT client_msg_id, type, channel, team, user, text, ts, created_at FROM docq_slack_messages WHERE channel = ?",
+            (channel,),
+        )
+        return [SlackMessage(row) for row in cursor.fetchall()]

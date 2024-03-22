@@ -2,7 +2,7 @@
 
 from typing import Any, Callable
 
-import docq.integrations.slack_application as slack
+import docq.integrations.slack.slack_application as slack
 from slack_sdk import WebClient
 
 
