@@ -107,10 +107,16 @@ class LlmUsageSettingsCollection:
 # The configuration of the deployed instances of models. Basically service discovery.
 LLM_SERVICE_INSTANCES = {
     "openai-gpt35turbo": LlmServiceInstanceConfig(
-        vendor=ModelVendor.OPENAI, model_name="gpt-3.5-turbo", api_key=os.getenv("DOCQ_OPENAI_API_KEY")
+        vendor=ModelVendor.OPENAI,
+        model_name="gpt-3.5-turbo",
+        api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
+        license_="Commercial",
     ),
     "openai-ada-002": LlmServiceInstanceConfig(
-        vendor=ModelVendor.OPENAI, model_name="text-embedding-ada-002", api_key=os.getenv("DOCQ_OPENAI_API_KEY")
+        vendor=ModelVendor.OPENAI,
+        model_name="text-embedding-ada-002",
+        api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
+        license_="Commercial",
     ),
     "azure-openai-gpt35turbo": LlmServiceInstanceConfig(
         vendor=ModelVendor.AZURE_OPENAI,
@@ -120,6 +126,16 @@ LLM_SERVICE_INSTANCES = {
         api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
         api_version=os.environ.get("DOCQ_AZURE_OPENAI_API_VERSION", "2023-05-15"),
         context_window_size=4096,
+        license_="Commercial",
+    ),
+    "azure-openai-gpt4turbo": LlmServiceInstanceConfig(
+        vendor=ModelVendor.AZURE_OPENAI,
+        model_name="gpt-4",
+        model_deployment_name="gpt4-turbo-1106-preview",
+        api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
+        api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
+        api_version=os.environ.get("DOCQ_AZURE_OPENAI_API_VERSION", "2023-05-15"),
+        license_="Commercial",
     ),
     "azure-openai-ada-002": LlmServiceInstanceConfig(
         vendor=ModelVendor.AZURE_OPENAI,
@@ -127,6 +143,7 @@ LLM_SERVICE_INSTANCES = {
         model_deployment_name="text-embedding-ada-002",
         api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
         api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
+        license_="Commercial",
     ),
     "google-vertexai-palm2": LlmServiceInstanceConfig(
         vendor=ModelVendor.GOOGLE_VERTEXAI_PALM2, model_name="chat-bison@002", context_window_size=8196
@@ -217,6 +234,21 @@ LLM_MODEL_COLLECTIONS = {
                 model_capability=ModelCapability.CHAT,
                 temperature=0.7,
                 service_instance_config=LLM_SERVICE_INSTANCES["azure-openai-gpt35turbo"],
+            ),
+            ModelCapability.EMBEDDING: LlmUsageSettings(
+                model_capability=ModelCapability.EMBEDDING,
+                service_instance_config=LLM_SERVICE_INSTANCES["optimum-bge-small-en-v1.5"],
+            ),
+        },
+    ),
+    "azure_openai_gpt4turbo_with_local_embedding": LlmUsageSettingsCollection(
+        name="Azure OpenAI GPT4 Turbo wth Local Embedding",
+        key="azure_openai_gpt4turbo_with_local_embedding",
+        model_usage_settings={
+            ModelCapability.CHAT: LlmUsageSettings(
+                model_capability=ModelCapability.CHAT,
+                temperature=0.7,
+                service_instance_config=LLM_SERVICE_INSTANCES["azure-openai-gpt4turbo"],
             ),
             ModelCapability.EMBEDDING: LlmUsageSettings(
                 model_capability=ModelCapability.EMBEDDING,
