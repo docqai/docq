@@ -3,7 +3,7 @@
 import gc
 import logging
 import re
-from typing import Callable, List, Self, Type
+from typing import Callable, List, Optional, Self, Type
 
 from tornado.routing import PathMatches, Rule
 from tornado.web import Application, RequestHandler
@@ -53,7 +53,7 @@ class StreamlitApplication:
     #             tornado_app.wildcard_router.rules.insert(0,rule)
     #     logging.debug("Registered %s routes with the Streamlit Tornado Application instance.", len(self._rules))
 
-    def api_route(self: Self, path: str) -> Callable[[Type[RequestHandler]], Type[RequestHandler]]:
+    def api_route(self: Self, path: str, kwargs: Optional[dict] = None) -> Callable[[Type[RequestHandler]], Type[RequestHandler]]:
         """Decorator factory for adding a route to a handler.
 
         Example:
@@ -99,7 +99,7 @@ class StreamlitApplication:
 
         def decorator(cls: Type[RequestHandler]) -> Type[RequestHandler]:
             logging.debug("Decorator adding route handler: %s", cls)
-            self.add_route_handler(Rule(PathMatches(path), cls))
+            self.add_route_handler(Rule(PathMatches(path), cls, target_kwargs=kwargs))
             return cls
 
         return decorator

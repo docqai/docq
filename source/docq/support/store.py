@@ -42,6 +42,8 @@ class _DataScope(Enum):
     """Data that applies across org boundaries and not owned by any single organisation."""
     PUBLIC = "public"
     """Data that associated with anonymous users like interaction with a public chat bot."""
+    EXTERNAL = "external"
+    """Data that's owned by an external system and not managed by Docq."""
     SHARED = "shared"
     """DEPRECATED. don't use for new features. Typically use ORG instead, decide based on data ownership. Here for backwards compatibility."""
     THREAD = "thread"
@@ -169,6 +171,11 @@ def get_sqlite_user_system_file(user_id: int) -> str:
 def get_sqlite_org_system_file(org_id: int) -> str:
     """Get the SQLite file for the storing org scoped system data."""
     return _get_path(store=_StoreDir.SQLITE, data_scope=_DataScope.ORG, subtype=str(org_id), filename=_SqliteFilename.SYSTEM.value)
+
+
+def get_sqlite_external_system_file() -> str:
+    """Get the SQLite file for storing external system data."""
+    return _get_path(store=_StoreDir.SQLITE, data_scope=_DataScope.EXTERNAL, filename=_SqliteFilename.SYSTEM.value)
 
 
 def get_history_table_name(type_: OrganisationFeatureType) -> str:

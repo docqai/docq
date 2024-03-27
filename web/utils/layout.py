@@ -21,8 +21,9 @@ from docq.config import (
     SystemFeatureType,
     SystemSettingsKey,
 )
-from docq.domain import AssistantType, ConfigKey, DocumentListItem, FeatureKey, SourcePageType, SpaceKey
+from docq.domain import AssistantType, ConfigKey, DocumentListItem, FeatureKey, SpaceKey
 from docq.extensions import ExtensionContext
+from docq.integrations.slack.models import SlackInstallation
 from docq.manage_assistants import list_assistants
 from docq.model_selection.main import (
     LlmUsageSettingsCollection,
@@ -75,12 +76,17 @@ from .handlers import (
     handle_fire_extensions_callbacks,
     handle_get_chat_history_threads,
     handle_get_gravatar_url,
+    handle_get_linked_space_group_index,
     handle_get_system_settings,
     handle_get_thread_space,
     handle_get_user_email,
     handle_index_thread_space,
+    handle_install_docq_slack_application,
+    handle_link_slack_channel_to_space_group,
     handle_list_documents,
     handle_list_orgs,
+    handle_list_slack_channels,
+    handle_list_slack_installations,
     handle_login,
     handle_logout,
     handle_manage_space_permissions,
@@ -1644,6 +1650,7 @@ def init_with_pretty_error_ui() -> None:
     """UI to run setup and prevent showing errors to the user."""
     try:
         setup.init()
+        print(f"\x1b[32mDocq started successfully: {st_app.get_singleton_instance().settings}.\x1b[0m")
         log.debug("Tornado settings: %s ", st_app.get_singleton_instance().settings)
     except Exception as e:
         st.error("Something went wrong starting Docq.")
@@ -1809,3 +1816,51 @@ def verify_email_ui() -> None:
         st.error("Email verification failed!")
         st.info("Please try again or contact your administrator.")
 
+
+def render_integrations() -> None:
+    """Render integrations."""
+    teams = handle_list_slack_installations()
+    team: Optional[SlackInstallation] = st.selectbox(
+        "Select a slack team",
+        options=teams,
+        format_func=lambda x: x.team_name,
+        key="selected_slack_team"
+    )
+
+    st.divider()
+    st.write("### Channels")
+
+    if team is not None:
+        channels = handle_list_slack_channels(team.app_id, team.team_id)
+        space_groups = list_space_groups()
+
+        for channel in channels:
+            with st.expander(f"### {channel['name']}"):
+                st.write(channel['purpose']['value'])
+                st.selectbox(
+                    "Select a space group",
+                    options=space_groups,
+                    format_func=lambda x: x[2],
+                    key=f"selected_space_group_{channel['id']}",
+                    index=handle_get_linked_space_group_index(channel['id'], space_groups)
+                )
+                _, save_btn, _ = st.columns([1, 1, 1])
+                save_btn.button(
+                    "Save Space Group Selection",
+                    on_click=handle_link_slack_channel_to_space_group,
+                    key=f"save_space_group_selection_{channel['id']}",
+                    args=(channel['id'], channel['name'])
+                )
+
+        if not channels:
+            st.info("No slack channels found")
+    else:
+        st.info("No slack teams found")
+
+
+def render_slack_installation_button() -> None:
+    """Render slack installation button."""
+    _, center, _ = st.columns([1, 1, 1])
+    with center:
+        if st.button("Install Docq Slack Application", type="primary", use_container_width=True):
+            handle_install_docq_slack_application()

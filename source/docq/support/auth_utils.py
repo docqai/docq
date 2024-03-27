@@ -248,3 +248,15 @@ def reset_cache_and_cookie_auth_session() -> None:
         _clear_cookie(SESSION_COOKIE_NAME)
     except Exception as e:
         log.error("Failed to clear session data caches (hmac, session data, and session cookie ): %s", e)
+
+
+def encrypt_cookie_value(data: str) -> str:
+    """Encrypt a string."""
+    cipher = Fernet(AUTH_KEY)
+    return cipher.encrypt(data.encode()).decode("utf-8")
+
+
+def decrypt_cookie_value(data: str) -> str:
+    """Decrypt a string."""
+    cipher = Fernet(AUTH_KEY)
+    return cipher.decrypt(data.encode()).decode("utf-8")
