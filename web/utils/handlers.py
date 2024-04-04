@@ -1103,7 +1103,7 @@ def handle_list_slack_installations() -> list [SlackInstallation]:
     """Handle list slack installations."""
     selected_org_id = get_selected_org_id()
     if selected_org_id is not None:
-        return manage_slack.list_docq_slack_installations(selected_org_id)
+        return manage_slack.list_docq_slack_installations(org_id=selected_org_id, team_id=None)
     return []
 
 
