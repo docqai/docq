@@ -7,10 +7,10 @@ from typing import Optional
 
 from docq.config import SpaceType
 from docq.domain import SpaceKey
-from docq.support.store import get_sqlite_external_system_file, get_sqlite_shared_system_file
+from docq.support.store import get_sqlite_shared_system_file
 from slack_sdk.oauth.installation_store import Installation
 
-from .models import SlackChannel, SlackInstallation, SlackMessage
+from .models import SlackChannel, SlackInstallation
 
 SQL_CREATE_DOCQ_SLACK_APPLICATIONS_TABLE = """
 CREATE TABLE IF NOT EXISTS docq_slack_installations (
@@ -41,28 +41,13 @@ CREATE TABLE IF NOT EXISTS docq_slack_channels (
 );
 """
 
-SQL_CREATE_TABLE_DOCQ_SLACK_MESSAGES = """
-CREATE TABLE IF NOT EXISTS docq_slack_messages (
-    id INTEGER PRIMARY KEY,
-    client_msg_id TEXT NOT NULL, -- Unique identifier for the message
-    type TEXT NOT NULL,
-    channel TEXT NOT NULL,
-    team TEXT NOT NULL,
-    user TEXT NOT NULL,
-    text TEXT NOT NULL,
-    ts TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (channel) REFERENCES docq_slack_channels(channel_id),
-    FOREIGN KEY (team) REFERENCES docq_slack_installations(team_id)
-);
-"""
+
 
 def _init() -> None:
     """Initialize the Slack integration."""
     with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
         connection.execute(SQL_CREATE_DOCQ_SLACK_APPLICATIONS_TABLE)
         connection.execute(SQL_CREATE_DOCQ_SLACK_CHANNELS_TABLE)
-        connection.execute(SQL_CREATE_TABLE_DOCQ_SLACK_MESSAGES)
         connection.commit()
 
 
@@ -86,26 +71,42 @@ def update_docq_slack_installation(app_id: str, team_name: str, org_id: int, spa
         connection.commit()
 
 
-def list_docq_slack_installations(org_id: int) -> list[SlackInstallation]:
+def list_docq_slack_installations(org_id: Optional[int], team_id: Optional[str]) -> list[SlackInstallation]:
     """List Docq installations."""
     with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
         cursor = connection.cursor()
+        if org_id:
+            criteria = " WHERE org_id = ?"
+            params = (org_id,)
+        elif team_id:
+            criteria = " WHERE team_id = ?"
+            params = (team_id,)
+
         cursor.execute(
-            "SELECT app_id, team_id, team_name, org_id, space_group_id, created_at FROM docq_slack_installations WHERE org_id = ?",
-            (org_id,),
+            f"SELECT app_id, team_id, team_name, org_id, space_group_id, created_at FROM docq_slack_installations{criteria}",
+            params,
         )
-        return [SlackInstallation(row) for row in cursor.fetchall()]
+        rows = cursor.fetchall()
+        return [
+            SlackInstallation(
+                app_id=row[0], team_id=row[1], team_name=row[2], org_id=row[3], space_group_id=row[4], created_at=row[5]
+            )
+            for row in rows
+        ]
 
 
-def get_docq_slack_installation(app_id: str, team_id: str, org_id: int) -> SlackInstallation:
-    """Get a Docq installation."""
-    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
-        cursor = connection.cursor()
-        cursor.execute(
-            "SELECT app_id, team_id, team_name, org_id, space_group_id, created_at FROM docq_slack_installations WHERE app_id = ? AND team_id = ? AND org_id = ?",
-            (app_id, team_id, org_id),
-        )
-        return SlackInstallation(cursor.fetchone())
+# def get_docq_slack_installation(app_id: str, team_id: str, org_id: int) -> SlackInstallation:
+#     """Get a Docq installation."""
+#     with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
+#         cursor = connection.cursor()
+#         cursor.execute(
+#             "SELECT app_id, team_id, team_name, org_id, space_group_id, created_at FROM docq_slack_installations WHERE app_id = ? AND team_id = ? AND org_id = ?",
+#             (app_id, team_id, org_id),
+#         )
+#         row = cursor.fetchone()
+#         return SlackInstallation(
+#             app_id=row[0], team_id=row[1], team_name=row[2], org_id=row[3], space_group_id=row[4], created_at=row[5]
+#         )
 
 
 def integration_exists(app_id: str, team_id: str, selected_org_id: int) -> bool:
@@ -163,7 +164,13 @@ def list_slack_channels(org_id: int) -> list[SlackChannel]:
             "SELECT channel_id, channel_name, org_id, space_group_id, created_at FROM docq_slack_channels WHERE org_id = ?",
             (org_id,),
         )
-        return [SlackChannel(row) for row in cursor.fetchall()]
+        rows = cursor.fetchall()
+        return [
+            SlackChannel(
+                channel_id=row[0], channel_name=row[1], org_id=row[2], space_group_id=row[3], created_at=row[4]
+            )
+            for row in rows
+        ]
 
 
 def get_slack_channel(channel_id: str) -> SlackChannel:
@@ -174,12 +181,15 @@ def get_slack_channel(channel_id: str) -> SlackChannel:
             "SELECT channel_id, channel_name, org_id, space_group_id, created_at FROM docq_slack_channels WHERE channel_id = ?",
             (channel_id,),
         )
-        return SlackChannel(cursor.fetchone())
+        row = cursor.fetchone()
+        return SlackChannel(
+            channel_id=row[0], channel_name=row[1], org_id=row[2], space_group_id=row[3], created_at=row[4]
+        )
 
 
 def get_slack_bot_token(app_id: str, team_id: str) -> str:
     """Get a bot token."""
-    with closing(sqlite3.connect(get_sqlite_external_system_file())) as connection:
+    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
         cursor = connection.cursor()
         cursor.execute(
             "SELECT bot_token FROM slack_bots WHERE app_id = ? AND team_id = ?", (app_id, team_id)
@@ -214,35 +224,3 @@ def get_org_id_from_channel_id(channel_id: str) -> Optional[int]:
         )
         result = cursor.fetchone()
         return result[0] if result is not None else None
-
-
-def insert_or_update_message(client_msg_id: str, type_: str, channel: str, team: str, user: str, text: str, ts: str) -> None:
-    """Insert or update a message."""
-    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
-        connection.execute(
-            "INSERT OR REPLACE INTO docq_slack_messages (client_msg_id, type, channel, team, user, text, ts) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (client_msg_id, type_, channel, team, user, text, ts),
-        )
-        connection.commit()
-
-
-def is_message_handled(client_msg_id: str, ts: str) -> bool:
-    """Check if a message exists."""
-    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
-        cursor = connection.cursor()
-        cursor.execute(
-            "SELECT id FROM docq_slack_messages WHERE client_msg_id = ? AND ts = ?",
-            (client_msg_id, ts),
-        )
-        return cursor.fetchone() is not None
-
-
-def list_slack_messages(channel: str) -> list[SlackMessage]:
-    """Get a list of messages for a specific channnel."""
-    with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
-        cursor = connection.cursor()
-        cursor.execute(
-            "SELECT client_msg_id, type, channel, team, user, text, ts, created_at FROM docq_slack_messages WHERE channel = ?",
-            (channel,),
-        )
-        return [SlackMessage(row) for row in cursor.fetchall()]

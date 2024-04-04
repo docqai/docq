@@ -1,6 +1,6 @@
 """Initialize integrations."""
 
-from .slack import manage_slack
+from .slack import manage_slack, manage_slack_messages
 
 
 def _init() -> None:

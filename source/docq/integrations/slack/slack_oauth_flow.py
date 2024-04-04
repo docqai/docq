@@ -1,22 +1,16 @@
 """"Custom slack oauth flow."""
 
-import html
 import os
 from logging import Logger
-from typing import Optional, Self, Sequence
+from typing import Optional, Sequence
 
-from slack_bolt.error import BoltError
 from slack_bolt.oauth.callback_options import CallbackOptions
 from slack_bolt.oauth.oauth_flow import OAuthFlow
 from slack_bolt.oauth.oauth_settings import OAuthSettings
-from slack_bolt.request import BoltRequest
 from slack_sdk.oauth import OAuthStateUtils
-from slack_sdk.oauth.installation_store import Installation
 from slack_sdk.oauth.installation_store.sqlite3 import SQLite3InstallationStore
 from slack_sdk.oauth.state_store.sqlite3 import SQLite3OAuthStateStore
 from slack_sdk.web import WebClient
-
-from .manage_slack import create_docq_slack_installation
 
 
 class SlackOAuthFlow(OAuthFlow):
@@ -82,53 +76,53 @@ class SlackOAuthFlow(OAuthFlow):
             ),
         )
 
-    def get_cookie(self: Self, name: str, cookies: Optional[str | Sequence[str]]) -> Optional[str]:
-        """Get a cookie."""
-        from docq.support.auth_utils import decrypt_cookie_value
+    # def get_cookie(self: Self, name: str, cookies: Optional[str | Sequence[str]]) -> Optional[str]:
+    #     """Get a cookie."""
+    #     from docq.support.auth_utils import decrypt_cookie_value
 
-        if not cookies:
-            return None
+    #     if not cookies:
+    #         return None
 
-        if isinstance(cookies, str):
-            cookies = [cookies]
-        for cookie in cookies:
-            for item in cookie.split(";"):
-                key, value = item.split("=", 1)
-                if key.strip() == name:
-                    return decrypt_cookie_value(value)
-        return None
+    #     if isinstance(cookies, str):
+    #         cookies = [cookies]
+    #     for cookie in cookies:
+    #         for item in cookie.split(";"):
+    #             key, value = item.split("=", 1)
+    #             if key.strip() == name:
+    #                 return decrypt_cookie_value(value)
+    #     return None
 
-    def save_docq_slack_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
-        """Save a Docq slack installation."""
-        docq_slack_app_state =  self.get_cookie("docq_slack_app_state", request.headers.get("cookie"))
-        if docq_slack_app_state is not None:
-            _, selected_org_id = docq_slack_app_state.split(":")
-            create_docq_slack_installation(installation, int(selected_org_id))
-        else:
-            raise BoltError("Login to Docq before installing the slack app.")
+    # def save_docq_slack_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
+    #     """Save a Docq slack installation."""
+    #     docq_slack_app_state =  self.get_cookie("docq_slack_app_state", request.headers.get("cookie"))
+    #     if docq_slack_app_state is not None:
+    #         _, selected_org_id = docq_slack_app_state.split(":")
+    #         create_docq_slack_installation(installation, int(selected_org_id))
+    #     else:
+    #         raise BoltError("Login to Docq before installing the slack app.")
 
-    def store_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
-        """Store an installation."""
-        self.save_docq_slack_installation(request, installation)
-        self.settings.installation_store.save(installation)
+    # def store_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
+    #     """Store an installation."""
+    #     self.save_docq_slack_installation(request, installation)
+    #     self.settings.installation_store.save(installation)
 
-    def build_install_page_html(self: Self, url: str, request: BoltRequest) -> str:
-        """Build the installation page html."""
-        return f"""
-            <html>
-              <head>
-              <link rel="icon" href="data:,">
-              <style>
-                body {{
-                  padding: 10px 15px;
-                  font-family: verdana;
-                  text-align: center;
-                }}
-              </style>
-             </head>
-             <body>
-              <h2>Docq Slack App Installation</h2>
-              <p><a href="{html.escape(url)}"><img alt=""Add to Slack"" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a></p>
-              </body>
-            </html>
-        """
+    # def build_install_page_html(self: Self, url: str, request: BoltRequest) -> str:
+    #     """Build the installation page html."""
+    #     return f"""
+    #         <html>
+    #           <head>
+    #           <link rel="icon" href="data:,">
+    #           <style>
+    #             body {{
+    #               padding: 10px 15px;
+    #               font-family: verdana;
+    #               text-align: center;
+    #             }}
+    #           </style>
+    #          </head>
+    #          <body>
+    #           <h2>Docq Slack App Installation</h2>
+    #           <p><a href="{html.escape(url)}"><img alt=""Add to Slack"" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a></p>
+    #           </body>
+    #         </html>
+    #     """
