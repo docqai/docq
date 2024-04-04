@@ -406,7 +406,7 @@ def __not_authorised() -> None:
     st.info(
         f"You're logged in as `{get_auth_session()[SessionKeyNameForAuth.NAME.name]}`. Please login as a different user with correct permissions to try again."
     )
-    st.stop()
+    # st.stop()
 
 
 def public_access() -> None:
@@ -1192,14 +1192,11 @@ def organisation_settings_ui() -> None:
         )
 
         available_models = list_available_model_settings_collections()
-        log.debug("available models %s", available_models)
-        saved_model = (
-            settings[OrganisationSettingsKey.MODEL_COLLECTION.name]
-            if OrganisationSettingsKey.MODEL_COLLECTION.name in settings
-            else None
-        )
 
-        log.debug("saved model: %s", saved_model)
+        span.set_attribute("available_models", str(available_models))
+        saved_model = settings.get(OrganisationSettingsKey.MODEL_COLLECTION.name, None)
+
+        span.set_attribute("saved_model", saved_model)
         list_keys = list(available_models.keys())
         saved_model_index = list_keys.index(saved_model) if saved_model and list_keys.count(saved_model) > 0 else 0
 
@@ -1210,27 +1207,37 @@ def organisation_settings_ui() -> None:
             index=saved_model_index,
             key=f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}",
         )
-        log.debug(
-            "selected model in session state: %s",
-            st.session_state[f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}"][0],
-        )
-        log.debug("selected model: %s", selected_model[0])
-        selected_model_settings: LlmUsageSettingsCollection = get_model_settings_collection(selected_model[0])
+        # log.debug(
+        #     "selected model in session state: %s",
+        #     st.session_state[f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}"][0],
+        # )
+        # log.debug("selected model: %s", selected_model[0])
 
-        with model_settings_container.expander("Model details"):
-            for _, model_settings in selected_model_settings.model_usage_settings.items():
-                st.write(f"{model_settings.model_capability.value} model: ")
-                st.write(f"- Model Vendor: `{model_settings.service_instance_config.vendor.value}`")
-                st.write(f"- Model Name: `{model_settings.service_instance_config.model_name}`")
-                st.write(f"- Temperature: `{model_settings.temperature}`")
-                st.write(
-                    f"- Deployment Name: `{model_settings.service_instance_config.model_deployment_name if model_settings.service_instance_config.model_deployment_name else 'n/a'}`"
-                )
-                st.write(
-                    f"- License: `{model_settings.service_instance_config.license_ if model_settings.service_instance_config.license_ else 'unknown'}`"
-                )
-                st.write(f"- Citation: `{model_settings.service_instance_config.citation}`")
-                st.divider()
+        span.set_attributes(
+            {
+                "selected_model": selected_model if selected_model else "None",
+                "selected_model_in_state": st.session_state[
+                    f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}"
+                ],
+            }
+        )
+        if selected_model:
+            selected_model_settings: LlmUsageSettingsCollection = get_model_settings_collection(selected_model[0])
+
+            with model_settings_container.expander("Model details"):
+                for _, model_settings in selected_model_settings.model_usage_settings.items():
+                    st.write(f"{model_settings.model_capability.value} model: ")
+                    st.write(f"- Model Vendor: `{model_settings.service_instance_config.vendor.value}`")
+                    st.write(f"- Model Name: `{model_settings.service_instance_config.model_name}`")
+                    st.write(f"- Temperature: `{model_settings.temperature}`")
+                    st.write(
+                        f"- Deployment Name: `{model_settings.service_instance_config.model_deployment_name if model_settings.service_instance_config.model_deployment_name else 'n/a'}`"
+                    )
+                    st.write(
+                        f"- License: `{model_settings.service_instance_config.license_ if model_settings.service_instance_config.license_ else 'unknown'}`"
+                    )
+                    st.write(f"- Citation: `{model_settings.service_instance_config.citation}`")
+                    st.divider()
 
 
 def _get_create_space_config_input_values() -> str:

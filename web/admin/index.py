@@ -28,11 +28,8 @@ def super_and_org_admin_pages() -> None:
         admin_logs,
     ) = st.tabs(["Orgs", "Users", "User Groups", "Spaces", "Space Groups", "Settings", "Chat Integrations", "Logs"])
 
-    with admin_logs:
-        admin_logs_page()
 
-    with admin_settings:
-        admin_settings_page()
+
 
     with admin_orgs:
         admin_orgs_page()
@@ -49,8 +46,14 @@ def super_and_org_admin_pages() -> None:
     with admin_space_groups:
         admin_space_groups_page()
 
+    with admin_settings:
+        admin_settings_page()
+
     with admin_chat_integrations:
         admin_integrations_page()
+
+    with admin_logs:
+        admin_logs_page()
 
 
 def org_admin_pages() -> None:
@@ -81,14 +84,14 @@ def org_admin_pages() -> None:
     with admin_space_groups:
         admin_space_groups_page()
 
-    with admin_logs:
-        admin_logs_page()
+    with admin_settings:
+        admin_settings_page()
 
     with admin_chat_integrations:
         admin_integrations_page()
 
-    with admin_settings:
-        admin_settings_page()
+    with admin_logs:
+        admin_logs_page()
 
 
 def super_admin_pages() -> None:
