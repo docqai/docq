@@ -1,13 +1,18 @@
 """"Custom slack oauth flow."""
 
+# import html
 import os
 from logging import Logger
-from typing import Optional, Sequence
+from typing import Optional, Self, Sequence
 
+from docq.integrations.slack.manage_slack import create_docq_slack_installation
+from slack_bolt.error import BoltError
 from slack_bolt.oauth.callback_options import CallbackOptions
 from slack_bolt.oauth.oauth_flow import OAuthFlow
 from slack_bolt.oauth.oauth_settings import OAuthSettings
+from slack_bolt.request import BoltRequest
 from slack_sdk.oauth import OAuthStateUtils
+from slack_sdk.oauth.installation_store import Installation
 from slack_sdk.oauth.installation_store.sqlite3 import SQLite3InstallationStore
 from slack_sdk.oauth.state_store.sqlite3 import SQLite3OAuthStateStore
 from slack_sdk.web import WebClient
@@ -76,36 +81,37 @@ class SlackOAuthFlow(OAuthFlow):
             ),
         )
 
-    # def get_cookie(self: Self, name: str, cookies: Optional[str | Sequence[str]]) -> Optional[str]:
-    #     """Get a cookie."""
-    #     from docq.support.auth_utils import decrypt_cookie_value
+    def get_cookie(self: Self, name: str, cookies: Optional[str | Sequence[str]]) -> Optional[str]:
+        """Get a cookie."""
+        from docq.support.auth_utils import decrypt_cookie_value
 
-    #     if not cookies:
-    #         return None
+        if not cookies:
+            return None
 
-    #     if isinstance(cookies, str):
-    #         cookies = [cookies]
-    #     for cookie in cookies:
-    #         for item in cookie.split(";"):
-    #             key, value = item.split("=", 1)
-    #             if key.strip() == name:
-    #                 return decrypt_cookie_value(value)
-    #     return None
+        if isinstance(cookies, str):
+            cookies = [cookies]
+        for cookie in cookies:
+            for item in cookie.split(";"):
+                key, value = item.split("=", 1)
+                if key.strip() == name:
+                    return decrypt_cookie_value(value)
+        return None
 
-    # def save_docq_slack_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
-    #     """Save a Docq slack installation."""
-    #     docq_slack_app_state =  self.get_cookie("docq_slack_app_state", request.headers.get("cookie"))
-    #     if docq_slack_app_state is not None:
-    #         _, selected_org_id = docq_slack_app_state.split(":")
-    #         create_docq_slack_installation(installation, int(selected_org_id))
-    #     else:
-    #         raise BoltError("Login to Docq before installing the slack app.")
+    def save_docq_slack_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
+        """Save a Docq slack installation."""
+        docq_slack_app_state =  self.get_cookie("docq_slack_app_state", request.headers.get("cookie"))
+        if docq_slack_app_state is not None:
+            _, selected_org_id = docq_slack_app_state.split(":")
+            create_docq_slack_installation(installation, int(selected_org_id))
+        else:
+            raise BoltError("Login to Docq before installing the slack app.")
 
-    # def store_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
-    #     """Store an installation."""
-    #     self.save_docq_slack_installation(request, installation)
-    #     self.settings.installation_store.save(installation)
+    def store_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
+        """Store an installation."""
+        self.save_docq_slack_installation(request, installation)
+        self.settings.installation_store.save(installation)
 
+    # NOTE: This only shows how to create a custom installation page if not provided the default one from slack is used.
     # def build_install_page_html(self: Self, url: str, request: BoltRequest) -> str:
     #     """Build the installation page html."""
     #     return f"""
