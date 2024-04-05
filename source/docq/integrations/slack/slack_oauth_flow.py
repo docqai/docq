@@ -19,7 +19,13 @@ from slack_sdk.web import WebClient
 
 
 class SlackOAuthFlow(OAuthFlow):
-    """Custom slack oauth flow."""
+    """Custom slack oauth flow.
+
+    This is used by slack_sdk to during installation of slack applications.
+    Shares the docq app state with the slack app installation.
+
+    We override the default installation methods to link the slack workspaces to docq organistaions during installation.
+    """
 
     @classmethod
     def sqlite3(
