@@ -22,7 +22,7 @@ def rag_completion(text: str, channel_id: str) -> str:
     org_id = manage_slack.get_org_id_from_channel_id(channel_id)
 
     if not spaces:
-        return "This channel is not configured in Docq. Please contact your administrator to setup the channel.\nhttps:docq.ai"
+        return "This channel is not configured in Docq. Please contact your administrator to setup the channel.\nhttps://docq.ai"
 
     history = ""
     model_collection_settings = get_saved_model_settings_collection(org_id) if org_id else get_model_settings_collection("azure_openai_latest")

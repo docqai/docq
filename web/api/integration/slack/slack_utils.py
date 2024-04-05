@@ -4,7 +4,6 @@ from typing import Callable
 
 import docq.integrations.slack.manage_slack as manage_slack
 import docq.integrations.slack.manage_slack_messages as manage_slack_messages
-import scipy as sp
 import streamlit as st
 from opentelemetry import trace
 from slack_sdk import WebClient
@@ -34,7 +33,7 @@ def message_handled_middleware(ack: Callable, body: dict, next_: Callable) -> No
     span = trace.get_current_span()
     ack()
 
-    client_msg_id, ts, team_id = body["event"]["client_msg_id"], body["event"]["ts"], body["event"]["team_id"]
+    client_msg_id, ts, team_id = body["event"]["client_msg_id"], body["event"]["ts"], body["event"]["team"]
     org_id = get_org_id(team_id)
     if org_id is None:
         span.record_exception(ValueError(f"No Org ID found for Slack team ID '{team_id}'"))
