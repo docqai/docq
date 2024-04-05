@@ -1,3 +1,5 @@
+"""Slack messages handler."""
+
 import sqlite3
 from contextlib import closing
 
@@ -14,9 +16,7 @@ CREATE TABLE IF NOT EXISTS docq_slack_messages (
     user_id TEXT NOT NULL,
     text TEXT NOT NULL,
     ts TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    channel_id TEXT NOT NULL,
-    team_id TEXT NOT NULL
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 """
 
