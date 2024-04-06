@@ -23,7 +23,7 @@ TTL_HOURS = 1
 TTL_SEC = 60 * 60 * TTL_HOURS
 CACHE_CONFIG = (1024 * 1, TTL_SEC)
 AUTH_KEY = Fernet.generate_key()
-AUTH_SESSION_SECRET_KEY: str = os.environ.get(ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY)
+AUTH_SESSION_SECRET_KEY = os.environ.get(ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY)
 
 # Cache of session data keyed by hmac hash (hmac of session id)
 cached_session_data: TTLCache[str, bytes] = TTLCache(*CACHE_CONFIG)
@@ -157,7 +157,7 @@ def verify_cookie_hmac_session_id() -> str | None:
     return hmac_session_id
 
 
-def _encrypt(payload: dict) -> bytes:
+def _encrypt(payload: dict) -> bytes | None:
     """Encrypt some data."""
     try:
         data = json.dumps(payload).encode()
@@ -168,7 +168,7 @@ def _encrypt(payload: dict) -> bytes:
         return None
 
 
-def _decrypt(encrypted_payload: bytes) -> dict:
+def _decrypt(encrypted_payload: bytes) -> dict | None:
     """Decrypt some data."""
     try:
         cipher = Fernet(AUTH_KEY)
@@ -215,12 +215,24 @@ def set_cache_auth_session(val: dict) -> None:
 @tracer.start_as_current_span("get_cache_auth_session")
 def get_cache_auth_session() -> dict | None:
     """Verify the session auth token and get the cached session state for the current session. The current session is identified by a session_id wrapped in a auth token in a browser session cookie."""
+    span = trace.get_current_span()
     try:
         decrypted_auth_session_data = None
         hmac_session_id = _get_cookie_session_id()
-        if hmac_session_id in cached_session_data:
-            encrypted_auth_session_data = cached_session_data[hmac_session_id]
-            decrypted_auth_session_data = _decrypt(encrypted_auth_session_data)
+        span.set_attribute("session_id", "value present" if hmac_session_id else "value missing")
+        if hmac_session_id:
+            log.debug("get_cache_auth_session() - hmac session id: %s", hmac_session_id)
+            log.debug("get_cache_auth_session(): %s", cached_session_data.keys().__str__())
+            if hmac_session_id in cached_session_data:
+                encrypted_auth_session_data = cached_session_data[hmac_session_id]
+                decrypted_auth_session_data = _decrypt(encrypted_auth_session_data)
+            else:
+                log.debug("Session id not found in cache")
+                span.add_event("session_id not found in session cache data")
+        else:
+            log.warning("Session id not found in cookie")
+            span.add_event("session_id not found in cookie")
+
         return decrypted_auth_session_data
     except Exception as e:
         log.error("Failed to get auth session from cache: %s", e)
@@ -228,15 +240,18 @@ def get_cache_auth_session() -> dict | None:
 
 
 def remove_cache_auth_session() -> None:
-    """Remove the cached session state for the current session. The current session is identified by a session_id in a particular browsersession cookie."""
+    """Remove the cached session state for the current session. The current session is identified by a session_id in a particular browser session cookie."""
     try:
         hmac_session_id = _get_cookie_session_id()
-        if hmac_session_id in cached_session_data:
-            del cached_session_data[hmac_session_id]
-            log.debug("Removed from cached_session: %s", hmac_session_id)
-        if hmac_session_id in cached_session_ids:
-            del cached_session_ids[hmac_session_id]
-            log.debug("Removed from session_data: %s", hmac_session_id)
+        if hmac_session_id:
+            if hmac_session_id in cached_session_data:
+                del cached_session_data[hmac_session_id]
+                log.debug("Removed from cached_session: %s", hmac_session_id)
+            if hmac_session_id in cached_session_ids:
+                del cached_session_ids[hmac_session_id]
+                log.debug("Removed from session_data: %s", hmac_session_id)
+        else:
+            log.warning("Session id not found in cache")
     except Exception as e:
         log.error("Failed to remove auth session from cache: %s", e)
 
