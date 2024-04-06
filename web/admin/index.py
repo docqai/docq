@@ -123,7 +123,6 @@ with tracer().start_as_current_span("admin_section", attributes=baggage_as_attri
     auth_required(requiring_selected_org_admin=True)
 
     if is_current_user_super_admin() and is_current_user_selected_org_admin():
-        # st.write("You are a _super admin_ and _current selected org admin_.")
         span.set_attribute("user_role", "super_admin_and_org_admin")
         super_and_org_admin_pages()
     elif is_current_user_selected_org_admin:
@@ -132,3 +131,5 @@ with tracer().start_as_current_span("admin_section", attributes=baggage_as_attri
     elif is_current_user_super_admin():
         span.set_attribute("user_role", "super_admin_only")
         super_admin_pages()
+    else:
+        span.set_attribute("user_role", "non_admin_user")
