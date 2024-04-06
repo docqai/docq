@@ -1,6 +1,6 @@
 """Slack chat action handler."""
 
-from turtle import tracer
+
 
 from docq.integrations.slack.slack_application import slack_app
 from opentelemetry import trace
