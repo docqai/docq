@@ -32,37 +32,38 @@ def failure_callback(failure_args: FailureArgs) -> BoltResponse:
     span.set_attribute("slack_failure_callback_args", str(failure_args))
     return failure_args.default.failure(failure_args)
 
-if CLIENT_ID and CLIENT_SECRET and SIGNING_SECRET:
-    slack_app = App(
-        process_before_response=True,
-        request_verification_enabled=True,
-        signing_secret=SIGNING_SECRET,
-        oauth_flow=SlackOAuthFlow.sqlite3(
-            database=get_sqlite_shared_system_file(),
-            install_path="/api/integration/slack/v1/install",
-            redirect_uri_path="/api/integration/slack/v1/oauth_redirect",
-            client_id=CLIENT_ID,
-            client_secret=CLIENT_SECRET,
-            scopes=SCOPES,
-            user_scopes=USER_SCOPES,
-            callback_options=CallbackOptions(success=success_callback, failure=failure_callback),
-        ),
-    )
-else:
-    trace.get_current_span().set_attributes(
+with tracer.start_as_current_span(name="initialise_slack_app") as slack_app_span:
+    slack_app_span.set_attributes(
         {
-            "slack_env__client_id": CLIENT_ID if CLIENT_ID else "None",
-            "slack_env__client_secret": "value present" if CLIENT_SECRET else "None",
-            "slack_env__signing_secret": "value present" if SIGNING_SECRET else "None",
+            ENV_VAR_DOCQ_SLACK_CLIENT_ID: CLIENT_ID if CLIENT_ID else "value missing",
+            ENV_VAR_DOCQ_SLACK_CLIENT_SECRET: "value present" if CLIENT_SECRET else "value missing",
+            ENV_VAR_DOCQ_SLACK_SIGNING_SECRET: "value present" if SIGNING_SECRET else "value missing",
         }
     )
-    trace.get_current_span().record_exception(
-        ValueError(
-            "One or more Slack environment variables are not set. Check {ENV_VAR_DOCQ_SLACK_CLIENT_ID}, {ENV_VAR_DOCQ_SLACK_CLIENT_SECRET}, {ENV_VAR_DOCQ_SLACK_SIGNING_SECRET}. Values for these are part of your app config in Slack."
+    if CLIENT_ID and CLIENT_SECRET and SIGNING_SECRET:
+        slack_app = App(
+            process_before_response=True,
+            request_verification_enabled=True,
+            signing_secret=SIGNING_SECRET,
+            oauth_flow=SlackOAuthFlow.sqlite3(
+                database=get_sqlite_shared_system_file(),
+                install_path="/api/integration/slack/v1/install",
+                redirect_uri_path="/api/integration/slack/v1/oauth_redirect",
+                client_id=CLIENT_ID,
+                client_secret=CLIENT_SECRET,
+                scopes=SCOPES,
+                user_scopes=USER_SCOPES,
+                callback_options=CallbackOptions(success=success_callback, failure=failure_callback),
+            ),
         )
-    )
-    trace.Status(trace.StatusCode.ERROR)
-    logging.error(
-        f"One or more Slack environment variables are not set. Check {ENV_VAR_DOCQ_SLACK_CLIENT_ID}, {ENV_VAR_DOCQ_SLACK_CLIENT_SECRET}, {ENV_VAR_DOCQ_SLACK_SIGNING_SECRET}. Values for these are part of your app config in Slack."
-    )
-    # raise ValueError("Slack client ID and client secret must be set in the environment.")
+    else:
+        slack_app_span.record_exception(
+            ValueError(
+                f"One or more Slack environment variables are not set. Expected env var names: {ENV_VAR_DOCQ_SLACK_CLIENT_ID}, {ENV_VAR_DOCQ_SLACK_CLIENT_SECRET}, {ENV_VAR_DOCQ_SLACK_SIGNING_SECRET}. Values for these are part of your app config in Slack."
+            )
+        )
+        slack_app_span.set_status(trace.StatusCode.ERROR)
+        logging.error(
+            f"One or more Slack environment variables are not set. Expected env var names: {ENV_VAR_DOCQ_SLACK_CLIENT_ID}, {ENV_VAR_DOCQ_SLACK_CLIENT_SECRET}, {ENV_VAR_DOCQ_SLACK_SIGNING_SECRET}. Values for these are part of your app config in Slack."
+        )
+        # raise ValueError("Slack client ID and client secret must be set in the environment.")
