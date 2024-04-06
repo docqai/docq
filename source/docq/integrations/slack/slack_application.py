@@ -1,5 +1,6 @@
 """Slack application."""
 
+import logging
 import os
 
 from docq.integrations.slack.slack_oauth_flow import SlackOAuthFlow
@@ -48,8 +49,20 @@ if CLIENT_ID and CLIENT_SECRET and SIGNING_SECRET:
         ),
     )
 else:
+    trace.get_current_span().set_attributes(
+        {
+            "slack_env__client_id": CLIENT_ID if CLIENT_ID else "None",
+            "slack_env__client_secret": "value present" if CLIENT_SECRET else "None",
+            "slack_env__signing_secret": "value present" if SIGNING_SECRET else "None",
+        }
+    )
     trace.get_current_span().record_exception(
-        ValueError("Slack client ID and client secret must be set in the environment.")
+        ValueError(
+            "One or more Slack environment variables are not set. Check {ENV_VAR_DOCQ_SLACK_CLIENT_ID}, {ENV_VAR_DOCQ_SLACK_CLIENT_SECRET}, {ENV_VAR_DOCQ_SLACK_SIGNING_SECRET}. Values for these are part of your app config in Slack."
+        )
     )
     trace.Status(trace.StatusCode.ERROR)
-    raise ValueError("Slack client ID and client secret must be set in the environment.")
+    logging.error(
+        f"One or more Slack environment variables are not set. Check {ENV_VAR_DOCQ_SLACK_CLIENT_ID}, {ENV_VAR_DOCQ_SLACK_CLIENT_SECRET}, {ENV_VAR_DOCQ_SLACK_SIGNING_SECRET}. Values for these are part of your app config in Slack."
+    )
+    # raise ValueError("Slack client ID and client secret must be set in the environment.")
