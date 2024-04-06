@@ -1,4 +1,7 @@
-"""Page: Admin / Manage Documents."""
+"""Page: Admin / Manage Documents.
+
+This duplicate is needed for the G Drive, OneDrive etc. auth flow..
+"""
 from utils.layout import (
   admin_docs_ui,
   auth_required,

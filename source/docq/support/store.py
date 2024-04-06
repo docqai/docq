@@ -27,6 +27,8 @@ class _SqliteFilename(Enum):
 
     USAGE = "usage.db"
     SYSTEM = "system.db"
+    SLACK_MESSAGES = "slack_messages.db"
+
 
 class _DataScope(Enum):
     """The data access scopes used to partition data persistance. Note scoped by ownership not sharing and access.
@@ -169,6 +171,15 @@ def get_sqlite_user_system_file(user_id: int) -> str:
 def get_sqlite_org_system_file(org_id: int) -> str:
     """Get the SQLite file for the storing org scoped system data."""
     return _get_path(store=_StoreDir.SQLITE, data_scope=_DataScope.ORG, subtype=str(org_id), filename=_SqliteFilename.SYSTEM.value)
+
+def get_sqlite_org_slack_messages_file(org_id: int) -> str:
+    """Get the SQLite file for storing external system data."""
+    return _get_path(
+        store=_StoreDir.SQLITE,
+        data_scope=_DataScope.ORG,
+        subtype=str(org_id),
+        filename=_SqliteFilename.SLACK_MESSAGES.value,
+    )
 
 
 def get_history_table_name(type_: OrganisationFeatureType) -> str:

@@ -4,10 +4,11 @@ import base64
 import hashlib
 import logging as log
 import math
+import os
 import random
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import unquote_plus
 
@@ -30,6 +31,8 @@ from docq.agents.main import run_agent
 from docq.data_source.list import SpaceDataSources
 from docq.domain import DocumentListItem, SpaceKey
 from docq.extensions import ExtensionContext, _registered_extensions
+from docq.integrations.slack import manage_slack
+from docq.integrations.slack.models import SlackInstallation
 from docq.manage_assistants import get_assistant_or_default
 from docq.model_selection.main import (
     LlmUsageSettingsCollection,
@@ -37,6 +40,7 @@ from docq.model_selection.main import (
     get_saved_model_settings_collection,
 )
 from docq.services.smtp_service import mailer_ready, send_verification_email
+from docq.support.auth_utils import _get_cookies as get_cookies
 from docq.support.auth_utils import reset_cache_and_cookie_auth_session
 from opentelemetry import baggage, trace
 from pydantic import RootModel
@@ -65,6 +69,7 @@ from .sessions import (
     set_selected_org_id,
     set_settings_session,
 )
+from .streamlit_application import st_app
 
 tracer = trace.get_tracer("docq.web.handler")
 
@@ -1044,7 +1049,8 @@ def handle_get_user_email() -> Optional[str]:
 
 def handle_redirect_to_url(url: str, key: str) -> None:
     """Redirect to url."""
-    html(f"""
+    html(
+        f"""
         <script>
             const gotoPage = document.createElement('script');
             gotoPage.type = 'text/javascript';
@@ -1054,7 +1060,8 @@ def handle_redirect_to_url(url: str, key: str) -> None:
             if (prevScript) prevScript.remove();
             window.parent.document.body.appendChild(gotoPage);
         </script>
-        """, height=0
+        """,
+        height=0,
     )
 
 
@@ -1082,3 +1089,67 @@ def handle_click_chat_history_thread(feature: domain.FeatureKey, thread_id: int)
     set_chat_session(datetime.now(), feature.type_, SessionKeyNameForChat.CUTOFF)
     set_chat_session([], feature.type_, SessionKeyNameForChat.HISTORY)
     query_chat_history(feature)
+
+
+@st.cache_data(ttl=300)
+def handle_list_slack_channels(app_id: str, team_id: str) -> Any:
+    """Handle list slack channels."""
+    from web.api.integration.slack.slack_utils import list_slack_team_channels
+
+    with st.spinner("Loading channels..."):
+        channel_lists = list_slack_team_channels(app_id, team_id)
+        return channel_lists
+
+
+def handle_list_slack_installations() -> list [SlackInstallation]:
+    """Handle list slack installations."""
+    selected_org_id = get_selected_org_id()
+    if selected_org_id is not None:
+        return manage_slack.list_docq_slack_installations(org_id=selected_org_id, team_id=None)
+    return []
+
+
+def handle_set_cookie(name: str, value: str, expiry: datetime, path: str = "/", secure: bool = True) -> None:
+    """Handle set cookie."""
+    from docq.support.auth_utils import encrypt_cookie_value
+
+    value = encrypt_cookie_value(value)
+    html(f"""
+        <script>
+            const p = window.parent.document || window.document;
+            p.cookie = "{name}={value};expires={expiry.strftime('%a, %d %b %Y %H:%M:%S GMT')};path={path};secure={secure};";
+        </script>
+    """, height=0)
+
+
+def handle_install_docq_slack_application(app_state: int = 0) -> None:
+    """Handle install docq slack application."""
+    selected_org_id = get_selected_org_id()
+    slack_app_state = f"state:{selected_org_id}"
+    expiry = datetime.now() + timedelta(minutes=5)
+    handle_set_cookie(name="docq_slack_app_state", value=slack_app_state, expiry=expiry)
+    path = "/api/integration/slack/v1/install"
+    handle_redirect_to_url(f"{path}", "slack-install")
+
+
+def handle_link_slack_channel_to_space_group(channel_id: str, channel_name: str) -> None:
+    """Handle link slack channel to space group."""
+    selected_org_id = get_selected_org_id()
+    space_group = st.session_state[f"selected_space_group_{channel_id}"]
+    if selected_org_id is not None:
+        manage_slack.link_space_group_to_slack_channel(
+            org_id=selected_org_id, channel_id=channel_id,
+            channel_name=channel_name,
+            space_group_id=space_group[0]
+        )
+
+
+def handle_get_linked_space_group_index(channel_id: str, space_groups: list[tuple]) -> Optional[int]:
+    """Get linked space group id."""
+    selected_org_id = get_selected_org_id()
+    if selected_org_id is not None:
+        space_group_id = manage_slack.get_slack_channel_linked_space_group_id(selected_org_id, channel_id)
+        for i, space_group in enumerate(space_groups):
+            if space_group[0] == space_group_id:
+                return i
+    return None

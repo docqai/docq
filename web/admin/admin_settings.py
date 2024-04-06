@@ -8,5 +8,5 @@ from utils.layout import is_super_admin, organisation_settings_ui, system_settin
 def admin_settings_page() -> None:
     """Page: Admin / Manage Settings."""
     organisation_settings_ui()
-    is_super_admin()
-    system_settings_ui()
+    if is_super_admin():
+        system_settings_ui()

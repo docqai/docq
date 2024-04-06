@@ -7,6 +7,7 @@ import docq
 from docq import db_migrations, extensions, manage_assistants
 
 from . import (
+    integrations,
     manage_organisations,
     manage_settings,
     manage_space_groups,
@@ -38,6 +39,7 @@ def init() -> None:
         manage_assistants._init()
         db_migrations.run() # run db migrations after all tables are created
         services._init()
+        integrations._init()
         services.credential_utils.setup_all_service_credentials()
         store._init()
         manage_organisations._init_default_org_if_necessary()

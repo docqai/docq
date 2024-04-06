@@ -21,8 +21,9 @@ from docq.config import (
     SystemFeatureType,
     SystemSettingsKey,
 )
-from docq.domain import AssistantType, ConfigKey, DocumentListItem, FeatureKey, SourcePageType, SpaceKey
+from docq.domain import AssistantType, ConfigKey, DocumentListItem, FeatureKey, SpaceKey
 from docq.extensions import ExtensionContext
+from docq.integrations.slack.models import SlackInstallation
 from docq.manage_assistants import list_assistants
 from docq.model_selection.main import (
     LlmUsageSettingsCollection,
@@ -75,12 +76,17 @@ from .handlers import (
     handle_fire_extensions_callbacks,
     handle_get_chat_history_threads,
     handle_get_gravatar_url,
+    handle_get_linked_space_group_index,
     handle_get_system_settings,
     handle_get_thread_space,
     handle_get_user_email,
     handle_index_thread_space,
+    handle_install_docq_slack_application,
+    handle_link_slack_channel_to_space_group,
     handle_list_documents,
     handle_list_orgs,
+    handle_list_slack_channels,
+    handle_list_slack_installations,
     handle_login,
     handle_logout,
     handle_manage_space_permissions,
@@ -400,7 +406,7 @@ def __not_authorised() -> None:
     st.info(
         f"You're logged in as `{get_auth_session()[SessionKeyNameForAuth.NAME.name]}`. Please login as a different user with correct permissions to try again."
     )
-    st.stop()
+    # st.stop()
 
 
 def public_access() -> None:
@@ -1186,14 +1192,11 @@ def organisation_settings_ui() -> None:
         )
 
         available_models = list_available_model_settings_collections()
-        log.debug("available models %s", available_models)
-        saved_model = (
-            settings[OrganisationSettingsKey.MODEL_COLLECTION.name]
-            if OrganisationSettingsKey.MODEL_COLLECTION.name in settings
-            else None
-        )
 
-        log.debug("saved model: %s", saved_model)
+        span.set_attribute("available_models", str(available_models))
+        saved_model = settings.get(OrganisationSettingsKey.MODEL_COLLECTION.name, None)
+
+        span.set_attribute("saved_model", saved_model)
         list_keys = list(available_models.keys())
         saved_model_index = list_keys.index(saved_model) if saved_model and list_keys.count(saved_model) > 0 else 0
 
@@ -1204,27 +1207,37 @@ def organisation_settings_ui() -> None:
             index=saved_model_index,
             key=f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}",
         )
-        log.debug(
-            "selected model in session state: %s",
-            st.session_state[f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}"][0],
-        )
-        log.debug("selected model: %s", selected_model[0])
-        selected_model_settings: LlmUsageSettingsCollection = get_model_settings_collection(selected_model[0])
+        # log.debug(
+        #     "selected model in session state: %s",
+        #     st.session_state[f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}"][0],
+        # )
+        # log.debug("selected model: %s", selected_model[0])
 
-        with model_settings_container.expander("Model details"):
-            for _, model_settings in selected_model_settings.model_usage_settings.items():
-                st.write(f"{model_settings.model_capability.value} model: ")
-                st.write(f"- Model Vendor: `{model_settings.service_instance_config.vendor.value}`")
-                st.write(f"- Model Name: `{model_settings.service_instance_config.model_name}`")
-                st.write(f"- Temperature: `{model_settings.temperature}`")
-                st.write(
-                    f"- Deployment Name: `{model_settings.service_instance_config.model_deployment_name if model_settings.service_instance_config.model_deployment_name else 'n/a'}`"
-                )
-                st.write(
-                    f"- License: `{model_settings.service_instance_config.license_ if model_settings.service_instance_config.license_ else 'unknown'}`"
-                )
-                st.write(f"- Citation: `{model_settings.service_instance_config.citation}`")
-                st.divider()
+        span.set_attributes(
+            {
+                "selected_model": selected_model if selected_model else "None",
+                "selected_model_in_state": st.session_state[
+                    f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}"
+                ],
+            }
+        )
+        if selected_model:
+            selected_model_settings: LlmUsageSettingsCollection = get_model_settings_collection(selected_model[0])
+
+            with model_settings_container.expander("Model details"):
+                for _, model_settings in selected_model_settings.model_usage_settings.items():
+                    st.write(f"{model_settings.model_capability.value} model: ")
+                    st.write(f"- Model Vendor: `{model_settings.service_instance_config.vendor.value}`")
+                    st.write(f"- Model Name: `{model_settings.service_instance_config.model_name}`")
+                    st.write(f"- Temperature: `{model_settings.temperature}`")
+                    st.write(
+                        f"- Deployment Name: `{model_settings.service_instance_config.model_deployment_name if model_settings.service_instance_config.model_deployment_name else 'n/a'}`"
+                    )
+                    st.write(
+                        f"- License: `{model_settings.service_instance_config.license_ if model_settings.service_instance_config.license_ else 'unknown'}`"
+                    )
+                    st.write(f"- Citation: `{model_settings.service_instance_config.citation}`")
+                    st.divider()
 
 
 def _get_create_space_config_input_values() -> str:
@@ -1809,3 +1822,58 @@ def verify_email_ui() -> None:
         st.error("Email verification failed!")
         st.info("Please try again or contact your administrator.")
 
+
+def render_integrations() -> None:
+    """Render integrations."""
+    teams = handle_list_slack_installations()
+    team: Optional[SlackInstallation] = st.selectbox(
+        "Select a slack team",
+        options=teams,
+        format_func=lambda x: x.team_name,
+        key="selected_slack_team"
+    )
+
+    st.divider()
+    st.write("### Channels")
+
+    if team is not None:
+        slack_channels = handle_list_slack_channels(team.app_id, team.team_id)
+        space_groups = list_space_groups()
+        space_groups_exist = len(space_groups) > 0
+        slack_channels_exist = len(slack_channels) > 0
+
+        for channel in slack_channels:
+            with st.expander(f"### {channel['name']}"):
+                st.write(channel['purpose']['value'])
+                if space_groups_exist:
+                    selected_space_group = st.selectbox(
+                        "Select a space group",
+                        options=space_groups,
+                        format_func=lambda x: x[2],
+                        key=f"selected_space_group_{channel['id']}",
+                        index=handle_get_linked_space_group_index(channel["id"], space_groups),
+                    )
+                    _, save_btn, _ = st.columns([1, 1, 1])
+                    disable_save_button = selected_space_group is None
+                    save_btn.button(
+                        "Save Space Group Selection",
+                        on_click=handle_link_slack_channel_to_space_group,
+                        key=f"save_space_group_selection_{channel['id']}",
+                        args=(channel["id"], channel["name"]),
+                        disabled=disable_save_button,
+                    )
+                else:
+                    st.info("No Space Groups found. Create a Space Group first.")
+
+        if not slack_channels_exist:
+            st.info("No slack channels found")
+    else:
+        st.info("No slack teams found")
+
+
+def render_slack_installation_button() -> None:
+    """Render slack installation button."""
+    _, center, _ = st.columns([1, 1, 1])
+    with center:
+        if st.button("Install Docq Slack Application", type="primary", use_container_width=True):
+            handle_install_docq_slack_application()
