@@ -1,8 +1,5 @@
 """"Custom slack oauth flow."""
 
-# import html
-import os
-import re
 from logging import Logger
 from typing import Optional, Self, Sequence
 
@@ -36,10 +33,10 @@ class SlackOAuthFlow(OAuthFlow):
     def sqlite3(
         cls,  # noqa: ANN102
         database: str,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        scopes: Optional[Sequence[str]] = None,
-        user_scopes: Optional[Sequence[str]] = None,
+        client_id: str,
+        client_secret: str,
+        scopes: Sequence[str],
+        user_scopes: Sequence[str],
         redirect_uri: Optional[str] = None,
         install_path: Optional[str] = None,
         redirect_uri_path: Optional[str] = None,
@@ -55,11 +52,11 @@ class SlackOAuthFlow(OAuthFlow):
         logger: Optional[Logger] = None,
     ) -> "SlackOAuthFlow":
         """Create a SlackOAuthFlow."""
-        client_id = client_id or os.environ["SLACK_CLIENT_ID"]
-        client_secret = client_secret or os.environ["SLACK_CLIENT_SECRET"]
-        scopes = scopes or os.environ.get("SLACK_SCOPES", "").split(",")
-        user_scopes = user_scopes or os.environ.get("SLACK_USER_SCOPES", "").split(",")
-        redirect_uri = redirect_uri or os.environ.get("SLACK_REDIRECT_URI")
+        # client_id = client_id  # or os.environ["SLACK_CLIENT_ID"]
+        # client_secret = client_secret  # or os.environ["SLACK_CLIENT_SECRET"]
+        # scopes = scopes  # or os.environ.get("SLACK_SCOPES", "").split(",")
+        # user_scopes = user_scopes  # or os.environ.get("SLACK_USER_SCOPES", "").split(",")
+        # redirect_uri = redirect_uri  # or os.environ.get("SLACK_REDIRECT_URI")
         span = trace.get_current_span()
         span.set_attributes(
             attributes={
