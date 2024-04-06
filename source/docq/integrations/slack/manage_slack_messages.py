@@ -22,7 +22,10 @@ CREATE TABLE IF NOT EXISTS docq_slack_messages (
 
 
 def _init(org_id: int) -> None:
-    """Initialize the Slack integration."""
+    """Initialize the Slack integration.
+
+    We don't call this in setup because and org_id context is required.
+    """
     with closing(sqlite3.connect(get_sqlite_org_slack_messages_file(org_id=org_id))) as connection:
         connection.execute(SQL_CREATE_TABLE_DOCQ_SLACK_MESSAGES)
         connection.commit()
