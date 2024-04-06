@@ -4,18 +4,17 @@ import os
 
 from docq.integrations.slack.slack_oauth_flow import SlackOAuthFlow
 from docq.support.store import get_sqlite_shared_system_file
-from grpc import StatusCode
-from h11 import ERROR
 from opentelemetry import trace
 from slack_bolt import App, BoltResponse
 from slack_bolt.oauth.callback_options import CallbackOptions, FailureArgs, SuccessArgs
 
-from ...config import ENV_VAR_DOCQ_SLACK_CLIENT_ID, ENV_VAR_DOCQ_SLACK_CLIENT_SECRET
+from ...config import ENV_VAR_DOCQ_SLACK_CLIENT_ID, ENV_VAR_DOCQ_SLACK_CLIENT_SECRET, ENV_VAR_DOCQ_SLACK_SIGNING_SECRET
 
 tracer = trace.get_tracer(__name__)
 
 CLIENT_ID = os.environ.get(ENV_VAR_DOCQ_SLACK_CLIENT_ID)
 CLIENT_SECRET = os.environ.get(ENV_VAR_DOCQ_SLACK_CLIENT_SECRET)
+SIGNING_SECRET = os.environ.get(ENV_VAR_DOCQ_SLACK_SIGNING_SECRET)
 SCOPES = ["app_mentions:read", "im:history", "chat:write", "channels:read", "groups:read", "im:read", "mpim:read"]
 USER_SCOPES = []  # OAuth scopes to request if the bot needs to take actions on behalf of the user. Docq doesn't need to do this right now.
 
@@ -32,9 +31,11 @@ def failure_callback(failure_args: FailureArgs) -> BoltResponse:
     span.set_attribute("slack_failure_callback_args", str(failure_args))
     return failure_args.default.failure(failure_args)
 
-if CLIENT_ID and CLIENT_SECRET:
+if CLIENT_ID and CLIENT_SECRET and SIGNING_SECRET:
     slack_app = App(
         process_before_response=True,
+        request_verification_enabled=True,
+        signing_secret=SIGNING_SECRET,
         oauth_flow=SlackOAuthFlow.sqlite3(
             database=get_sqlite_shared_system_file(),
             install_path="/api/integration/slack/v1/install",
