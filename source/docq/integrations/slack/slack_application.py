@@ -4,21 +4,27 @@ import os
 
 from docq.integrations.slack.slack_oauth_flow import SlackOAuthFlow
 from docq.support.store import get_sqlite_shared_system_file
+from opentelemetry import trace
 from slack_bolt import App, BoltResponse
 from slack_bolt.oauth.callback_options import CallbackOptions, FailureArgs, SuccessArgs
+
+tracer = trace.get_tracer(__name__)
 
 CLIENT_ID = os.environ.get("SLACK_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("SLACK_CLIENT_SECRET")
 SCOPES = ["app_mentions:read", "im:history", "chat:write", "channels:read", "groups:read", "im:read", "mpim:read"]
 USER_SCOPES = ["admin"]
 
+@tracer.start_as_current_span(name="slack_success_callback")
 def success_callback(success_args: SuccessArgs) -> BoltResponse:
     """Success callback."""
     return success_args.default.success(success_args)
 
-
+@tracer.start_as_current_span(name="slack_failure_callback")
 def failure_callback(failure_args: FailureArgs) -> BoltResponse:
     """Failure callback."""
+    span = trace.get_current_span()
+    span.set_attribute("slack_failure_callback_args", str(failure_args))
     return failure_args.default.failure(failure_args)
 
 

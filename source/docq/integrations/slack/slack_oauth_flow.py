@@ -2,10 +2,12 @@
 
 # import html
 import os
+import re
 from logging import Logger
 from typing import Optional, Self, Sequence
 
 from docq.integrations.slack.manage_slack import create_docq_slack_installation
+from opentelemetry import trace
 from slack_bolt.error import BoltError
 from slack_bolt.oauth.callback_options import CallbackOptions
 from slack_bolt.oauth.oauth_flow import OAuthFlow
@@ -17,6 +19,8 @@ from slack_sdk.oauth.installation_store.sqlite3 import SQLite3InstallationStore
 from slack_sdk.oauth.state_store.sqlite3 import SQLite3OAuthStateStore
 from slack_sdk.web import WebClient
 
+tracer = trace.get_tracer(__name__)
+
 
 class SlackOAuthFlow(OAuthFlow):
     """Custom slack oauth flow.
@@ -24,10 +28,11 @@ class SlackOAuthFlow(OAuthFlow):
     This is used by slack_sdk to during installation of slack applications.
     Shares the docq app state with the slack app installation.
 
-    We override the default installation methods to link the slack workspaces to docq organistaions during installation.
+    We override the default installation methods to link the slack workspaces to docq organisations during installation.
     """
 
     @classmethod
+    @tracer.start_as_current_span(name="slack_oauth_flow_sqlite3")
     def sqlite3(
         cls,  # noqa: ANN102
         database: str,
@@ -55,6 +60,30 @@ class SlackOAuthFlow(OAuthFlow):
         scopes = scopes or os.environ.get("SLACK_SCOPES", "").split(",")
         user_scopes = user_scopes or os.environ.get("SLACK_USER_SCOPES", "").split(",")
         redirect_uri = redirect_uri or os.environ.get("SLACK_REDIRECT_URI")
+        span = trace.get_current_span()
+        span.set_attributes(
+            attributes={
+                "slack__client_id": client_id if client_id else "None",
+                "slack__client_secret": "value present" if client_secret else "None",
+                "slack__scopes": scopes if scopes else "None",
+                "slack__user_scopes": user_scopes if user_scopes else "None",
+                "slack__redirect_uri": redirect_uri if redirect_uri else "None",
+                "slack__install_path": install_path if install_path else "None",
+                "slack__redirect_uri_path": redirect_uri_path if redirect_uri_path else "None",
+                "slack__callback_options": str(callback_options) if callback_options else "None",
+                "slack__success_url": success_url if success_url else "None",
+                "slack__failure_url": failure_url if failure_url else "None",
+                "slack__authorization_url": authorization_url if authorization_url else "None",
+                "slack__state_cookie_name": state_cookie_name if state_cookie_name else "None",
+                "slack__state_expiration_seconds": state_expiration_seconds if state_expiration_seconds else "None",
+                "slack__installation_store_bot_only": installation_store_bot_only
+                if installation_store_bot_only
+                else "None",
+                "slack__token_rotation_expiration_minutes": token_rotation_expiration_minutes
+                if token_rotation_expiration_minutes
+                else "None",
+            }
+        )
         return SlackOAuthFlow(
             client=client or WebClient(),
             logger=logger,
@@ -103,13 +132,19 @@ class SlackOAuthFlow(OAuthFlow):
                     return decrypt_cookie_value(value)
         return None
 
+    @tracer.start_as_current_span(name="save_docq_slack_installation")
     def save_docq_slack_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
         """Save a Docq slack installation."""
+        span = trace.get_current_span()
         docq_slack_app_state =  self.get_cookie("docq_slack_app_state", request.headers.get("cookie"))
         if docq_slack_app_state is not None:
             _, selected_org_id = docq_slack_app_state.split(":")
             create_docq_slack_installation(installation, int(selected_org_id))
         else:
+            span.record_exception(
+                ValueError("No Docq slack app state found in cookies. Login to Docq before installing the slack app.")
+            )
+            span.set_status(trace.StatusCode.ERROR)
             raise BoltError("Login to Docq before installing the slack app.")
 
     def store_installation(self: Self, request: BoltRequest, installation: Installation) -> None:
