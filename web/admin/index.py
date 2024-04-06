@@ -118,16 +118,17 @@ def super_admin_pages() -> None:
         admin_users_page()
 
 
-with tracer().start_as_current_span("admin_section", attributes=baggage_as_attributes()):
+with tracer().start_as_current_span("admin_section", attributes=baggage_as_attributes()) as span:
     render_page_title_and_favicon()
     auth_required(requiring_selected_org_admin=True)
 
     if is_current_user_super_admin() and is_current_user_selected_org_admin():
-        st.write("You are a _super admin_ and _current selected org admin_.")
+        # st.write("You are a _super admin_ and _current selected org admin_.")
+        span.set_attribute("user_role", "super_admin_and_org_admin")
         super_and_org_admin_pages()
     elif is_current_user_selected_org_admin:
-        st.write("You are only a _selected org admin_.")
+        span.set_attribute("user_role", "org_admin_only")
         org_admin_pages()
     elif is_current_user_super_admin():
-        st.write("You are only a _super admin_.")
+        span.set_attribute("user_role", "super_admin_only")
         super_admin_pages()
