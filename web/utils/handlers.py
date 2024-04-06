@@ -1049,7 +1049,8 @@ def handle_get_user_email() -> Optional[str]:
 
 def handle_redirect_to_url(url: str, key: str) -> None:
     """Redirect to url."""
-    html(f"""
+    html(
+        f"""
         <script>
             const gotoPage = document.createElement('script');
             gotoPage.type = 'text/javascript';
@@ -1059,7 +1060,8 @@ def handle_redirect_to_url(url: str, key: str) -> None:
             if (prevScript) prevScript.remove();
             window.parent.document.body.appendChild(gotoPage);
         </script>
-        """, height=0
+        """,
+        height=0,
     )
 
 
@@ -1126,9 +1128,8 @@ def handle_install_docq_slack_application(app_state: int = 0) -> None:
     slack_app_state = f"state:{selected_org_id}"
     expiry = datetime.now() + timedelta(minutes=5)
     handle_set_cookie(name="docq_slack_app_state", value=slack_app_state, expiry=expiry)
-    base_url = os.getenv("DOCQ_SERVER_ADDRESS")
     path = "/api/integration/slack/v1/install"
-    handle_redirect_to_url(f"{base_url}{path}", "slack-install")
+    handle_redirect_to_url(f"{path}", "slack-install")
 
 
 def handle_link_slack_channel_to_space_group(channel_id: str, channel_name: str) -> None:
