@@ -6,7 +6,7 @@ from contextlib import closing
 from datetime import datetime
 from typing import Literal, Optional
 
-from llama_index.llms import ChatMessage, MessageRole
+from llama_index.core.llms import ChatMessage, MessageRole
 
 from docq.model_selection.main import LlmUsageSettingsCollection
 
@@ -256,7 +256,7 @@ def query(
     data = [(input_, True, datetime.now(), thread_id)]
     is_chat = feature.type_ == OrganisationFeatureType.CHAT_PRIVATE
 
-    history = _retrieve_last_n_history(feature, thread_id)
+    # history = _retrieve_last_n_history(feature, thread_id)
 
     history_messages = get_history_as_chat_messages(feature=feature, thread_id=thread_id)
 
@@ -265,7 +265,7 @@ def query(
         response = (
             run_chat(input_, history_messages, model_settings_collection, persona)
             if is_chat
-            else run_ask(input_, history, model_settings_collection, persona, spaces)
+            else run_ask(input_, history_messages, model_settings_collection, persona, spaces)
         )
         log.debug("Response: %s", response)
 

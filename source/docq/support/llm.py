@@ -5,7 +5,6 @@ import os
 from typing import Any, Dict, List
 
 import docq
-from httpx import get
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.base.response.schema import RESPONSE_TYPE, Response
 from llama_index.core.callbacks.base import CallbackManager
@@ -43,7 +42,7 @@ from .llamaindex_otel_callbackhandler import OtelCallbackHandler
 
 # from .metadata_extractors import DocqEntityExtractor, DocqMetadataExtractor
 # from .node_parsers import AsyncSimpleNodeParser
-from .store import get_index_dir, get_models_dir
+from .store import _clean_public_chat_history, get_index_dir, get_models_dir
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
@@ -322,12 +321,13 @@ def run_chat(
     """Chat directly with a LLM with history."""
     ## chat engine handles tracking the history.
     print("chat persona: ", assistant.system_prompt_content)
+    print("chat history: ", history)
 
     engine = SimpleChatEngine.from_defaults(
         service_context=_get_service_context(model_settings_collection),
         kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
         system_prompt=assistant.system_prompt_content,
-        history=history,
+        chat_history=history,
     )
     output = engine.chat(input_)
 
@@ -338,7 +338,7 @@ def run_chat(
 @tracer.start_as_current_span(name="run_ask")
 def run_ask(
     input_: str,
-    history: str,
+    history: List[ChatMessage],
     model_settings_collection: LlmUsageSettingsCollection,
     persona: Assistant,
     spaces: list[SpaceKey] | None = None,
@@ -396,7 +396,10 @@ def run_ask(
 
                 query_engine = graph.as_query_engine(
                     custom_query_engines=custom_query_engines,
-                    text_qa_template=llama_index_chat_prompt_template_from_persona(persona).partial_format(history_str=history),
+                    text_qa_template=llama_index_chat_prompt_template_from_persona(persona).partial_format(
+                        history_str=""
+                    ),
+                    chat_history=history,
                 )
 
                 # prompts_dict = query_engine.get_prompts()

@@ -11,7 +11,7 @@ from urllib.parse import quote_plus, unquote_plus
 
 import docq
 import streamlit as st
-from docq import setup
+from docq import manage_spaces, setup
 from docq.access_control.main import SpaceAccessType
 from docq.config import (
     LogType,

@@ -501,3 +501,8 @@ def get_space(space_id: int, org_id: int) -> Optional[SPACE]:
         )
         row = cursor.fetchone()
         return _format_space(row) if row else None
+
+def is_space_empty(space: SpaceKey) -> bool:
+    """Check if a space has any docs or not."""
+    docs = list_documents(space)
+    return len(docs) == 0
