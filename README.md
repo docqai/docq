@@ -19,7 +19,7 @@
 
 **Securely unlock knowledge from your business documents. Give your employees' a second-brain.**
 
-![Docq overview in a single diagram](https://docqai.github.io/docq/assets/docq-diag-nov2023.png)
+![Docq overview in a single diagram](https://docqai.github.io/docq/assets/docq-diag-apr2024.png)
 
 <!-- ABOUT THE PROJECT -->
 
