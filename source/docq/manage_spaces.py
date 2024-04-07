@@ -12,6 +12,7 @@ from llama_index.core.indices import DocumentSummaryIndex, VectorStoreIndex
 from llama_index.core.indices.base import BaseIndex
 from llama_index.core.schema import Document
 from opentelemetry import trace
+from sympy import true
 
 import docq
 
@@ -68,7 +69,7 @@ def _init() -> None:
 
 
 @trace.start_as_current_span("manage_spaces._create_index")
-def _create_index(
+def _create_vector_index(
     documents: List[Document], model_settings_collection: LlmUsageSettingsCollection
 ) -> VectorStoreIndex:
     # Use default storage and service context to initialise index purely for persisting
@@ -84,12 +85,12 @@ def _create_index(
 def _create_document_summary_index(
     documents: List[Document], model_settings_collection: LlmUsageSettingsCollection
 ) -> DocumentSummaryIndex:
-    """Create a an index of summaries for each document."""
-    return DocumentSummaryIndex.from_documents(
+    """Create a an index of summaries for each document. This doen't create embedding for each node."""
+    return DocumentSummaryIndex(embed_summaries=True).from_documents(
         documents,
         storage_context=_get_default_storage_context(),
         service_context=_get_service_context(model_settings_collection),
-        kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args
+        kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
     )
 
 

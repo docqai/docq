@@ -64,7 +64,7 @@ def test_db_init(manage_spaces_test_dir: tuple) -> None:
 @patch("docq.manage_spaces._get_service_context")
 def test_create_index(get_service_context: MagicMock, get_default_storage_context: MagicMock) -> None:
     """Test create index."""
-    from docq.manage_spaces import _create_index
+    from docq.manage_spaces import _create_vector_index
 
     with patch("docq.manage_spaces.VectorStoreIndex", Mock(from_documents=MagicMock())):
         documents = Mock([Document])
@@ -72,7 +72,7 @@ def test_create_index(get_service_context: MagicMock, get_default_storage_contex
         mocked_model_usage_settings = Mock()
         mocked_model_usage_settings.additional_args = {"arg1": "value1", "arg2": "value2"}
         model_settings_collection.model_usage_settings = {ModelCapability.TEXT: mocked_model_usage_settings}
-        _create_index(documents, model_settings_collection)
+        _create_vector_index(documents, model_settings_collection)
 
         get_service_context.assert_called_once_with(model_settings_collection)
         get_default_storage_context.assert_called_once()
