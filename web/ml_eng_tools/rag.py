@@ -23,7 +23,6 @@ from llama_index.core.storage import StorageContext
 from llama_index.retrievers.bm25 import BM25Retriever
 from ml_eng_tools.visualise_index import visualise_vector_store_index
 from streamlit.delta_generator import DeltaGenerator
-from torch import are_deterministic_algorithms_enabled
 from utils.layout import auth_required, render_page_title_and_favicon
 from utils.sessions import get_selected_org_id
 
@@ -249,6 +248,7 @@ def render_retrieval_query_ui(container: DeltaGenerator):
             ret_results = retriever.retrieve(query)
             # resp = engine.query(query)
             # print("ret_results: ", ret_results)
+
             render_retreival_results(ret_results)
 
 
@@ -277,12 +277,12 @@ def handle_chat_input():
     from llama_index.core.retrievers import QueryFusionRetriever
     from llama_index.core.retrievers.fusion_retriever import FUSION_MODES
 
-    vector_retriever = index_.as_retriever(similarity_top_k=4)
+    vector_retriever = index_.as_retriever(similarity_top_k=10)
 
-    bm25_retriever = BM25Retriever.from_defaults(docstore=index_.docstore, similarity_top_k=4)
+    bm25_retriever = BM25Retriever.from_defaults(docstore=index_.docstore, similarity_top_k=10)
     retriever = QueryFusionRetriever(
         [vector_retriever, bm25_retriever],
-        similarity_top_k=4,
+        similarity_top_k=5,
         num_queries=4,  # set this to 1 to disable query generation
         mode=FUSION_MODES.RECIPROCAL_RANK,
         use_async=False,
@@ -305,8 +305,7 @@ def handle_chat_input():
         # query_bundle = QueryBundle(query_str=query, custom_embedding_strs=query, embedding=query_embed)
         # ret_results = query_engine.retrieve(query_bundle)
         resp = query_engine.query(query)
-        # print("ret_results: ", ret_results)
-        # render_retreival_results(ret_results)
+
         if isinstance(resp, Response):
             st.session_state[f"rag_test_chat_history_content_{selected_space_key.id_}"].extend([query, resp.response])
 
