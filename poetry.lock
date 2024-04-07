@@ -5924,13 +5924,13 @@ test = ["array-api-strict", "asv", "gmpy2", "hypothesis (>=6.30)", "mpmath", "po
 
 [[package]]
 name = "semantic-kernel"
-version = "0.4.7.dev0"
+version = "0.4.3.dev0"
 description = "Semantic Kernel Python SDK"
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "semantic_kernel-0.4.7.dev0-py3-none-any.whl", hash = "sha256:964419d2c0c6d50d4be4a4ede4e8b38fb3887e7344bc16debd43529d7d9b511d"},
-    {file = "semantic_kernel-0.4.7.dev0.tar.gz", hash = "sha256:aba14eb6c5b9fe67394519eb66ad7d6c63c421e19b2839792f8e035c8ae2399f"},
+    {file = "semantic_kernel-0.4.3.dev0-py3-none-any.whl", hash = "sha256:4ba4c79cf82197a26d91e4f96904be7318dd70dc16a9e6d5d03773c6a7a04d05"},
+    {file = "semantic_kernel-0.4.3.dev0.tar.gz", hash = "sha256:c667e1e49f9f26ebf3aebe3be6820627db64b4e3827212fe7666430ea66a6dd7"},
 ]
 
 [package.dependencies]
@@ -7443,4 +7443,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.12"
-content-hash = "b858f08a3f9fb340fd69cc3ff8610b19215b2eaa0b78c8e60ff6639c72e65cf7"
+content-hash = "f6c17083350c5fb3d9c66566167d94b16e26f34acab4837e7b27c3d18ede4621"
