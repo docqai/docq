@@ -2,9 +2,10 @@
 
 import logging as log
 import os
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import docq
+from httpx import get
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.base.response.schema import RESPONSE_TYPE, Response
 from llama_index.core.callbacks.base import CallbackManager
@@ -316,15 +317,17 @@ def _load_index_from_storage(space: SpaceKey, model_settings_collection: LlmUsag
 
 @tracer.start_as_current_span(name="run_chat")
 def run_chat(
-    input_: str, history: str, model_settings_collection: LlmUsageSettingsCollection, assistant: Assistant
+    input_: str, history: List[ChatMessage], model_settings_collection: LlmUsageSettingsCollection, assistant: Assistant
 ) -> AgentChatResponse:
     """Chat directly with a LLM with history."""
     ## chat engine handles tracking the history.
     print("chat persona: ", assistant.system_prompt_content)
+
     engine = SimpleChatEngine.from_defaults(
         service_context=_get_service_context(model_settings_collection),
         kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
-        system_prompt=assistant.system_prompt_content
+        system_prompt=assistant.system_prompt_content,
+        history=history,
     )
     output = engine.chat(input_)
 

@@ -6,6 +6,8 @@ from contextlib import closing
 from datetime import datetime
 from typing import Literal, Optional
 
+from llama_index.llms import ChatMessage, MessageRole
+
 from docq.model_selection.main import LlmUsageSettingsCollection
 
 from .config import OrganisationFeatureType
@@ -177,6 +179,19 @@ def _retrieve_last_n_history(feature: FeatureKey, thread_id: int) -> str:
     )
 
 
+def get_history_as_chat_messages(
+    feature: FeatureKey, thread_id: int, size: Optional[int] = NUMBER_OF_MESSAGES_IN_HISTORY
+) -> list[ChatMessage]:
+    """Retrieve the history of as LlamaIndex ChatMessage objects."""
+    result = _retrieve_messages(datetime.now(), NUMBER_OF_MESSAGES_IN_HISTORY, feature, thread_id)
+    # id, message, human, timestamp, thread_id
+    history_chat_message = [
+        ChatMessage(role=(MessageRole.USER if x[2] else MessageRole.ASSISTANT), content=x[1]) for x in result
+    ]
+
+    return history_chat_message
+
+
 def create_history_thread(topic: str, feature: FeatureKey) -> int:
     """Create a new thread for the history i.e a new chat session."""
     tablename = get_history_thread_table_name(feature.type_)
@@ -242,10 +257,13 @@ def query(
     is_chat = feature.type_ == OrganisationFeatureType.CHAT_PRIVATE
 
     history = _retrieve_last_n_history(feature, thread_id)
+
+    history_messages = get_history_as_chat_messages(feature=feature, thread_id=thread_id)
+
     log.debug("is_chat: %s", is_chat)
     try:
         response = (
-            run_chat(input_, history, model_settings_collection, persona)
+            run_chat(input_, history_messages, model_settings_collection, persona)
             if is_chat
             else run_ask(input_, history, model_settings_collection, persona, spaces)
         )
