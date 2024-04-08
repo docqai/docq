@@ -67,7 +67,7 @@ def _init() -> None:
         connection.commit()
 
 
-@tracer.start_as_current_span("manage_spaces._create_index")
+@tracer.start_as_current_span("manage_spaces._create_vector_index")
 def _create_vector_index(
     documents: List[Document], model_settings_collection: LlmUsageSettingsCollection
 ) -> VectorStoreIndex:
@@ -76,7 +76,7 @@ def _create_vector_index(
         documents,
         storage_context=_get_default_storage_context(),
         service_context=_get_service_context(model_settings_collection),
-        kwargs=model_settings_collection.model_usage_settings[ModelCapability.TEXT].additional_args
+        kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
     )
 
 @tracer.start_as_current_span("manage_spaces._create_document_summary_index")

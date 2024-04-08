@@ -6,8 +6,9 @@ import streamlit as st
 from docq.config import SpaceType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import Assistant, SpaceKey
+from docq.manage_assistants import llama_index_chat_prompt_template_from_persona
 from docq.manage_spaces import get_space_data_source, list_space
-from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
+from docq.model_selection.main import LlmUsageSettingsCollection, ModelCapability, get_saved_model_settings_collection
 from docq.support.llm import (
     _get_default_storage_context,
     _get_service_context,
@@ -92,7 +93,7 @@ def _create_vector_index(
         storage_context=_get_default_storage_context(),
         service_context=sc,
         show_progress=True,
-        # kwargs=model_settings_collection.model_usage_settings[ModelCapability.TEXT].additional_args,
+        kwargs=model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING].additional_args,
     )
     return index_
 
@@ -296,7 +297,7 @@ def handle_chat_input():
     query_engine = RetrieverQueryEngine.from_args(
         retriever,
         service_context=_get_service_context(saved_model_settings),
-        # text_qa_template=llama_index_chat_prompt_template_from_persona(persona).partial_format(history_str=""),
+        text_qa_template=llama_index_chat_prompt_template_from_persona(persona).partial_format(history_str=""),  # noqa: F821
     )
 
     query = st.session_state.get("chat_input_rag_test", None)

@@ -413,7 +413,7 @@ def run_ask(
         query_engine = RetrieverQueryEngine.from_args(
             retriever,
             service_context=_get_service_context(model_settings_collection),
-            text_qa_template=llama_index_chat_prompt_template_from_persona(persona).partial_format(history_str=""),
+            text_qa_template=llama_index_chat_prompt_template_from_persona(persona),
             chat_history=history,
         )
         output = query_engine.query(input_)
