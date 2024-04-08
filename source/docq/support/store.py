@@ -141,7 +141,6 @@ def get_index_dir(space: SpaceKey) -> str:
         store=_StoreDir.INDEX, data_scope=_data_scope, subtype=os.path.join(str(space.org_id), str(space.id_))
     )
 
-
 def get_sqlite_usage_file(id_: int) -> str:
     """Get the SQLite file for storing usage related data. All usage related data is segregated by user i.e. inherently PERSONAL."""
     return _get_path(

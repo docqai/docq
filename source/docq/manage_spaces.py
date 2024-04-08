@@ -23,7 +23,7 @@ from .model_selection.main import LlmUsageSettingsCollection, ModelCapability, g
 from .support.llm import _get_default_storage_context, _get_service_context
 from .support.store import get_index_dir, get_sqlite_shared_system_file
 
-trace = trace.get_tracer(__name__, docq.__version_str__)
+tracer = trace.get_tracer(__name__, docq.__version_str__)
 
 SQL_CREATE_SPACES_TABLE = """
 CREATE TABLE IF NOT EXISTS spaces (
@@ -56,7 +56,7 @@ THREAD_SPACE_NAME_TEMPLATE = "Thread-{thread_id} {summary}"
 SPACE = tuple[int, int, str, str, bool, str, dict, str, datetime, datetime]
 
 
-@trace.start_as_current_span("manage_spaces._init")
+@tracer.start_as_current_span("manage_spaces._init")
 def _init() -> None:
     """Initialize the database."""
     with closing(
@@ -67,8 +67,8 @@ def _init() -> None:
         connection.commit()
 
 
-@trace.start_as_current_span("manage_spaces._create_index")
-def _create_index(
+@tracer.start_as_current_span("manage_spaces._create_vector_index")
+def _create_vector_index(
     documents: List[Document], model_settings_collection: LlmUsageSettingsCollection
 ) -> VectorStoreIndex:
     # Use default storage and service context to initialise index purely for persisting
@@ -76,24 +76,23 @@ def _create_index(
         documents,
         storage_context=_get_default_storage_context(),
         service_context=_get_service_context(model_settings_collection),
-        kwargs=model_settings_collection.model_usage_settings[ModelCapability.TEXT].additional_args
+        kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
     )
 
-
-@trace.start_as_current_span("manage_spaces._create_document_summary_index")
+@tracer.start_as_current_span("manage_spaces._create_document_summary_index")
 def _create_document_summary_index(
     documents: List[Document], model_settings_collection: LlmUsageSettingsCollection
 ) -> DocumentSummaryIndex:
-    """Create a an index of summaries for each document."""
-    return DocumentSummaryIndex.from_documents(
+    """Create a an index of summaries for each document. This doen't create embedding for each node."""
+    return DocumentSummaryIndex(embed_summaries=True).from_documents(
         documents,
         storage_context=_get_default_storage_context(),
         service_context=_get_service_context(model_settings_collection),
-        kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args
+        kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
     )
 
 
-@trace.start_as_current_span("manage_spaces._persist_index")
+@tracer.start_as_current_span("manage_spaces._persist_index")
 def _persist_index(index: BaseIndex, space: SpaceKey) -> None:
     """Persist an Space datasource index to disk."""
     index.storage_context.persist(persist_dir=get_index_dir(space))
@@ -111,7 +110,7 @@ def _format_space(row: Any) -> SPACE:
     return (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8], row[9])
 
 
-@trace.start_as_current_span("manage_spaces.create_space")
+@tracer.start_as_current_span("manage_spaces.create_space")
 def create_space(
     org_id: int, name: str, summary: str, datasource_type: str, datasource_configs: dict, space_type: SpaceType
 ) -> SpaceKey:
@@ -160,7 +159,7 @@ def create_space(
     return space
 
 
-@trace.start_as_current_span("manage_spaces.list_space")
+@tracer.start_as_current_span("manage_spaces.list_space")
 def list_space(org_id: int, space_type: Optional[str] = None) -> list[SPACE]:
     """List all spaces of a given type."""
     if (space_type is not None) and (space_type not in SpaceType.__members__):
@@ -187,9 +186,11 @@ def list_space(org_id: int, space_type: Optional[str] = None) -> list[SPACE]:
         return [_format_space(row) for row in rows]
 
 
-@trace.start_as_current_span("manage_spaces.reindex")
+@tracer.start_as_current_span("manage_spaces.reindex")
 def reindex(space: SpaceKey) -> None:
     """Reindex documents in a space from scratch. If an index already exists, it will be overwritten."""
+    span = trace.get_current_span()
+    span.set_attributes({"space_id": space.id_, "space_org_id": space.org_id})
     try:
         log.debug("reindex(): Start...")
         log.debug("reindex(): get saved model settings")
@@ -205,19 +206,23 @@ def reindex(space: SpaceKey) -> None:
             log.debug("reindex(): docs to index, %s", len(documents))
             log.debug("reindex(): first doc metadata: %s", documents[0].metadata)
             log.debug("reindex(): first doc text: %s", documents[0].text)
+            span.set_attributes({"num_docs_to_index": len(documents)})
 
-            summary_index = _create_document_summary_index(documents, saved_model_settings)
-            _persist_index(summary_index, space)
+            # summary_index = _create_document_summary_index(documents, saved_model_settings)
+            # _persist_index(summary_index, space)
+            vector_index = _create_vector_index(documents, saved_model_settings)
+            _persist_index(vector_index, space)
     except Exception as e:
         if e.__str__().__contains__("No files found"):
             log.info("Reindex skipped. No documents found in space '%s'", space)
+            span.add_event("Reindex skipped. No documents found in space", {"space": str(space)})
         else:
             log.exception("Error indexing space '%s'. Error: %s", space, e)
     finally:
         log.debug("reindex(): Complete")
 
 
-@trace.start_as_current_span("manage_spaces.list_documents")
+@tracer.start_as_current_span("manage_spaces.list_documents")
 def list_documents(space: SpaceKey) -> List[DocumentListItem]:
     """Return a list of tuples containing the filename, creation time, and size of each file in the space."""
     _space_data_source = get_space_data_source(space)
@@ -244,7 +249,7 @@ def list_documents(space: SpaceKey) -> List[DocumentListItem]:
     return documents_list
 
 
-@trace.start_as_current_span("manage_spaces.get_document")
+@tracer.start_as_current_span("manage_spaces.get_document")
 def get_space_data_source(space: SpaceKey) -> tuple[str, dict] | None:
     """Returns the data source type and configuration for the given space.
 
@@ -262,7 +267,7 @@ def get_space_data_source(space: SpaceKey) -> tuple[str, dict] | None:
     return ds_type, ds_configs
 
 
-@trace.start_as_current_span("manage_spaces.get_shared_space")
+@tracer.start_as_current_span("manage_spaces.get_shared_space")
 def get_shared_space(id_: int, org_id: int) -> Optional[SPACE]:
     """Get a shared space."""
     log.debug("get_shared_space(): Getting space with id=%d", id_)
@@ -277,7 +282,7 @@ def get_shared_space(id_: int, org_id: int) -> Optional[SPACE]:
         return _format_space(row) if row else None
 
 
-@trace.start_as_current_span("manage_spaces.get_shared_spaces")
+@tracer.start_as_current_span("manage_spaces.get_shared_spaces")
 def get_shared_spaces(space_ids: List[int]) -> list[SPACE]:
     """Get a shared spaces by ids.
 
@@ -297,7 +302,7 @@ def get_shared_spaces(space_ids: List[int]) -> list[SPACE]:
         return [_format_space(row) for row in rows]
 
 
-@trace.start_as_current_span("manage_spaces.update_shared_space")
+@tracer.start_as_current_span("manage_spaces.update_shared_space")
 def update_shared_space(
     id_: int,
     org_id: int,
@@ -341,7 +346,7 @@ def update_shared_space(
         return True
 
 
-@trace.start_as_current_span("manage_spaces.create_shared_space")
+@tracer.start_as_current_span("manage_spaces.create_shared_space")
 def create_shared_space(
     org_id: int, name: str, summary: str, datasource_type: str, datasource_configs: dict
 ) -> SpaceKey:
@@ -356,7 +361,7 @@ def create_shared_space(
     )
 
 
-@trace.start_as_current_span("manage_spaces.create_thread_space")
+@tracer.start_as_current_span("manage_spaces.create_thread_space")
 def create_thread_space(org_id: int, thread_id: int, summary: str, datasource_type: str) -> SpaceKey:
     """Create a spcace for chat thread uploads."""
     rnd = str(random.randint(56450, 9999999999))
@@ -419,7 +424,7 @@ def list_thread_spaces(org_id: int) -> list[SPACE]:
     return list_space(org_id, SpaceType.THREAD.name)
 
 
-@trace.start_as_current_span("manage_spaces.list_public_spaces")
+@tracer.start_as_current_span("manage_spaces.list_public_spaces")
 def list_public_spaces(selected_org_id: int, space_group_id: int) -> list[SPACE]:
     """List all public spaces from a given space group."""
     with closing(
@@ -441,7 +446,7 @@ def list_public_spaces(selected_org_id: int, space_group_id: int) -> list[SPACE]
         return [_format_space(row) for row in rows]
 
 
-@trace.start_as_current_span("manage_spaces.get_shared_space_permissions")
+@tracer.start_as_current_span("manage_spaces.get_shared_space_permissions")
 def get_shared_space_permissions(id_: int, org_id: int) -> List[SpaceAccessor]:
     """Get the permissions for a shared space."""
     log.debug("get_shared_space_permissions(): Getting permissions for space with id=%d", id_)
@@ -467,7 +472,7 @@ def get_shared_space_permissions(id_: int, org_id: int) -> List[SpaceAccessor]:
         return results
 
 
-@trace.start_as_current_span("manage_spaces.update_shared_space_permissions")
+@tracer.start_as_current_span("manage_spaces.update_shared_space_permissions")
 def update_shared_space_permissions(id_: int, accessors: List[SpaceAccessor]) -> bool:
     """Update the permissions for a shared space."""
     log.debug("update_shared_space_permissions(): Updating permissions for space with id=%d", id_)
@@ -501,3 +506,8 @@ def get_space(space_id: int, org_id: int) -> Optional[SPACE]:
         )
         row = cursor.fetchone()
         return _format_space(row) if row else None
+
+def is_space_empty(space: SpaceKey) -> bool:
+    """Check if a space has any docs or not."""
+    docs = list_documents(space)
+    return len(docs) == 0

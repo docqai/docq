@@ -1,9 +1,9 @@
-import json
+"""Weather Plugin."""
 from datetime import datetime
 from typing import Self
 
 import requests
-from semantic_kernel import SKContext
+from semantic_kernel.orchestration.sk_context import SKContext
 from semantic_kernel.skill_definition import sk_function, sk_function_context_parameter
 
 

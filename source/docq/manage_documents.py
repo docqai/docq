@@ -68,7 +68,10 @@ def _get_download_link(filename: str, path: str) -> str:
 
 def _remove_ascii_control_characters(text: str) -> str:
     """Remove ascii control characters from the text."""
-    return "".join(ch for ch in text if unicodedata.category(ch)[0] != "C").strip()
+    result = ""
+    if text is not None:
+        result = "".join(ch for ch in text if unicodedata.category(ch)[0] != "C").strip()
+    return result
 
 
 def _parse_metadata(metadata: dict) -> tuple:

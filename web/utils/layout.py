@@ -11,7 +11,7 @@ from urllib.parse import quote_plus, unquote_plus
 
 import docq
 import streamlit as st
-from docq import setup
+from docq import manage_spaces, setup
 from docq.access_control.main import SpaceAccessType
 from docq.config import (
     LogType,
@@ -1368,8 +1368,10 @@ def _handle_custom_input_field(configkey: ConfigKey, key: str, configs: Optional
     elif configkey.options and configkey.options.get("type") == "root_path":
         _render_file_storage_root_path_options(configkey, key, configs)
     if configkey.options and configkey.options.get("type") == "selectbox":
-        if configs:
-            source_page_type_str = configs.get("source_page_type")
+        if configkey.options.get("select_box_options"):
+            source_page_type_str = None
+            if configs:  # values saved on space
+                source_page_type_str = configs.get("source_page_type")
 
             options_data: dict[str, str] = configkey.options.get("select_box_options", [])
             selected_option_index = 0
@@ -1400,7 +1402,7 @@ def _render_space_data_source_config_input_fields(
     data_source: Tuple, prefix: str, configs: Optional[dict] = None
 ) -> None:
     config_key_list: List[ConfigKey] = data_source[2]
-
+    print("configs: ", configs)
     for configkey in config_key_list:
         print("configkey", configkey)
         _input_key = prefix + "ds_config_" + configkey.key

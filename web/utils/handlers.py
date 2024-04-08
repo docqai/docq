@@ -643,7 +643,7 @@ def handle_chat_input(feature: domain.FeatureKey) -> None:
         if feature.type_ is config.OrganisationFeatureType.CHAT_PRIVATE or config.OrganisationFeatureType.ASK_SHARED:
             _thread_space = _setup_chat_thread_space(feature, select_org_id, thread_id)
             spaces = _get_chat_spaces(feature)
-            if _thread_space is not None:
+            if _thread_space is not None and not manage_spaces.is_space_empty(_thread_space):
                 spaces.append(_thread_space)
 
             saved_model_settings = get_model_settings_collection(

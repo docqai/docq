@@ -2,7 +2,7 @@
 
 import logging as log
 import os
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import docq
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
@@ -11,13 +11,13 @@ from llama_index.core.callbacks.base import CallbackManager
 from llama_index.core.chat_engine import SimpleChatEngine
 from llama_index.core.chat_engine.types import AGENT_CHAT_RESPONSE_TYPE, AgentChatResponse
 from llama_index.core.embeddings import BaseEmbedding
-from llama_index.core.indices import SummaryIndex
 from llama_index.core.indices.base import BaseIndex
-from llama_index.core.indices.composability import ComposableGraph
 from llama_index.core.indices.loading import load_index_from_storage
 from llama_index.core.llms import LLM
 from llama_index.core.node_parser import NodeParser, SentenceSplitter
 from llama_index.core.prompts.base import ChatPromptTemplate
+from llama_index.core.retrievers import BaseRetriever, QueryFusionRetriever
+from llama_index.core.retrievers.fusion_retriever import FUSION_MODES
 from llama_index.core.service_context import ServiceContext
 
 # load_index_from_storage
@@ -26,6 +26,7 @@ from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
 from llama_index.embeddings.huggingface_optimum import OptimumEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.litellm import LiteLLM
+from llama_index.retrievers.bm25 import BM25Retriever
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 
@@ -314,17 +315,45 @@ def _load_index_from_storage(space: SpaceKey, model_settings_collection: LlmUsag
     )
 
 
+def get_hybrid_fusion_retriever_query(
+    indices: List[BaseIndex], model_settings_collection: LlmUsageSettingsCollection, similarity_top_k: int = 4
+) -> BaseRetriever:
+    """Hybrid fusion retriever query."""
+    retrievers = []
+    for index in indices:  # replace with your actual indexes
+        vector_retriever = index.as_retriever(similarity_top_k=similarity_top_k)
+        retrievers.append(vector_retriever)
+        bm25_retriever = BM25Retriever.from_defaults(docstore=index.docstore, similarity_top_k=similarity_top_k)
+        retrievers.append(bm25_retriever)
+
+    # Create a FusionRetriever to merge and rerank the results
+    fusion_retriever = QueryFusionRetriever(
+        retrievers,
+        similarity_top_k=4,
+        num_queries=4,  # set this to 1 to disable query generation
+        mode=FUSION_MODES.RECIPROCAL_RANK,
+        use_async=False,
+        verbose=True,
+        llm=_get_service_context(model_settings_collection).llm,
+        # query_gen_prompt="...",  # we could override the query generation prompt here
+    )
+    return fusion_retriever
+
+
 @tracer.start_as_current_span(name="run_chat")
 def run_chat(
-    input_: str, history: str, model_settings_collection: LlmUsageSettingsCollection, assistant: Assistant
+    input_: str, history: List[ChatMessage], model_settings_collection: LlmUsageSettingsCollection, assistant: Assistant
 ) -> AgentChatResponse:
     """Chat directly with a LLM with history."""
     ## chat engine handles tracking the history.
     print("chat persona: ", assistant.system_prompt_content)
+    print("chat history: ", history)
+
     engine = SimpleChatEngine.from_defaults(
         service_context=_get_service_context(model_settings_collection),
         kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
-        system_prompt=assistant.system_prompt_content
+        system_prompt=assistant.system_prompt_content,
+        chat_history=history,
     )
     output = engine.chat(input_)
 
@@ -335,7 +364,7 @@ def run_chat(
 @tracer.start_as_current_span(name="run_ask")
 def run_ask(
     input_: str,
-    history: str,
+    history: List[ChatMessage],
     model_settings_collection: LlmUsageSettingsCollection,
     persona: Assistant,
     spaces: list[SpaceKey] | None = None,
@@ -349,7 +378,7 @@ def run_ask(
         log.debug("runs_ask(): spaces count: %s", len(spaces))
         # With additional spaces likely to be combining a number of shared spaces.
         indices = []
-        summaries = []
+        # summaries = []
         output = _default_response()
         for s_ in spaces:
             try:
@@ -361,10 +390,10 @@ def run_ask(
                     name="index_appended",
                     attributes={"index_id": index_.index_id, "index_struct_cls": index_.index_struct_cls.__name__},
                 )
-                s_text = s_.summary if s_.summary else ""
-                # s_text = index_.as_query_engine().query("What is a summary of this document?", )
-                summaries.append(s_text)
-                span.add_event(name="summary_appended", attributes={"index_summary": s_text})
+                # s_text = s_.summary if s_.summary else ""
+                # # s_text = index_.as_query_engine().query("What is a summary of this document?", )
+                # summaries.append(s_text)
+                # span.add_event(name="summary_appended", attributes={"index_summary": s_text})
             except Exception as e:
                 span.set_status(status=Status(StatusCode.ERROR))
                 span.record_exception(e)
@@ -375,64 +404,72 @@ def run_ask(
                 )
                 continue
 
-        log.debug("number summaries: %s", len(summaries))
-        span.set_attribute("number_summaries", len(summaries))
-        with tracer.start_as_current_span(name="ComposableGraph.from_indices") as span:
-            try:
-                graph = ComposableGraph.from_indices(
-                    SummaryIndex,
-                    indices,
-                    index_summaries=summaries,
-                    service_context=_get_service_context(model_settings_collection),
-                    kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
-                )
+        # log.debug("number summaries: %s", len(summaries))
+        # span.set_attribute("number_summaries", len(summaries))
 
-                custom_query_engines = {
-                    index.index_id: index.as_query_engine(child_branch_factor=2) for index in indices
-                }
+        from llama_index.core.query_engine import RetrieverQueryEngine
 
-                query_engine = graph.as_query_engine(
-                    custom_query_engines=custom_query_engines,
-                    text_qa_template=llama_index_chat_prompt_template_from_persona(persona).partial_format(history_str=history),
-                )
+        retriever = get_hybrid_fusion_retriever_query(indices, model_settings_collection)
+        query_engine = RetrieverQueryEngine.from_args(
+            retriever,
+            service_context=_get_service_context(model_settings_collection),
+            text_qa_template=llama_index_chat_prompt_template_from_persona(persona),
+            chat_history=history,
+        )
+        output = query_engine.query(input_)
 
-                # prompts_dict = query_engine.get_prompts()
-                # print("prompts:", list(prompts_dict.keys()))
+        # with tracer.start_as_current_span(name="ComposableGraph.from_indices") as span:
+        #     try:
+        #         graph = ComposableGraph.from_indices(
+        #             SummaryIndex,
+        #             indices,
+        #             index_summaries=summaries,
+        #             service_context=_get_service_context(model_settings_collection),
+        #             kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
+        #         )
 
-                output = query_engine.query(input_)
-                span.add_event(
-                    name="ask_combined_spaces",
-                    attributes={"question": input_, "answer": str(output), "spaces_count": len(spaces)},
-                )
-                log.debug("(Ask combined spaces %s) Q: %s, A: %s", spaces, input_, output)
-            except Exception as e:
-                span.set_status(status=Status(StatusCode.ERROR))
-                span.record_exception(e)
-                log.error(
-                    "run_ask(): Failed to create ComposableGraph. Maybe there was an issue with one of the Space indexes. Error message: %s",
-                    e,
-                )
-                span.set_status(status=Status(StatusCode.ERROR))
-                span.record_exception(e)
+        #         custom_query_engines = {
+        #             index.index_id: index.as_query_engine(child_branch_factor=2) for index in indices
+        #         }
+
+        #         query_engine = graph.as_query_engine(
+        #             custom_query_engines=custom_query_engines,
+        #             text_qa_template=llama_index_chat_prompt_template_from_persona(persona).partial_format(
+        #                 history_str=""
+        #             ),
+        #             chat_history=history,
+        #         )
+
+        #         # prompts_dict = query_engine.get_prompts()
+        #         # print("prompts:", list(prompts_dict.keys()))
+
+        #         output = query_engine.query(input_)
+        #         span.add_event(
+        #             name="ask_combined_spaces",
+        #             attributes={"question": input_, "answer": str(output), "spaces_count": len(spaces)},
+        #         )
+        #         log.debug("(Ask combined spaces %s) Q: %s, A: %s", spaces, input_, output)
+        #     except Exception as e:
+        #         span.set_status(status=Status(StatusCode.ERROR))
+        #         span.record_exception(e)
+        #         log.error(
+        #             "run_ask(): Failed to create ComposableGraph. Maybe there was an issue with one of the Space indexes. Error message: %s",
+        #             e,
+        #         )
+        #         span.set_status(status=Status(StatusCode.ERROR))
+        #         span.record_exception(e)
     else:
         span.set_attribute("spaces_count", 0)
-        log.debug("runs_ask(): space None or zero. Assuming personal ASK.")
+        log.debug("runs_ask(): space None or zero.")
         # No additional spaces i.e. likely to be against a user's documents in their personal space.
 
-        log.debug("runs_ask(): space is None. executing run_chat(), not ASK.")
-        output = run_chat(
-            input_=input_, history=history, model_settings_collection=model_settings_collection, assistant=persona
-        )
-        span.add_event(name="ask_without_spaces", attributes={"question": input_, "answer": str(output)})
-        # index = _load_index_from_storage(space=space, model_settings_collection=model_settings_collection)
-        # engine = index.as_chat_engine(
-        #     verbose=True,
-        #     similarity_top_k=3,
-        #     vector_store_query_mode="default",
-        #     chat_mode=ChatMode.CONDENSE_QUESTION,
+        # log.debug("runs_ask(): space is None. executing run_chat(), not ASK.")
+        # output = run_chat(
+        #     input_=input_, history=history, model_settings_collection=model_settings_collection, assistant=persona
         # )
-        # output = engine.chat(input_)
-        # log.debug("(Ask %s w/o shared spaces) Q: %s, A: %s", space, input_, output)
+        output = Response("You need to select a Space or upload a document to ask a questions.")
+        span.add_event(name="ask_without_spaces", attributes={"question": input_, "answer": str(output)})
+
 
     return output
 

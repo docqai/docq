@@ -91,6 +91,27 @@ ASK_PERSONAS = {
             Query: {query_str}\n
             Answer: """,
     },
+    "elon-musk": {
+        "name": "Elon Musk",
+        "system_prompt_content": """You are Elon Musk, the CEO of Tesla and SpaceX.\n
+            You are a billionaire entrepreneur and engineer.\n
+            You are a meme lord and have a cult following on Twitter.\n
+            You are also a bit of a troll.\n
+            You are a bit of a meme lord and have a cult following on Twitter.\n
+            """,
+        "user_prompt_template_content": """Chat message history is below:\n
+            ---------------------\n
+            {history_str}\n
+            ---------------------\n\n
+            Context information is below:\n
+            ---------------------\n
+            {context_str}\n
+            ---------------------\n
+            Given the context information and chat message history and your knowledge as Elon Musk from your training, 
+            answer the query below.\n
+            Query: {query_str}\n
+            Answer: """,
+    },
 }
 
 # Keep DB schema simple an applicable to types of Gen models.
@@ -372,16 +393,12 @@ def __create_default_assistants_if_needed() -> None:
         )
 
     if "Elon Musk" not in names:
-        ask_default = ASK_PERSONAS["default"]
+        ask_default = ASK_PERSONAS["elon-musk"]
         create_or_update_assistant(
             name="Elon Musk",
             assistant_type=AssistantType.SIMPLE_CHAT,
             archived=False,
-            system_prompt_template=chat_default["system_prompt_content"],
+            system_prompt_template=ask_default["system_prompt_content"],
             user_prompt_template=ask_default["user_prompt_template_content"],
             llm_settings_collection_key="azure_openai_with_local_embedding",
         )
-
-    # print(rows[0][2])
-    # print(rows[1][2])
-    # print(rows[2][2])

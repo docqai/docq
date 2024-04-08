@@ -256,7 +256,7 @@ LLM_MODEL_COLLECTIONS = {
             ),
         },
     ),
-    "groq_llma2_70b_with_local_embedding": LlmUsageSettingsCollection(
+    "groq_llama2_70b_with_local_embedding": LlmUsageSettingsCollection(
         name="Groq Llama2 70B wth Local Embedding",
         key="groq_llama2_70b_with_local_embedding",
         model_usage_settings={
