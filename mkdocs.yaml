@@ -11,7 +11,7 @@ plugins:
   - search
   # - mkapi # doesn't work with python 3.11. project not maintained
   - awesome-pages
-  - social
+  #- social # disabling to temp workaround https://github.com/squidfunk/mkdocs-material/issues/6983
   - gen-files:
       scripts:
         - misc/gen_pages.py

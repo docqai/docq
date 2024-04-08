@@ -1,6 +1,6 @@
 # Introduction
 
-![Docq Illustration](./assets/docq-diag-nov2023.png)
+![Docq Illustration](./assets/docq-diag-apr2024.png)
 
 Docq helps your _**businesses**_ gain _**AI-based knowledge insight**_ from your _**private data, securely!**_
 
