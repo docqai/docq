@@ -1227,7 +1227,7 @@ def organisation_settings_ui() -> None:
             with model_settings_container.expander("Model details"):
                 for _, model_settings in selected_model_settings.model_usage_settings.items():
                     st.write(f"{model_settings.model_capability.value} model: ")
-                    st.write(f"- Model Vendor: `{model_settings.service_instance_config.vendor.value}`")
+                    st.write(f"- Model Provider: `{model_settings.service_instance_config.provider.value}`")
                     st.write(f"- Model Name: `{model_settings.service_instance_config.model_name}`")
                     st.write(f"- Temperature: `{model_settings.temperature}`")
                     st.write(

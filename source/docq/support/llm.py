@@ -3,6 +3,7 @@
 import logging as log
 import os
 from typing import Any, Dict, List
+from uu import Error
 
 import docq
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
@@ -37,7 +38,7 @@ from ..model_selection.main import (
     LLM_MODEL_COLLECTIONS,
     LlmUsageSettingsCollection,
     ModelCapability,
-    ModelVendor,
+    ModelProvider,
 )
 from .llamaindex_otel_callbackhandler import OtelCallbackHandler
 
@@ -104,7 +105,7 @@ def _init_local_models() -> None:
     """Initialize local models."""
     for model_collection in LLM_MODEL_COLLECTIONS.values():
         for model_usage_settings in model_collection.model_usage_settings.values():
-            if model_usage_settings.service_instance_config.vendor == ModelVendor.HUGGINGFACE_OPTIMUM_BAAI:
+            if model_usage_settings.service_instance_config.provider == ModelProvider.HUGGINGFACE_OPTIMUM_BAAI:
                 model_dir = get_models_dir(model_usage_settings.service_instance_config.model_name, makedir=False)
                 if not os.path.exists(model_dir):
                     model_dir = get_models_dir(model_usage_settings.service_instance_config.model_name, makedir=True)
@@ -124,7 +125,7 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
         chat_model_settings = model_settings_collection.model_usage_settings[ModelCapability.CHAT]
         sc = chat_model_settings.service_instance_config
         _callback_manager = CallbackManager([OtelCallbackHandler(tracer_provider=trace.get_tracer_provider())])
-        if chat_model_settings.service_instance_config.vendor == ModelVendor.AZURE_OPENAI:
+        if sc.provider == ModelProvider.AZURE_OPENAI:
             _additional_kwargs: Dict[str, Any] = {}
             _additional_kwargs["api_version"] = chat_model_settings.service_instance_config.api_version
             model = LiteLLM(
@@ -140,7 +141,7 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
             _env_missing = not bool(sc.api_base and sc.api_key and sc.api_version)
             if _env_missing:
                 log.warning("Chat model: env var values missing.")
-        elif chat_model_settings.service_instance_config.vendor == ModelVendor.OPENAI:
+        elif sc.provider == ModelProvider.OPENAI:
             model = LiteLLM(
                 temperature=chat_model_settings.temperature,
                 model=sc.model_name,
@@ -151,14 +152,14 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
             _env_missing = not bool(sc.api_key)
             if _env_missing:
                 log.warning("Chat model: env var values missing")
-        elif chat_model_settings.service_instance_config.vendor == ModelVendor.GOOGLE_VERTEXAI_PALM2:
+        elif sc.provider == ModelProvider.GOOGLE_VERTEXAI_PALM2:
             # GCP project_id is coming from the credentials json.
             model = LiteLLM(
                 temperature=chat_model_settings.temperature,
                 model=sc.model_name,
                 callback_manager=_callback_manager,
             )
-        elif chat_model_settings.service_instance_config.vendor == ModelVendor.GOOGLE_VERTEXTAI_GEMINI_PRO:
+        elif sc.provider == ModelProvider.GOOGLE_VERTEXTAI_GEMINI_PRO:
             # GCP project_id is coming from the credentials json.
             model = LiteLLM(
                 temperature=chat_model_settings.temperature,
@@ -169,13 +170,13 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
             )
             litellm.VertexAIConfig()
             litellm.vertex_location = sc.additional_properties["vertex_location"]
-        elif chat_model_settings.service_instance_config.vendor == ModelVendor.GROQ_META:
+        elif sc.provider == ModelProvider.GROQ:
             model = LiteLLM(
                 temperature=chat_model_settings.temperature,
-                model=f"openai/{sc.model_name}",
+                model=f"groq/{sc.model_name}",
                 api_key=sc.api_key,
-                api_base=sc.api_base,
-                max_tokens=4096,
+                # api_base=sc.api_base,
+                # max_tokens=4096,
                 callback_manager=_callback_manager,
                 kwargs={
                     "set_verbose": True,
@@ -185,7 +186,7 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
             if _env_missing:
                 log.warning("Chat model: env var values missing.")
         else:
-            raise ValueError("Chat model: model settings with a supported model vendor not found.")
+            raise ValueError("Chat model: model settings with a supported model provider not found.")
 
         model.max_retries = 3
 
@@ -201,28 +202,27 @@ def _get_embed_model(model_settings_collection: LlmUsageSettingsCollection) -> B
     if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]:
         embedding_model_settings = model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]
         _callback_manager = CallbackManager([OtelCallbackHandler(tracer_provider=trace.get_tracer_provider())])
-        with tracer.start_as_current_span(
-            name=f"LangchainEmbedding.{embedding_model_settings.service_instance_config.vendor}"
-        ):
-            if embedding_model_settings.service_instance_config.vendor == ModelVendor.AZURE_OPENAI:
+        sc = embedding_model_settings.service_instance_config
+        with tracer.start_as_current_span(name=f"LangchainEmbedding.{sc.provider}"):
+            if sc.provider == ModelProvider.AZURE_OPENAI:
                 embedding_model = AzureOpenAIEmbedding(
-                    model=embedding_model_settings.service_instance_config.model_name,
-                    azure_deployment=embedding_model_settings.service_instance_config.model_deployment_name,  # `deployment_name` is an alias
+                    model=sc.model_name,
+                    azure_deployment=sc.model_deployment_name,  # `deployment_name` is an alias
                     azure_endpoint=os.getenv("DOCQ_AZURE_OPENAI_API_BASE"),
                     api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1"),
                     # openai_api_type="azure",
                     api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION"),
                     callback_manager=_callback_manager,
                 )
-            elif embedding_model_settings.service_instance_config.vendor == ModelVendor.OPENAI:
+            elif sc.provider == ModelProvider.OPENAI:
                 embedding_model = OpenAIEmbedding(
-                    model=embedding_model_settings.service_instance_config.model_name,
+                    model=sc.model_name,
                     api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
                     callback_manager=_callback_manager,
                 )
-            elif embedding_model_settings.service_instance_config.vendor == ModelVendor.HUGGINGFACE_OPTIMUM_BAAI:
+            elif sc.provider == ModelProvider.HUGGINGFACE_OPTIMUM_BAAI:
                 embedding_model = OptimumEmbedding(
-                    folder_name=get_models_dir(embedding_model_settings.service_instance_config.model_name),
+                    folder_name=get_models_dir(sc.model_name),
                     callback_manager=_callback_manager,
                 )
             else:
@@ -320,12 +320,20 @@ def get_hybrid_fusion_retriever_query(
 ) -> BaseRetriever:
     """Hybrid fusion retriever query."""
     retrievers = []
-    for index in indices:  # replace with your actual indexes
+    for index in indices:
         vector_retriever = index.as_retriever(similarity_top_k=similarity_top_k)
         retrievers.append(vector_retriever)
         bm25_retriever = BM25Retriever.from_defaults(docstore=index.docstore, similarity_top_k=similarity_top_k)
         retrievers.append(bm25_retriever)
 
+    # the default prompt doesn't return JUST the list of queries when using some none OAI models like Llama3.
+    QUERY_GEN_PROMPT = (
+        "You are a helpful assistant that generates multiple search queries based on a "
+        "single input <query>. You only generate the queries and NO other text. Generate {num_queries} search queries, one on each line, "
+        "related to the following input query:\n"
+        "<query>{query}<query>\n"
+        "Queries:\n"
+    )
     # Create a FusionRetriever to merge and rerank the results
     fusion_retriever = QueryFusionRetriever(
         retrievers,
@@ -335,7 +343,8 @@ def get_hybrid_fusion_retriever_query(
         use_async=False,
         verbose=True,
         llm=_get_service_context(model_settings_collection).llm,
-        # query_gen_prompt="...",  # we could override the query generation prompt here
+        callback_manager=_get_service_context(model_settings_collection).callback_manager,
+        query_gen_prompt=QUERY_GEN_PROMPT,  # we could override the query generation prompt here
     )
     return fusion_retriever
 
@@ -409,55 +418,31 @@ def run_ask(
 
         from llama_index.core.query_engine import RetrieverQueryEngine
 
-        retriever = get_hybrid_fusion_retriever_query(indices, model_settings_collection)
-        query_engine = RetrieverQueryEngine.from_args(
-            retriever,
-            service_context=_get_service_context(model_settings_collection),
-            text_qa_template=llama_index_chat_prompt_template_from_persona(persona),
-            chat_history=history,
-        )
-        output = query_engine.query(input_)
+        try:
+            text_qa_template = llama_index_chat_prompt_template_from_persona(persona)
+            span.add_event(name="prompt_created")
+        except Exception as e:
+            raise Error(f"Error: {e}") from e
 
-        # with tracer.start_as_current_span(name="ComposableGraph.from_indices") as span:
-        #     try:
-        #         graph = ComposableGraph.from_indices(
-        #             SummaryIndex,
-        #             indices,
-        #             index_summaries=summaries,
-        #             service_context=_get_service_context(model_settings_collection),
-        #             kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
-        #         )
+        try:
+            retriever = get_hybrid_fusion_retriever_query(indices, model_settings_collection)
+            span.add_event(name="retriever_object_created", attributes={"retriever": retriever.__class__.__name__})
 
-        #         custom_query_engines = {
-        #             index.index_id: index.as_query_engine(child_branch_factor=2) for index in indices
-        #         }
+            query_engine = RetrieverQueryEngine.from_args(
+                retriever,
+                service_context=_get_service_context(model_settings_collection),
+                text_qa_template=text_qa_template,
+                chat_history=history,
+            )
+            span.add_event(name="query_engine__object_created")
 
-        #         query_engine = graph.as_query_engine(
-        #             custom_query_engines=custom_query_engines,
-        #             text_qa_template=llama_index_chat_prompt_template_from_persona(persona).partial_format(
-        #                 history_str=""
-        #             ),
-        #             chat_history=history,
-        #         )
+            output = query_engine.query(input_)
+            span.add_event(name="query_executed")
+        except Exception as e:
+            span.set_status(status=Status(StatusCode.ERROR))
+            span.record_exception(e)
+            raise Error(f"Error: {e}") from e
 
-        #         # prompts_dict = query_engine.get_prompts()
-        #         # print("prompts:", list(prompts_dict.keys()))
-
-        #         output = query_engine.query(input_)
-        #         span.add_event(
-        #             name="ask_combined_spaces",
-        #             attributes={"question": input_, "answer": str(output), "spaces_count": len(spaces)},
-        #         )
-        #         log.debug("(Ask combined spaces %s) Q: %s, A: %s", spaces, input_, output)
-        #     except Exception as e:
-        #         span.set_status(status=Status(StatusCode.ERROR))
-        #         span.record_exception(e)
-        #         log.error(
-        #             "run_ask(): Failed to create ComposableGraph. Maybe there was an issue with one of the Space indexes. Error message: %s",
-        #             e,
-        #         )
-        #         span.set_status(status=Status(StatusCode.ERROR))
-        #         span.record_exception(e)
     else:
         span.set_attribute("spaces_count", 0)
         log.debug("runs_ask(): space None or zero.")

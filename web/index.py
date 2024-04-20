@@ -24,7 +24,10 @@ import web.api.index_handler  # noqa F401 don't remove this line, it's used to r
 with tracer().start_as_current_span("home_page", attributes=baggage_as_attributes()):
     render_docq_logo()
 
-    render_page_title_and_favicon(page_display_title="Docq.AI, :violet[your second brain].", browser_title="Docq.AI - Private & Secure ChatGPT alternative.")
+    render_page_title_and_favicon(
+        page_display_title=":violet[Your private ChatGPT alternative].",
+        browser_title="Docq.AI - Private ChatGPT alternative.",
+    )
 
     init_with_pretty_error_ui()
     production_layout()
@@ -57,8 +60,11 @@ with tracer().start_as_current_span("home_page", attributes=baggage_as_attribute
 
     login_container = st.container()
 
-    st.subheader("Private & Secure alternative to ChatGPT that unlocks knowledge from your confidential documents.")
+    st.subheader("Secure unlock knowledge from your confidential business documents.")
 
+    st.markdown("Upload a document. Ask questions. Get answers. It's that simple!")
+
+    st.subheader("Guide")
     st.markdown(
         """
     - **_General Chat_** to use Docq like ChatGPT.
