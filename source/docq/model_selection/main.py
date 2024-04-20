@@ -1,9 +1,9 @@
 """Model selection and usage settings for Docq.
 
-We potentially need to support multiple versions and configurations for models from a given vendor and also different combinations of models.
+We potentially need to support multiple versions and configurations for models from a given provider and also different combinations of models.
 The ModeUsageSettings class is the building block.
 We might have multiple structures to group multiple models together.
-Model collections grouped by vendor and model capability is just one way to structure.
+Model collections grouped by provider and model capability is just one way to structure.
 """
 
 import logging as log
@@ -18,17 +18,17 @@ from ..config import ENV_VAR_DOCQ_GROQ_API_KEY, OrganisationSettingsKey
 from ..manage_settings import get_organisation_settings
 
 
-class ModelVendor(str, Enum):
-    """Model vendor names.
+class ModelProvider(str, Enum):
+    """Model provider names.
 
-    Dedicated model providers {model vendor} e.g. OPENAI OR COHERE.
-    Cloud provider hosted models {cloud provider name}_[{service name}_]{model vendor} e.g. AZURE_OPENAI OR AWS_SAGEMAKER_LLAMA OR AWS_BEDROCK_COHERE or AWS_BEDROCK_TITAN.
+    Dedicated model providers {model provider} e.g. OPENAI or AWS or AZURE.
+    Cloud provider hosted models {cloud provider name}_[{service name}_] e.g. AZURE_OPENAI OR AWS_SAGEMAKER OR AWS_BEDROCK or GROQ or GOOGLE_VERTEXAI.
     """
 
     OPENAI = "OpenAI"
     AZURE_OPENAI = "Azure OpenAI"
-    AZURE_ML_LLAMA = "Azure ML Llama"
-    GROQ_META = "Groq Meta"
+    AZURE_ML = "Azure ML"
+    GROQ = "Groq"
     AWS_BEDROCK_AMAZON = "AWS Bedrock Amazon"
     AWS_BEDROCK_AI21LABs = "AWS Bedrock AI21labs"
     AWS_BEDROCK_COHERE = "AWS Bedrock Cohere"
@@ -59,7 +59,7 @@ class ModelCapability(str, Enum):
 class LlmServiceInstanceConfig:
     """Config related to a running instance of an LLM aka a deployed model."""
 
-    vendor: ModelVendor
+    provider: ModelProvider
     model_name: str
     """Each LLM hosting provider defines string name to identify different versions of models."""
     api_key: Optional[str] = None
@@ -86,10 +86,10 @@ class LlmUsageSettings:
     """Model usage settings to associate with a model service instance."""
 
     model_capability: ModelCapability
-    """Map a capability to a model intance."""
+    """Map a capability to a model instance."""
     service_instance_config: LlmServiceInstanceConfig
     """Config for a running instance of an LLM compatible with these settings."""
-    temperature: float = 0.0
+    temperature: float = 0.1
     additional_args: Optional[Mapping[str, Any]] = field(default_factory=dict)
     """Any additional model API specific arguments to be passed to function like chat and completion"""
 
@@ -107,19 +107,19 @@ class LlmUsageSettingsCollection:
 # The configuration of the deployed instances of models. Basically service discovery.
 LLM_SERVICE_INSTANCES = {
     "openai-gpt35turbo": LlmServiceInstanceConfig(
-        vendor=ModelVendor.OPENAI,
+        provider=ModelProvider.OPENAI,
         model_name="gpt-3.5-turbo",
         api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
         license_="Commercial",
     ),
     "openai-ada-002": LlmServiceInstanceConfig(
-        vendor=ModelVendor.OPENAI,
+        provider=ModelProvider.OPENAI,
         model_name="text-embedding-ada-002",
         api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
         license_="Commercial",
     ),
     "azure-openai-gpt35turbo": LlmServiceInstanceConfig(
-        vendor=ModelVendor.AZURE_OPENAI,
+        provider=ModelProvider.AZURE_OPENAI,
         model_name="gpt-35-turbo",
         model_deployment_name="gpt-35-turbo",
         api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
@@ -129,7 +129,7 @@ LLM_SERVICE_INSTANCES = {
         license_="Commercial",
     ),
     "azure-openai-gpt4turbo": LlmServiceInstanceConfig(
-        vendor=ModelVendor.AZURE_OPENAI,
+        provider=ModelProvider.AZURE_OPENAI,
         model_name="gpt-4",
         model_deployment_name="gpt4-turbo-1106-preview",
         api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
@@ -138,7 +138,7 @@ LLM_SERVICE_INSTANCES = {
         license_="Commercial",
     ),
     "azure-openai-ada-002": LlmServiceInstanceConfig(
-        vendor=ModelVendor.AZURE_OPENAI,
+        provider=ModelProvider.AZURE_OPENAI,
         model_name="text-embedding-ada-002",
         model_deployment_name="text-embedding-ada-002",
         api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
@@ -146,22 +146,22 @@ LLM_SERVICE_INSTANCES = {
         license_="Commercial",
     ),
     "google-vertexai-palm2": LlmServiceInstanceConfig(
-        vendor=ModelVendor.GOOGLE_VERTEXAI_PALM2, model_name="chat-bison@002", context_window_size=8196
+        provider=ModelProvider.GOOGLE_VERTEXAI_PALM2, model_name="chat-bison@002", context_window_size=8196
     ),
     "google-vertexai-gemini-pro": LlmServiceInstanceConfig(
-        vendor=ModelVendor.GOOGLE_VERTEXTAI_GEMINI_PRO,
+        provider=ModelProvider.GOOGLE_VERTEXTAI_GEMINI_PRO,
         model_name="gemini-pro",
         additional_properties={"vertex_location": "us-central1"},
         context_window_size=32000,
     ),
     "google-vertexai-gemini-1.0-pro-001": LlmServiceInstanceConfig(
-        vendor=ModelVendor.GOOGLE_VERTEXTAI_GEMINI_PRO,
+        provider=ModelProvider.GOOGLE_VERTEXTAI_GEMINI_PRO,
         model_name="gemini-1.0-pro-001",
         additional_properties={"vertex_location": "us-central1"},
         context_window_size=32000,
     ),
     "optimum-bge-small-en-v1.5": LlmServiceInstanceConfig(
-        vendor=ModelVendor.HUGGINGFACE_OPTIMUM_BAAI,
+        provider=ModelProvider.HUGGINGFACE_OPTIMUM_BAAI,
         model_name="BAAI/bge-small-en-v1.5",
         license_="MIT",
         citation="""@misc{bge_embedding,
@@ -175,15 +175,31 @@ LLM_SERVICE_INSTANCES = {
         context_window_size=1024,
     ),
     "groq-meta-llama2-70b-4096": LlmServiceInstanceConfig(
-        vendor=ModelVendor.GROQ_META,
+        provider=ModelProvider.GROQ,
         model_name="llama2-70b-4096",
         api_key=os.getenv(ENV_VAR_DOCQ_GROQ_API_KEY),
         api_base="https://api.groq.com/openai/v1",
         api_version="2023-05-15",  # not used by groq but checked by the downstream lib
         context_window_size=4096,
+        license_="META LLAMA 2 COMMUNITY LICENSE AGREEMENT",
     ),
-    "groq-meta-mixtral-8x7b-32768": LlmServiceInstanceConfig(
-        vendor=ModelVendor.GROQ_META,
+    "groq-meta-llama3-70b-8192": LlmServiceInstanceConfig(
+        provider=ModelProvider.GROQ,
+        model_name="llama3-70b-8192",
+        api_key=os.getenv(ENV_VAR_DOCQ_GROQ_API_KEY),
+        # api_base="https://api.groq.com/openai/v1",
+        # api_version="2023-05-15",  # not used by groq but checked by the downstream lib
+        context_window_size=8192,
+        license_="META LLAMA 3 COMMUNITY LICENSE AGREEMENT",
+        citation="""@article{llama3modelcard,
+                            title={Llama 3 Model Card},
+                            author={AI@Meta},
+                            year={2024},
+                            url = {https://github.com/meta-llama/llama3/blob/main/MODEL_CARD.md}
+                            }""",
+    ),
+    "groq-mistral-mixtral-8x7b-32768": LlmServiceInstanceConfig(
+        provider=ModelProvider.GROQ,
         model_name="mixtral-8x7b-32768",
         api_key=os.getenv(ENV_VAR_DOCQ_GROQ_API_KEY),
         api_base="https://api.groq.com/openai/v1",
@@ -271,6 +287,21 @@ LLM_MODEL_COLLECTIONS = {
             ),
         },
     ),
+    "groq_llama3_70b_with_local_embedding": LlmUsageSettingsCollection(
+        name="Groq Llama3 70B wth Local Embedding",
+        key="groq_llama3_70b_with_local_embedding",
+        model_usage_settings={
+            ModelCapability.CHAT: LlmUsageSettings(
+                model_capability=ModelCapability.CHAT,
+                temperature=0.3,
+                service_instance_config=LLM_SERVICE_INSTANCES["groq-meta-llama3-70b-8192"],
+            ),
+            ModelCapability.EMBEDDING: LlmUsageSettings(
+                model_capability=ModelCapability.EMBEDDING,
+                service_instance_config=LLM_SERVICE_INSTANCES["optimum-bge-small-en-v1.5"],
+            ),
+        },
+    ),
     "groq_mixtral_8x7b_with_local_embedding": LlmUsageSettingsCollection(
         name="Groq Mixtral 8x7b wth Local Embedding",
         key="groq_mixtral_8x7b_with_local_embedding",
@@ -278,7 +309,7 @@ LLM_MODEL_COLLECTIONS = {
             ModelCapability.CHAT: LlmUsageSettings(
                 model_capability=ModelCapability.CHAT,
                 temperature=0.7,
-                service_instance_config=LLM_SERVICE_INSTANCES["groq-meta-mixtral-8x7b-32768"],
+                service_instance_config=LLM_SERVICE_INSTANCES["groq-mistral-mixtral-8x7b-32768"],
             ),
             ModelCapability.EMBEDDING: LlmUsageSettings(
                 model_capability=ModelCapability.EMBEDDING,

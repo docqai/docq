@@ -37,7 +37,7 @@ from ..model_selection.main import (
     LLM_MODEL_COLLECTIONS,
     LlmUsageSettingsCollection,
     ModelCapability,
-    ModelVendor,
+    ModelProvider,
 )
 from .llamaindex_otel_callbackhandler import OtelCallbackHandler
 
@@ -104,7 +104,7 @@ def _init_local_models() -> None:
     """Initialize local models."""
     for model_collection in LLM_MODEL_COLLECTIONS.values():
         for model_usage_settings in model_collection.model_usage_settings.values():
-            if model_usage_settings.service_instance_config.vendor == ModelVendor.HUGGINGFACE_OPTIMUM_BAAI:
+            if model_usage_settings.service_instance_config.provider == ModelProvider.HUGGINGFACE_OPTIMUM_BAAI:
                 model_dir = get_models_dir(model_usage_settings.service_instance_config.model_name, makedir=False)
                 if not os.path.exists(model_dir):
                     model_dir = get_models_dir(model_usage_settings.service_instance_config.model_name, makedir=True)
@@ -124,7 +124,7 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
         chat_model_settings = model_settings_collection.model_usage_settings[ModelCapability.CHAT]
         sc = chat_model_settings.service_instance_config
         _callback_manager = CallbackManager([OtelCallbackHandler(tracer_provider=trace.get_tracer_provider())])
-        if chat_model_settings.service_instance_config.vendor == ModelVendor.AZURE_OPENAI:
+        if chat_model_settings.service_instance_config.provider == ModelProvider.AZURE_OPENAI:
             _additional_kwargs: Dict[str, Any] = {}
             _additional_kwargs["api_version"] = chat_model_settings.service_instance_config.api_version
             model = LiteLLM(
@@ -140,7 +140,7 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
             _env_missing = not bool(sc.api_base and sc.api_key and sc.api_version)
             if _env_missing:
                 log.warning("Chat model: env var values missing.")
-        elif chat_model_settings.service_instance_config.vendor == ModelVendor.OPENAI:
+        elif chat_model_settings.service_instance_config.provider == ModelProvider.OPENAI:
             model = LiteLLM(
                 temperature=chat_model_settings.temperature,
                 model=sc.model_name,
@@ -151,14 +151,14 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
             _env_missing = not bool(sc.api_key)
             if _env_missing:
                 log.warning("Chat model: env var values missing")
-        elif chat_model_settings.service_instance_config.vendor == ModelVendor.GOOGLE_VERTEXAI_PALM2:
+        elif chat_model_settings.service_instance_config.provider == ModelProvider.GOOGLE_VERTEXAI_PALM2:
             # GCP project_id is coming from the credentials json.
             model = LiteLLM(
                 temperature=chat_model_settings.temperature,
                 model=sc.model_name,
                 callback_manager=_callback_manager,
             )
-        elif chat_model_settings.service_instance_config.vendor == ModelVendor.GOOGLE_VERTEXTAI_GEMINI_PRO:
+        elif chat_model_settings.service_instance_config.provider == ModelProvider.GOOGLE_VERTEXTAI_GEMINI_PRO:
             # GCP project_id is coming from the credentials json.
             model = LiteLLM(
                 temperature=chat_model_settings.temperature,
@@ -169,13 +169,13 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
             )
             litellm.VertexAIConfig()
             litellm.vertex_location = sc.additional_properties["vertex_location"]
-        elif chat_model_settings.service_instance_config.vendor == ModelVendor.GROQ_META:
+        elif chat_model_settings.service_instance_config.provider == ModelProvider.GROQ:
             model = LiteLLM(
                 temperature=chat_model_settings.temperature,
-                model=f"openai/{sc.model_name}",
+                model=f"groq/{sc.model_name}",
                 api_key=sc.api_key,
-                api_base=sc.api_base,
-                max_tokens=4096,
+                # api_base=sc.api_base,
+                # max_tokens=4096,
                 callback_manager=_callback_manager,
                 kwargs={
                     "set_verbose": True,
@@ -185,7 +185,7 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
             if _env_missing:
                 log.warning("Chat model: env var values missing.")
         else:
-            raise ValueError("Chat model: model settings with a supported model vendor not found.")
+            raise ValueError("Chat model: model settings with a supported model provider not found.")
 
         model.max_retries = 3
 
@@ -202,9 +202,9 @@ def _get_embed_model(model_settings_collection: LlmUsageSettingsCollection) -> B
         embedding_model_settings = model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]
         _callback_manager = CallbackManager([OtelCallbackHandler(tracer_provider=trace.get_tracer_provider())])
         with tracer.start_as_current_span(
-            name=f"LangchainEmbedding.{embedding_model_settings.service_instance_config.vendor}"
+            name=f"LangchainEmbedding.{embedding_model_settings.service_instance_config.provider}"
         ):
-            if embedding_model_settings.service_instance_config.vendor == ModelVendor.AZURE_OPENAI:
+            if embedding_model_settings.service_instance_config.provider == ModelProvider.AZURE_OPENAI:
                 embedding_model = AzureOpenAIEmbedding(
                     model=embedding_model_settings.service_instance_config.model_name,
                     azure_deployment=embedding_model_settings.service_instance_config.model_deployment_name,  # `deployment_name` is an alias
@@ -214,13 +214,13 @@ def _get_embed_model(model_settings_collection: LlmUsageSettingsCollection) -> B
                     api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION"),
                     callback_manager=_callback_manager,
                 )
-            elif embedding_model_settings.service_instance_config.vendor == ModelVendor.OPENAI:
+            elif embedding_model_settings.service_instance_config.provider == ModelProvider.OPENAI:
                 embedding_model = OpenAIEmbedding(
                     model=embedding_model_settings.service_instance_config.model_name,
                     api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
                     callback_manager=_callback_manager,
                 )
-            elif embedding_model_settings.service_instance_config.vendor == ModelVendor.HUGGINGFACE_OPTIMUM_BAAI:
+            elif embedding_model_settings.service_instance_config.provider == ModelProvider.HUGGINGFACE_OPTIMUM_BAAI:
                 embedding_model = OptimumEmbedding(
                     folder_name=get_models_dir(embedding_model_settings.service_instance_config.model_name),
                     callback_manager=_callback_manager,
@@ -410,12 +410,14 @@ def run_ask(
         from llama_index.core.query_engine import RetrieverQueryEngine
 
         retriever = get_hybrid_fusion_retriever_query(indices, model_settings_collection)
+        print("\033[94mhybrid retriever obtained.\033[0m")
         query_engine = RetrieverQueryEngine.from_args(
             retriever,
             service_context=_get_service_context(model_settings_collection),
             text_qa_template=llama_index_chat_prompt_template_from_persona(persona),
             chat_history=history,
         )
+        print("\033[94mquery engine created.\033[0m")
         output = query_engine.query(input_)
 
         # with tracer.start_as_current_span(name="ComposableGraph.from_indices") as span:
