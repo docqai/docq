@@ -6,7 +6,7 @@ To get you started, we show you one example for each scenario below.
 
 ## Pre-requisites
 
-- Make sure to study the [environment variables template file](../../misc/docker.env.template) in the repo to collect all the values for required environment variables.
+- Make sure to study the [environment variables template file](https://github.com/docqai/docq/blob/main/misc/docker.env.template) in the repo to collect all the values for required environment variables.
 - Take a note on the default username and password for the _admin_ user created when running the application for the first time. Changing the password for this account will be the first thing you do after deploying this app.
   - username: `docq`
   - password: `Docq.AI`
