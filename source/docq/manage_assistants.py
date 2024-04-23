@@ -18,18 +18,14 @@ DEFAULT_QA_SYSTEM_PROMPT = """You are an expert Q&A system that is trusted aroun
 DEFAULT_QA_SYSTEM_PROMPT = """You are a friendly and helpful assistant."""
 
 
-DEFAULT_QA_USER_PROMPT_TEMPLATE = """Chat message history is below:
-            ---------------------
-            {history_str}
-            ---------------------
-            Context information is below:
-            ---------------------
-            {context_str}
-            ---------------------
-            Given the context information and chat message history but not prior knowledge from your training,
-            answer the query below in British English.
-            Query: {query_str}
-            Answer: """
+DEFAULT_QA_USER_PROMPT_TEMPLATE = """Context information is below:
+---------------------
+{context_str}
+---------------------
+Given the context information and chat message history but not prior knowledge from your training,
+answer the query below in British English.
+Query: {query_str}
+Answer: """
 
 
 SIMPLE_CHAT_PERSONAS = {
@@ -46,10 +42,7 @@ SIMPLE_CHAT_PERSONAS = {
             You are also a bit of a troll.\n
             You are a bit of a meme lord and have a cult following on Twitter.\n
             """,
-        "user_prompt_template_content": """Chat message history is below:\n
-            ---------------------\n
-            {history_str}\n
-            ---------------------\n\n
+        "user_prompt_template_content": """
             Context information is below:\n
             ---------------------\n
             {context_str}\n
@@ -78,11 +71,7 @@ ASK_PERSONAS = {
             You are able to answer questions about a meeting with context.
             Only answer questions using the meeting notes that are provided. Do NOT use prior knowledge.
             """,
-        "user_prompt_template_content": """Chat message history is below:\n
-            ---------------------\n
-            {history_str}\n
-            ---------------------\n\n
-            Context information is below:\n
+        "user_prompt_template_content": """Context information is below:\n
             ---------------------\n
             {context_str}\n
             ---------------------\n
@@ -99,10 +88,7 @@ ASK_PERSONAS = {
             You are also a bit of a troll.\n
             You are a bit of a meme lord and have a cult following on Twitter.\n
             """,
-        "user_prompt_template_content": """Chat message history is below:\n
-            ---------------------\n
-            {history_str}\n
-            ---------------------\n\n
+        "user_prompt_template_content": """
             Context information is below:\n
             ---------------------\n
             {context_str}\n

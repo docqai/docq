@@ -9,7 +9,7 @@ from docq.support.llm import run_ask, run_chat
 def chat_completion(text: str) -> str:
     """Middleware to handle chat completion."""
     input_ = text
-    history = ""
+    history = []
     model_settings_collection = get_model_settings_collection("azure_openai_latest")
     assistant = get_personas_fixed(model_settings_collection.key)["default"]
     response = run_chat(input_, history, model_settings_collection, assistant)
@@ -24,7 +24,7 @@ def rag_completion(text: str, channel_id: str) -> str:
     if not spaces:
         return "This channel is not configured in Docq. Please contact your administrator to setup the channel.\nhttps://docq.ai"
 
-    history = ""
+    history = []
     model_collection_settings = get_saved_model_settings_collection(org_id) if org_id else get_model_settings_collection("azure_openai_latest")
     assistant = get_personas_fixed(model_collection_settings.key)["default"]
     response = run_ask(text, history, model_collection_settings, assistant, spaces)
