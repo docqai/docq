@@ -37,7 +37,7 @@ def handle_app_mention_event(body: dict, say: Say) -> None:
 
     print("slack: unthreaded message ", message_replied)
 
-    response = rag_completion(body["event"]["text"], body["event"]["channel"])
+    response = rag_completion(body["event"]["text"], body["event"]["channel"], thread_ts)
     say(
         text=CHANNEL_TEMPLATE.format(user=body["event"]["user"], response=response),
         channel=body["event"]["channel"],
@@ -45,6 +45,7 @@ def handle_app_mention_event(body: dict, say: Say) -> None:
         mrkdwn=True,
     )
 
+# TODO: figure out how to save the messages in a thread so we can use it for context.
 
 # @slack_app.event("message", middleware=[message_handled_middleware, persist_message_middleware])
 # @tracer.start_as_current_span(name="handle_message")
