@@ -16,17 +16,31 @@ tracer = trace.get_tracer(__name__)
 CLIENT_ID = os.environ.get(ENV_VAR_DOCQ_SLACK_CLIENT_ID)
 CLIENT_SECRET = os.environ.get(ENV_VAR_DOCQ_SLACK_CLIENT_SECRET)
 SIGNING_SECRET = os.environ.get(ENV_VAR_DOCQ_SLACK_SIGNING_SECRET)
-SCOPES = ["app_mentions:read", "im:history", "chat:write", "channels:read", "groups:read", "im:read", "mpim:read"]
+
+# events needs to be added to the Slack app installation in the Slack for them to fire.
+# the needed scopes are listed next to the events in the Slack UI.
+SCOPES = [
+    "app_mentions:read",
+    "chat:write",
+    "im:history",
+    "channels:history",
+    "groups:history",
+    "im:read",
+    "mpim:read",
+    "channels:read",
+    "groups:read",
+    "reactions:read",
+]
 USER_SCOPES = []  # OAuth scopes to request if the bot needs to take actions on behalf of the user. Docq doesn't need to do this right now.
 
 
 @tracer.start_as_current_span(name="slack_success_callback")
-def success_callback(success_args: SuccessArgs) -> BoltResponse:
+def slack_app_install_success_callback(success_args: SuccessArgs) -> BoltResponse:
     """Success callback."""
     return success_args.default.success(success_args)
 
 @tracer.start_as_current_span(name="slack_failure_callback")
-def failure_callback(failure_args: FailureArgs) -> BoltResponse:
+def slack_app_install_failure_callback(failure_args: FailureArgs) -> BoltResponse:
     """Failure callback."""
     span = trace.get_current_span()
     span.set_attribute("slack_failure_callback_args", str(failure_args))
@@ -53,7 +67,9 @@ with tracer.start_as_current_span(name="initialise_slack_app") as slack_app_span
                 client_secret=CLIENT_SECRET,
                 scopes=SCOPES,
                 user_scopes=USER_SCOPES,
-                callback_options=CallbackOptions(success=success_callback, failure=failure_callback),
+                callback_options=CallbackOptions(
+                    success=slack_app_install_success_callback, failure=slack_app_install_failure_callback
+                ),
             ),
         )
     else:

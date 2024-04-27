@@ -76,10 +76,6 @@ TEXT_QA_PROMPT_TMPL_MSGS = [
     TEXT_QA_SYSTEM_PROMPT,
     ChatMessage(
         content=(
-            "Chat message history is below:"
-            "---------------------"
-            "{history_str}"
-            "---------------------"
             "Context information is below:"
             "---------------------"
             "{context_str}"
