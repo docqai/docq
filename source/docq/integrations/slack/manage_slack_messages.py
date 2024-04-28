@@ -74,7 +74,7 @@ def is_message_handled(client_msg_id: str, ts: str, org_id: int) -> bool:
 def list_slack_messages(channel: str, org_id: int) -> list[SlackMessage]:
     """Get a list of messages for a specific channel.
 
-    unthreaded and threaded meassages.
+    unthreaded and threaded messages.
     """
     _init(org_id)
     with closing(sqlite3.connect(get_sqlite_org_slack_messages_file(org_id=org_id))) as connection:

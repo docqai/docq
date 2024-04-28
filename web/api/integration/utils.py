@@ -20,7 +20,7 @@ def chat_completion(text: str) -> str:
 
 
 def rag_completion(text: str, channel_id: str, thread_ts: str) -> str:
-    """Middleware to handle RAG completion."""
+    """RAG based on the space group configured for the channel + thread messages."""
     spaces = manage_slack.get_rag_spaces(channel_id)
     org_id = manage_slack.get_org_id_from_channel_id(channel_id)
 
