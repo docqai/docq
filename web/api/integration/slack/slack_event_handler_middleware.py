@@ -100,7 +100,6 @@ def persist_message_middleware(body: dict, next_: Callable) -> None:
         span.set_status(trace.StatusCode.ERROR, "No Org ID found")
         raise ValueError(f"No Org ID found for Slack team ID '{team}'")
     manage_slack_messages.insert_or_update_message(
-        # TODO: add thread_ts to the DB schema and db migration.
         client_msg_id=client_msg_id,
         type_=type_,
         channel=channel,
