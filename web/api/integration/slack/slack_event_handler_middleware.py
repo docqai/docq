@@ -45,7 +45,7 @@ def filter_duplicate_event_middleware(ack: Callable, body: dict, next_: Callable
             "event__client_msg_id": client_msg_id,
             "event__type": type_,
             "event__ts": ts,
-            "event__parent_thread_ts": thread_ts,
+            "event__parent_thread_ts": thread_ts or "None",
             "event__team_id": team_id,
             "event__user_id": user_id,
             "event__event_id": str(event_id),
@@ -87,12 +87,12 @@ def persist_message_middleware(body: dict, next_: Callable) -> None:
             "event__client_msg_id": client_msg_id,
             "event__type": type_,
             "event__ts": ts,
-            "event__parent_thread_ts": thread_ts,
+            "event__parent_thread_ts": thread_ts or "None",
             "event__team_id": team,
             "event__user_id": user,
             "event__event_id": str(event_id),
             "event__channel_id": channel,
-            "org_id": org_id if org_id else "None",
+            "org_id": org_id or "None",
         }
     )
     if org_id is None:
