@@ -2,7 +2,7 @@
 import sqlite3
 from contextlib import closing
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.prompts import ChatPromptTemplate
@@ -17,13 +17,26 @@ DEFAULT_QA_SYSTEM_PROMPT = """You are an expert Q&A system that is trusted aroun
 
 DEFAULT_QA_SYSTEM_PROMPT = """You are a friendly and helpful assistant."""
 
+DEFAULT_QA_SYSTEM_PROMPT = """
+You are a friendly and helpful expert Q&A assistant that is trusted around the world. We really appreciate your help.
+Some rules to follow:"
+1. Always answer the query using the provided context information and chat message history.
+2. Do not use prior knowledge to answer the query.
+3. Never directly reference the given context in your answer.
+4. Avoid statements like 'Based on the context, ...' or
+'The context information ...' or '... given context information.' or anything along
+those lines.
+5. If you don't know the answer just say 'Sorry, I can't answer that question.'
+"""
 
-DEFAULT_QA_USER_PROMPT_TEMPLATE = """Context information is below:
+
+DEFAULT_QA_USER_PROMPT_TEMPLATE = """
+Context information is below:
 ---------------------
 {context_str}
 ---------------------
 Given the context information and chat message history but not prior knowledge from your training,
-answer the query below in British English.
+answer the query below. If the question message history is American English then use American English. Otherwise default to British English.
 Query: {query_str}
 Answer: """
 
@@ -137,8 +150,17 @@ def _init(org_id: Optional[int] = None) -> None:
     __create_default_assistants_if_needed()
 
 
-def llama_index_chat_prompt_template_from_persona(persona: Assistant) -> ChatPromptTemplate:
-    """Get the prompt template for the llama index."""
+def llama_index_chat_prompt_template_from_persona(
+    persona: Assistant, chat_history: Optional[List[ChatMessage]] = None
+) -> ChatPromptTemplate:
+    """Get the prompt template for llama index.
+
+    Args:
+        persona (Assistant): Docq assistant.
+        chat_history (Optional[List[ChatMessage]]): A list of ChatMessages that will be inserted into the message stack of the LLM synth call. It will be inserted between the system message an the latest user query message.
+    """
+    messages = chat_history or []
+
     _system_prompt_message = ChatMessage(
         content=persona.system_prompt_content,
         role=MessageRole.SYSTEM,
@@ -149,7 +171,7 @@ def llama_index_chat_prompt_template_from_persona(persona: Assistant) -> ChatPro
         role=MessageRole.USER,
     )
 
-    return ChatPromptTemplate(message_templates=[_system_prompt_message, _user_prompt_message])
+    return ChatPromptTemplate(message_templates=[_system_prompt_message, *messages, _user_prompt_message])
 
 
 def get_personas_fixed(llm_settings_collection_key: str, assistant_type: Optional[AssistantType] = None) -> dict[str, Assistant]:
