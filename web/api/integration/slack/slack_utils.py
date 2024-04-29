@@ -1,5 +1,4 @@
 """Slack application utils."""
-import streamlit as st
 from docq.integrations import manage_slack
 from opentelemetry import trace
 from slack_sdk import WebClient
@@ -7,7 +6,7 @@ from slack_sdk import WebClient
 tracer = trace.get_tracer(__name__)
 
 
-@st.cache_data(ttl=6000)
+
 def get_org_id(team_id: str) -> int | None:
     """Get the org id for a Slack team / workspace."""
     result = manage_slack.list_docq_slack_installations(org_id=None, team_id=team_id)
