@@ -9,15 +9,14 @@ from opentelemetry import trace
 from web.utils.streamlit_application import st_app
 
 from ...base_handlers import BaseRequestHandler
+from . import slack_event_handler, slack_integration_route_handlers
 
 tracer = trace.get_tracer(__name__)
 with tracer.start_as_current_span("slack_integration_register_api_handlers") as span:
     try:
-        from docq.integrations.slack.slack_application import slack_app
+        from . import app_home
 
-        from . import app_home, chat_handler, slack_request_handlers
-
-        __all__ = ["chat_handler", "app_home", "slack_request_handlers"]
+        __all__ = ["slack_event_handler", "app_home", "slack_integration_route_handlers"]
         span.add_event("Successfully registered Slack integration API handlers.")
     except ImportError as e:
         span.record_exception(e)

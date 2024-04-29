@@ -1,8 +1,10 @@
 """Slack integration data models."""
 
+from concurrent.futures import thread
 from typing import Optional
 
 from attr import dataclass
+from sympy import N
 
 
 @dataclass
@@ -39,4 +41,5 @@ class SlackMessage:
     user_id: str
     text: str
     ts: str
+    thread_ts: Optional[str]
     created_at: str

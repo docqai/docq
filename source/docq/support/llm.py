@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 from uu import Error
 
 import docq
-from llama_index.core.base.llms.types import ChatMessage, MessageRole
+from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.base.response.schema import RESPONSE_TYPE, Response
 from llama_index.core.callbacks.base import CallbackManager
 from llama_index.core.chat_engine import SimpleChatEngine
@@ -16,7 +16,7 @@ from llama_index.core.indices.base import BaseIndex
 from llama_index.core.indices.loading import load_index_from_storage
 from llama_index.core.llms import LLM
 from llama_index.core.node_parser import NodeParser, SentenceSplitter
-from llama_index.core.prompts.base import ChatPromptTemplate
+from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import BaseRetriever, QueryFusionRetriever
 from llama_index.core.retrievers.fusion_retriever import FUSION_MODES
 from llama_index.core.service_context import ServiceContext
@@ -56,49 +56,6 @@ if you can't understand the error, simply say "Sorry I cannot offer any assistan
 Make sure your response is in the first person context
 ERROR: {error}
 """
-
-TEXT_QA_SYSTEM_PROMPT = ChatMessage(
-    content=(
-        "You are an expert Q&A system that is trusted around the world."
-        "Always answer the query using the provided context information and chat message history, "
-        "and not prior knowledge."
-        "Some rules to follow:"
-        "1. Never directly reference the given context in your answer."
-        "2. Avoid statements like 'Based on the context, ...' or "
-        "'The context information ...' or '... given context information.' or anything along "
-        "those lines."
-    ),
-    role=MessageRole.SYSTEM,
-)
-
-
-TEXT_QA_PROMPT_TMPL_MSGS = [
-    TEXT_QA_SYSTEM_PROMPT,
-    ChatMessage(
-        content=(
-            "Chat message history is below:"
-            "---------------------"
-            "{history_str}"
-            "---------------------"
-            "Context information is below:"
-            "---------------------"
-            "{context_str}"
-            "---------------------"
-            "Given the context information and chat message history but not prior knowledge from your training, "
-            "answer the query below in British English."
-            "Query: {query_str}"
-            "Answer: "
-        ),
-        role=MessageRole.USER,
-    ),
-]
-
-CHAT_TEXT_QA_PROMPT = ChatPromptTemplate(message_templates=TEXT_QA_PROMPT_TMPL_MSGS)
-
-
-# def _get_model() -> OpenAI:
-#     return OpenAI(temperature=0, model_name="text-davinci-003")
-
 
 @tracer.start_as_current_span(name="_init_local_models")
 def _init_local_models() -> None:
@@ -329,7 +286,9 @@ def get_hybrid_fusion_retriever_query(
     # the default prompt doesn't return JUST the list of queries when using some none OAI models like Llama3.
     QUERY_GEN_PROMPT = (
         "You are a helpful assistant that generates multiple search queries based on a "
-        "single input <query>. You only generate the queries and NO other text. Generate {num_queries} search queries, one on each line, "
+        "single input <query>. You only generate the queries and NO other text. "
+        "Strictly DO NOT change the name of things that appear in the <query> like the name of people, companies, and products. e.g don't change 'docq' to 'docquity'"
+        "Generate {num_queries} search queries, one on each line, "
         "related to the following input query:\n"
         "<query>{query}<query>\n"
         "Queries:\n"
@@ -413,13 +372,8 @@ def run_ask(
                 )
                 continue
 
-        # log.debug("number summaries: %s", len(summaries))
-        # span.set_attribute("number_summaries", len(summaries))
-
-        from llama_index.core.query_engine import RetrieverQueryEngine
-
         try:
-            text_qa_template = llama_index_chat_prompt_template_from_persona(persona)
+            text_qa_template = llama_index_chat_prompt_template_from_persona(persona, history)
             span.add_event(name="prompt_created")
         except Exception as e:
             raise Error(f"Error: {e}") from e
@@ -432,7 +386,6 @@ def run_ask(
                 retriever,
                 service_context=_get_service_context(model_settings_collection),
                 text_qa_template=text_qa_template,
-                chat_history=history,
             )
             span.add_event(name="query_engine__object_created")
 
@@ -448,10 +401,6 @@ def run_ask(
         log.debug("runs_ask(): space None or zero.")
         # No additional spaces i.e. likely to be against a user's documents in their personal space.
 
-        # log.debug("runs_ask(): space is None. executing run_chat(), not ASK.")
-        # output = run_chat(
-        #     input_=input_, history=history, model_settings_collection=model_settings_collection, assistant=persona
-        # )
         output = Response("You need to select a Space or upload a document to ask a questions.")
         span.add_event(name="ask_without_spaces", attributes={"question": input_, "answer": str(output)})
 
