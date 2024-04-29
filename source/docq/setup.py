@@ -56,5 +56,3 @@ def init() -> None:
         #metadata_extractors._cache_metadata_extractor_models()
         logging.info("Docq initialized")
         span.add_event("Docq initialized")
-
-        logging.error("Docq error test message")
