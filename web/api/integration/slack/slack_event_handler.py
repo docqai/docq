@@ -60,3 +60,18 @@ def handle_app_mention_event(body: dict, ack: Ack, say: Say) -> None:
 def handle_message(body: dict, ack: Ack, say: Say) -> None:
     """Events of type message. This fires for multiple types including app_mention."""
     Ack()
+
+@slack_app.event("reaction_added", middleware=[filter_duplicate_event_middleware])
+@tracer.start_as_current_span(name="handle_reaction_added")
+def handle_reaction_added(body: dict, ack: Ack) -> None:
+    """Handle reaction added events."""
+    reaction_emoji_name = body["event"]["reaction"]
+    ack()
+
+
+@slack_app.event("reaction_added", middleware=[filter_duplicate_event_middleware])
+@tracer.start_as_current_span(name="handle_reaction_added")
+def handle_reaction_removed(body: dict, ack: Ack) -> None:
+    """Handle reaction added events."""
+    reaction_emoji_name = body["event"]["reaction"]
+    ack()
