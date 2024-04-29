@@ -1,5 +1,6 @@
 """Initialize Docq."""
 import logging
+import os
 
 from opentelemetry import trace
 
@@ -16,13 +17,19 @@ from . import (
     manage_users,
     services,
 )
+from .config import ENV_VAR_DOCQ_LOGLEVEL
 from .support import auth_utils, llm, store
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
 def _config_logging() -> None:
     """Configure logging."""
-    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(process)d %(levelname)s %(message)s", force=True) # force over rides Otel (or other) logging config with this.
+    log_level = os.environ.get(ENV_VAR_DOCQ_LOGLEVEL, "ERROR")
+
+    logging.basicConfig(
+        level=log_level.upper(), format="%(asctime)s %(process)d %(levelname)s %(message)s", force=True
+    )  # force overrides Otel (or other) logging config with this.
+
 
 #FIXME: right now this will run everytime a user hits the home page. add a global lock using st.cache to make this only run once.
 def init() -> None:

@@ -4,27 +4,28 @@ from typing import Callable
 
 import docq.integrations.slack.manage_slack_messages as manage_slack_messages
 from opentelemetry import trace
+from slack_bolt import Ack
 
 from .slack_event_tracker import SlackEventTracker
 from .slack_utils import get_org_id
 
 tracer = trace.get_tracer(__name__)
 
-slack_event_tracker = SlackEventTracker()  # global scope
+slack_event_tracker = SlackEventTracker()  # global scope #TODO: move to a function decorator
 
-# NOTE: middleware calls inject args so name needs to match. See for all available args https://slack.dev/bolt-python/api-docs/slack_bolt/kwargs_injection/args.html
+# NOTE: middleware calls inject args so name needs to match. See for all available args
+# @see https://slack.dev/bolt-python/api-docs/slack_bolt/kwargs_injection/args.html
 
 
 @tracer.start_as_current_span(name="filter_duplicate_event_middleware")
-def filter_duplicate_event_middleware(ack: Callable, body: dict, next_: Callable) -> None:
+def filter_duplicate_event_middleware(ack: Ack, body: dict, next_: Callable) -> None:
     """Middleware to check if an event has already been seen and handled. This prevents duplicate processing of messages.
 
     Duplicate events are legit. Slack can send the same event multiple times.
     """
     span = trace.get_current_span()
-    ack()
 
-    print("\033[32mmessage_handled_middleware\033[0m body: ", json.dumps(body, indent=4))
+    # print("\033[32mmessage_handled_middleware\033[0m body: ", json.dumps(body, indent=4))
 
     client_msg_id = body["event"]["client_msg_id"]
     type_ = body["event"]["type"]
@@ -54,22 +55,16 @@ def filter_duplicate_event_middleware(ack: Callable, body: dict, next_: Callable
             "org_id": org_id if org_id else "None",
         }
     )
-    # if org_id is None:
-    #     span.record_exception(ValueError(f"No Org ID found for Slack team ID '{team_id}'"))
-    #     span.set_status(trace.StatusCode.ERROR, "No Org ID found")
-    #     raise ValueError(f"No Org ID found for Slack team ID '{team_id}'")
-    # message_handled = manage_slack_messages.is_message_handled(client_msg_id, ts, org_id)
-
-    print(f"\033[32mmessage_handled_middleware\033[0m: duplicate message '{is_duplicate}'. event_id: {event_id}")
 
     if not is_duplicate:
-        next_()
+        next_()  # continue processing the event. The main handler will ack
+    else:
+        ack()  # acknowledge the duplicate event to prevent Slack from resending it
 
 
 @tracer.start_as_current_span(name="persist_message_middleware")
 def persist_message_middleware(body: dict, next_: Callable) -> None:
     """Middleware to persist messages."""
-    print("\033[32mpersist_message_middleware\033[0m: persisting slack message")
     span = trace.get_current_span()
     client_msg_id = body["event"]["client_msg_id"]
     type_ = body["event"]["type"]
