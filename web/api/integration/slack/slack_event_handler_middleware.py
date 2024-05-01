@@ -66,7 +66,8 @@ def filter_duplicate_event_middleware(ack: Ack, body: dict, next_: Callable) -> 
 def persist_message_middleware(body: dict, next_: Callable) -> None:
     """Middleware to persist messages."""
     span = trace.get_current_span()
-    client_msg_id = body["event"]["client_msg_id"]
+    print(json.dumps(body, indent=4))
+    client_msg_id = body["event"].get("client_msg_id")
     type_ = body["event"]["type"]
     channel = body["event"]["channel"]
     team = body["event"]["team"]
@@ -79,7 +80,7 @@ def persist_message_middleware(body: dict, next_: Callable) -> None:
 
     span.set_attributes(
         attributes={
-            "event__client_msg_id": client_msg_id,
+            "event__client_msg_id": client_msg_id or "None",
             "event__type": type_,
             "event__ts": ts,
             "event__parent_thread_ts": thread_ts or "None",
@@ -90,6 +91,7 @@ def persist_message_middleware(body: dict, next_: Callable) -> None:
             "org_id": org_id or "None",
         }
     )
+
     if org_id is None:
         span.record_exception(ValueError(f"No Org ID found for Slack team ID '{team}'"))
         span.set_status(trace.StatusCode.ERROR, "No Org ID found")
