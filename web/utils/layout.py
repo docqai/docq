@@ -1179,7 +1179,11 @@ def organisation_settings_ui() -> None:
             on_click=handle_update_organisation_settings,
         )
         default_selection = (
-            [OrganisationFeatureType.__members__[k] for k in settings[OrganisationSettingsKey.ENABLED_FEATURES.name]]
+            [
+                OrganisationFeatureType.__members__[k]
+                for k in settings.get(OrganisationSettingsKey.ENABLED_FEATURES.name, [])
+                if k in OrganisationFeatureType.__members__
+            ]
             if settings
             else []
         )
@@ -1388,7 +1392,7 @@ def _handle_custom_input_field(configkey: ConfigKey, key: str, configs: Optional
                 format_func=lambda x: x[1],
                 index=selected_option_index,
                 key=key,
-                help="Index Page: A url to a page web page with a list of links to scrape. Page List: a command separated list of URLs to scrape",
+                help="Index Page: A url to a page web page with a list of links to scrape. Page List: a comma separated list of URLs to scrape",
             )
         else:
             log.error(
