@@ -1179,7 +1179,11 @@ def organisation_settings_ui() -> None:
             on_click=handle_update_organisation_settings,
         )
         default_selection = (
-            [OrganisationFeatureType.__members__[k] for k in settings[OrganisationSettingsKey.ENABLED_FEATURES.name]]
+            [
+                OrganisationFeatureType.__members__[k]
+                for k in settings.get(OrganisationSettingsKey.ENABLED_FEATURES.name, [])
+                if k in OrganisationFeatureType.__members__
+            ]
             if settings
             else []
         )
