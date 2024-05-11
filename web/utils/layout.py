@@ -1388,7 +1388,7 @@ def _handle_custom_input_field(configkey: ConfigKey, key: str, configs: Optional
                 format_func=lambda x: x[1],
                 index=selected_option_index,
                 key=key,
-                help="Index Page: A url to a page web page with a list of links to scrape. Page List: a command separated list of URLs to scrape",
+                help="Index Page: A url to a page web page with a list of links to scrape. Page List: a comma separated list of URLs to scrape",
             )
         else:
             log.error(
