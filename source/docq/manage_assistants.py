@@ -171,6 +171,11 @@ def llama_index_chat_prompt_template_from_persona(
         role=MessageRole.USER,
     )
 
+    # hack because we are using message templates to push messages history into the LLM call messages collection. see issue #254
+    for m in messages:
+        s: str = m.content or ""
+        m.content = s.replace("{", "{{").replace("}", "}}")
+
     return ChatPromptTemplate(message_templates=[_system_prompt_message, *messages, _user_prompt_message])
 
 
