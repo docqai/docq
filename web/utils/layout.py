@@ -1497,12 +1497,9 @@ def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> No
                 disabled=True,
                 format_func=lambda x: x[1],
             )
-            print(">>>>>>1")
             _render_space_data_source_config_input_fields(data_source, f"update_space_details_{id_}_", ds_configs)
-            print(">>>>>>2")
             # if st.button("Save", key=_get_random_key("_save_btn_key")):
             if st.button("Save", key="space_update_save_btn_key"):
-                print(">>>>>>3")
                 handle_update_space_details(id_)
 
 
@@ -1833,18 +1830,18 @@ def render_integrations() -> None:
     """Render integrations."""
     teams = handle_list_slack_installations()
     team: Optional[SlackInstallation] = st.selectbox(
-        "Select a slack team",
-        options=teams,
-        format_func=lambda x: x.team_name,
-        key="selected_slack_team"
+        "Select a Slack Workspace", options=teams, format_func=lambda x: x.team_name, key="selected_slack_team"
     )
 
     st.divider()
     st.write("### Channels")
+    st.write("Channels that the Docq bot is a member of.")
 
     if team is not None:
         slack_channels = handle_list_slack_channels(team.app_id, team.team_id)
+        # id, org_id, name, summary, created_at, updated_at
         space_groups = list_space_groups()
+        space_groups.append((0, 0, "None", [], "", ""))
         space_groups_exist = len(space_groups) > 0
         slack_channels_exist = len(slack_channels) > 0
 
@@ -1853,7 +1850,7 @@ def render_integrations() -> None:
                 st.write(channel['purpose']['value'])
                 if space_groups_exist:
                     selected_space_group = st.selectbox(
-                        "Select a space group",
+                        "Select a Space Group",
                         options=space_groups,
                         format_func=lambda x: x[2],
                         key=f"selected_space_group_{channel['id']}",

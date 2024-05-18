@@ -199,6 +199,11 @@ cmd = "infisical run --env=dev -- opentelemetry-instrument --logs_exporter none 
 args = [{ name = "port", default = 8501, type = "integer" }]
 env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${PWD}/web/:${PWD}/source/:${PWD}/../docq-extensions/source/" }
 
+[tool.poe.tasks.run-simple]
+cmd = "infisical run --env=dev -- streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.runOnSave true --server.fileWatcherType auto"
+args = [{ name = "port", default = 8501, type = "integer" }]
+
+
 [tool.poe.tasks.docker-build]
 cmd = """
 docker build 
