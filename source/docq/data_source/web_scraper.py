@@ -56,7 +56,7 @@ class WebScraper(SpaceDataSourceWebBased):
             bs_web_reader = self._initiate_web_reader(space, configs)
 
             source_page_type_str = configs.get("source_page_type")
-            print("source_page_type: ", source_page_type_str)
+            log.debug("source_page_type: ", source_page_type_str)
             source_page_type = (
                 SourcePageType[source_page_type_str[0]] if source_page_type_str else SourcePageType.index_page
             )

@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from web.utils.layout import render_integrations, render_slack_installation_button, tracer
+from web.utils.layout import render_integrations_slack, render_slack_installation_button, tracer
 
 
 @tracer.start_as_current_span("admin_integrations_page")
@@ -31,7 +31,7 @@ def admin_integrations_page() -> None:
     if integration == "Slack":
         render_slack_installation_button()
 
-        render_integrations()
+        render_integrations_slack()
 
     else:
         st.info("Coming soon!")

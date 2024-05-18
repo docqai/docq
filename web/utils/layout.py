@@ -1406,9 +1406,9 @@ def _render_space_data_source_config_input_fields(
     data_source: Tuple, prefix: str, configs: Optional[dict] = None
 ) -> None:
     config_key_list: List[ConfigKey] = data_source[2]
-    print("configs: ", configs)
+    log.debug("Space datasource configs: ", configs)
     for configkey in config_key_list:
-        print("configkey", configkey)
+        log.debug("configkey", configkey)
         _input_key = prefix + "ds_config_" + configkey.key
         if configkey.options and configkey.options.get("type", None):
             _handle_custom_input_field(configkey, _input_key, configs)
@@ -1483,7 +1483,7 @@ def _render_view_space_details_with_container(
 def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> None:
     id_, org_id, name, summary, archived, ds_type, ds_configs, *_ = space_data
     has_edit_perm = org_id == get_selected_org_id()
-    print("load space data:", space_data)
+
     if has_edit_perm:
         with st.expander("Edit space", expanded=True):
             st.text_input("Name", value=name, key=f"update_space_details_{id_}_name")
@@ -1826,7 +1826,7 @@ def verify_email_ui() -> None:
         st.info("Please try again or contact your administrator.")
 
 
-def render_integrations() -> None:
+def render_integrations_slack() -> None:
     """Render integrations."""
     teams = handle_list_slack_installations()
     team: Optional[SlackInstallation] = st.selectbox(
@@ -1869,9 +1869,9 @@ def render_integrations() -> None:
                     st.info("No Space Groups found. Create a Space Group first.")
 
         if not slack_channels_exist:
-            st.info("No slack channels found")
+            st.info("No Slack channels, Bot hasn't been invited to any Channels.")
     else:
-        st.info("No slack teams found")
+        st.info("No Slack Workspaces have been authorised yet.")
 
 
 def render_slack_installation_button() -> None:

@@ -147,8 +147,8 @@ def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection)
 
         model.max_retries = 3
 
-        print("model: ", model)
-        print("model_settings_collection: ", model_settings_collection)
+        log.info("model: ", model)
+        log.info("model_settings_collection: ", model_settings_collection)
 
         return model
 
@@ -314,8 +314,7 @@ def run_chat(
 ) -> AgentChatResponse:
     """Chat directly with a LLM with history."""
     ## chat engine handles tracking the history.
-    print("chat persona: ", assistant.system_prompt_content)
-    print("chat history: ", history)
+    log.debug("chat persona: ", assistant.system_prompt_content)
 
     engine = SimpleChatEngine.from_defaults(
         service_context=_get_service_context(model_settings_collection),
@@ -325,7 +324,7 @@ def run_chat(
     )
     output = engine.chat(input_)
 
-    log.debug("(Chat) Q: %s, A: %s", input_, output)
+    # log.debug("(Chat) Q: %s, A: %s", input_, output)
     return output
 
 

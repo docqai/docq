@@ -1,4 +1,5 @@
 """prompt templates that represent a persona."""
+import logging as log
 import sqlite3
 from contextlib import closing
 from datetime import datetime
@@ -382,7 +383,7 @@ def __create_default_assistants_if_needed() -> None:
         rows.reverse()
 
     names = [row[1] for row in rows]
-    print("names: ", names)
+    log.info("Available assistant names: ", names)
 
     if "General Q&A" not in names:
         chat_default = SIMPLE_CHAT_PERSONAS["default"]

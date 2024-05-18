@@ -1,10 +1,8 @@
 """Slack integration data models."""
 
-from concurrent.futures import thread
 from typing import Optional
 
 from attr import dataclass
-from sympy import N
 
 
 @dataclass

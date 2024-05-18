@@ -267,7 +267,7 @@ class BeautifulSoupWebReader(BaseReader):
         span.set_attribute("source_page_type", source_page_type.__str__())
 
         # page_links = urls  # default case expect page urls to extract content from directly
-        print("source page type : ", source_page_type)
+        log.debug("source page type : ", source_page_type)
 
         if source_page_type == SourcePageType.index_page:
             # the provided URLs are index pages, extract links from them first
@@ -278,12 +278,12 @@ class BeautifulSoupWebReader(BaseReader):
                 span.add_event("extracted_links_from_index_page", {"url": url, "links_count": len(lnk)})
         elif source_page_type == SourcePageType.page_list:
             page_links = urls
-            print("page list - links : ", page_links)
+            log.debug("page list - links : ", page_links)
         else:
             raise ValueError(f"Invalid source page type: {source_page_type}")
 
         span.set_attribute("page_links_count", len(page_links).__str__())
-        print("page links : ", page_links)
+        log.debug("page links : ", page_links)
 
         for page_link in page_links:
             try:
@@ -346,10 +346,6 @@ class BeautifulSoupWebReader(BaseReader):
             raise ValueError(f"One of the inputs is not a valid url: {url}", e)  # noqa: B904
 
         soup = BeautifulSoup(page.content, "html.parser")
-
-        # print("page content: ", page.content)
-
-        # print("page text: ", page.text)
 
         page_links = extractor.extract_links(soup, url, url, include_filter=include_filter)
         return page_links
