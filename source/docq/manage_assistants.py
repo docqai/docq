@@ -151,24 +151,24 @@ def _init(org_id: Optional[int] = None) -> None:
     __create_default_assistants_if_needed()
 
 
-def llama_index_chat_prompt_template_from_persona(
-    persona: Assistant, chat_history: Optional[List[ChatMessage]] = None
+def llama_index_chat_prompt_template_from_assistant(
+    assistant: Assistant, chat_history: Optional[List[ChatMessage]] = None
 ) -> ChatPromptTemplate:
     """Get the prompt template for llama index.
 
     Args:
-        persona (Assistant): Docq assistant.
+        assistant (Assistant): Docq assistant.
         chat_history (Optional[List[ChatMessage]]): A list of ChatMessages that will be inserted into the message stack of the LLM synth call. It will be inserted between the system message an the latest user query message.
     """
     messages = chat_history or []
 
     _system_prompt_message = ChatMessage(
-        content=persona.system_prompt_content,
+        content=assistant.system_message_content,
         role=MessageRole.SYSTEM,
     )
 
     _user_prompt_message = ChatMessage(
-        content=persona.user_prompt_template_content,
+        content=assistant.user_prompt_template_content,
         role=MessageRole.USER,
     )
 
@@ -205,7 +205,7 @@ def get_assistant_or_default(assistant_scoped_id: Optional[int] = None, org_id: 
         return Assistant(
             key=str(assistant_data[0]),
             name=assistant_data[1],
-            system_prompt_content=assistant_data[4],
+            system_message_content=assistant_data[4],
             user_prompt_template_content=assistant_data[5],
             llm_settings_collection_key=assistant_data[6],
         )

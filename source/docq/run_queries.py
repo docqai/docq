@@ -243,7 +243,7 @@ def query(
     feature: FeatureKey,
     thread_id: int,
     model_settings_collection: LlmUsageSettingsCollection,
-    persona: Assistant,
+    assistant: Assistant,
     spaces: Optional[list[SpaceKey]] = None,
 ) -> list:
     """Run the query again documents in the space(s) using a LLM."""
@@ -263,9 +263,9 @@ def query(
     log.debug("is_chat: %s", is_chat)
     try:
         response = (
-            run_chat(input_, history_messages, model_settings_collection, persona)
+            run_chat(input_, history_messages, model_settings_collection, assistant)
             if is_chat
-            else run_ask(input_, history_messages, model_settings_collection, persona, spaces)
+            else run_ask(input_, history_messages, model_settings_collection, assistant, spaces)
         )
         log.debug("Response: %s", response)
 

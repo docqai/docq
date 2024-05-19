@@ -33,7 +33,7 @@ from opentelemetry.trace import Status, StatusCode
 
 from ..config import EXPERIMENTS
 from ..domain import SpaceKey
-from ..manage_assistants import Assistant, llama_index_chat_prompt_template_from_persona
+from ..manage_assistants import Assistant, llama_index_chat_prompt_template_from_assistant
 from ..model_selection.main import (
     LLM_MODEL_COLLECTIONS,
     LlmUsageSettingsCollection,
@@ -314,12 +314,12 @@ def run_chat(
 ) -> AgentChatResponse:
     """Chat directly with a LLM with history."""
     ## chat engine handles tracking the history.
-    log.debug("chat persona: ", assistant.system_prompt_content)
+    log.debug("chat assistant: ", assistant.system_message_content)
 
     engine = SimpleChatEngine.from_defaults(
         service_context=_get_service_context(model_settings_collection),
         kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
-        system_prompt=assistant.system_prompt_content,
+        system_prompt=assistant.system_message_content,
         chat_history=history,
     )
     output = engine.chat(input_)
@@ -333,7 +333,7 @@ def run_ask(
     input_: str,
     history: List[ChatMessage],
     model_settings_collection: LlmUsageSettingsCollection,
-    persona: Assistant,
+    assistant: Assistant,
     spaces: list[SpaceKey] | None = None,
 ) -> RESPONSE_TYPE | AGENT_CHAT_RESPONSE_TYPE:
     """Ask questions against existing index(es) with history."""
@@ -372,7 +372,7 @@ def run_ask(
                 continue
 
         try:
-            text_qa_template = llama_index_chat_prompt_template_from_persona(persona, history)
+            text_qa_template = llama_index_chat_prompt_template_from_assistant(assistant, history)
             span.add_event(name="prompt_created")
         except Exception as e:
             raise Error(f"Error: {e}") from e

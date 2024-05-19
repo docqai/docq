@@ -12,12 +12,12 @@ from slack_sdk.oauth.installation_store import Installation
 
 from .models import SlackChannel, SlackInstallation
 
-SQL_CREATE_DOCQ_SLACK_APPLICATIONS_TABLE = """
+SQL_CREATE_DOCQ_SLACK_APP_INSTALL_TABLE = """
 CREATE TABLE IF NOT EXISTS docq_slack_installations (
     id INTEGER PRIMARY KEY,
     app_id TEXT NOT NULL,
     team_id TEXT NOT NULL,
-    team_name TEXT NOT NULL, -- References a slack workspace
+    team_name TEXT NOT NULL, -- References a Slack workspace name
     org_id INTEGER NOT NULL,
     space_group_id INTEGER, -- TODO: Implement globally available content for the entire slack workspace
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS docq_slack_channels (
     channel_id TEXT NOT NULL,
     channel_name TEXT NOT NULL,
     org_id INTEGER NOT NULL,
-    space_group_id INTEGER,
+    space_group_id INTEGER, -- associates knowledge with the channel
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (org_id) REFERENCES orgs(id),
     FOREIGN KEY (space_group_id) REFERENCES space_groups(id),
@@ -41,12 +41,16 @@ CREATE TABLE IF NOT EXISTS docq_slack_channels (
 );
 """
 
+# adding persona per channel.
+# move channels table from shared to org scope
+# add persona_id column to the table
+# handle migration scripts
 
 
 def _init() -> None:
     """Initialize the Slack integration."""
     with closing(sqlite3.connect(get_sqlite_shared_system_file())) as connection:
-        connection.execute(SQL_CREATE_DOCQ_SLACK_APPLICATIONS_TABLE)
+        connection.execute(SQL_CREATE_DOCQ_SLACK_APP_INSTALL_TABLE)
         connection.execute(SQL_CREATE_DOCQ_SLACK_CHANNELS_TABLE)
         connection.commit()
 
@@ -118,6 +122,9 @@ def integration_exists(app_id: str, team_id: str, selected_org_id: int) -> bool:
             (app_id, team_id, selected_org_id),
         )
         return cursor.fetchone() is not None
+
+
+# SLACK CHANNELS
 
 
 def insert_or_update_slack_channel(channel_id: str, channel_name: str, org_id: int) -> None:

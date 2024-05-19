@@ -7,7 +7,7 @@ import streamlit as st
 from docq.config import SpaceType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import Assistant, SpaceKey
-from docq.manage_assistants import llama_index_chat_prompt_template_from_persona
+from docq.manage_assistants import llama_index_chat_prompt_template_from_assistant
 from docq.manage_spaces import get_space_data_source, list_space
 from docq.model_selection.main import LlmUsageSettingsCollection, ModelCapability, get_saved_model_settings_collection
 from docq.support.llm import (
@@ -298,7 +298,7 @@ def handle_chat_input():
     query_engine = RetrieverQueryEngine.from_args(
         retriever,
         service_context=_get_service_context(saved_model_settings),
-        text_qa_template=llama_index_chat_prompt_template_from_persona(persona).partial_format(history_str=""),  # noqa: F821
+        text_qa_template=llama_index_chat_prompt_template_from_assistant(persona).partial_format(history_str=""),  # noqa: F821
     )
 
     query = st.session_state.get("chat_input_rag_test", None)

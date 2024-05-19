@@ -108,7 +108,7 @@ def run_agent(
     assistant_agent = AssistantAgent(
         name=assistant.name if assistant else "General Assistant 1",
         llm_config=generate_autogen_llm_config(chat_model_settings, kernel),
-        system_message=assistant.system_prompt_content if assistant else ASSISTANT_PERSONA,
+        system_message=assistant.system_message_content if assistant else ASSISTANT_PERSONA,
     )
 
     worker = UserProxyAgent(

@@ -147,7 +147,7 @@ def test_chat_private_feature(features: dict[str, domain.FeatureKey], saved_mode
     persona = domain.Assistant(
         key="test-persona",
         name="Test Persona",
-        system_prompt_content=system_prompt,
+        system_message_content=system_prompt,
         user_prompt_template_content=user_prompt_template_content,
         llm_settings_collection_key=saved_model_settings.key,
     )
@@ -160,6 +160,6 @@ def test_chat_private_feature(features: dict[str, domain.FeatureKey], saved_mode
         features[config.OrganisationFeatureType.CHAT_PRIVATE.name],
         thread_id,
         model_settings_collection=saved_model_settings,
-        persona=persona,
+        assistant=persona,
     )
     assert "Test 1 from docq" in results[1][1], f"The query didn't return the expected response. Returned: '{results[1][1]}', expected: 'Test 1 from docq'"
