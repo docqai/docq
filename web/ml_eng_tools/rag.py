@@ -1,4 +1,5 @@
 """ML Eng - Visualise index."""
+import logging as log
 import os
 from typing import List, Optional
 
@@ -6,7 +7,7 @@ import streamlit as st
 from docq.config import SpaceType
 from docq.data_source.list import SpaceDataSources
 from docq.domain import Assistant, SpaceKey
-from docq.manage_assistants import llama_index_chat_prompt_template_from_persona
+from docq.manage_assistants import llama_index_chat_prompt_template_from_assistant
 from docq.manage_spaces import get_space_data_source, list_space
 from docq.model_selection.main import LlmUsageSettingsCollection, ModelCapability, get_saved_model_settings_collection
 from docq.support.llm import (
@@ -87,7 +88,7 @@ def _create_vector_index(
     #     storage_context=_get_default_storage_context(),
     # )
     # VectorStoreIndex.build_index_from_nodes(index_, nodes=nodes)
-    print("service context: ", sc.embed_model)
+    log.debug("service context: ", sc.embed_model)
     index_ = VectorStoreIndex.from_documents(
         documents,
         storage_context=_get_default_storage_context(),
@@ -147,7 +148,7 @@ if selected_org_id:
 
 
 if selected_space and selected_org_id:
-    print("selected_space: ", selected_space)
+    log.debug("selected_space: ", selected_space)
 
     selected_space_key = SpaceKey(
         type_=SpaceType[selected_space[7]], id_=selected_space[0], org_id=selected_org_id, summary=selected_space[2]
@@ -171,7 +172,7 @@ if selected_space and selected_org_id:
 
     if IndexSpaceButton:
         # storage_context = _get_default_storage_context()  # get a storage content.
-        print("models: ", saved_model_settings)
+        log.debug("models: ", saved_model_settings)
         index_ = _create_vector_index(docs, saved_model_settings, selected_space_key, experiment_id)
         # storage_context.persist(persist_dir=_get_experiement_dir(selected_space_key, experiment_id))
         index_.storage_context.persist(persist_dir=_get_experiement_dir(selected_space_key, experiment_id))
@@ -297,7 +298,7 @@ def handle_chat_input():
     query_engine = RetrieverQueryEngine.from_args(
         retriever,
         service_context=_get_service_context(saved_model_settings),
-        text_qa_template=llama_index_chat_prompt_template_from_persona(persona).partial_format(history_str=""),  # noqa: F821
+        text_qa_template=llama_index_chat_prompt_template_from_assistant(persona).partial_format(history_str=""),  # noqa: F821
     )
 
     query = st.session_state.get("chat_input_rag_test", None)

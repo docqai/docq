@@ -50,7 +50,7 @@ class RagCompletionHandler(BaseRequestHandler):
                 feature=feature,
                 thread_id=request_model.thread_id,
                 model_settings_collection=model_settings_collection,
-                persona=assistant,
+                assistant=assistant,
                 spaces=[space],
             )
 

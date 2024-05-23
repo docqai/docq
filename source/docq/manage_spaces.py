@@ -366,7 +366,7 @@ def create_thread_space(org_id: int, thread_id: int, summary: str, datasource_ty
     """Create a spcace for chat thread uploads."""
     rnd = str(random.randint(56450, 9999999999))
     name = f"Thread-{thread_id} {summary} {rnd}"
-    print(f"Creating thread space with name: '{name}'")
+    log.info("Creating thread space with name: '%s'", name)
     return create_space(
         org_id=org_id,
         name=name,
@@ -410,7 +410,7 @@ def thread_space_exists(thread_id: int) -> bool:
         row = cursor.fetchone()
         exists = row is not None
 
-    print(f"Thread space exists: {exists}")
+    log.debug("Thread space exists: %s", {exists})
     return exists
 
 

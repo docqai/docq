@@ -55,7 +55,7 @@ class ChatCompletionHandler(BaseRequestHandler):
                 feature=feature,
                 thread_id=thread_id,
                 model_settings_collection=model_usage_settings,
-                persona=assistant,
+                assistant=assistant,
             )
             messages = list(map(get_message_object, result))
             response_model = MessageResponseModel(response=messages, meta={"model_settings": model_usage_settings.key})

@@ -1406,9 +1406,9 @@ def _render_space_data_source_config_input_fields(
     data_source: Tuple, prefix: str, configs: Optional[dict] = None
 ) -> None:
     config_key_list: List[ConfigKey] = data_source[2]
-    print("configs: ", configs)
+    log.debug("Space datasource configs: ", configs)
     for configkey in config_key_list:
-        print("configkey", configkey)
+        log.debug("configkey", configkey)
         _input_key = prefix + "ds_config_" + configkey.key
         if configkey.options and configkey.options.get("type", None):
             _handle_custom_input_field(configkey, _input_key, configs)
@@ -1483,7 +1483,7 @@ def _render_view_space_details_with_container(
 def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> None:
     id_, org_id, name, summary, archived, ds_type, ds_configs, *_ = space_data
     has_edit_perm = org_id == get_selected_org_id()
-    print("load space data:", space_data)
+
     if has_edit_perm:
         with st.expander("Edit space", expanded=True):
             st.text_input("Name", value=name, key=f"update_space_details_{id_}_name")
@@ -1497,12 +1497,9 @@ def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> No
                 disabled=True,
                 format_func=lambda x: x[1],
             )
-            print(">>>>>>1")
             _render_space_data_source_config_input_fields(data_source, f"update_space_details_{id_}_", ds_configs)
-            print(">>>>>>2")
             # if st.button("Save", key=_get_random_key("_save_btn_key")):
             if st.button("Save", key="space_update_save_btn_key"):
-                print(">>>>>>3")
                 handle_update_space_details(id_)
 
 
@@ -1829,22 +1826,22 @@ def verify_email_ui() -> None:
         st.info("Please try again or contact your administrator.")
 
 
-def render_integrations() -> None:
+def render_integrations_slack() -> None:
     """Render integrations."""
     teams = handle_list_slack_installations()
     team: Optional[SlackInstallation] = st.selectbox(
-        "Select a slack team",
-        options=teams,
-        format_func=lambda x: x.team_name,
-        key="selected_slack_team"
+        "Select a Slack Workspace", options=teams, format_func=lambda x: x.team_name, key="selected_slack_team"
     )
 
     st.divider()
     st.write("### Channels")
+    st.write("Channels that the Docq bot is a member of.")
 
     if team is not None:
         slack_channels = handle_list_slack_channels(team.app_id, team.team_id)
+        # id, org_id, name, summary, created_at, updated_at
         space_groups = list_space_groups()
+        space_groups.append((0, 0, "None", [], "", ""))
         space_groups_exist = len(space_groups) > 0
         slack_channels_exist = len(slack_channels) > 0
 
@@ -1853,7 +1850,7 @@ def render_integrations() -> None:
                 st.write(channel['purpose']['value'])
                 if space_groups_exist:
                     selected_space_group = st.selectbox(
-                        "Select a space group",
+                        "Select a Space Group",
                         options=space_groups,
                         format_func=lambda x: x[2],
                         key=f"selected_space_group_{channel['id']}",
@@ -1872,9 +1869,9 @@ def render_integrations() -> None:
                     st.info("No Space Groups found. Create a Space Group first.")
 
         if not slack_channels_exist:
-            st.info("No slack channels found")
+            st.info("No Slack channels, Bot hasn't been invited to any Channels.")
     else:
-        st.info("No slack teams found")
+        st.info("No Slack Workspaces have been authorised yet.")
 
 
 def render_slack_installation_button() -> None:
