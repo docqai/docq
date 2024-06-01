@@ -83,7 +83,7 @@ mkapi = "^1.0.14"
 pillow = "^10.2.0"
 cairosvg = "^2.7.0"
 python-dotenv = "^1.0.0"
-ruff = "^0.2.2"
+ruff = "^0.4.4"
 mkdocs = "^1.5.3"
 
 [tool.poetry.scripts]
