@@ -2298,13 +2298,13 @@ proxy = ["PyJWT (>=2.8.0,<3.0.0)", "apscheduler (>=3.10.4,<4.0.0)", "backoff", "
 
 [[package]]
 name = "llama-index-core"
-version = "0.10.27"
+version = "0.10.39"
 description = "Interface between LLMs and your data"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "llama_index_core-0.10.27-py3-none-any.whl", hash = "sha256:805b20a16a417180a32a31956710637af75e22cd0849fec2729447d182197d39"},
-    {file = "llama_index_core-0.10.27.tar.gz", hash = "sha256:01881a1943cb7b37f9f8147212d4a55caeef2d68ec498a0a1b864f79cf9d2be4"},
+    {file = "llama_index_core-0.10.39-py3-none-any.whl", hash = "sha256:4b68724936f09220e417951572739f041ec2184caf9eb4e45017f4419cb98bd9"},
+    {file = "llama_index_core-0.10.39.tar.gz", hash = "sha256:67b417676ff9b50d89d9379251c7de51bd68da042c47db934ed5794824eb41a5"},
 ]
 
 [package.dependencies]
@@ -2314,7 +2314,7 @@ deprecated = ">=1.2.9.3"
 dirtyjson = ">=1.0.8,<2.0.0"
 fsspec = ">=2023.5.0"
 httpx = "*"
-llamaindex-py-client = ">=0.1.16,<0.2.0"
+llamaindex-py-client = ">=0.1.18,<0.2.0"
 nest-asyncio = ">=1.5.8,<2.0.0"
 networkx = ">=3.0"
 nltk = ">=3.8.1,<4.0.0"
@@ -2331,14 +2331,6 @@ tqdm = ">=4.66.1,<5.0.0"
 typing-extensions = ">=4.5.0"
 typing-inspect = ">=0.8.0"
 wrapt = "*"
-
-[package.extras]
-gradientai = ["gradientai (>=1.4.0)"]
-html = ["beautifulsoup4 (>=4.12.2,<5.0.0)"]
-langchain = ["langchain (>=0.0.303)"]
-local-models = ["optimum[onnxruntime] (>=1.13.2,<2.0.0)", "sentencepiece (>=0.1.99,<0.2.0)", "transformers[torch] (>=4.33.1,<5.0.0)"]
-postgres = ["asyncpg (>=0.29.0,<0.30.0)", "pgvector (>=0.2.4,<0.3.0)", "psycopg2-binary (>=2.9.9,<3.0.0)"]
-query-tools = ["guidance (>=0.0.64,<0.0.65)", "jsonpath-ng (>=1.6.0,<2.0.0)", "lm-format-enforcer (>=0.4.3,<0.5.0)", "rank-bm25 (>=0.2.2,<0.3.0)", "scikit-learn", "spacy (>=3.7.1,<4.0.0)"]
 
 [[package]]
 name = "llama-index-embeddings-azure-openai"
@@ -2484,13 +2476,13 @@ rank-bm25 = ">=0.2.2,<0.3.0"
 
 [[package]]
 name = "llamaindex-py-client"
-version = "0.1.16"
+version = "0.1.19"
 description = ""
 optional = false
-python-versions = "<4.0,>=3.8"
+python-versions = "<4,>=3.8"
 files = [
-    {file = "llamaindex_py_client-0.1.16-py3-none-any.whl", hash = "sha256:b34e0a14984468f46ff5eebfe4b2b88598a24ff9459338a5621eee78e58bf0db"},
-    {file = "llamaindex_py_client-0.1.16.tar.gz", hash = "sha256:e99bbc0855e6caaa75eba219cdb3cf6c943ae94fa15ccbb68a3a08d452fd6380"},
+    {file = "llamaindex_py_client-0.1.19-py3-none-any.whl", hash = "sha256:fd9416fd78b97209bf323bc3c7fab314499778563e7274f10853ad560563d10e"},
+    {file = "llamaindex_py_client-0.1.19.tar.gz", hash = "sha256:73f74792bb8c092bae6dc626627a09ac13a099fa8d10f8fcc83e17a2b332cca7"},
 ]
 
 [package.dependencies]
@@ -7449,4 +7441,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.12"
-content-hash = "db2752205623ed58816fa48853f7abac97e7e7edca627445bfe5bfb3116bfafe"
+content-hash = "371cee75282380a47c8d6ca2765cc19b428f1e0f10268de3a04603334ae6a2c8"
