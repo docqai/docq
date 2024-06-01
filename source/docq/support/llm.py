@@ -2,22 +2,19 @@
 
 import logging as log
 import os
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from uu import Error
 
 import docq
 from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.base.response.schema import RESPONSE_TYPE, Response
-from llama_index.core.bridge.pydantic import Field
 from llama_index.core.chat_engine import SimpleChatEngine
 from llama_index.core.chat_engine.types import AGENT_CHAT_RESPONSE_TYPE, AgentChatResponse
 from llama_index.core.indices.base import BaseIndex
-from llama_index.core.llms import LLM, ChatMessage, MessageRole
+from llama_index.core.llms import ChatMessage
 from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.query_pipeline import CustomQueryComponent
 from llama_index.core.retrievers import BaseRetriever, QueryFusionRetriever
 from llama_index.core.retrievers.fusion_retriever import FUSION_MODES
-from llama_index.core.schema import MetadataMode, NodeWithScore
 
 # load_index_from_storage
 from llama_index.embeddings.huggingface_optimum import OptimumEmbedding
@@ -35,6 +32,7 @@ from ..model_selection.main import (
     ModelProvider,
     _get_service_context,
 )
+from .ansi_colours import AnsiColours
 
 # from .metadata_extractors import DocqEntityExtractor, DocqMetadataExtractor
 # from .node_parsers import AsyncSimpleNodeParser
@@ -67,94 +65,6 @@ def _init_local_models() -> None:
                     )
 
 
-DEFAULT_CONTEXT_PROMPT = (
-    "Here is some context that may be relevant:\n"
-    "-----\n"
-    "{context_str}\n"
-    "-----\n"
-    "Please write a response to the following question, using the above context:\n"
-    "{query_str}\n"
-)
-
-
-class ResponseWithChatHistory(CustomQueryComponent):
-    """Response with chat history."""
-
-    llm: LLM = Field(..., description="LLM")
-    system_prompt: Optional[str] = Field(default=None, description="System prompt to use for the LLM")
-    context_prompt: str = Field(
-        default=DEFAULT_CONTEXT_PROMPT,
-        description="Context prompt to use for the LLM",
-    )
-    # query_str: Optional[str] = Field(default=None, description="The user query")
-
-    # chat_history: Optional[List[ChatMessage]] = Field(default=None, description="Chat history")
-
-    # nodes: Optional[List[NodeWithScore]] = Field(
-    #     default=None, description="Context nodes from retrieval after being reranked."
-    # )
-
-    def _validate_component_inputs(self, input: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate component inputs during run_component."""
-        # NOTE: this is OPTIONAL but we show you where to do validation as an example
-        return input
-
-    @property
-    def _input_keys(self) -> set:
-        """Input keys dict."""
-        # NOTE: These are required inputs. If you have optional inputs please override
-        # `optional_input_keys_dict`
-        return {"chat_history", "nodes", "query_str"}
-
-    @property
-    def _output_keys(self) -> set:
-        return {"response"}
-
-    def _prepare_context(
-        self,
-        chat_history: List[ChatMessage],
-        nodes: List[NodeWithScore],
-        query_str: str,
-    ) -> List[ChatMessage]:
-        node_context = ""
-        for idx, node in enumerate(nodes):
-            node_text = node.get_content(metadata_mode=MetadataMode.LLM)
-            node_context += f"Context Chunk {idx}:\n{node_text}\n\n"
-
-        formatted_context = self.context_prompt.format(context_str=node_context, query_str=query_str)
-        user_message = ChatMessage(role=MessageRole.USER, content=formatted_context)
-
-        chat_history.append(user_message)
-
-        if self.system_prompt is not None:
-            chat_history = [ChatMessage(role=MessageRole.SYSTEM, content=self.system_prompt)] + chat_history
-
-        return chat_history
-
-    def _run_component(self, **kwargs) -> Dict[str, Any]:
-        """Run the component."""
-        chat_history = kwargs["chat_history"]
-        nodes = kwargs["nodes"]
-        query_str = kwargs["query_str"]
-
-        prepared_context = self._prepare_context(chat_history, nodes, query_str)
-
-        response = self.llm.chat(prepared_context)
-
-        return {"response": response}
-
-    async def _arun_component(self, **kwargs: Any) -> Dict[str, Any]:
-        """Run the component asynchronously."""
-        # NOTE: Optional, but async LLM calls are easy to implement
-        chat_history = kwargs["chat_history"]
-        nodes = kwargs["nodes"]
-        query_str = kwargs["query_str"]
-
-        prepared_context = self._prepare_context(chat_history, nodes, query_str)
-
-        response = await self.llm.achat(prepared_context)
-
-        return {"response": response}
 
 
 # @tracer.start_as_current_span(name="_get_async_node_parser")
@@ -359,11 +269,10 @@ def run_ask2(
 
     from llama_index.core.prompts import PromptTemplate
     from llama_index.core.query_pipeline import (
-        ArgPackComponent,
         InputComponent,
         QueryPipeline,
     )
-    from llama_index.postprocessor.colbert_rerank import ColbertRerank
+    from llama_index.core.query_pipeline.components.argpacks import KwargPackComponent
 
     # First, we create an input component to capture the user query
     input_component = InputComponent()
@@ -380,17 +289,25 @@ def run_ask2(
         'Query:"""\n'
     )
     rewrite_template = PromptTemplate(rewrite)
-
-    llm = _get_service_context(model_settings_collection).llm
+    service_context = _get_service_context(model_settings_collection)
+    llm = service_context.llm
 
     # we will retrieve two times, so we need to pack the retrieved nodes into a single list
-    argpack_component = ArgPackComponent()
+    # argpack_component = ArgPackComponent()
+    kwargpack_component = KwargPackComponent()
 
     # using that, we will retrieve...
     # retriever = index.as_retriever(similarity_top_k=6)
 
     # then postprocess/rerank with Colbert
-    reranker = ColbertRerank(top_n=3)
+    # reranker = ColbertRerank(top_n=3)
+
+    from llama_index.core.query_pipeline.components import FnComponent
+
+    from .llama_index.node_post_processors import reciprocal_rank_fusion
+    from .llama_index.query_pipeline_components import ResponseWithChatHistory
+
+    rerank_component = FnComponent(fn=reciprocal_rank_fusion)
 
     response_component = ResponseWithChatHistory(
         llm=llm,
@@ -409,8 +326,8 @@ def run_ask2(
             "llm": llm,
             "rewrite_retriever": retriever,
             "query_retriever": retriever,
-            "join": argpack_component,
-            "reranker": reranker,
+            "join": kwargpack_component,
+            "reranker": rerank_component,
             "response_component": response_component,
         },
         verbose=False,
@@ -434,8 +351,8 @@ def run_ask2(
     pipeline.add_link("query_retriever", "join", dest_key="query_nodes")
 
     # reranker needs the packed nodes and the query string
-    pipeline.add_link("join", "reranker", dest_key="nodes")
-    pipeline.add_link("input", "reranker", src_key="query_str", dest_key="query_str")
+    pipeline.add_link("join", "reranker", dest_key="results")
+    # pipeline.add_link("input", "reranker", src_key="query_str", dest_key="query_str")
 
     # synthesizer needs the reranked nodes and query str
     pipeline.add_link("reranker", "response_component", dest_key="nodes")
@@ -453,10 +370,27 @@ def run_ask2(
         query_str=input_,
         chat_history=history,
         chat_history_str=history_str,
+        callback_manager=service_context.callback_manager,
     )
-    print("intermediates: ", intermediates)
-    print("ANSWER:", output.message)
-    return Response(output.message)
+    # print("intermediates: ", json.dumps(intermediates))
+    for k, v in intermediates.items():
+        print(f"{AnsiColours.BLUE.value}>>{k}{AnsiColours.RESET.value}:")
+        for ki, vi in v.inputs.items():
+            print(f"{AnsiColours.GREEN.value}>>>>in: {ki} ({type(vi).__name__}) {AnsiColours.RESET.value}")
+        for ko, vo in v.outputs.items():
+            print(f"{AnsiColours.GREEN.value}>>>>out: {ko} ({type(vo).__name__}) {AnsiColours.RESET.value}")
+
+    from pyvis.network import Network
+
+    net = Network(notebook=True, cdn_resources="in_line", directed=True)
+    net.from_nx(pipeline.dag)
+    net.show("web/rag_dag.html")
+
+    print("ANSWER:", output.get("response", "blah!").message)
+
+    return Response(
+        response=output.get("response", "blah!").message.content, source_nodes=output.get("source_nodes", [])
+    )
 
 
 @tracer.start_as_current_span(name="_default_response")

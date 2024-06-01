@@ -27,7 +27,7 @@ from vertexai.preview.generative_models import HarmBlockThreshold, HarmCategory
 
 from ..config import ENV_VAR_DOCQ_GROQ_API_KEY, EXPERIMENTS, OrganisationSettingsKey
 from ..manage_settings import get_organisation_settings
-from ..support.llamaindex_otel_callbackhandler import OtelCallbackHandler
+from ..support.llama_index.callbackhandlers import OtelCallbackHandler
 from ..support.store import get_models_dir
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
