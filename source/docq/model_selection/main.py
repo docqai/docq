@@ -25,7 +25,16 @@ from llama_index.llms.litellm import LiteLLM
 from opentelemetry import trace
 from vertexai.preview.generative_models import HarmBlockThreshold, HarmCategory
 
-from ..config import ENV_VAR_DOCQ_GROQ_API_KEY, EXPERIMENTS, OrganisationSettingsKey
+from ..config import (
+    ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE1,
+    ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE2,
+    ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY1,
+    ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY2,
+    ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION,
+    ENV_VAR_DOCQ_GROQ_API_KEY,
+    EXPERIMENTS,
+    OrganisationSettingsKey,
+)
 from ..manage_settings import get_organisation_settings
 from ..support.llama_index.callbackhandlers import OtelCallbackHandler
 from ..support.store import get_models_dir
@@ -137,9 +146,9 @@ LLM_SERVICE_INSTANCES = {
         provider=ModelProvider.AZURE_OPENAI,
         model_name="gpt-35-turbo",
         model_deployment_name="gpt-35-turbo",
-        api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
-        api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
-        api_version=os.environ.get("DOCQ_AZURE_OPENAI_API_VERSION", "2023-05-15"),
+        api_base=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE1) or "",
+        api_key=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY1) or "",
+        api_version=os.environ.get(ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION, "2023-05-15"),
         context_window_size=4096,
         license_="Commercial",
     ),
@@ -147,17 +156,26 @@ LLM_SERVICE_INSTANCES = {
         provider=ModelProvider.AZURE_OPENAI,
         model_name="gpt-4",
         model_deployment_name="gpt4-turbo-1106-preview",
-        api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
-        api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
-        api_version=os.environ.get("DOCQ_AZURE_OPENAI_API_VERSION", "2023-05-15"),
+        api_base=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE1) or "",
+        api_key=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY1) or "",
+        api_version=os.environ.get(ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION, "2023-05-15"),
+        license_="Commercial",
+    ),
+    "azure-openai-gpt4o-2024-05-13": LlmServiceInstanceConfig(
+        provider=ModelProvider.AZURE_OPENAI,
+        model_name="gpt-4o",
+        model_deployment_name="gpt-4o-2024-05-13",
+        api_base=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE2) or "",
+        api_key=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY2) or "",
+        api_version=os.environ.get(ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION, "2023-05-15"),
         license_="Commercial",
     ),
     "azure-openai-ada-002": LlmServiceInstanceConfig(
         provider=ModelProvider.AZURE_OPENAI,
         model_name="text-embedding-ada-002",
         model_deployment_name="text-embedding-ada-002",
-        api_base=os.getenv("DOCQ_AZURE_OPENAI_API_BASE") or "",
-        api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1") or "",
+        api_base=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE1) or "",
+        api_key=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY1) or "",
         license_="Commercial",
     ),
     "google-vertexai-palm2": LlmServiceInstanceConfig(
@@ -280,6 +298,21 @@ LLM_MODEL_COLLECTIONS = {
                 model_capability=ModelCapability.CHAT,
                 temperature=0.7,
                 service_instance_config=LLM_SERVICE_INSTANCES["azure-openai-gpt4turbo"],
+            ),
+            ModelCapability.EMBEDDING: LlmUsageSettings(
+                model_capability=ModelCapability.EMBEDDING,
+                service_instance_config=LLM_SERVICE_INSTANCES["optimum-bge-small-en-v1.5"],
+            ),
+        },
+    ),
+    "azure_openai_gpt4o_with_local_embedding": LlmUsageSettingsCollection(
+        name="Azure OpenAI GPT-4o wth Local Embedding",
+        key="azure_openai_gpt4o_with_local_embedding",
+        model_usage_settings={
+            ModelCapability.CHAT: LlmUsageSettings(
+                model_capability=ModelCapability.CHAT,
+                temperature=0.7,
+                service_instance_config=LLM_SERVICE_INSTANCES["azure-openai-gpt4o-2024-05-13"],
             ),
             ModelCapability.EMBEDDING: LlmUsageSettings(
                 model_capability=ModelCapability.EMBEDDING,
@@ -526,9 +559,9 @@ def _get_embed_model(model_settings_collection: LlmUsageSettingsCollection) -> B
                     model=sc.model_name,
                     azure_deployment=sc.model_deployment_name,  # `deployment_name` is an alias
                     azure_endpoint=os.getenv("DOCQ_AZURE_OPENAI_API_BASE"),
-                    api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1"),
+                    api_key=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY1),
                     # openai_api_type="azure",
-                    api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION"),
+                    api_version=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION),
                     callback_manager=_callback_manager,
                 )
             elif sc.provider == ModelProvider.OPENAI:
