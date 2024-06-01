@@ -2,49 +2,43 @@
 
 import logging as log
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from uu import Error
 
 import docq
 from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.base.response.schema import RESPONSE_TYPE, Response
-from llama_index.core.callbacks.base import CallbackManager
+from llama_index.core.bridge.pydantic import Field
 from llama_index.core.chat_engine import SimpleChatEngine
 from llama_index.core.chat_engine.types import AGENT_CHAT_RESPONSE_TYPE, AgentChatResponse
-from llama_index.core.embeddings import BaseEmbedding
 from llama_index.core.indices.base import BaseIndex
-from llama_index.core.indices.loading import load_index_from_storage
-from llama_index.core.llms import LLM
-from llama_index.core.node_parser import NodeParser, SentenceSplitter
+from llama_index.core.llms import LLM, ChatMessage, MessageRole
 from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.core.query_pipeline import CustomQueryComponent
 from llama_index.core.retrievers import BaseRetriever, QueryFusionRetriever
 from llama_index.core.retrievers.fusion_retriever import FUSION_MODES
-from llama_index.core.service_context import ServiceContext
+from llama_index.core.schema import MetadataMode, NodeWithScore
 
 # load_index_from_storage
-from llama_index.core.storage import StorageContext
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
 from llama_index.embeddings.huggingface_optimum import OptimumEmbedding
-from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.litellm import LiteLLM
 from llama_index.retrievers.bm25 import BM25Retriever
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 
-from ..config import EXPERIMENTS
 from ..domain import SpaceKey
-from ..manage_assistants import Assistant, llama_index_chat_prompt_template_from_assistant
+from ..manage_assistants import Assistant, llama_index_chat_prompt_template_from_persona
+from ..manage_indices import _load_index_from_storage, load_indices_from_storage
 from ..model_selection.main import (
     LLM_MODEL_COLLECTIONS,
     LlmUsageSettingsCollection,
     ModelCapability,
     ModelProvider,
+    _get_service_context,
 )
-from .llamaindex_otel_callbackhandler import OtelCallbackHandler
 
 # from .metadata_extractors import DocqEntityExtractor, DocqMetadataExtractor
 # from .node_parsers import AsyncSimpleNodeParser
-from .store import get_index_dir, get_models_dir
+from .store import get_models_dir
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
@@ -56,6 +50,7 @@ if you can't understand the error, simply say "Sorry I cannot offer any assistan
 Make sure your response is in the first person context
 ERROR: {error}
 """
+
 
 @tracer.start_as_current_span(name="_init_local_models")
 def _init_local_models() -> None:
@@ -72,176 +67,94 @@ def _init_local_models() -> None:
                     )
 
 
-@tracer.start_as_current_span(name="_get_generation_model")
-def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection) -> LLM | None:
-    import litellm
-
-    litellm.telemetry = False
-    model = None
-    if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.CHAT]:
-        chat_model_settings = model_settings_collection.model_usage_settings[ModelCapability.CHAT]
-        sc = chat_model_settings.service_instance_config
-        _callback_manager = CallbackManager([OtelCallbackHandler(tracer_provider=trace.get_tracer_provider())])
-        if sc.provider == ModelProvider.AZURE_OPENAI:
-            _additional_kwargs: Dict[str, Any] = {}
-            _additional_kwargs["api_version"] = chat_model_settings.service_instance_config.api_version
-            model = LiteLLM(
-                temperature=chat_model_settings.temperature,
-                model=f"azure/{sc.model_deployment_name}",
-                additional_kwargs=_additional_kwargs,
-                api_base=sc.api_base,
-                api_key=sc.api_key,
-                set_verbose=True,
-                callback_manager=_callback_manager,
-            )
-            log.info("Chat model: using Azure OpenAI")
-            _env_missing = not bool(sc.api_base and sc.api_key and sc.api_version)
-            if _env_missing:
-                log.warning("Chat model: env var values missing.")
-        elif sc.provider == ModelProvider.OPENAI:
-            model = LiteLLM(
-                temperature=chat_model_settings.temperature,
-                model=sc.model_name,
-                api_key=sc.api_key,
-                callback_manager=_callback_manager,
-            )
-            log.info("Chat model: using OpenAI.")
-            _env_missing = not bool(sc.api_key)
-            if _env_missing:
-                log.warning("Chat model: env var values missing")
-        elif sc.provider == ModelProvider.GOOGLE_VERTEXAI_PALM2:
-            # GCP project_id is coming from the credentials json.
-            model = LiteLLM(
-                temperature=chat_model_settings.temperature,
-                model=sc.model_name,
-                callback_manager=_callback_manager,
-            )
-        elif sc.provider == ModelProvider.GOOGLE_VERTEXTAI_GEMINI_PRO:
-            # GCP project_id is coming from the credentials json.
-            model = LiteLLM(
-                temperature=chat_model_settings.temperature,
-                model=sc.model_name,
-                callback_manager=_callback_manager,
-                max_tokens=2048,
-                kwargs={"telemetry": False},
-            )
-            litellm.VertexAIConfig()
-            litellm.vertex_location = sc.additional_properties["vertex_location"]
-        elif sc.provider == ModelProvider.GROQ:
-            model = LiteLLM(
-                temperature=chat_model_settings.temperature,
-                model=f"groq/{sc.model_name}",
-                api_key=sc.api_key,
-                # api_base=sc.api_base,
-                # max_tokens=4096,
-                callback_manager=_callback_manager,
-                kwargs={
-                    "set_verbose": True,
-                },
-            )
-            _env_missing = not bool(sc.api_key)
-            if _env_missing:
-                log.warning("Chat model: env var values missing.")
-        else:
-            raise ValueError("Chat model: model settings with a supported model provider not found.")
-
-        model.max_retries = 3
-
-        log.info("model: ", model)
-        log.info("model_settings_collection: ", model_settings_collection)
-
-        return model
+DEFAULT_CONTEXT_PROMPT = (
+    "Here is some context that may be relevant:\n"
+    "-----\n"
+    "{context_str}\n"
+    "-----\n"
+    "Please write a response to the following question, using the above context:\n"
+    "{query_str}\n"
+)
 
 
-@tracer.start_as_current_span(name="_get_embed_model")
-def _get_embed_model(model_settings_collection: LlmUsageSettingsCollection) -> BaseEmbedding | None:
-    embedding_model = None
-    if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]:
-        embedding_model_settings = model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]
-        _callback_manager = CallbackManager([OtelCallbackHandler(tracer_provider=trace.get_tracer_provider())])
-        sc = embedding_model_settings.service_instance_config
-        with tracer.start_as_current_span(name=f"LangchainEmbedding.{sc.provider}"):
-            if sc.provider == ModelProvider.AZURE_OPENAI:
-                embedding_model = AzureOpenAIEmbedding(
-                    model=sc.model_name,
-                    azure_deployment=sc.model_deployment_name,  # `deployment_name` is an alias
-                    azure_endpoint=os.getenv("DOCQ_AZURE_OPENAI_API_BASE"),
-                    api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1"),
-                    # openai_api_type="azure",
-                    api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION"),
-                    callback_manager=_callback_manager,
-                )
-            elif sc.provider == ModelProvider.OPENAI:
-                embedding_model = OpenAIEmbedding(
-                    model=sc.model_name,
-                    api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
-                    callback_manager=_callback_manager,
-                )
-            elif sc.provider == ModelProvider.HUGGINGFACE_OPTIMUM_BAAI:
-                embedding_model = OptimumEmbedding(
-                    folder_name=get_models_dir(sc.model_name),
-                    callback_manager=_callback_manager,
-                )
-            else:
-                # defaults
-                embedding_model = OpenAIEmbedding()
+class ResponseWithChatHistory(CustomQueryComponent):
+    """Response with chat history."""
 
-    return embedding_model
-
-
-@tracer.start_as_current_span(name="_get_default_storage_context")
-def _get_default_storage_context() -> StorageContext:
-    return StorageContext.from_defaults()
-
-
-@tracer.start_as_current_span(name="_get_storage_context")
-def _get_storage_context(space: SpaceKey) -> StorageContext:
-    return StorageContext.from_defaults(persist_dir=get_index_dir(space))
-
-
-@tracer.start_as_current_span(name="_get_service_context")
-def _get_service_context(model_settings_collection: LlmUsageSettingsCollection) -> ServiceContext:
-    log.debug(
-        "EXPERIMENTS['INCLUDE_EXTRACTED_METADATA']['enabled']: %s", EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]
+    llm: LLM = Field(..., description="LLM")
+    system_prompt: Optional[str] = Field(default=None, description="System prompt to use for the LLM")
+    context_prompt: str = Field(
+        default=DEFAULT_CONTEXT_PROMPT,
+        description="Context prompt to use for the LLM",
     )
-    log.debug("EXPERIMENTS['ASYNC_NODE_PARSER']['enabled']: %s", EXPERIMENTS["ASYNC_NODE_PARSER"]["enabled"])
+    # query_str: Optional[str] = Field(default=None, description="The user query")
 
-    _node_parser = None  # use default node parser
-    if EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]:
-        _node_parser = _get_node_parser(model_settings_collection)
-        if EXPERIMENTS["ASYNC_NODE_PARSER"]["enabled"]:
-            log.debug("loading async node parser.")
-            # _node_parser = _get_async_node_parser(model_settings_collection)
-    else:
-        _callback_manager = CallbackManager([OtelCallbackHandler(tracer_provider=trace.get_tracer_provider())])
-        _node_parser = SentenceSplitter.from_defaults(callback_manager=_callback_manager)
+    # chat_history: Optional[List[ChatMessage]] = Field(default=None, description="Chat history")
 
-    return ServiceContext.from_defaults(
-        llm=_get_generation_model(model_settings_collection),
-        node_parser=_node_parser,
-        embed_model=_get_embed_model(model_settings_collection),
-        callback_manager=_node_parser.callback_manager,
-        context_window=model_settings_collection.model_usage_settings[
-            ModelCapability.CHAT
-        ].service_instance_config.context_window_size,
-        num_output=256,  # default in lama-index but we need to be explicit here because it's not being set everywhere.
-    )
-
-
-@tracer.start_as_current_span(name="_get_node_parser")
-def _get_node_parser(model_settings_collection: LlmUsageSettingsCollection) -> NodeParser:
-    # metadata_extractor = MetadataExtractor(
-    #     extractors=[
-
-    #         KeywordExtractor(llm=_get_generation_model(model_settings_collection), keywords=5),
-    #         EntityExtractor(label_entities=True, device="cpu"),
-    #         # CustomExtractor()
-    #     ],
+    # nodes: Optional[List[NodeWithScore]] = Field(
+    #     default=None, description="Context nodes from retrieval after being reranked."
     # )
-    _callback_manager = CallbackManager([OtelCallbackHandler(tracer_provider=trace.get_tracer_provider())])
-    node_parser = SentenceSplitter.from_defaults()
 
-    return node_parser
+    def _validate_component_inputs(self, input: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate component inputs during run_component."""
+        # NOTE: this is OPTIONAL but we show you where to do validation as an example
+        return input
+
+    @property
+    def _input_keys(self) -> set:
+        """Input keys dict."""
+        # NOTE: These are required inputs. If you have optional inputs please override
+        # `optional_input_keys_dict`
+        return {"chat_history", "nodes", "query_str"}
+
+    @property
+    def _output_keys(self) -> set:
+        return {"response"}
+
+    def _prepare_context(
+        self,
+        chat_history: List[ChatMessage],
+        nodes: List[NodeWithScore],
+        query_str: str,
+    ) -> List[ChatMessage]:
+        node_context = ""
+        for idx, node in enumerate(nodes):
+            node_text = node.get_content(metadata_mode=MetadataMode.LLM)
+            node_context += f"Context Chunk {idx}:\n{node_text}\n\n"
+
+        formatted_context = self.context_prompt.format(context_str=node_context, query_str=query_str)
+        user_message = ChatMessage(role=MessageRole.USER, content=formatted_context)
+
+        chat_history.append(user_message)
+
+        if self.system_prompt is not None:
+            chat_history = [ChatMessage(role=MessageRole.SYSTEM, content=self.system_prompt)] + chat_history
+
+        return chat_history
+
+    def _run_component(self, **kwargs) -> Dict[str, Any]:
+        """Run the component."""
+        chat_history = kwargs["chat_history"]
+        nodes = kwargs["nodes"]
+        query_str = kwargs["query_str"]
+
+        prepared_context = self._prepare_context(chat_history, nodes, query_str)
+
+        response = self.llm.chat(prepared_context)
+
+        return {"response": response}
+
+    async def _arun_component(self, **kwargs: Any) -> Dict[str, Any]:
+        """Run the component asynchronously."""
+        # NOTE: Optional, but async LLM calls are easy to implement
+        chat_history = kwargs["chat_history"]
+        nodes = kwargs["nodes"]
+        query_str = kwargs["query_str"]
+
+        prepared_context = self._prepare_context(chat_history, nodes, query_str)
+
+        response = await self.llm.achat(prepared_context)
+
+        return {"response": response}
 
 
 # @tracer.start_as_current_span(name="_get_async_node_parser")
@@ -263,13 +176,6 @@ def _get_node_parser(model_settings_collection: LlmUsageSettingsCollection) -> N
 #     return node_parser
 
 
-@tracer.start_as_current_span(name="_load_index_from_storage")
-def _load_index_from_storage(space: SpaceKey, model_settings_collection: LlmUsageSettingsCollection) -> BaseIndex:
-    # set service context explicitly for multi model compatibility
-    sc = _get_service_context(model_settings_collection)
-    return load_index_from_storage(
-        storage_context=_get_storage_context(space), service_context=sc, callback_manager=sc.callback_manager
-    )
 
 
 def get_hybrid_fusion_retriever_query(
@@ -328,13 +234,23 @@ def run_chat(
     return output
 
 
-@tracer.start_as_current_span(name="run_ask")
 def run_ask(
     input_: str,
     history: List[ChatMessage],
     model_settings_collection: LlmUsageSettingsCollection,
     assistant: Assistant,
     spaces: list[SpaceKey] | None = None,
+) -> RESPONSE_TYPE | AGENT_CHAT_RESPONSE_TYPE:
+    return run_ask2(input_, history, model_settings_collection, persona, spaces)
+
+
+@tracer.start_as_current_span(name="run_ask")
+def run_ask1(
+    input_: str,
+    history: List[ChatMessage],
+    model_settings_collection: LlmUsageSettingsCollection,
+    persona: Assistant,
+    spaces: Optional[list[SpaceKey]] = None,
 ) -> RESPONSE_TYPE | AGENT_CHAT_RESPONSE_TYPE:
     """Ask questions against existing index(es) with history."""
     log.debug("exec: runs_ask()")
@@ -403,8 +319,144 @@ def run_ask(
         output = Response("You need to select a Space or upload a document to ask a questions.")
         span.add_event(name="ask_without_spaces", attributes={"question": input_, "answer": str(output)})
 
-
     return output
+
+
+@tracer.start_as_current_span(name="run_ask2")
+def run_ask2(
+    input_: str,
+    history: List[ChatMessage],
+    model_settings_collection: LlmUsageSettingsCollection,
+    persona: Assistant,
+    spaces: Optional[list[SpaceKey]] = None,
+) -> RESPONSE_TYPE | AGENT_CHAT_RESPONSE_TYPE:
+    """Implements logic of run_ask() using LlamaIndex query pipelines."""
+    span = trace.get_current_span()
+
+    try:
+        indices = []
+        if spaces is not None and len(spaces) > 0:
+            indices = load_indices_from_storage(spaces, model_settings_collection)
+        text_qa_template = llama_index_chat_prompt_template_from_persona(persona, history)
+        span.add_event(name="prompt_created")
+        retriever = indices[0].as_retriever(similarity_top_k=6)
+        # retriever = get_hybrid_fusion_retriever_query(indices, model_settings_collection)
+        span.add_event(name="retriever_object_created", attributes={"retriever": retriever.__class__.__name__})
+
+        # query_engine = RetrieverQueryEngine.from_args(
+        #     retriever=retriever,
+        #     service_context=_get_service_context(model_settings_collection),
+        #     text_qa_template=text_qa_template,
+        # )
+        span.add_event(name="query_engine__object_created")
+
+        # output = query_engine.query(input_)
+        # span.add_event(name="query_executed")
+    except Exception as e:
+        span.set_status(status=Status(StatusCode.ERROR))
+        span.record_exception(e)
+        raise Error(f"Error: {e}") from e
+
+    from llama_index.core.prompts import PromptTemplate
+    from llama_index.core.query_pipeline import (
+        ArgPackComponent,
+        InputComponent,
+        QueryPipeline,
+    )
+    from llama_index.postprocessor.colbert_rerank import ColbertRerank
+
+    # First, we create an input component to capture the user query
+    input_component = InputComponent()
+
+    # Next, we use the LLM to rewrite a user query
+    rewrite = (
+        "Please write a query to a semantic search engine using the current conversation.\n"
+        "\n"
+        "\n"
+        "{chat_history_str}"
+        "\n"
+        "\n"
+        "Latest message: {query_str}\n"
+        'Query:"""\n'
+    )
+    rewrite_template = PromptTemplate(rewrite)
+
+    llm = _get_service_context(model_settings_collection).llm
+
+    # we will retrieve two times, so we need to pack the retrieved nodes into a single list
+    argpack_component = ArgPackComponent()
+
+    # using that, we will retrieve...
+    # retriever = index.as_retriever(similarity_top_k=6)
+
+    # then postprocess/rerank with Colbert
+    reranker = ColbertRerank(top_n=3)
+
+    response_component = ResponseWithChatHistory(
+        llm=llm,
+        system_prompt=persona.system_prompt_content,
+        # system_prompt=(
+        #     "You are a Q&A system. You will be provided with the previous chat history, "
+        #     "as well as possibly relevant context, to assist in answering a user message."
+        # ),
+    )
+
+    # define query pipeline
+    pipeline = QueryPipeline(
+        modules={
+            "input": input_component,
+            "rewrite_template": rewrite_template,
+            "llm": llm,
+            "rewrite_retriever": retriever,
+            "query_retriever": retriever,
+            "join": argpack_component,
+            "reranker": reranker,
+            "response_component": response_component,
+        },
+        verbose=False,
+    )
+
+    # run both retrievers -- once with the hallucinated query, once with the real query
+    pipeline.add_link("input", "rewrite_template", src_key="query_str", dest_key="query_str")
+    pipeline.add_link(
+        "input",
+        "rewrite_template",
+        src_key="chat_history_str",
+        dest_key="chat_history_str",
+    )
+    pipeline.add_link("rewrite_template", "llm")
+    pipeline.add_link("llm", "rewrite_retriever")
+    pipeline.add_link("input", "query_retriever", src_key="query_str")
+
+    # each input to the argpack component needs a dest key -- it can be anything
+    # then, the argpack component will pack all the inputs into a single list
+    pipeline.add_link("rewrite_retriever", "join", dest_key="rewrite_nodes")
+    pipeline.add_link("query_retriever", "join", dest_key="query_nodes")
+
+    # reranker needs the packed nodes and the query string
+    pipeline.add_link("join", "reranker", dest_key="nodes")
+    pipeline.add_link("input", "reranker", src_key="query_str", dest_key="query_str")
+
+    # synthesizer needs the reranked nodes and query str
+    pipeline.add_link("reranker", "response_component", dest_key="nodes")
+    pipeline.add_link("input", "response_component", src_key="query_str", dest_key="query_str")
+    pipeline.add_link(
+        "input",
+        "response_component",
+        src_key="chat_history",
+        dest_key="chat_history",
+    )
+
+    # output, intermediates = pipeline.run_with_intermediates(input_)
+    history_str = "\n".join([str(x) for x in history])
+    output, intermediates = pipeline.run_with_intermediates(
+        query_str=input_,
+        chat_history=history,
+        chat_history_str=history_str,
+    )
+    print("intermediates: ", intermediates)
+    print("ANSWER:", output.message)
+    return Response(output.message)
 
 
 @tracer.start_as_current_span(name="_default_response")

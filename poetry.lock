@@ -2442,6 +2442,22 @@ files = [
 llama-index-core = ">=0.10.24,<0.11.0"
 
 [[package]]
+name = "llama-index-postprocessor-colbert-rerank"
+version = "0.1.2"
+description = "llama-index postprocessor colbert-rerank integration"
+optional = false
+python-versions = "<4.0,>=3.8.1"
+files = [
+    {file = "llama_index_postprocessor_colbert_rerank-0.1.2-py3-none-any.whl", hash = "sha256:a95bc13fd98c1b6ff360808a7655f43e64077c3f1c2c4c8e015420c0445c8b42"},
+    {file = "llama_index_postprocessor_colbert_rerank-0.1.2.tar.gz", hash = "sha256:c1a5900b082c7b5f0f51033725523473d245ce66b5ac630dfe5823f7017967f1"},
+]
+
+[package.dependencies]
+llama-index-core = ">=0.10.35,<0.11.0"
+torch = ">=2.2.0,<3.0.0"
+transformers = ">=4.37.2,<5.0.0"
+
+[[package]]
 name = "llama-index-readers-file"
 version = "0.1.15"
 description = "llama-index readers file integration"
@@ -7441,4 +7457,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.12"
-content-hash = "371cee75282380a47c8d6ca2765cc19b428f1e0f10268de3a04603334ae6a2c8"
+content-hash = "7f5bff524497a4a7a91e03f589446976924fd80a630f4d7a8a4ec962d5e0c066"

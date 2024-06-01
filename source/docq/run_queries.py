@@ -290,7 +290,7 @@ def query(
             MESSAGE_TEMPLATE.format(message=response.response)
             if is_chat
             else MESSAGE_WITH_SOURCES_TEMPLATE.format(
-                message=response.response, source=format_document_sources(response.source_nodes)
+                message=response, source=format_document_sources(response.source_nodes)
             ),
             False,
             datetime.now(),

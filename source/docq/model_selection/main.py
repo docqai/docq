@@ -12,10 +12,25 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, Mapping, Optional
 
+import docq
+from llama_index.core.callbacks.base import CallbackManager
+from llama_index.core.embeddings import BaseEmbedding
+from llama_index.core.llms import LLM
+from llama_index.core.node_parser import NodeParser, SentenceSplitter
+from llama_index.core.service_context import ServiceContext
+from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
+from llama_index.embeddings.huggingface_optimum import OptimumEmbedding
+from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.llms.litellm import LiteLLM
+from opentelemetry import trace
 from vertexai.preview.generative_models import HarmBlockThreshold, HarmCategory
 
-from ..config import ENV_VAR_DOCQ_GROQ_API_KEY, OrganisationSettingsKey
+from ..config import ENV_VAR_DOCQ_GROQ_API_KEY, EXPERIMENTS, OrganisationSettingsKey
 from ..manage_settings import get_organisation_settings
+from ..support.llamaindex_otel_callbackhandler import OtelCallbackHandler
+from ..support.store import get_models_dir
+
+tracer = trace.get_tracer(__name__, docq.__version_str__)
 
 
 class ModelProvider(str, Enum):
@@ -387,3 +402,164 @@ def get_saved_model_settings_collection(org_id: int) -> LlmUsageSettingsCollecti
 def list_available_model_settings_collections() -> dict:
     """List available models."""
     return {k: v.name for k, v in LLM_MODEL_COLLECTIONS.items()}
+
+@tracer.start_as_current_span(name="_get_service_context")
+def _get_service_context(model_settings_collection: LlmUsageSettingsCollection) -> ServiceContext:
+    log.debug(
+        "EXPERIMENTS['INCLUDE_EXTRACTED_METADATA']['enabled']: %s", EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]
+    )
+    log.debug("EXPERIMENTS['ASYNC_NODE_PARSER']['enabled']: %s", EXPERIMENTS["ASYNC_NODE_PARSER"]["enabled"])
+
+    _node_parser = None  # use default node parser
+    if EXPERIMENTS["INCLUDE_EXTRACTED_METADATA"]["enabled"]:
+        _node_parser = _get_node_parser(model_settings_collection)
+        if EXPERIMENTS["ASYNC_NODE_PARSER"]["enabled"]:
+            log.debug("loading async node parser.")
+            # _node_parser = _get_async_node_parser(model_settings_collection)
+    else:
+        _callback_manager = CallbackManager([OtelCallbackHandler(tracer_provider=trace.get_tracer_provider())])
+        _node_parser = SentenceSplitter.from_defaults(callback_manager=_callback_manager)
+
+    return ServiceContext.from_defaults(
+        llm=_get_generation_model(model_settings_collection),
+        node_parser=_node_parser,
+        embed_model=_get_embed_model(model_settings_collection),
+        callback_manager=_node_parser.callback_manager,
+        context_window=model_settings_collection.model_usage_settings[
+            ModelCapability.CHAT
+        ].service_instance_config.context_window_size,
+        num_output=256,  # default in lama-index but we need to be explicit here because it's not being set everywhere.
+    )
+
+
+@tracer.start_as_current_span(name="_get_generation_model")
+def _get_generation_model(model_settings_collection: LlmUsageSettingsCollection) -> LLM | None:
+    import litellm
+
+    litellm.telemetry = False
+    model = None
+    if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.CHAT]:
+        chat_model_settings = model_settings_collection.model_usage_settings[ModelCapability.CHAT]
+        sc = chat_model_settings.service_instance_config
+        _callback_manager = CallbackManager([OtelCallbackHandler(tracer_provider=trace.get_tracer_provider())])
+        if sc.provider == ModelProvider.AZURE_OPENAI:
+            _additional_kwargs: Dict[str, Any] = {}
+            _additional_kwargs["api_version"] = chat_model_settings.service_instance_config.api_version
+            model = LiteLLM(
+                temperature=chat_model_settings.temperature,
+                model=f"azure/{sc.model_deployment_name}",
+                additional_kwargs=_additional_kwargs,
+                api_base=sc.api_base,
+                api_key=sc.api_key,
+                set_verbose=True,
+                callback_manager=_callback_manager,
+            )
+            log.info("Chat model: using Azure OpenAI")
+            _env_missing = not bool(sc.api_base and sc.api_key and sc.api_version)
+            if _env_missing:
+                log.warning("Chat model: env var values missing.")
+        elif sc.provider == ModelProvider.OPENAI:
+            model = LiteLLM(
+                temperature=chat_model_settings.temperature,
+                model=sc.model_name,
+                api_key=sc.api_key,
+                callback_manager=_callback_manager,
+            )
+            log.info("Chat model: using OpenAI.")
+            _env_missing = not bool(sc.api_key)
+            if _env_missing:
+                log.warning("Chat model: env var values missing")
+        elif sc.provider == ModelProvider.GOOGLE_VERTEXAI_PALM2:
+            # GCP project_id is coming from the credentials json.
+            model = LiteLLM(
+                temperature=chat_model_settings.temperature,
+                model=sc.model_name,
+                callback_manager=_callback_manager,
+            )
+        elif sc.provider == ModelProvider.GOOGLE_VERTEXTAI_GEMINI_PRO:
+            # GCP project_id is coming from the credentials json.
+            model = LiteLLM(
+                temperature=chat_model_settings.temperature,
+                model=sc.model_name,
+                callback_manager=_callback_manager,
+                max_tokens=2048,
+                kwargs={"telemetry": False},
+            )
+            litellm.VertexAIConfig()
+            litellm.vertex_location = sc.additional_properties["vertex_location"]
+        elif sc.provider == ModelProvider.GROQ:
+            model = LiteLLM(
+                temperature=chat_model_settings.temperature,
+                model=f"groq/{sc.model_name}",
+                api_key=sc.api_key,
+                # api_base=sc.api_base,
+                # max_tokens=4096,
+                callback_manager=_callback_manager,
+                kwargs={
+                    "set_verbose": True,
+                },
+            )
+            _env_missing = not bool(sc.api_key)
+            if _env_missing:
+                log.warning("Chat model: env var values missing.")
+        else:
+            raise ValueError("Chat model: model settings with a supported model provider not found.")
+
+        model.max_retries = 3
+
+        print("model: ", model)
+        print("model_settings_collection: ", model_settings_collection)
+
+        return model
+
+
+@tracer.start_as_current_span(name="_get_embed_model")
+def _get_embed_model(model_settings_collection: LlmUsageSettingsCollection) -> BaseEmbedding | None:
+    embedding_model = None
+    if model_settings_collection and model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]:
+        embedding_model_settings = model_settings_collection.model_usage_settings[ModelCapability.EMBEDDING]
+        _callback_manager = CallbackManager([OtelCallbackHandler(tracer_provider=trace.get_tracer_provider())])
+        sc = embedding_model_settings.service_instance_config
+        with tracer.start_as_current_span(name=f"LangchainEmbedding.{sc.provider}"):
+            if sc.provider == ModelProvider.AZURE_OPENAI:
+                embedding_model = AzureOpenAIEmbedding(
+                    model=sc.model_name,
+                    azure_deployment=sc.model_deployment_name,  # `deployment_name` is an alias
+                    azure_endpoint=os.getenv("DOCQ_AZURE_OPENAI_API_BASE"),
+                    api_key=os.getenv("DOCQ_AZURE_OPENAI_API_KEY1"),
+                    # openai_api_type="azure",
+                    api_version=os.getenv("DOCQ_AZURE_OPENAI_API_VERSION"),
+                    callback_manager=_callback_manager,
+                )
+            elif sc.provider == ModelProvider.OPENAI:
+                embedding_model = OpenAIEmbedding(
+                    model=sc.model_name,
+                    api_key=os.getenv("DOCQ_OPENAI_API_KEY"),
+                    callback_manager=_callback_manager,
+                )
+            elif sc.provider == ModelProvider.HUGGINGFACE_OPTIMUM_BAAI:
+                embedding_model = OptimumEmbedding(
+                    folder_name=get_models_dir(sc.model_name),
+                    callback_manager=_callback_manager,
+                )
+            else:
+                # defaults
+                embedding_model = OpenAIEmbedding()
+
+    return embedding_model
+
+
+@tracer.start_as_current_span(name="_get_node_parser")
+def _get_node_parser(model_settings_collection: LlmUsageSettingsCollection) -> NodeParser:
+    # metadata_extractor = MetadataExtractor(
+    #     extractors=[
+
+    #         KeywordExtractor(llm=_get_generation_model(model_settings_collection), keywords=5),
+    #         EntityExtractor(label_entities=True, device="cpu"),
+    #         # CustomExtractor()
+    #     ],
+    # )
+    _callback_manager = CallbackManager([OtelCallbackHandler(tracer_provider=trace.get_tracer_provider())])
+    node_parser = SentenceSplitter.from_defaults()
+
+    return node_parser
