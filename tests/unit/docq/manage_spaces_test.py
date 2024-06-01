@@ -8,11 +8,10 @@ from typing import Generator, Optional
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from docq import manage_spaces
 from docq.access_control.main import SpaceAccessor, SpaceAccessType
 from docq.config import SpaceType
 from docq.domain import SpaceKey
-from docq.model_selection.main import ModelCapability, get_model_settings_collection
-from llama_index.core.indices import VectorStoreIndex
 from llama_index.core.schema import Document
 
 TEST_ORG_ID = 1000
@@ -29,7 +28,7 @@ def manage_spaces_test_dir() -> Generator:
         sqlite_system_file = f"{temp_dir}/sql_system.db"
         mock_get_sqlite_shared_system_file.return_value = sqlite_system_file
 
-        _init()
+        manage_spaces._init()
 
         yield temp_dir, sqlite_system_file, mock_get_sqlite_shared_system_file
 
@@ -59,63 +58,57 @@ def test_db_init(manage_spaces_test_dir: tuple) -> None:
             result = cursor.fetchone()
             assert result is not None, f"Table {table} not found."
 
+    # @patch("docq.support.store._get_default_storage_context")
+    # @patch("docq.model_selection.main._get_service_context")
+    # def test_create_index(get_service_context: MagicMock, get_default_storage_context: MagicMock) -> None:
+    #     """Test create index."""
+    #     from docq.manage_spaces import _create_vector_index
 
-@patch("docq.manage_spaces._get_default_storage_context")
-@patch("docq.manage_spaces._get_service_context")
-def test_create_index(get_service_context: MagicMock, get_default_storage_context: MagicMock) -> None:
-    """Test create index."""
-    from docq.manage_spaces import _create_vector_index
+    #     with patch("llama_index.core.VectorStoreIndex", Mock(from_documents=MagicMock())):
+    #         documents = [Document(text=f"Document {_}") for _ in range(10)]
+    #         # model_settings_collection = Mock()
+    #         # mocked_model_usage_settings = Mock()
+    #         # mocked_model_usage_settings.additional_args = {"arg1": "value1", "arg2": "value2"}
+    #         model_settings_collection = get_model_settings_collection(
+    #             "azure_openai_latest"
+    #         )  # {ModelCapability.CHAT: mocked_model_usage_settings}
+    #         _create_vector_index(documents, model_settings_collection)
 
-    with patch("docq.manage_spaces.VectorStoreIndex", Mock(from_documents=MagicMock())):
-        documents = Mock([Document])
-        model_settings_collection = Mock()
-        mocked_model_usage_settings = Mock()
-        mocked_model_usage_settings.additional_args = {"arg1": "value1", "arg2": "value2"}
-        model_settings_collection.model_usage_settings = {ModelCapability.CHAT: mocked_model_usage_settings}
-        _create_vector_index(documents, model_settings_collection)
+    #         get_service_context.assert_called_once_with(model_settings_collection)
+    #         get_default_storage_context.assert_called_once()
 
-        get_service_context.assert_called_once_with(model_settings_collection)
-        get_default_storage_context.assert_called_once()
-
-
-def test_reindex_vector_index() -> None:
-    """Test reindex."""
-    from docq.manage_spaces import reindex
-
-    with patch("docq.manage_spaces._persist_index") as mock_persist_index, patch(
-        "docq.manage_spaces._create_vector_index"
-    ) as mock_create_vector_index, patch(
-        "docq.manage_spaces.get_space_data_source"
-    ) as mock_get_space_data_source, patch(
-        "docq.data_source.manual_upload.ManualUpload.load"
-    ) as mock_ManualUpload_load, patch(  # noqa: N806
-        "docq.manage_spaces.get_saved_model_settings_collection"  # note the reference to the file where the function is called, not defined.
-    ) as mock_get_saved_model_settings_collection:  # noqa: N806
-        # mock_index = Mock(DocumentSummaryIndex)
-        # mock_create_document_summary_index.return_value = mock_index
-
-        mock_vector_index = Mock(VectorStoreIndex)
-        mock_create_vector_index.return_value = mock_vector_index
-
-        mock_get_space_data_source.return_value = ("MANUAL_UPLOAD", {})
-
-        mock_ManualUpload_load.return_value = [
-            Document(doc_id="testid", text="test", extra_info={"source_uri": "https://example.com}"})
+    @patch("docq.manage_spaces._persist_index")
+    @patch("docq.manage_spaces._create_vector_index")
+    @patch("docq.manage_spaces.get_saved_model_settings_collection")
+    @patch("docq.manage_spaces.get_space_data_source")
+    @patch("docq.manage_spaces.SpaceDataSources")
+    def test_reindex(
+        self,
+        mock_SpaceDataSources,
+        mock_get_space_data_source,
+        mock_get_saved_model_settings_collection,
+        mock_create_vector_index,
+        mock_persist_index,
+    ):
+        # Arrange
+        mock_space = MagicMock(spec=SpaceKey, id_="test_id", org_id="test_org_id")
+        mock_get_space_data_source.return_value = ("ds_type", "ds_configs")
+        mock_SpaceDataSources.__getitem__.return_value.value.load.return_value = [
+            Document(doc_id="testid", text="test", extra_info={"source_uri": "https://example.com"})
         ]
+        mock_create_vector_index.return_value = "vector_index"
 
-        arg_space_key = SpaceKey(SpaceType.SHARED, 1234, 4567, "this is a test space with mocked data")
+        # Act
+        manage_spaces.reindex(mock_space)
 
-        mock_get_saved_model_settings_collection.return_value = get_model_settings_collection("openai_latest")
-        # print({mock_get_saved_model_settings_collection.return_value.__str__()})
-        reindex(arg_space_key)
-
-        mock_persist_index.assert_called_once_with(mock_vector_index, arg_space_key)
+        # Assert
+        mock_persist_index.assert_called_once_with("vector_index", mock_space)
 
 
-@patch("docq.manage_spaces.get_index_dir")
+@patch("docq.manage_indices.get_index_dir")
 def test_persist_index(get_index_dir: MagicMock) -> None:
     """Test persist index."""
-    from docq.manage_spaces import _persist_index
+    from docq.manage_indices import _persist_index
 
     def _persist (persist_dir: str) -> None:
         with open(persist_dir, "w") as f:

@@ -5,7 +5,8 @@ from typing import Literal, Self
 import docq.run_queries as rq
 from docq.domain import SpaceKey
 from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
-from docq.support.llm import _get_service_context, _get_storage_context
+from docq.support.llm import _get_service_context
+from docq.support.store import _get_storage_context
 from llama_index.core.indices import DocumentSummaryIndex, load_index_from_storage
 from llama_index.core.indices.base import BaseIndex
 from pydantic import ValidationError
@@ -157,8 +158,10 @@ class TopQuestionsHandler(BaseRequestHandler):
 
     def _load_index(self: Self, space: SpaceKey, model_settings_collection: LlmUsageSettingsCollection) -> BaseIndex:
         """Load index from storage."""
-        storage_context = _get_storage_context(space)
-        service_context = _get_service_context(model_settings_collection)
+        storage_context = _get_storage_context(space)  # FIXME: _get_storage_context should not be called directly here.
+        service_context = _get_service_context(
+            model_settings_collection
+        )  # FIXME: _get_storage_context should not be called directly here.
         return load_index_from_storage(storage_context=storage_context, service_context=service_context)
 
     def get_summary_questions(self: Self, thread_space: SpaceKey) -> dict:

@@ -8,9 +8,6 @@ from contextlib import closing
 from datetime import datetime
 from typing import Any, List, Optional
 
-from llama_index.core.indices import DocumentSummaryIndex, VectorStoreIndex
-from llama_index.core.indices.base import BaseIndex
-from llama_index.core.schema import Document
 from opentelemetry import trace
 
 import docq
@@ -19,9 +16,9 @@ from .access_control.main import SpaceAccessor, SpaceAccessType
 from .config import SpaceType
 from .data_source.list import SpaceDataSources
 from .domain import DocumentListItem, SpaceKey
-from .model_selection.main import LlmUsageSettingsCollection, ModelCapability, get_saved_model_settings_collection
-from .support.llm import _get_default_storage_context, _get_service_context
-from .support.store import get_index_dir, get_sqlite_shared_system_file
+from .manage_indices import _create_vector_index, _persist_index
+from .model_selection.main import get_saved_model_settings_collection
+from .support.store import get_sqlite_shared_system_file
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
@@ -67,35 +64,6 @@ def _init() -> None:
         connection.commit()
 
 
-@tracer.start_as_current_span("manage_spaces._create_vector_index")
-def _create_vector_index(
-    documents: List[Document], model_settings_collection: LlmUsageSettingsCollection
-) -> VectorStoreIndex:
-    # Use default storage and service context to initialise index purely for persisting
-    return VectorStoreIndex.from_documents(
-        documents,
-        storage_context=_get_default_storage_context(),
-        service_context=_get_service_context(model_settings_collection),
-        kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
-    )
-
-@tracer.start_as_current_span("manage_spaces._create_document_summary_index")
-def _create_document_summary_index(
-    documents: List[Document], model_settings_collection: LlmUsageSettingsCollection
-) -> DocumentSummaryIndex:
-    """Create a an index of summaries for each document. This doen't create embedding for each node."""
-    return DocumentSummaryIndex(embed_summaries=True).from_documents(
-        documents,
-        storage_context=_get_default_storage_context(),
-        service_context=_get_service_context(model_settings_collection),
-        kwargs=model_settings_collection.model_usage_settings[ModelCapability.CHAT].additional_args,
-    )
-
-
-@tracer.start_as_current_span("manage_spaces._persist_index")
-def _persist_index(index: BaseIndex, space: SpaceKey) -> None:
-    """Persist an Space datasource index to disk."""
-    index.storage_context.persist(persist_dir=get_index_dir(space))
 
 
 def _format_space(row: Any) -> SPACE:

@@ -9,8 +9,14 @@ from enum import Enum
 from threading import Timer
 from typing import Optional
 
+import docq
+from llama_index.core.storage import StorageContext
+from opentelemetry import trace
+
 from ..config import ENV_VAR_DOCQ_DATA, OrganisationFeatureType, SpaceType
 from ..domain import SpaceKey
+
+tracer = trace.get_tracer(__name__, docq.__version_str__)
 
 
 class _StoreDir(Enum):
@@ -210,6 +216,15 @@ def _clean_public_chat_history() -> None:
             with suppress(FileNotFoundError):
                 log.info("Removing public chat history for session %s", dir_)
                 shutil.rmtree(dir_path)
+
+@tracer.start_as_current_span(name="_get_storage_context")
+def _get_storage_context(space: SpaceKey) -> StorageContext:
+    return StorageContext.from_defaults(persist_dir=get_index_dir(space))
+
+
+@tracer.start_as_current_span(name="_get_default_storage_context")
+def _get_default_storage_context() -> StorageContext:
+    return StorageContext.from_defaults()
 
 
 def _init() -> None:

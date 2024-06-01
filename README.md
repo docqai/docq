@@ -17,7 +17,7 @@
 
 # Your private ChatGPT alternative
 
-**Securely unlock knowledge from your business documents. Give your employees' a second-brain.**
+**Q&A with business documents securely. Depend less on other teams for answers.**
 
 ![Docq overview in a single diagram](https://docqai.github.io/docq/assets/docq-diag-apr2024.png)
 
@@ -43,7 +43,7 @@ Abstractions to easily add custom data sources. Plugin system for extending appl
 We offer Docq as a **turnkey** solution to lower the barrier for your organisation to adopt the latest AI innovation safely.
 
 - Open-source (AGPLv3) to address your organisation's security and compliance needs.
-- Commercial support available via a UK-based entity.
+- Commercial license and support available (via Docq.AI based in London, UK).
 - Re-licensing option also available.
 
 ## Vision
@@ -92,7 +92,7 @@ For more details see section [Deploy to Azure: 15 Minutes and Secure](./docs/use
 
 ## Roadmap
 
-We aim to support the following features in the near future:
+We aim to support the following features in the future:
 
 - More data ingestion options such as SaaS data connectors and network storage options
 - A plugin platform and ecosystem
@@ -114,12 +114,15 @@ Project Link: [https://github.com/docqai/docq/](https://github.com/docqai/docq/)
 
 ## Licenses
 
-Distributed under multiple licenses:
+The code in the repo is distributed under the licenses below. If a file has a specific license and copyright notice displayed then that wins.
 
-- AGPLv3 See [`LICENSE`](https://github.com/docqai/docq/blob/main/LICENSE) for more information.
-- Commercial licenses available
+- AGPLv3. See [`LICENSE`](./LICENSE.AGPL3) and [`NOTICE`](./NOTICE.AGPL3)  for more information.
+- Commercial licenses available via [Docq.AI](https://docq.ai)
+- Copyright (C) 2023-2024 FABR Ltd t/a [Docq.AI](https://docq.ai). 
 
-Copyright (C) 2023-2024 FABR Ltd t/a [Docq.AI](https://docq.ai)
+Made :heart: London.
+
+
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->

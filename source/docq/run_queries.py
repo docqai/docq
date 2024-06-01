@@ -80,6 +80,18 @@ def _save_messages(data: list[tuple[str, bool, datetime, int]], feature: Feature
 def _retrieve_messages(
     cutoff: datetime, size: int, feature: FeatureKey, thread_id: int, sort_order: Literal["ASC", "DESC"] = "DESC"
 ) -> list[tuple[int, str, bool, datetime, int]]:
+    """Retrieve the history of messages up to certain size and cutoff.
+
+    Args:
+        cutoff: The cutoff time.
+        size: The number of messages to retrieve.
+        feature: The feature key.
+        thread_id: The thread id.
+        sort_order: The order to sort the messages.
+
+    Returns:
+        list pf tuples of (id:int, message:str, human:bool, timestamp, thread_id:int).
+    """
     tablename = get_history_table_name(feature.type_)
     thread_tablename = get_history_thread_table_name(feature.type_)
     usage_file = (
@@ -253,7 +265,7 @@ def query(
         feature,
         spaces,
     )
-    data = [(input_, True, datetime.now(), thread_id)]
+    data = [(input_, bool(True), datetime.now(), thread_id)]
     is_chat = feature.type_ == OrganisationFeatureType.CHAT_PRIVATE
 
     # history = _retrieve_last_n_history(feature, thread_id)
@@ -278,7 +290,7 @@ def query(
             MESSAGE_TEMPLATE.format(message=response.response)
             if is_chat
             else MESSAGE_WITH_SOURCES_TEMPLATE.format(
-                message=response.response, source=format_document_sources(response.source_nodes)
+                message=response, source=format_document_sources(response.source_nodes)
             ),
             False,
             datetime.now(),
@@ -288,6 +300,8 @@ def query(
 
     return _save_messages(data, feature)
 
-def history(cutoff: datetime, size: int, feature: FeatureKey, thread_id: int) -> list[tuple[int, str, bool, datetime]]:
+def history(
+    cutoff: datetime, size: int, feature: FeatureKey, thread_id: int
+) -> list[tuple[int, str, bool, datetime, int]]:
     """Retrieve the history of messages up to certain size and cutoff."""
     return _retrieve_messages(cutoff, size, feature, thread_id)
