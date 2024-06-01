@@ -29,7 +29,7 @@ from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 
 from ..domain import SpaceKey
-from ..manage_assistants import Assistant, llama_index_chat_prompt_template_from_persona
+from ..manage_assistants import Assistant, llama_index_chat_prompt_template_from_assistant
 from ..manage_indices import _load_index_from_storage, load_indices_from_storage
 from ..model_selection.main import (
     LLM_MODEL_COLLECTIONS,
@@ -156,7 +156,7 @@ def run_ask(
     assistant: Assistant,
     spaces: list[SpaceKey] | None = None,
 ) -> RESPONSE_TYPE | AGENT_CHAT_RESPONSE_TYPE:
-    return run_ask2(input_, history, model_settings_collection, persona, spaces)
+    return run_ask2(input_, history, model_settings_collection, assistant, spaces)
 
 
 @tracer.start_as_current_span(name="run_ask")
@@ -164,7 +164,7 @@ def run_ask1(
     input_: str,
     history: List[ChatMessage],
     model_settings_collection: LlmUsageSettingsCollection,
-    persona: Assistant,
+    assistant: Assistant,
     spaces: Optional[list[SpaceKey]] = None,
 ) -> RESPONSE_TYPE | AGENT_CHAT_RESPONSE_TYPE:
     """Ask questions against existing index(es) with history."""
@@ -252,7 +252,7 @@ def run_ask2(
         indices = []
         if spaces is not None and len(spaces) > 0:
             indices = load_indices_from_storage(spaces, model_settings_collection)
-        text_qa_template = llama_index_chat_prompt_template_from_persona(assistant, history)
+        # text_qa_template = llama_index_chat_prompt_template_from_assistant(assistant, history)
         span.add_event(name="prompt_created")
         similarity_top_k = 6
         vector_retriever = indices[0].as_retriever(similarity_top_k=similarity_top_k)
