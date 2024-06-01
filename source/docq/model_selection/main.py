@@ -267,7 +267,7 @@ LLM_MODEL_COLLECTIONS = {
             ModelCapability.CHAT: LlmUsageSettings(
                 model_capability=ModelCapability.CHAT,
                 temperature=0.7,
-                service_instance_config=LLM_SERVICE_INSTANCES["azure-openai-gpt35turbo"],
+                service_instance_config=LLM_SERVICE_INSTANCES["azure-openai-gpt4o-2024-05-13"],
             ),
             ModelCapability.EMBEDDING: LlmUsageSettings(
                 model_capability=ModelCapability.EMBEDDING,
