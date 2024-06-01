@@ -82,8 +82,8 @@ def test_reindex_vector_index() -> None:
     """Test reindex."""
     from docq.manage_spaces import reindex
 
-    with patch("docq.manage_spaces._persist_index") as mock_persist_index, patch(
-        "docq.manage_spaces._create_vector_index"
+    with patch("docq.manage_indices._persist_index") as mock_persist_index, patch(
+        "docq.manage_indices._create_vector_index"
     ) as mock_create_vector_index, patch(
         "docq.manage_spaces.get_space_data_source"
     ) as mock_get_space_data_source, patch(
@@ -112,10 +112,10 @@ def test_reindex_vector_index() -> None:
         mock_persist_index.assert_called_once_with(mock_vector_index, arg_space_key)
 
 
-@patch("docq.manage_spaces.get_index_dir")
+@patch("docq.manage_indices.get_index_dir")
 def test_persist_index(get_index_dir: MagicMock) -> None:
     """Test persist index."""
-    from docq.manage_spaces import _persist_index
+    from docq.manage_indices import _persist_index
 
     def _persist (persist_dir: str) -> None:
         with open(persist_dir, "w") as f:

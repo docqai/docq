@@ -6,13 +6,19 @@ from typing import List, Optional
 from uu import Error
 
 import docq
-from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.base.response.schema import RESPONSE_TYPE, Response
 from llama_index.core.chat_engine import SimpleChatEngine
 from llama_index.core.chat_engine.types import AGENT_CHAT_RESPONSE_TYPE, AgentChatResponse
 from llama_index.core.indices.base import BaseIndex
 from llama_index.core.llms import ChatMessage
+from llama_index.core.prompts import PromptTemplate, PromptType
 from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.core.query_pipeline import (
+    InputComponent,
+    QueryPipeline,
+)
+from llama_index.core.query_pipeline.components import FnComponent
+from llama_index.core.query_pipeline.components.argpacks import KwargPackComponent
 from llama_index.core.retrievers import BaseRetriever, QueryFusionRetriever
 from llama_index.core.retrievers.fusion_retriever import FUSION_MODES
 
@@ -33,9 +39,8 @@ from ..model_selection.main import (
     _get_service_context,
 )
 from .ansi_colours import AnsiColours
-
-# from .metadata_extractors import DocqEntityExtractor, DocqMetadataExtractor
-# from .node_parsers import AsyncSimpleNodeParser
+from .llama_index.node_post_processors import reciprocal_rank_fusion
+from .llama_index.query_pipeline_components import HyDEQueryTransform, ResponseWithChatHistory
 from .store import get_models_dir
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
@@ -237,7 +242,7 @@ def run_ask2(
     input_: str,
     history: List[ChatMessage],
     model_settings_collection: LlmUsageSettingsCollection,
-    persona: Assistant,
+    assistant: Assistant,
     spaces: Optional[list[SpaceKey]] = None,
 ) -> RESPONSE_TYPE | AGENT_CHAT_RESPONSE_TYPE:
     """Implements logic of run_ask() using LlamaIndex query pipelines."""
@@ -247,11 +252,15 @@ def run_ask2(
         indices = []
         if spaces is not None and len(spaces) > 0:
             indices = load_indices_from_storage(spaces, model_settings_collection)
-        text_qa_template = llama_index_chat_prompt_template_from_persona(persona, history)
+        text_qa_template = llama_index_chat_prompt_template_from_persona(assistant, history)
         span.add_event(name="prompt_created")
-        retriever = indices[0].as_retriever(similarity_top_k=6)
+        similarity_top_k = 6
+        vector_retriever = indices[0].as_retriever(similarity_top_k=similarity_top_k)
         # retriever = get_hybrid_fusion_retriever_query(indices, model_settings_collection)
-        span.add_event(name="retriever_object_created", attributes={"retriever": retriever.__class__.__name__})
+
+        bm25_retriever = BM25Retriever.from_defaults(docstore=indices[0].docstore, similarity_top_k=similarity_top_k)
+
+        span.add_event(name="retriever_object_created", attributes={"retriever": vector_retriever.__class__.__name__})
 
         # query_engine = RetrieverQueryEngine.from_args(
         #     retriever=retriever,
@@ -267,95 +276,85 @@ def run_ask2(
         span.record_exception(e)
         raise Error(f"Error: {e}") from e
 
-    from llama_index.core.prompts import PromptTemplate
-    from llama_index.core.query_pipeline import (
-        InputComponent,
-        QueryPipeline,
-    )
-    from llama_index.core.query_pipeline.components.argpacks import KwargPackComponent
+
+
+    service_context = _get_service_context(model_settings_collection)
+    llm = service_context.llm
 
     # First, we create an input component to capture the user query
     input_component = InputComponent()
 
     # Next, we use the LLM to rewrite a user query
-    rewrite = (
-        "Please write a query to a semantic search engine using the current conversation.\n"
+    HYDE_TMPL = (
+        "Please write a passage to answer the <question>\n"
+        "Use the current conversation available in <chat_history>\n"
+        "Try to include as many key details as possible.\n"
+        "\n"
+        "<chat_history_str>\n"
+        "{chat_history_str}\n"
+        "</chat_history_str>\n"
+        "<question>\n"
+        "{query_str}\n"
+        "</question>\n"
         "\n"
         "\n"
-        "{chat_history_str}"
-        "\n"
-        "\n"
-        "Latest message: {query_str}\n"
-        'Query:"""\n'
+        'Passage:"""\n'
     )
-    rewrite_template = PromptTemplate(rewrite)
-    service_context = _get_service_context(model_settings_collection)
-    llm = service_context.llm
+    history_str = "\n".join([str(x) for x in history])
+    hyde_template = PromptTemplate(template=HYDE_TMPL, prompt_type=PromptType.SUMMARY)
+    hyde_query_transform_component = HyDEQueryTransform(
+        llm=llm, hyde_prompt=hyde_template, prompt_args={"chat_history_str": history_str}
+    ).as_query_component()
 
     # we will retrieve two times, so we need to pack the retrieved nodes into a single list
     # argpack_component = ArgPackComponent()
     kwargpack_component = KwargPackComponent()
 
-    # using that, we will retrieve...
-    # retriever = index.as_retriever(similarity_top_k=6)
-
-    # then postprocess/rerank with Colbert
-    # reranker = ColbertRerank(top_n=3)
-
-    from llama_index.core.query_pipeline.components import FnComponent
-
-    from .llama_index.node_post_processors import reciprocal_rank_fusion
-    from .llama_index.query_pipeline_components import ResponseWithChatHistory
-
     rerank_component = FnComponent(fn=reciprocal_rank_fusion)
 
     response_component = ResponseWithChatHistory(
         llm=llm,
-        system_prompt=persona.system_prompt_content,
-        # system_prompt=(
-        #     "You are a Q&A system. You will be provided with the previous chat history, "
-        #     "as well as possibly relevant context, to assist in answering a user message."
-        # ),
+        system_prompt=assistant.system_prompt_content,
     )
 
     # define query pipeline
     pipeline = QueryPipeline(
         modules={
             "input": input_component,
-            "rewrite_template": rewrite_template,
-            "llm": llm,
-            "rewrite_retriever": retriever,
-            "query_retriever": retriever,
+            "hyde_query_transform": hyde_query_transform_component,
+            "v_rewrite_retriever": vector_retriever,
+            "v_query_retriever": vector_retriever,
+            # "bm25_rewrite_retriever": bm25_retriever,
+            "bm25_query_retriever": bm25_retriever,
             "join": kwargpack_component,
-            "reranker": rerank_component,
+            "RRF_reranker": rerank_component,
             "response_component": response_component,
         },
         verbose=False,
     )
 
-    # run both retrievers -- once with the hallucinated query, once with the real query
-    pipeline.add_link("input", "rewrite_template", src_key="query_str", dest_key="query_str")
+    # transform the user query using the HyDE technique
+    pipeline.add_link("input", "hyde_query_transform", src_key="query_str", dest_key="query_str")
+
+    # run multiple retrievals (note we don't do BM25 with the hallucinated query. in a new thread it doesn't make sense)
     pipeline.add_link(
-        "input",
-        "rewrite_template",
-        src_key="chat_history_str",
-        dest_key="chat_history_str",
-    )
-    pipeline.add_link("rewrite_template", "llm")
-    pipeline.add_link("llm", "rewrite_retriever")
-    pipeline.add_link("input", "query_retriever", src_key="query_str")
+        "hyde_query_transform", "v_rewrite_retriever"
+    )  # vector search with the *hallucinated* query (HyDE)
+    pipeline.add_link("input", "v_query_retriever", src_key="query_str")  # vector search with the *original* query
+    pipeline.add_link("input", "bm25_query_retriever", src_key="query_str")  # BM25 search with the *original* query
 
-    # each input to the argpack component needs a dest key -- it can be anything
-    # then, the argpack component will pack all the inputs into a single list
-    pipeline.add_link("rewrite_retriever", "join", dest_key="rewrite_nodes")
-    pipeline.add_link("query_retriever", "join", dest_key="query_nodes")
+    # each input to the Kwargpack component needs a dest key -- it's the key on the dict so can be anything.
+    # then, the kwargpack component will pack all the inputs into a dict of lists of nodes called 'join'. It's intentionally this for RRF rerank algo to work.
+    pipeline.add_link("v_rewrite_retriever", "join", dest_key="v_rewrite_nodes")
+    pipeline.add_link("v_query_retriever", "join", dest_key="v_query_nodes")
+    pipeline.add_link("bm25_query_retriever", "join", dest_key="bm25_query_nodes")
 
-    # reranker needs the packed nodes and the query string
-    pipeline.add_link("join", "reranker", dest_key="results")
-    # pipeline.add_link("input", "reranker", src_key="query_str", dest_key="query_str")
+    # RRF reranker needs the packed dict of node list from each retrieval
+    # TODO: add top k
+    pipeline.add_link("join", "RRF_reranker", dest_key="results")
 
-    # synthesizer needs the reranked nodes and query str
-    pipeline.add_link("reranker", "response_component", dest_key="nodes")
+    # synthesizer needs the reranked nodes,  query str, and chat history
+    pipeline.add_link("RRF_reranker", "response_component", dest_key="nodes")
     pipeline.add_link("input", "response_component", src_key="query_str", dest_key="query_str")
     pipeline.add_link(
         "input",
@@ -364,29 +363,30 @@ def run_ask2(
         dest_key="chat_history",
     )
 
+    # from pyvis.network import Network # -- poetry add pyvis
+
+    # net = Network(notebook=True, cdn_resources="in_line", directed=True)
+    # net.from_nx(pipeline.dag)
+    # net.show("web/rag_dag.html")
+
     # output, intermediates = pipeline.run_with_intermediates(input_)
-    history_str = "\n".join([str(x) for x in history])
+
     output, intermediates = pipeline.run_with_intermediates(
         query_str=input_,
         chat_history=history,
         chat_history_str=history_str,
         callback_manager=service_context.callback_manager,
     )
-    # print("intermediates: ", json.dumps(intermediates))
-    for k, v in intermediates.items():
-        print(f"{AnsiColours.BLUE.value}>>{k}{AnsiColours.RESET.value}:")
-        for ki, vi in v.inputs.items():
-            print(f"{AnsiColours.GREEN.value}>>>>in: {ki} ({type(vi).__name__}) {AnsiColours.RESET.value}")
-        for ko, vo in v.outputs.items():
-            print(f"{AnsiColours.GREEN.value}>>>>out: {ko} ({type(vo).__name__}) {AnsiColours.RESET.value}")
 
-    from pyvis.network import Network
+    # # debug code
+    # for k, v in intermediates.items():
+    #     print(f"{AnsiColours.BLUE.value}>>{k}{AnsiColours.RESET.value}:")
+    #     for ki, vi in v.inputs.items():
+    #         print(f"{AnsiColours.GREEN.value}>>>>in: {ki} ({type(vi).__name__}) {AnsiColours.RESET.value}")
+    #     for ko, vo in v.outputs.items():
+    #         print(f"{AnsiColours.GREEN.value}>>>>out: {ko} ({type(vo).__name__}) {AnsiColours.RESET.value}")
 
-    net = Network(notebook=True, cdn_resources="in_line", directed=True)
-    net.from_nx(pipeline.dag)
-    net.show("web/rag_dag.html")
-
-    print("ANSWER:", output.get("response", "blah!").message)
+    # print("ANSWER:", output.get("response", "blah!").message)
 
     return Response(
         response=output.get("response", "blah!").message.content, source_nodes=output.get("source_nodes", [])

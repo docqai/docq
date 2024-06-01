@@ -1,11 +1,30 @@
 """Custom Llama Index query pipeline components."""
 
+from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Self
 
+from llama_index.core.base.query_pipeline.query import (
+    ChainableMixin,
+    InputKeys,
+    OutputKeys,
+    QueryComponent,
+    validate_and_convert_stringable,
+)
 from llama_index.core.bridge.pydantic import Field
 from llama_index.core.llms import LLM, ChatMessage, MessageRole
+from llama_index.core.prompts import BasePromptTemplate
+from llama_index.core.prompts.default_prompts import DEFAULT_HYDE_PROMPT
+from llama_index.core.prompts.mixin import (
+    PromptDictType,
+    PromptMixin,
+    PromptMixinType,
+)
 from llama_index.core.query_pipeline import CustomQueryComponent
-from llama_index.core.schema import MetadataMode, NodeWithScore
+from llama_index.core.schema import MetadataMode, NodeWithScore, QueryBundle, QueryType
+from llama_index.core.service_context_elements.llm_predictor import (
+    LLMPredictorType,
+)
+from llama_index.core.settings import Settings
 
 DEFAULT_CONTEXT_PROMPT = (
     "Here is some context that may be relevant:\n"
@@ -106,3 +125,161 @@ class ResponseWithChatHistory(CustomQueryComponent):
         response = await self.llm.achat(prepared_context)
 
         return {"response": response, "source_nodes": nodes}
+
+class BaseQueryTransform(ChainableMixin, PromptMixin):
+    """Base class for query transform.
+
+    A query transform augments a raw query string with associated transformations
+    to improve index querying.
+
+    The query transformation is performed before the query is sent to the index.
+    FIXME: see note in QueryTransformComponent below
+    """
+
+    def _get_prompt_modules(self: Self) -> PromptMixinType:
+        """Get prompt modules."""
+        # TODO: keep this for now since response synthesizers don't generally have sub-modules
+        return {}
+
+    @abstractmethod
+    def _run(self: Self, query_bundle: QueryBundle, metadata: Dict) -> QueryBundle:
+        """Run query transform."""
+
+    def run(
+        self: Self,
+        query_bundle_or_str: QueryType,
+        metadata: Optional[Dict] = None,
+    ) -> QueryBundle:
+        """Run query transform."""
+        metadata = metadata or {}
+        if isinstance(query_bundle_or_str, str):
+            query_bundle = QueryBundle(
+                query_str=query_bundle_or_str,
+                custom_embedding_strs=[query_bundle_or_str],
+            )
+        else:
+            query_bundle = query_bundle_or_str
+
+        return self._run(query_bundle, metadata=metadata)
+
+    def __call__(
+        self: Self,
+        query_bundle_or_str: QueryType,
+        metadata: Optional[Dict] = None,
+    ) -> QueryBundle:
+        """Run query processor."""
+        return self.run(query_bundle_or_str, metadata=metadata)
+
+    def _as_query_component(self: Self, **kwargs: Any) -> QueryComponent:
+        """As query component."""
+        return QueryTransformComponent(query_transform=self)
+
+
+
+class QueryTransformComponent(QueryComponent):
+    """Query transform component.
+
+    FIXME: temp to fix a bug in _run_component. Remove once fix is merged upstream.
+    """
+
+    query_transform: BaseQueryTransform = Field(..., description="Query transform.")
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def set_callback_manager(self: Self, callback_manager: Any) -> None:
+        """Set callback manager."""
+        # TODO: not implemented yet
+
+    def _validate_component_inputs(self: Self, input: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate component inputs during run_component."""
+        if "query_str" not in input:
+            raise ValueError("Input must have key 'query_str'")
+        input["query_str"] = validate_and_convert_stringable(input["query_str"])
+
+        input["metadata"] = input.get("metadata", {})
+
+        return input
+
+    def _run_component(self: Self, **kwargs: Any) -> Any:
+        """Run component."""
+        output = self.query_transform.run(
+            kwargs["query_str"],
+            metadata=kwargs["metadata"],
+        )
+        return {"query_str": output.query_str}
+
+    async def _arun_component(self: Self, **kwargs: Any) -> Any:
+        """Run component."""
+        # TODO: true async not implemented yet
+        return self._run_component(**kwargs)
+
+    @property
+    def input_keys(self: Self) -> InputKeys:
+        """Input keys."""
+        return InputKeys.from_keys({"query_str"}, optional_keys={"metadata"})
+
+    @property
+    def output_keys(self: Self) -> OutputKeys:
+        """Output keys."""
+        return OutputKeys.from_keys({"query_str"})
+
+
+class HyDEQueryTransform(BaseQueryTransform):
+    """Hypothetical Document Embeddings (HyDE) query transform.
+
+    It uses an LLM to generate hypothetical answer(s) to a given query,
+    and use the resulting documents as embedding strings.
+
+    As described in `[Precise Zero-Shot Dense Retrieval without Relevance Labels]
+    (https://arxiv.org/abs/2212.10496)`
+
+    Note: this has been customised from the original implementation in Llama Index
+    """
+
+    def __init__(
+        self,
+        llm: Optional[LLMPredictorType] = None,
+        hyde_prompt: Optional[BasePromptTemplate] = None,
+        include_original: bool = True,
+        prompt_args: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Initialize HyDEQueryTransform.
+
+        Args:
+            llm_predictor (Optional[LLM]): LLM for generating
+                hypothetical documents
+            hyde_prompt (Optional[BasePromptTemplate]): Custom prompt for HyDE. query_str in passed into the prompt for replacement by default. Use `{query_str}`.
+            include_original (bool): Whether to include original query
+                string as one of the embedding strings
+            prompt_args (Optional[Dict[str, Any]]): Additional arguments to be replaced in the prompt. key should be the variable in the template.
+        """
+        super().__init__()
+
+        self._llm = llm or Settings.llm
+        self._hyde_prompt = hyde_prompt or DEFAULT_HYDE_PROMPT
+        self._include_original = include_original
+        self._promp_args = prompt_args or {}
+
+    def _get_prompts(self: Self) -> PromptDictType:
+        """Get prompts."""
+        return {"hyde_prompt": self._hyde_prompt}
+
+    def _update_prompts(self: Self, prompts: PromptDictType) -> None:
+        """Update prompts."""
+        if "hyde_prompt" in prompts:
+            self._hyde_prompt = prompts["hyde_prompt"]
+
+    def _run(self: Self, query_bundle: QueryBundle, metadata: Dict) -> QueryBundle:
+        """Run query transform."""
+        # TODO: support generating multiple hypothetical docs
+        query_str = query_bundle.query_str
+        hypothetical_doc = self._llm.predict(self._hyde_prompt, query_str=query_str, **self._promp_args)
+        print("hypothetical_doc: ", hypothetical_doc)
+        embedding_strs = [hypothetical_doc]
+        if self._include_original:
+            embedding_strs.extend(query_bundle.embedding_strs)
+        return QueryBundle(
+            query_str=query_str,
+            custom_embedding_strs=embedding_strs,
+        )
