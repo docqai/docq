@@ -3,6 +3,7 @@
 from typing import Literal, Optional, Self
 
 import docq.manage_users as m_users
+from opentelemetry import trace
 from pydantic import BaseModel, ValidationError
 from tornado.web import HTTPError
 
@@ -10,6 +11,8 @@ from web.api.base_handlers import BaseRequestHandler
 from web.api.models import UserModel
 from web.api.utils.auth_utils import decode_jwt, encode_jwt
 from web.utils.streamlit_application import st_app
+
+tracer = trace.get_tracer(__name__)
 
 
 def _get_user_dict(result: tuple) -> dict:
@@ -44,6 +47,7 @@ class TokenResponseModel(BaseModel):
     refresh_token: Optional[str] = None
 
 
+@tracer.start_as_current_span(name="TokenHandler")
 @st_app.api_route("/api/v1/token")
 class TokenHandler(BaseRequestHandler):
     """Token handler endpoint for the API. /api/token handler."""
@@ -91,7 +95,7 @@ class TokenHandler(BaseRequestHandler):
         else:
             raise HTTPError(400, reason="Bad request", log_message="Invalid grant type")
 
-
+@tracer.start_as_current_span(name="TokenValidationHandler")
 @st_app.api_route("/api/v1/token/validate")
 class TokenValidationHandler(BaseRequestHandler):
     """Token validation handler endpoint for the API. /api/token/validate handler."""
@@ -108,7 +112,7 @@ class TokenValidationHandler(BaseRequestHandler):
         except ValidationError as e:
             raise HTTPError(400, reason="Bad request") from e
 
-
+@tracer.start_as_current_span(name="TokenRefreshHandler")
 @st_app.api_route("/api/v1/token/refresh")
 class TokenRefreshHandler(BaseRequestHandler):
     """Token refresh handler endpoint for the API. /api/token/refresh handler."""

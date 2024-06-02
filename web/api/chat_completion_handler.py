@@ -4,6 +4,7 @@ from typing import Optional, Self
 import docq.run_queries as rq
 from docq.manage_assistants import get_personas_fixed
 from docq.model_selection.main import get_model_settings_collection
+from opentelemetry import trace
 from pydantic import Field, ValidationError
 from tornado.web import HTTPError
 
@@ -13,6 +14,8 @@ from web.api.utils.auth_utils import authenticated
 from web.api.utils.docq_utils import get_feature_key, get_message_object
 from web.api.utils.pydantic_utils import CamelModel
 from web.utils.streamlit_application import st_app
+
+tracer = trace.get_tracer(__name__)
 
 
 class PostRequestModel(CamelModel):
@@ -24,7 +27,7 @@ class PostRequestModel(CamelModel):
     llm_settings_collection_name: Optional[str] = Field(None)
     assistant_key: Optional[str] = Field(None)
 
-
+@tracer.start_as_current_span(name="ChatCompletionHandler")
 @st_app.api_route("/api/v1/chat/completion")
 class ChatCompletionHandler(BaseRequestHandler):
     """Handle /api/chat/completion requests."""
