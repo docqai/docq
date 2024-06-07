@@ -383,7 +383,8 @@ def __create_default_assistants_if_needed() -> None:
         rows.reverse()
 
     names = [row[1] for row in rows]
-    log.info("Available assistant names: ", names)
+
+    log.info("Available assistant names: %s", names)
 
     if "General Q&A" not in names:
         chat_default = SIMPLE_CHAT_PERSONAS["default"]
