@@ -2,7 +2,7 @@
 from typing import Optional, Self
 
 import docq.run_queries as rq
-from docq.manage_assistants import get_personas_fixed
+from docq.manage_assistants import get_assistant_fixed
 from docq.manage_spaces import get_thread_space
 from docq.model_selection.main import get_model_settings_collection, get_saved_model_settings_collection
 from opentelemetry import trace
@@ -42,7 +42,7 @@ class RagCompletionHandler(BaseRequestHandler):
             collection_key = request_model.llm_settings_collection_name
             model_settings_collection = get_model_settings_collection(collection_key) if collection_key else get_saved_model_settings_collection(self.selected_org_id)
             assistant_key = request_model.assistant_key if request_model.assistant_key else "default"
-            assistant = get_personas_fixed(model_settings_collection.key)[assistant_key]
+            assistant = get_assistant_fixed(model_settings_collection.key)[assistant_key]
             if not assistant:
                 raise HTTPError(400, "Invalid assistant key")
             space = get_thread_space(self.selected_org_id, request_model.thread_id)
