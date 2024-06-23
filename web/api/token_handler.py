@@ -50,7 +50,7 @@ class TokenResponseModel(BaseModel):
 @tracer.start_as_current_span(name="TokenHandler")
 @st_app.api_route("/api/v1/token")
 class TokenHandler(BaseRequestHandler):
-    """Token handler endpoint for the API. /api/token handler."""
+    """Token handler endpoint for the API. /api/token handler. verify the username and password then return a token."""
 
     def post(self: Self) -> None:
         """Handle POST requests."""
@@ -73,7 +73,7 @@ class TokenHandler(BaseRequestHandler):
             if not token:
                 raise HTTPError(500, reason="Internal server error", log_message="Failed to generate token")
 
-            # TODO: Setup refresh token
+            # FIXME: refresh token should be a separate token with a longer expiration.
             response = TokenResponseModel(access_token=token, expires_in=3600, refresh_token=token).model_dump_json()
             self.write(response)
 
@@ -81,7 +81,7 @@ class TokenHandler(BaseRequestHandler):
             if not request.refresh_token:
                 raise HTTPError(400, reason="Bad request", log_message="Refresh token is required")
 
-            user = decode_jwt(request.refresh_token, check_expired=False)
+            user = decode_jwt(request.refresh_token, check_expired=False) //FIXME: this refresh token should also have a expiration
             if not user:
                 raise HTTPError(401, reason="Unauthorized", log_message="Invalid refresh token")
 
@@ -98,13 +98,13 @@ class TokenHandler(BaseRequestHandler):
 @tracer.start_as_current_span(name="TokenValidationHandler")
 @st_app.api_route("/api/v1/token/validate")
 class TokenValidationHandler(BaseRequestHandler):
-    """Token validation handler endpoint for the API. /api/token/validate handler."""
+    """Token validation handler endpoint for the API. /api/token/validate handler. Check if the token sent is valid + unexpired."""
 
     def get(self: Self) -> None:
         """Handle GET requests."""
         try:
             request = TokenValidationRequestModel.model_validate_json(self.request.body)
-            user = decode_jwt(request.token, check_expired=False)
+            user = decode_jwt(request.token, check_expired=True)
             if not user:
                 raise HTTPError(401, reason="Unauthorized", log_message="Invalid token")
 
@@ -115,13 +115,16 @@ class TokenValidationHandler(BaseRequestHandler):
 @tracer.start_as_current_span(name="TokenRefreshHandler")
 @st_app.api_route("/api/v1/token/refresh")
 class TokenRefreshHandler(BaseRequestHandler):
-    """Token refresh handler endpoint for the API. /api/token/refresh handler."""
+    """Token refresh handler endpoint for the API. /api/token/refresh handler. Given a valid unexpired token, return a new token.
+
+    TODO: implement separate refresh token functionality. check the token was originally issued to the same user requesting the refresh.
+    """
 
     def post(self: Self) -> None:
         """Handle POST requests."""
         try:
             request = TokenValidationRequestModel.model_validate_json(self.request.body)
-            user = decode_jwt(request.token, check_expired=False)
+            user = decode_jwt(request.token, check_expired=True)
             if not user:
                 raise HTTPError(401, reason="Unauthorized", log_message="Invalid token")
 
