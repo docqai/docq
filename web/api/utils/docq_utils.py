@@ -40,7 +40,7 @@ def get_message_object(message: tuple[int, str, bool, datetime, int]) -> Message
     return MessageModel(
         **{
             "id": message[0],
-            "message": message[1],
+            "content": message[1],
             "human": message[2],
             "timestamp": str(message[3]),
             "thread_id": message[4],
