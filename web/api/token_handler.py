@@ -81,7 +81,7 @@ class TokenHandler(BaseRequestHandler):
             if not request.refresh_token:
                 raise HTTPError(400, reason="Bad request", log_message="Refresh token is required")
 
-            user = decode_jwt(request.refresh_token, check_expired=False) //FIXME: this refresh token should also have a expiration
+            user = decode_jwt(request.refresh_token, check_expired=False) # FIXME: this refresh token should also have a expiration
             if not user:
                 raise HTTPError(401, reason="Unauthorized", log_message="Invalid refresh token")
 
