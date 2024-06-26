@@ -1,9 +1,10 @@
 """Base request handlers."""
+import json
 from typing import Any, Optional, Self
 
 import docq.manage_organisations as m_orgs
 from opentelemetry import trace
-from tornado.web import RequestHandler
+from tornado.web import HTTPError, RequestHandler
 
 from web.api.models import UserModel
 from web.utils.handlers import _default_org_id as get_default_org_id
@@ -41,6 +42,21 @@ class BaseRequestHandler(RequestHandler):
         """(Override) Validate Retrieve and return user data from token."""
         print("get_current_user() called")
         return self._current_user
+
+    def write_error(self: Self, status_code: int, **kwargs: Any) -> None:
+        self.set_header("Content-Type", "application/json")
+        error_response = {
+            "reason": "An unexpected error occurred.",
+            "statusCode": 500,
+        }
+        if "exc_info" in kwargs:
+            exc_type, exc_value, _ = kwargs["exc_info"]
+            # Customize the response based on exception type
+            if isinstance(exc_value, HTTPError):
+                error_response["reason"] = exc_value.reason
+                error_response["statusCode"] = status_code
+
+        self.finish(json.dumps(error_response))
 
         # auth_header = self.request.headers.get("Authorization")
         # if not auth_header:
