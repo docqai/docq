@@ -100,7 +100,7 @@ class TokenHandler(BaseRequestHandler):
 class TokenValidationHandler(BaseRequestHandler):
     """Token validation handler endpoint for the API. /api/token/validate handler. Check if the token sent is valid + unexpired."""
 
-    def get(self: Self) -> None:
+    def post(self: Self) -> None:
         """Handle GET requests."""
         try:
             request = TokenValidationRequestModel.model_validate_json(self.request.body)
