@@ -23,29 +23,72 @@ KEY_ERROR = (jwt_exceptions.UnsupportedKeyTypeError, jwt_exceptions.InvalidKeyTy
 
 tracer = trace.get_tracer(__name__)
 
-
-@tracer.start_as_current_span("authenticated")
 def authenticated(method: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorate RequestHandler methods with this to require a valid token."""
+    """Decorate RequestHandler methods with this to require authentication."""
 
     @functools.wraps(method)
     def wrapper(self: BaseRequestHandler, *args: Any, **kwargs: Any) -> Any:
-        span = trace.get_current_span()
-        try:
-            api_key = self.request.headers.get("x-api-key", "")
+        with tracer.start_as_current_span("authenticated") as span:
+            span = trace.get_current_span()
+            print("authenticated() called")
 
-            if not validate_api_key(api_key):
+            api_key = self.request.headers.get("x-api-key", None)
+            auth_header = self.request.headers.get("Authorization", None)
+            authentication_successful = False
+
+            if api_key:
+                # try authN with an api key is present. JWT token is ignored even it present.
+                if validate_api_key(api_key):
+
+                    authentication_successful = True
+                    # return method(self, *args, **kwargs)
+                else:
+                    span.set_status(trace.Status(trace.StatusCode.ERROR))
+                    span.record_exception(ValueError("x-api-key header present but token was invalid."))
+                    raise HTTPError(
+                        401, log_message="Authentication failed (1). x-api-key header present but token was invalid."
+                    )
+            elif auth_header:
+                scheme, token = auth_header.split(" ")
+                if scheme.lower() == "bearer":
+                    try:
+                        from web.api.utils.auth_utils import decode_jwt
+
+                        payload = decode_jwt(token)  # validate JWT token or blow up
+                        self.current_user = UserModel.model_validate(
+                            payload.get("data")
+                        )  # validate and set the Tornado RequestHandler default property
+
+                        # made it here, authenticated - JWT decode was successful. And payload json is a valid UserModel.
+                        # set the authentication method used to JWT
+                        authentication_successful = True
+                        # return method(self, *args, **kwargs)
+                    except Exception as e:
+                        span.set_status(trace.StatusCode.ERROR, "JWT validation error.")
+                        span.record_exception(e)
+                        raise HTTPError(401, log_message="Authentication failed (2). JWT validation failed.") from e
+                else:
+                    span.set_status(trace.Status(trace.StatusCode.ERROR))
+                    span.record_exception(
+                        ValueError("'Authorization' found but scheme in 'Authorization' header wasn't 'Bearer'.")
+                    )
+                    raise HTTPError(401, log_message="Authentication failed (3). Only scheme 'Bearer' supported.")
+            else:
                 span.set_status(trace.Status(trace.StatusCode.ERROR))
-                span.record_exception(ValueError("Invalid token"))
-                raise HTTPError(401, reason="API key missing")
+                span.record_exception(
+                    ValueError(
+                        "Authentication required but 'x-api-key' or 'Authorization' header not founder in the request."
+                    )
+                )
+                raise HTTPError(
+                    401,
+                    log_message="Authentication failed (4). Authentication required but no valid authentication method found.",
+                )
 
-            if self.current_user is not None:
+            if authentication_successful:
+                print(f"authenticated() successful {authentication_successful}")
+                # carry on and call the actual request handler method that was decorated with @authenticated
                 return method(self, *args, **kwargs)
-
-        except ValueError as e:
-            span.set_status(trace.Status(trace.StatusCode.ERROR))
-            span.record_exception(e)
-            raise HTTPError(401, reason="Invalid Authorization header") from e
 
     return wrapper
 
@@ -89,9 +132,10 @@ def validate_api_key(key: str) -> bool:
     """Validate the token. This is just a placeholder, replace with your own validation logic."""
     is_valid = False
     secret = os.environ.get(ENV_VAR_DOCQ_API_SECRET, None)
-    if secret is not None or secret != "":
-        is_valid = key == secret
 
+    if secret is not None or secret != "":
+        is_valid = key.strip() == str(secret).strip()
+    print("is_valid: ", is_valid)
     return is_valid
 
 

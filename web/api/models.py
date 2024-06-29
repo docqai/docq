@@ -18,7 +18,7 @@ class UserModel(BaseModel):
 class MessageModel(BaseModel):
     """Pydantic model for message data."""
     id_: int = Field(..., alias="id")
-    message: str
+    content: str
     human: bool
     timestamp: str
     thread_id: int

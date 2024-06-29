@@ -2,9 +2,10 @@
 from typing import Optional, Self
 
 import docq.run_queries as rq
-from docq.manage_assistants import get_personas_fixed
+from docq.manage_assistants import get_assistant_fixed
 from docq.manage_spaces import get_thread_space
 from docq.model_selection.main import get_model_settings_collection, get_saved_model_settings_collection
+from opentelemetry import trace
 from pydantic import Field, ValidationError
 from tornado.web import HTTPError
 
@@ -16,6 +17,8 @@ from web.utils.streamlit_application import st_app
 from .utils.auth_utils import authenticated
 from .utils.pydantic_utils import CamelModel
 
+tracer = trace.get_tracer(__name__)
+
 
 class PostRequestModel(CamelModel):
     """Pydantic model for the request body."""
@@ -24,7 +27,7 @@ class PostRequestModel(CamelModel):
     llm_settings_collection_name: Optional[str] = Field(None)
     assistant_key: Optional[str] = Field(None)
 
-
+@tracer.start_as_current_span(name="RagCompletionHandler")
 @st_app.api_route("/api/v1/rag/completion")
 class RagCompletionHandler(BaseRequestHandler):
     """Handle /api/v1/rag/completion requests."""
@@ -39,7 +42,7 @@ class RagCompletionHandler(BaseRequestHandler):
             collection_key = request_model.llm_settings_collection_name
             model_settings_collection = get_model_settings_collection(collection_key) if collection_key else get_saved_model_settings_collection(self.selected_org_id)
             assistant_key = request_model.assistant_key if request_model.assistant_key else "default"
-            assistant = get_personas_fixed(model_settings_collection.key)[assistant_key]
+            assistant = get_assistant_fixed(model_settings_collection.key)[assistant_key]
             if not assistant:
                 raise HTTPError(400, "Invalid assistant key")
             space = get_thread_space(self.selected_org_id, request_model.thread_id)

@@ -14,10 +14,6 @@ from .support.store import (
     get_sqlite_org_system_file,
 )
 
-DEFAULT_QA_SYSTEM_PROMPT = """You are an expert Q&A system that is trusted around the world. Always answer the query using the provided context information and chat message history, and not prior knowledge. Some rules to follow: 1. Never directly reference the given context in your answer. 2. Avoid statements like 'Based on the context, ...' or 'The context information ...' or '... given context information.' or anything along those lines."""
-
-DEFAULT_QA_SYSTEM_PROMPT = """You are a friendly and helpful assistant."""
-
 DEFAULT_QA_SYSTEM_PROMPT = """
 You are a friendly and helpful expert Q&A assistant that is trusted around the world. We really appreciate your help.
 Some rules to follow:"
@@ -45,12 +41,12 @@ Answer: """
 SIMPLE_CHAT_PERSONAS = {
     "default": {
         "name": "General Q&A Assistant",
-        "system_prompt_content": DEFAULT_QA_SYSTEM_PROMPT,
+        "system_message_content": DEFAULT_QA_SYSTEM_PROMPT,
         "user_prompt_template_content": DEFAULT_QA_USER_PROMPT_TEMPLATE,
     },
     "elon-musk": {
         "name": "Elon Musk",
-        "system_prompt_content": """You are Elon Musk, the CEO of Tesla and SpaceX.\n
+        "system_message_content": """You are Elon Musk, the CEO of Tesla and SpaceX.\n
             You are a billionaire entrepreneur and engineer.\n
             You are a meme lord and have a cult following on Twitter.\n
             You are also a bit of a troll.\n
@@ -74,12 +70,12 @@ AGENT_PERSONAS = {}
 ASK_PERSONAS = {
     "default": {
         "name": "General Q&A Assistant",
-        "system_prompt_content": DEFAULT_QA_SYSTEM_PROMPT,
+        "system_message_content": DEFAULT_QA_SYSTEM_PROMPT,
         "user_prompt_template_content": DEFAULT_QA_USER_PROMPT_TEMPLATE,
     },
     "meeting-assistant": {
         "name": "Meeting Assistant",
-        "system_prompt_content": """You are a extremely helpful meeting assistant.
+        "system_message_content": """You are a extremely helpful meeting assistant.
             You pay attention to all the details in a meeting.
             You are able summarise a meeting.
             You are able to answer questions about a meeting with context.
@@ -96,7 +92,7 @@ ASK_PERSONAS = {
     },
     "elon-musk": {
         "name": "Elon Musk",
-        "system_prompt_content": """You are Elon Musk, the CEO of Tesla and SpaceX.\n
+        "system_message_content": """You are Elon Musk, the CEO of Tesla and SpaceX.\n
             You are a billionaire entrepreneur and engineer.\n
             You are a meme lord and have a cult following on Twitter.\n
             You are also a bit of a troll.\n
@@ -180,7 +176,9 @@ def llama_index_chat_prompt_template_from_assistant(
     return ChatPromptTemplate(message_templates=[_system_prompt_message, *messages, _user_prompt_message])
 
 
-def get_personas_fixed(llm_settings_collection_key: str, assistant_type: Optional[AssistantType] = None) -> dict[str, Assistant]:
+def get_assistant_fixed(
+    llm_settings_collection_key: str, assistant_type: Optional[AssistantType] = None
+) -> dict[str, Assistant]:
     """Get the personas."""
     result = {}
     if assistant_type == AssistantType.SIMPLE_CHAT:
@@ -383,7 +381,8 @@ def __create_default_assistants_if_needed() -> None:
         rows.reverse()
 
     names = [row[1] for row in rows]
-    log.info("Available assistant names: ", names)
+
+    log.info("Available assistant names: %s", names)
 
     if "General Q&A" not in names:
         chat_default = SIMPLE_CHAT_PERSONAS["default"]
@@ -391,7 +390,7 @@ def __create_default_assistants_if_needed() -> None:
             name="General Q&A",
             assistant_type=AssistantType.SIMPLE_CHAT,
             archived=False,
-            system_prompt_template=chat_default["system_prompt_content"],
+            system_prompt_template=chat_default["system_message_content"],
             user_prompt_template=chat_default["user_prompt_template_content"],
             llm_settings_collection_key="azure_openai_with_local_embedding",
         )
@@ -401,7 +400,7 @@ def __create_default_assistants_if_needed() -> None:
             name="General Q&A Assistant",
             assistant_type=AssistantType.ASK,
             archived=False,
-            system_prompt_template=elon["system_prompt_content"],
+            system_prompt_template=elon["system_message_content"],
             user_prompt_template=elon["user_prompt_template_content"],
             llm_settings_collection_key="azure_openai_with_local_embedding",
         )
@@ -412,7 +411,7 @@ def __create_default_assistants_if_needed() -> None:
             name="Elon Musk",
             assistant_type=AssistantType.SIMPLE_CHAT,
             archived=False,
-            system_prompt_template=ask_default["system_prompt_content"],
+            system_prompt_template=ask_default["system_message_content"],
             user_prompt_template=ask_default["user_prompt_template_content"],
             llm_settings_collection_key="azure_openai_with_local_embedding",
         )

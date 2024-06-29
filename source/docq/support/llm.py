@@ -314,7 +314,7 @@ def run_ask2(
 
     response_component = ResponseWithChatHistory(
         llm=llm,
-        system_prompt=assistant.system_prompt_content,
+        system_prompt=assistant.system_message_content,
     )
 
     # define query pipeline

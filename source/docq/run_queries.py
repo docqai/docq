@@ -2,11 +2,13 @@
 
 import logging as log
 import sqlite3
+from concurrent.futures import thread
 from contextlib import closing
 from datetime import datetime
 from typing import Literal, Optional
 
 from llama_index.core.llms import ChatMessage, MessageRole
+from numpy import int32
 
 from docq.model_selection.main import LlmUsageSettingsCollection
 
@@ -173,13 +175,13 @@ def update_thread_topic(topic: str, feature: FeatureKey, thread_id: int) -> None
         connection.commit()
 
 
-def get_chat_summerised_history(feature: FeatureKey, thread_id: int, size: Optional[int] = None) -> list[tuple[int, str, bool]]:
+def get_chat_summerised_history(
+    feature: FeatureKey, thread_id: int, size: Optional[int] = None
+) -> list[tuple[int, str, bool]]:
     """Retrieve the top messages for a chat thread."""
     if size is None:
         size = NUMBER_OF_MESSAGES_IN_HISTORY
-    return [
-        (x[:3]) for x in _retrieve_messages(datetime.now(), size, feature, thread_id, sort_order="ASC")
-    ]
+    return [(x[:3]) for x in _retrieve_messages(datetime.now(), size, feature, thread_id, sort_order="ASC")]
 
 
 def _retrieve_last_n_history(feature: FeatureKey, thread_id: int) -> str:
@@ -216,7 +218,7 @@ def create_history_thread(topic: str, feature: FeatureKey) -> int:
             )
         )
 
-        cursor.execute(f"INSERT INTO {tablename} (topic) VALUES (?)", (topic,)) # noqa: S608
+        cursor.execute(f"INSERT INTO {tablename} (topic) VALUES (?)", (topic,))  # noqa: S608
 
         id_ = cursor.lastrowid
         connection.commit()
@@ -243,11 +245,27 @@ def get_latest_thread(feature: FeatureKey) -> tuple[int, str, int] | None:
             )
         )
         rows = cursor.execute(
-            f"SELECT id, topic, created_at FROM {tablename} ORDER BY created_at DESC LIMIT 1" # noqa: S608
+            f"SELECT id, topic, created_at FROM {tablename} ORDER BY created_at DESC LIMIT 1"  # noqa: S608
         ).fetchall()
         rows.reverse()
 
     return rows[0] if rows else None
+
+
+def thread_exists(thread_id: int, user_id: int, feature_type: OrganisationFeatureType) -> bool:
+    """Check if a thread exists."""
+    thread_exists = False
+    tablename = get_history_thread_table_name(feature_type)
+    try:
+        with closing(
+            sqlite3.connect(get_sqlite_usage_file(user_id), detect_types=sqlite3.PARSE_DECLTYPES)
+        ) as connection, closing(connection.cursor()) as cursor:
+            row = cursor.execute(f"SELECT id FROM {tablename} WHERE id = ?", (thread_id,)).fetchone()  # noqa: S608
+            thread_exists = row is not None
+    except Exception:
+        thread_exists = False
+
+    return thread_exists
 
 
 def query(
@@ -299,6 +317,7 @@ def query(
     )
 
     return _save_messages(data, feature)
+
 
 def history(
     cutoff: datetime, size: int, feature: FeatureKey, thread_id: int
