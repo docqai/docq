@@ -1,4 +1,5 @@
 """Layout components for the web app."""
+
 import base64
 import contextlib
 import json
@@ -44,7 +45,12 @@ from streamlit.errors import StreamlitAPIException
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 from streamlit.source_util import get_pages
 
-from .constants import ALLOWED_DOC_EXTS, SessionKeyNameForAuth, SessionKeyNameForChat
+from .constants import (
+    ALLOWED_DOC_EXTS,
+    ENV_VAR_DOCQ_POSTHOG_PROJECT_API_KEY,
+    SessionKeyNameForAuth,
+    SessionKeyNameForChat,
+)
 from .error_ui import _handle_error_state_ui
 from .formatters import format_archived, format_datetime, format_duration, format_filesize, format_timestamp
 from .handlers import (
@@ -205,6 +211,69 @@ __chat_ui_script = """
 """
 
 
+import streamlit.components.v1 as components
+
+
+def inject_js_above_header_tag(js_code: str) -> None:
+    """Injects a JavaScript script into the main HTML page above the header tag.
+
+    This code loads a js function in an iframe that then insert `js_code` above the header in a <script> tag.
+
+    Args:
+    js_code (str): The just JavaScript code to be injected. Do not include <script> tags.
+    """
+    components.html(
+        f"""
+        <script>
+            (function() {{
+
+                // Function to insert the script
+                function insertScript() {{
+                    var script_id = 'docq-js-inject-posthog';
+
+                    if (!window.parent.document.getElementById(script_id)) {{
+                        console.log('Inserting script');
+                        var scriptEle = window.parent.document.createElement('script');
+                        scriptEle.id = script_id;
+                        scriptEle.type = 'text/javascript';
+                        scriptEle.text = `{js_code}`;
+                        var head = window.parent.document.head || window.parent.document.getElementsByTagName('head')[0];
+                        head.appendChild(scriptEle);
+                    }}
+                }}
+
+                // Check if the main window head is already available
+                if (window.parent.document.head || window.parent.document.getElementsByTagName('head').length > 0) {{
+                    console.log('Head tag is available. Calling insertScript()');
+                    insertScript();
+                }} else {{
+                    // If the head is not yet available, wait for it
+                    window.parent.document.addEventListener('DOMContentLoaded', insertScript);
+                    console.log('Waiting for the head tag to be available');
+                }}
+            }})();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
+def _posthog_tracking_script() -> None:
+    """Posthog tracking script."""
+
+    posthog_api_key = os.environ.get(ENV_VAR_DOCQ_POSTHOG_PROJECT_API_KEY)
+
+    posthog_js = f"""
+    !function(t,e){{var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){{function g(t,e){{var o=e.split('.');2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){{t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}}}(p=t.createElement('script')).type='text/javascript',p.async=!0,p.src=s.api_host.replace('.i.posthog.com','-assets.i.posthog.com')+'/static/array.js',(r=t.getElementsByTagName('script')[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a='posthog',u.people=u.people||[],u.toString=function(t){{var e='posthog';return'posthog'!==a&&(e+='.'+a),t||(e+=' (stub)'),e}},u.people.toString=function(){{return u.toString(1)+'.people (stub)'}},o='capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys getNextSurveyStep onSessionId setPersonProperties'.split(' '),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])}},e.__SV=1)}}(document,window.posthog||[]);
+    posthog.init('{posthog_api_key}',{{api_host:'https://eu.i.posthog.com', person_profiles: 'identified_only' // or 'always' to create profiles for anonymous users as well 
+    }});
+    console.log('Posthog initialized')
+    """
+
+    inject_js_above_header_tag(posthog_js)
+
+
 def _chat_ui_script() -> None:
     """A javascript snippet that runs on the chat UI."""
     html(__chat_ui_script, height=0)
@@ -287,7 +356,9 @@ def __always_hidden_pages() -> None:
     hide_pages(["widget", "signup", "verify", "Admin_Spaces"])
 
 
-def render_page_title_and_favicon(page_display_title: Optional[str] = None, browser_title: Optional[str] = None) -> None:
+def render_page_title_and_favicon(
+    page_display_title: Optional[str] = None, browser_title: Optional[str] = None
+) -> None:
     """Handle setting browser page title and favicon. Separately render in app page title with icon defined in show_pages().
 
     Args:
@@ -324,7 +395,7 @@ def render_page_title_and_favicon(page_display_title: Optional[str] = None, brow
         ctx._set_page_config_allowed = True
         st.set_page_config(
             page_icon=favicon_path,
-            page_title= browser_title if browser_title else f"{browser_title_prefix} - {_page_display_title}",
+            page_title=browser_title if browser_title else f"{browser_title_prefix} - {_page_display_title}",
             menu_items={"About": about_menu_content},
         )
     except StreamlitAPIException:
@@ -334,6 +405,8 @@ def render_page_title_and_favicon(page_display_title: Optional[str] = None, brow
         st.title(f"{translate_icon(page_icon)} {_page_display_title}")
     else:
         st.title(_page_display_title)
+
+    _posthog_tracking_script()
 
 
 def render_docq_logo() -> None:
@@ -774,11 +847,14 @@ def _show_chat_histories(feature: FeatureKey) -> None:
             )
 
 
-def _render_documents_list_ui(space: SpaceKey, read_only: bool = True, size: Literal["lg", "sm"] = "lg", expander_label: str = "Documents List") -> None:
+def _render_documents_list_ui(
+    space: SpaceKey, read_only: bool = True, size: Literal["lg", "sm"] = "lg", expander_label: str = "Documents List"
+) -> None:
     """Render the UI for listing documents in a space."""
     expander_selector = f'div[data-testid="stExpander"][docq-data-label="{expander_label}"]'
 
-    st.markdown(f"""
+    st.markdown(
+        f"""
         <style>
           {expander_selector} hr {{
             margin-top: 0.5rem;
@@ -792,7 +868,7 @@ def _render_documents_list_ui(space: SpaceKey, read_only: bool = True, size: Lit
           }}
         </style>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
     documents: List[DocumentListItem] = handle_list_documents(space)
     if documents:
@@ -1012,7 +1088,7 @@ def chat_ui(feature: FeatureKey) -> None:
 
                 agent_output = None
                 with contextlib.suppress(Exception):
-                    #TODO: this is a hack. A data structure with a pydantic model should be implemented to replace the list of tuples.
+                    # TODO: this is a hack. A data structure with a pydantic model should be implemented to replace the list of tuples.
                     # agent messages are serialised Message dataclass. Other messages are str.
                     _x = json.loads(x[1])
                     agent_output = Message(
@@ -1111,14 +1187,15 @@ def documents_ui(space: SpaceKey) -> None:
 
     if documents:
         label = "Documents"
-        st.markdown("""
+        st.markdown(
+            """
             <style>
               div[data-testid="stExpander"] hr {
                 margin-top: 0.5rem;
               }
             </style>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
         with st.expander(label):
             _render_documents_list_ui(space, read_only=not show_delete, expander_label=label)
@@ -1424,6 +1501,7 @@ def _render_space_data_source_config_input_fields(
                 autocomplete="off",  # disable autofill by password manager etc.
             )
 
+
 def _get_create_space_form_values() -> Tuple[str, str, str]:
     """Get default values for space creation from query string."""
     space_config = st.query_params.get("state", None)
@@ -1458,7 +1536,7 @@ def create_space_ui(expanded: bool = False) -> None:
         if st.button("Create Space"):
             st.session_state["create_space_defaults"] = ("", "", "")
             space = handle_create_space()
-            st.query_params['sid'] = str(space.id_)
+            st.query_params["sid"] = str(space.id_)
 
 
 def _render_view_space_details_with_container(
@@ -1566,7 +1644,9 @@ def list_spaces_ui(admin_access: bool = False) -> None:
                     with col_permissions:
                         _render_manage_space_permissions(s)
     else:
-        st.info("No spaces have been created yet. If you are an admin goto 'Admin Section > Admin Spaces' to create a Shared Space.")
+        st.info(
+            "No spaces have been created yet. If you are an admin goto 'Admin Section > Admin Spaces' to create a Shared Space."
+        )
 
 
 def show_space_details_ui(space: SpaceKey) -> None:
@@ -1609,11 +1689,7 @@ def admin_docs_ui(q_param: Optional[str] = None) -> None:
         st.subheader("Select a space from below:")
 
         try:  # Get the space id from the query param with prefence to the newly created space.
-            _sid = (
-                int(st.query_params[q_param])
-                if q_param in st.query_params.to_dict()
-                else None
-            )
+            _sid = int(st.query_params[q_param]) if q_param in st.query_params.to_dict() else None
         except ValueError:
             _sid = None
         default_sid = next((i for i, s in enumerate(spaces) if s[0] == _sid), None)
@@ -1847,7 +1923,7 @@ def render_integrations_slack() -> None:
 
         for channel in slack_channels:
             with st.expander(f"### {channel['name']}"):
-                st.write(channel['purpose']['value'])
+                st.write(channel["purpose"]["value"])
                 if space_groups_exist:
                     selected_space_group = st.selectbox(
                         "Select a Space Group",

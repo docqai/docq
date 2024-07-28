@@ -8,6 +8,8 @@ SESSION_KEY_NAME_ERROR_STATE = "_docq_error_state"
 
 SESSION_KEY_NAME_FORM_VALIDATION_STATE = "_docq_form_validation_state"
 
+ENV_VAR_DOCQ_POSTHOG_PROJECT_API_KEY = "DOCQ_POSTHOG_PROJECT_API_KEY"
+
 
 class SessionKeySubName(Enum):
     """Second-level names for session keys."""
