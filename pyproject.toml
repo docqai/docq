@@ -186,22 +186,22 @@ help = "Run integration tests"
     help = "Show all logs including stdout and stderr"
 
 [tool.poe.tasks.run]
-cmd = "streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.runOnSave true --server.fileWatcherType auto"
+cmd = "poetry run streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.runOnSave true --server.fileWatcherType auto"
 args = [{ name = "port", default = 8501, type = "integer" }]
 env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${PWD}/web/:${PWD}/source/:${PWD}/../docq-extensions/source/" }
 
 [tool.poe.tasks.run-otel]
-cmd = "opentelemetry-instrument --logs_exporter none streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.runOnSave true --server.fileWatcherType auto"
+cmd = "poetry run opentelemetry-instrument --logs_exporter none streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.runOnSave true --server.fileWatcherType auto"
 args = [{ name = "port", default = 8501, type = "integer" }]
 env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${PWD}/web/:${PWD}/source/:${PWD}/../docq-extensions/source/" }
 
 [tool.poe.tasks.run-otel-infisical]
-cmd = "infisical run --env=dev -- opentelemetry-instrument --logs_exporter none streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.runOnSave true --server.fileWatcherType auto"
+cmd = "infisical run --env=dev -- poetry run opentelemetry-instrument --logs_exporter none streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.runOnSave true --server.fileWatcherType auto"
 args = [{ name = "port", default = 8501, type = "integer" }]
 env = { WATCHDOG_LOG_LEVEL = "ERROR", PYTHONPATH = "${PWD}/web/:${PWD}/source/:${PWD}/../docq-extensions/source/" }
 
 [tool.poe.tasks.run-simple]
-cmd = "infisical run --env=dev -- streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.runOnSave true --server.fileWatcherType auto"
+cmd = "infisical run --env=dev -- poetry run streamlit run web/index.py --server.port $port --browser.gatherUsageStats false --server.runOnSave true --server.fileWatcherType auto"
 args = [{ name = "port", default = 8501, type = "integer" }]
 
 
