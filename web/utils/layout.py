@@ -1002,7 +1002,7 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
 def chat_ui(feature: FeatureKey) -> None:
     """Chat UI layout."""
     prepare_for_chat(feature)
-    st.markdown(
+    st.html(
         """<style>
             [data-testid="stMarkdownContainer"] h6 {
                 padding: 0px !important;
@@ -1051,8 +1051,7 @@ def chat_ui(feature: FeatureKey) -> None:
                 justify-content: center;
             }
         </style>
-    """,
-        unsafe_allow_html=True,
+    """
     )
     from docq.agents.datamodels import Message
 
