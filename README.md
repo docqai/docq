@@ -15,7 +15,7 @@
 [![Slack][slack-shield]][slack-url]
 [![X (formerly Twitter) Follow][twitter-shield]][twitter-url]
 
-# Your private ChatGPT alternative
+# Your private ChatGPT
 
 **Q&A with business documents securely. Depend less on other teams for answers.**
 
