@@ -12,7 +12,7 @@ from urllib.parse import quote_plus, unquote_plus
 
 import docq
 import streamlit as st
-from docq import manage_spaces, setup
+from docq import setup
 from docq.access_control.main import SpaceAccessType
 from docq.config import (
     LogType,
@@ -376,25 +376,27 @@ def render_page_title_and_favicon(
             \nGitHub (give us a star): {docq.__repository_url__} \
             \nTwitter: https://twitter.com/docqai"
 
-    # pages = get_pages("")
+    pages = get_pages("")
     ctx = get_script_run_ctx()
 
     if ctx is None:
         return
 
-    pages = get_pages(ctx.main_script_path)
+    pages = ctx.pages_manager.get_pages()
 
+    current_page_hash = ctx.pages_manager.current_page_hash
     try:
-        current_page = pages[ctx.page_script_hash]
+        current_page = pages[current_page_hash]
+
     except KeyError:
         try:
-            # current_page = [p for p in pages.values() if p["relative_page_hash"] == ctx.page_script_hash][0]
-            current_page = [p for p in pages.values() if p["relative_page_hash"] == ctx.page_script_hash][0]
+            # not sure we need this anymore given the new pages_manager and st.navigation
+            current_page = [p for p in pages.values() if p["page_script_hash"] == current_page_hash][0]
         except IndexError:
             return
 
-    page_slug = current_page["page_name"]  # this is the URL slug defined in show_pages()
-    page_icon = current_page["icon"]  # the optional icon defined in show_pages()
+    page_slug = current_page.get("page_name", "")  # this is the URL slug defined in show_pages()
+    page_icon = current_page.get("icon")  # the optional icon defined in show_pages()
     _page_display_title = page_display_title or page_slug.replace("_", " ")
 
     try:
@@ -553,13 +555,20 @@ def auth_required(
         return False
 
 
-def is_super_admin() -> bool:
-    """Check if the current user is a super admin. auth_required() must be called before this."""
+# def is_super_admin() -> bool:
+#     """Check if the current user is a super admin. auth_required() must be called before this."""
+#     auth = get_auth_session()
+#     is_super_admin = auth.get(SessionKeyNameForAuth.SUPER_ADMIN.name, False)
+#     if not is_super_admin:
+#         __not_authorised()
+#     return is_super_admin
+
+
+def is_authenticated() -> bool:
+    """Check if the current user is authenticated. auth_required() must be called before this."""
     auth = get_auth_session()
-    is_super_admin = auth.get(SessionKeyNameForAuth.SUPER_ADMIN.name, False)
-    if not is_super_admin:
-        __not_authorised()
-    return is_super_admin
+    is_authenticated = bool(auth)
+    return is_authenticated
 
 
 def public_session_setup() -> None:
@@ -1288,16 +1297,11 @@ def organisation_settings_ui() -> None:
 
         selected_model = model_settings_container.selectbox(
             label="Default Model",
-            options=available_models.items(),
+            options=list(available_models.items()),
             format_func=lambda x: x[1],
             index=saved_model_index,
             key=f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}",
         )
-        # log.debug(
-        #     "selected model in session state: %s",
-        #     st.session_state[f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}"][0],
-        # )
-        # log.debug("selected model: %s", selected_model[0])
 
         span.set_attributes(
             {

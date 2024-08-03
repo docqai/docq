@@ -6,7 +6,6 @@ from typing import Any, Optional
 import docq
 import streamlit as st
 from docq import config, manage_users
-from docq.manage_assistants import Assistant, get_assistant_fixed
 from docq.support.auth_utils import set_cache_auth_session
 from opentelemetry import trace
 
@@ -98,6 +97,11 @@ def set_auth_session(val: Optional[dict] = None, cache: bool = False) -> None:
 def get_auth_session() -> dict:
     """Get the auth session value."""
     return _get_session_value(SessionKeySubName.AUTH)
+
+
+def is_current_user_authenticated() -> bool:
+    """Return if the current user is authenticated or not."""
+    return bool(get_auth_session())
 
 
 def is_current_user_super_admin() -> bool:

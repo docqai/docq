@@ -5,14 +5,14 @@ from utils.layout import auth_required, render_page_title_and_favicon
 from utils.observability import baggage_as_attributes, tracer
 from utils.sessions import is_current_user_selected_org_admin, is_current_user_super_admin
 
-from web.admin.admin_integrations import admin_integrations_page
-from web.admin.admin_logs import admin_logs_page
-from web.admin.admin_orgs import admin_orgs_page
-from web.admin.admin_settings import admin_settings_page
-from web.admin.admin_space_groups import admin_space_groups_page
-from web.admin.admin_spaces import admin_spaces_page
-from web.admin.admin_user_groups import admin_user_groups_page
-from web.admin.admin_users import admin_users_page
+from web.page_handlers.admin.admin_integrations import admin_integrations_page
+from web.page_handlers.admin.admin_logs import admin_logs_page
+from web.page_handlers.admin.admin_orgs import admin_orgs_page
+from web.page_handlers.admin.admin_settings import admin_settings_page
+from web.page_handlers.admin.admin_space_groups import admin_space_groups_page
+from web.page_handlers.admin.admin_spaces import admin_spaces_page
+from web.page_handlers.admin.admin_user_groups import admin_user_groups_page
+from web.page_handlers.admin.admin_users import admin_users_page
 
 
 def super_and_org_admin_pages() -> None:
