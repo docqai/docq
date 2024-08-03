@@ -306,8 +306,10 @@ def __no_staff_menu() -> None:
 
 @tracer.start_as_current_span("__no_admin_menu")
 def __no_admin_menu() -> None:
-    hide_pages(["Admin_Section"])
-    hide_pages(["ML Engineering"])
+    # hide_pages(["Admin_Section"])
+    # hide_pages(["ML Engineering"])
+    # FIXME: new to reimplement this the new the ST 1.37 way
+    pass
 
 
 def __embed_page_config() -> None:
@@ -353,7 +355,8 @@ def __hide_all_empty_divs() -> None:
 
 def __always_hidden_pages() -> None:
     """These pages are always hidden whether the user is an admin or not."""
-    hide_pages(["widget", "signup", "verify", "Admin_Spaces"])
+    # hide_pages(["widget", "signup", "verify", "Admin_Spaces"])
+    # FIXME: new to reimplement this the new the ST 1.37 way
 
 
 def render_page_title_and_favicon(
