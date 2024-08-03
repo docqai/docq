@@ -376,16 +376,19 @@ def render_page_title_and_favicon(
             \nGitHub (give us a star): {docq.__repository_url__} \
             \nTwitter: https://twitter.com/docqai"
 
-    pages = get_pages("")
+    # pages = get_pages("")
     ctx = get_script_run_ctx()
 
     if ctx is None:
         return
 
+    pages = get_pages(ctx.main_script_path)
+
     try:
         current_page = pages[ctx.page_script_hash]
     except KeyError:
         try:
+            # current_page = [p for p in pages.values() if p["relative_page_hash"] == ctx.page_script_hash][0]
             current_page = [p for p in pages.values() if p["relative_page_hash"] == ctx.page_script_hash][0]
         except IndexError:
             return
