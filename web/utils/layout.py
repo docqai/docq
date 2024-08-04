@@ -938,6 +938,8 @@ def _render_assistant_selection(feature: FeatureKey) -> None:
             assistant_type = AssistantType.SIMPLE_CHAT
         elif feature.type_ == OrganisationFeatureType.ASK_SHARED:
             assistant_type = AssistantType.ASK
+        else:
+            raise ValueError(f"Unsupported feature type: {feature.type_}")
 
         assistants_data_org = list_assistants(org_id=selected_org_id, assistant_type=assistant_type)
         assistants_data_global = list_assistants(assistant_type=assistant_type)
@@ -962,36 +964,40 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
     st.markdown(
         """
     <style>
-      div[data-testid="stFileUploader"] label {
+      div[data-testid="stFileUploader"] {
+        margin-top: 1rem;
+        display: block;
+      }
+     div[data-testid="stFileUploader"] label {
         display: none;
       }
-      section[data-testid="stFileUploadDropzone"] {
+      section[data-testid="stFileUploaderDropzone"] {
         height: 2.1rem;
         margin-left: 0.2rem;
       }
-      section[data-testid="stFileUploadDropzone"] div {
+      section[data-testid="stFileUploaderDropzone"] div {
         flex-direction: row;
         gap: 1rem;
       }
-      section[data-testid="stFileUploadDropzone"] :is(small, span) {
+      section[data-testid="stFileUploaderDropzone"] :is(small, span) {
         justify-content: center;
         align-items: center;
         display: flex;
         margin: 0;
       }
-      section[data-testid="stFileUploadDropzone"] small {
+      section[data-testid="stFileUploaderDropzone"] small {
         font-size: 0;
       }
-      section[data-testid="stFileUploadDropzone"] small:after {
+      section[data-testid="stFileUploaderDropzone"] small:after {
         content: "File limit 200MB";
         font-size: 0.8rem;
       }
-      section[data-testid="stFileUploadDropzone"] button[data-testid="baseButton-secondary"] {
+      section[data-testid="stFileUploaderDropzone"] button[data-testid="baseButton-secondary"] {
         min-height: unset;
         height: 1.8rem;
         font-size: 0.8rem;
       }
-      div[data-testid="stFileUploader"]:has(.uploadedFile) section[data-testid="stFileUploadDropzone"] {
+      div[data-testid="stFileUploader"]:has(.uploadedFile) section[data-testid="stFileUploaderDropzone"] {
         display: none;
       }
       div[data-testid="stHorizontalBlock"]:has([data-testid="stSpinner"]) div:has(> ul > li > .uploadedFile) {
@@ -1049,13 +1055,14 @@ def chat_ui(feature: FeatureKey) -> None:
                 max-height: 2rem;
             }
 
-            div[data-testid="column"] > div > div > [docq-data-label="New chat"] > .stButton {
+            div[data-testid="column"] > div > div > div > [docq-data-label="New chat"] > .stButton {
                 display: flex;
                 align-items: center;
                 justify-content: flex-end;
+                margin-top: 1rem;
             }
 
-            [docq-data-label="New chat"] button {
+            [docq-data-label="New chat"] div button {
                 min-height: unset;
                 height: 2rem;
                 font-size: 0.8rem;
