@@ -5,6 +5,7 @@ from streamlit.navigation.page import StreamlitPage
 
 # from docq_extensions.web.layout import subscriptions
 from utils.layout import (
+    __logout_button,
     init_with_pretty_error_ui,
     org_selection_ui,
     production_layout,
@@ -16,8 +17,6 @@ from utils.streamlit_page_extension import StreamlitPageExtension as StPage
 with tracer().start_as_current_span("index", attributes=baggage_as_attributes()):
     init_with_pretty_error_ui()
     production_layout()
-
-    print("Hello from index.py")
 
     with st.sidebar:
         org_selection_ui()
@@ -66,6 +65,7 @@ with tracer().start_as_current_span("index", attributes=baggage_as_attributes())
 
     sidebar = st.sidebar
 
+    # TODO: this can move into a component function
     for page in pages:
         if isinstance(page, str):  # handle section headers. TODO: change this to a class with icon etc.
             sidebar.write("&nbsp;&nbsp;" + page)
@@ -79,5 +79,14 @@ with tracer().start_as_current_span("index", attributes=baggage_as_attributes())
         pages=pages,  # type: ignore
         position="hidden",
     )
+
+    st.sidebar.divider()
+    sidebar_dynamic_section = sidebar.container()
+    # hold a reference in session state so we can add elements to the sidebar
+    # in between the menu options and logout button from other pages.
+    st.session_state["sidebar_dynamic_section"] = sidebar_dynamic_section
+    st.sidebar.divider()
+    if is_current_user_authenticated():
+        __logout_button()
 
     pg.run()

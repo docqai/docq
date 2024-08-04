@@ -99,7 +99,7 @@ def render_assistants_selector_ui(
                 selected_index = i
                 break
     selected_assistant = st.selectbox(
-        "Assistant",
+        label="Assistant",
         options=[assistant for assistant in assistants_data],
         format_func=lambda x: x[1],
         label_visibility="visible",

@@ -536,8 +536,8 @@ def auth_required(
                 selected_org_admin=auth[SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name],
             )
 
-        if show_logout_button:
-            __logout_button()
+        # if show_logout_button:
+        #     __logout_button()
 
         if not auth.get(SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name, False):
             __no_admin_menu()
@@ -809,6 +809,13 @@ def _personal_ask_style() -> None:
         unsafe_allow_html=True,
     )
 
+def sidebar_dynamic_section_container() -> DeltaGenerator:
+    """Get a reference to the  dynamic sidebar section container.
+
+    This is how you insert UI elements inbetween the menu options and the logout button. Ensures the logout button is always at the bottom.
+    """
+    return st.session_state.get("sidebar_dynamic_section", st.sidebar.container())
+
 
 def _show_chat_histories(feature: FeatureKey) -> None:
     st.markdown(
@@ -841,7 +848,11 @@ def _show_chat_histories(feature: FeatureKey) -> None:
     """,
         unsafe_allow_html=True,
     )
-    with st.sidebar.expander("Chat History"):
+    # with st.sidebar.expander("Chat History"):
+    sidebar_dynamic_section = sidebar_dynamic_section_container()
+
+    # sidebar_dynamic_section = st.sidebar.container()
+    with sidebar_dynamic_section.expander("Chat History"):
         chat_threads = handle_get_chat_history_threads(feature)
         day = None
         for x in chat_threads:
@@ -926,12 +937,14 @@ def _render_show_thread_space_files(feature: FeatureKey) -> None:
             space = handle_get_thread_space(feature)
             if space:
                 expander_label = "Knowledge"
-                with st.expander(expander_label):
+                sidebar_dynamic_section = sidebar_dynamic_section_container()
+                with sidebar_dynamic_section.expander(expander_label):
                     _render_documents_list_ui(space, False, "sm", expander_label)
 
 
 def _render_assistant_selection(feature: FeatureKey) -> None:
-    with st.sidebar.container():
+    sidebar_dynamic_section = sidebar_dynamic_section_container()
+    with sidebar_dynamic_section:
         selected_org_id = get_selected_org_id()
 
         if feature.type_ == OrganisationFeatureType.CHAT_PRIVATE:
@@ -1166,9 +1179,11 @@ def chat_ui(feature: FeatureKey) -> None:
     with uploader:
         _render_chat_file_uploader(feature, thread_id)
 
+    # these are rendered in this order in the sidebar.
     _render_show_thread_space_files(feature)
-    _render_assistant_selection(feature)
     _show_chat_histories(feature)
+    _render_assistant_selection(feature)
+
     _chat_ui_script()
 
 
