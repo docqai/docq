@@ -417,12 +417,9 @@ def render_page_title_and_favicon(
     _posthog_tracking_script()
 
 
-def render_docq_logo() -> None:
+def render_docq_logo(width: int = 100) -> None:
     """Render the Docq logo."""
-    st.markdown(
-        "<img src='https://raw.githubusercontent.com/docqai/docq/main/docs/assets/logo.jpg'  width='100' alt='Docq.AI Logo'/>",
-        unsafe_allow_html=True,
-    )
+    st.image(image="web/static/docq-v2_1-word-mark.jpg", width=100)
 
 
 def __resend_verification_ui(

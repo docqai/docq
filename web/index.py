@@ -1,5 +1,6 @@
 """Streamlit entry point for the web app."""
 
+import docq
 import streamlit as st
 from streamlit.navigation.page import StreamlitPage
 
@@ -19,6 +20,7 @@ with tracer().start_as_current_span("index", attributes=baggage_as_attributes())
     production_layout()
 
     with st.sidebar:
+        st.logo(image="web/static/docq-v2_1-word-mark.jpg")
         org_selection_ui()
 
     public_access = [
@@ -79,14 +81,15 @@ with tracer().start_as_current_span("index", attributes=baggage_as_attributes())
         pages=pages,  # type: ignore
         position="hidden",
     )
-
-    st.sidebar.divider()
-    sidebar_dynamic_section = sidebar.container()
-    # hold a reference in session state so we can add elements to the sidebar
-    # in between the menu options and logout button from other pages.
-    st.session_state["sidebar_dynamic_section"] = sidebar_dynamic_section
-    st.sidebar.divider()
     if is_current_user_authenticated():
+        st.sidebar.divider()
+        sidebar_dynamic_section = sidebar.container()
+        # hold a reference in session state so we can add elements to the sidebar
+        # in between the menu options and logout button from other pages.
+        st.session_state["sidebar_dynamic_section"] = sidebar_dynamic_section
+        st.sidebar.divider()
+
         __logout_button()
+        st.sidebar.write(f"v{docq.__version_str__}")
 
     pg.run()
