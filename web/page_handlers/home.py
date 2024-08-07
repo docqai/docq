@@ -1,11 +1,11 @@
 """Page: Home (no auth required)."""
 
 import streamlit as st
-
-# from docq_extensions.web.layout import subscriptions
 from utils.handlers import (
     handle_fire_extensions_callbacks,  # noqa F401 don't remove this line, it's used to register api routes
 )
+
+# from docq_extensions.web.layout import subscriptions
 from utils.layout import (
     auth_required,
     public_access,

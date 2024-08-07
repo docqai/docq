@@ -3,8 +3,6 @@
 import docq
 import streamlit as st
 from streamlit.navigation.page import StreamlitPage
-
-# from docq_extensions.web.layout import subscriptions
 from utils.layout import (
     __logout_button,
     init_with_pretty_error_ui,
@@ -13,7 +11,12 @@ from utils.layout import (
 )
 from utils.observability import baggage_as_attributes, tracer
 from utils.sessions import is_current_user_authenticated, is_current_user_selected_org_admin
+from utils.streamlit_application import st_app
 from utils.streamlit_page_extension import StreamlitPageExtension as StPage
+
+import web.api.index_handler  # noqa: F401 don't remove this line, it registers API routes
+
+st_app.print_registered_routes()
 
 with tracer().start_as_current_span("index", attributes=baggage_as_attributes()):
     init_with_pretty_error_ui()

@@ -18,7 +18,7 @@ class StreamlitApplication:
     Source: https://discuss.streamlit.io/t/streamlit-restful-app/409/19?u=janaka
     """
 
-    _rules: List[Rule] = []
+    # _rules: List[Rule] = []
     __singleton_instance = None
 
     # TODO: figure out how to set instance of the class with the Tornado Application object.
@@ -40,8 +40,26 @@ class StreamlitApplication:
         """Add a route rule."""
         logging.debug("Adding route handler: %s", rule)
         # self._rules.append(rule)
+
         tornado_app: Application = self.get_singleton_instance()
+
+        # Check if the rule already exists
+        for existing_rule in tornado_app.wildcard_router.rules:
+            if existing_rule.matcher == rule.matcher:
+                logging.debug("Route rule already exists: %s", rule)
+                return
         tornado_app.wildcard_router.rules.insert(0, rule)
+
+    def get_registered_routes(self: Self) -> List[Rule]:
+        """Return the registered routes."""
+        tornado_app: Application = self.get_singleton_instance()
+        return tornado_app.wildcard_router.rules
+
+    def print_registered_routes(self: Self) -> None:
+        """Print the registered routes."""
+        logging.info("Registered route count: %s", len(self.get_registered_routes()))
+        for rule in self.get_registered_routes():
+            logging.debug("Registered route: %s", rule)
 
     # def register_routes(self: Self) -> None:
     #     """Register the routes with the Streamlit Tornado Application instance."""
