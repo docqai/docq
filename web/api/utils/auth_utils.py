@@ -30,8 +30,6 @@ def authenticated(method: Callable[..., Any]) -> Callable[..., Any]:
     def wrapper(self: BaseRequestHandler, *args: Any, **kwargs: Any) -> Any:
         with tracer.start_as_current_span("authenticated") as span:
             span = trace.get_current_span()
-            print("authenticated() called")
-
             api_key = self.request.headers.get("x-api-key", None)
             auth_header = self.request.headers.get("Authorization", None)
             authentication_successful = False
@@ -86,7 +84,7 @@ def authenticated(method: Callable[..., Any]) -> Callable[..., Any]:
                 )
 
             if authentication_successful:
-                print(f"authenticated() successful {authentication_successful}")
+                # print(f"authenticated() successful {authentication_successful}")
                 # carry on and call the actual request handler method that was decorated with @authenticated
                 return method(self, *args, **kwargs)
 
@@ -103,7 +101,7 @@ def encode_jwt(data: UserModel) -> Optional[str]:
             "exp": get_int_from_datetime(datetime.now(tz=timezone.utc) + timedelta(hours=23)),
             "nbf": get_int_from_datetime(datetime.now(tz=timezone.utc)),
             "iat": get_int_from_datetime(datetime.now(tz=timezone.utc)),
-            "data": data.model_dump(),
+            "data": data.model_dump(by_alias=True),
         }
         key = jwk_from_pem(get_key("private"))
         return INSTANCE.encode(payload, key, alg="RS256")

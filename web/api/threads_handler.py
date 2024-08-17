@@ -16,6 +16,7 @@ from web.api.base_handlers import BaseRequestHandler
 from web.api.models import (
     FEATURE,
     ThreadHistoryModel,
+    ThreadHistoryResponseModel,
     ThreadModel,
     ThreadPostRequestModel,
     ThreadResponseModel,
@@ -59,7 +60,7 @@ class ThreadsHandler(BaseRequestHandler):
                 [ThreadModel(**_get_thread_object(threads[i])) for i in range(len(threads))] if len(threads) > 0 else []
             )
             response = (
-                ThreadsResponseModel(response=thread_response).model_dump()
+                ThreadsResponseModel(response=thread_response).model_dump(by_alias=True)
                 if len(thread_response) > 0
                 else {"response": []}
             )
@@ -84,7 +85,9 @@ class ThreadsHandler(BaseRequestHandler):
             request = ThreadPostRequestModel.model_validate_json(self.request.body)
             thread_id = rq.create_history_thread(request.topic, feature)
             thread = rq.list_thread_history(feature, thread_id)
-            self.write(ThreadResponseModel(response=ThreadModel(**_get_thread_object(thread[0]))).model_dump())
+            self.write(
+                ThreadResponseModel(response=ThreadModel(**_get_thread_object(thread[0]))).model_dump(by_alias=True)
+            )
 
         except ValidationError as e:
             raise HTTPError(status_code=400, reason="Invalid request body", log_message=str(e)) from e
@@ -111,7 +114,7 @@ class ThreadHandler(BaseRequestHandler):
             if not thread_response:
                 raise HTTPError(404, reason="Thread not found.")
 
-            response = ThreadResponseModel(response=thread_response).model_dump()
+            response = ThreadResponseModel(response=thread_response).model_dump(by_alias=True)
             self.write(response)
 
         except ValidationError as e:
@@ -167,9 +170,11 @@ class ThreadHistoryHandler(BaseRequestHandler):
             )
 
             messages = list(map(get_message_object, thread_history))
-            thread_history_response = ThreadHistoryModel(**_get_thread_object(thread[0]), messages=messages)
+            thread_history_model = ThreadHistoryModel(**_get_thread_object(thread[0]), messages=messages)
 
-            self.write(thread_history_response.model_dump())
+            thread_history_response = ThreadHistoryResponseModel(response=thread_history_model)
+
+            self.write(thread_history_response.model_dump(by_alias=True))
         except ValidationError as e:
             print("ValidationError: ", e)
             raise HTTPError(status_code=400, reason="Invalid page or limit") from e

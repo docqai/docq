@@ -5,6 +5,8 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from .utils.pydantic_utils import CamelModel
+
 SPACE_TYPE = Literal["personal", "shared", "public", "thread"]
 FEATURE = Literal["rag", "chat"]
 
@@ -16,7 +18,7 @@ class UserModel(BaseModel):
     super_admin: bool
     username: str
 
-class MessageModel(BaseModel):
+class MessageModel(CamelModel):
     """Pydantic model for a message data."""
 
     id_: int = Field(..., alias="id")
@@ -26,7 +28,7 @@ class MessageModel(BaseModel):
     thread_id: int
 
 
-class ThreadModel(BaseModel):
+class ThreadModel(CamelModel):
     """Model for a Thread."""
 
     id_: int = Field(..., alias="id")
@@ -34,20 +36,21 @@ class ThreadModel(BaseModel):
     created_at: str
 
 
-class ThreadHistoryModel(ThreadModel):
+class ThreadHistoryModel(CamelModel):
     """Model for a Thread with it's history messages."""
 
     messages: list[MessageModel]
 
 
-class SpaceModel(BaseModel):
+class SpaceModel(CamelModel):
     """Pydantic model for the response body."""
-    id_: int = Field(..., alias="id")
+
+    id_: int = Field(..., alias="id", serialization_alias="id")
     space_type: SPACE_TYPE
     created_at: str
 
 
-class BaseResponseModel(BaseModel, ABC):
+class BaseResponseModel(CamelModel, ABC):
     """All HTTP API response models should inherit from this class."""
 
     response: Any
@@ -77,6 +80,6 @@ class ThreadHistoryResponseModel(BaseResponseModel):
     response: ThreadHistoryModel
 
 
-class ThreadPostRequestModel(BaseModel):
+class ThreadPostRequestModel(CamelModel):
     """Pydantic model for the request body."""
     topic: str
