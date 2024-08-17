@@ -11,7 +11,7 @@ from pydantic import Field, ValidationError
 from tornado.web import HTTPError
 
 from web.api.base_handlers import BaseRequestHandler
-from web.api.models import MessageResponseModel
+from web.api.models import MessagesResponseModel
 from web.api.utils.auth_utils import authenticated
 from web.api.utils.docq_utils import get_message_object
 from web.api.utils.pydantic_utils import CamelModel
@@ -97,7 +97,7 @@ class ChatCompletionHandler(BaseRequestHandler):
                 assistant=assistant,
             )
             messages = list(map(get_message_object, result))
-            response_model = MessageResponseModel(response=messages, meta={"model_settings": model_usage_settings.key})
+            response_model = MessagesResponseModel(response=messages, meta={"model_settings": model_usage_settings.key})
 
             self.write(response_model.model_dump())
 

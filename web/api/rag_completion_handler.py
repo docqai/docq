@@ -10,7 +10,7 @@ from pydantic import Field, ValidationError
 from tornado.web import HTTPError
 
 from web.api.base_handlers import BaseRequestHandler
-from web.api.models import MessageResponseModel
+from web.api.models import MessagesResponseModel
 from web.api.utils.docq_utils import get_feature_key, get_message_object
 from web.utils.streamlit_application import st_app
 
@@ -59,7 +59,7 @@ class RagCompletionHandler(BaseRequestHandler):
 
             if result:
                 messages = list(map(get_message_object, result))
-                self.write(MessageResponseModel(response=messages).model_dump_json())
+                self.write(MessagesResponseModel(response=messages).model_dump_json())
             else:
                 raise HTTPError(500, "Internal server error")
         except ValidationError as e:

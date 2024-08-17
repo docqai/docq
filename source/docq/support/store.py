@@ -197,7 +197,7 @@ def get_history_table_name(type_: OrganisationFeatureType) -> str:
 
 
 def get_history_thread_table_name(type_: OrganisationFeatureType) -> str:
-    """Get the history table name for a feature."""
+    """Get the thread table name for a feature."""
     # Note that because it's used for database table name, `lower()` is used to ensure it's all lowercase.
     return HISTORY_THREAD_TABLE_NAME.format(feature=type_.name.lower())
 
