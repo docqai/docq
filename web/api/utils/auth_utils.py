@@ -133,7 +133,7 @@ def validate_api_key(key: str) -> bool:
     is_valid = False
     secret = os.environ.get(ENV_VAR_DOCQ_API_SECRET, None)
 
-    if secret is not None or secret != "":
+    if secret is not None and secret != "":
         is_valid = key.strip() == str(secret).strip()
     print("is_valid: ", is_valid)
     return is_valid
