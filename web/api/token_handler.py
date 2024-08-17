@@ -101,14 +101,14 @@ class TokenValidationHandler(BaseRequestHandler):
     """Token validation handler endpoint for the API. /api/token/validate handler. Check if the token sent is valid + unexpired."""
 
     def post(self: Self) -> None:
-        """Handle GET requests."""
+        """Handle POST request to validate an access token."""
         try:
             request = TokenValidationRequestModel.model_validate_json(self.request.body)
             user = decode_jwt(request.token, check_expired=True)
             if not user:
                 raise HTTPError(401, reason="Unauthorized", log_message="Invalid token")
 
-            self.write("OK")
+            self.set_status(200)
         except ValidationError as e:
             raise HTTPError(400, reason="Bad request") from e
 
