@@ -159,20 +159,22 @@ class ThreadHistoryHandler(BaseRequestHandler):
 
         try:
             thread = rq.list_thread_history(feature, int(thread_id))
-            thread_history_response = ThreadHistoryModel(**_get_thread_object(thread[0])) if len(thread) > 0 else None
-            if not thread_history_response:
+            if not len(thread) > 0:
                 raise HTTPError(status_code=404, reason="Thread not found")
 
             thread_history = rq._retrieve_messages(
                 datetime.now(), int(page_size), feature, int(thread_id), "ASC" if order == "asc" else "DESC"
             )
-            messages = list(map(get_message_object, thread_history))
 
-            thread_history_response.messages = messages
+            messages = list(map(get_message_object, thread_history))
+            thread_history_response = ThreadHistoryModel(**_get_thread_object(thread[0]), messages=messages)
 
             self.write(thread_history_response.model_dump())
         except ValidationError as e:
+            print("ValidationError: ", e)
             raise HTTPError(status_code=400, reason="Invalid page or limit") from e
+        except Exception as e:
+            raise HTTPError(status_code=500, reason="Internal server error") from e
 
 
 @st_app.api_route("/api/v1/rag/threads/{thread_id}/top-questions")
