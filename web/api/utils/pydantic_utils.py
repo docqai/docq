@@ -71,6 +71,6 @@ class CamelModel(BaseModel):
         """Pydantic model configuration."""
 
         alias_generator = AliasGenerator(
-            serialization_alias=to_camel,
+            alias=to_camel,
         )
         populate_by_name = True  # Allow population by alias and original field name
