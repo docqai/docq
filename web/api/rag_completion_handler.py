@@ -1,4 +1,5 @@
 """Handle /api/rag/completion requests."""
+import logging
 from typing import Optional, Self
 
 import docq.run_queries as rq
@@ -27,6 +28,7 @@ class PostRequestModel(CamelModel):
     llm_settings_collection_name: Optional[str] = Field(None)
     assistant_key: Optional[str] = Field(None)
 
+
 @tracer.start_as_current_span(name="RagCompletionHandler")
 @st_app.api_route("/api/v1/rag/completion")
 class RagCompletionHandler(BaseRequestHandler):
@@ -37,7 +39,9 @@ class RagCompletionHandler(BaseRequestHandler):
         """Handle POST request."""
         try:
             feature = get_feature_key(self.current_user.uid)
+            # request_json = json.loads(self.request.body)
             request_model = PostRequestModel.model_validate_json(self.request.body)
+            print("request_model:", request_model)
             self.thread_space = request_model.thread_id
             collection_key = request_model.llm_settings_collection_name
             model_settings_collection = get_model_settings_collection(collection_key) if collection_key else get_saved_model_settings_collection(self.selected_org_id)
@@ -59,8 +63,13 @@ class RagCompletionHandler(BaseRequestHandler):
 
             if result:
                 messages = list(map(get_message_object, result))
-                self.write(MessagesResponseModel(response=messages).model_dump_json())
+                self.write(MessagesResponseModel(response=messages).model_dump(by_alias=True))
             else:
-                raise HTTPError(500, "Internal server error")
+                raise HTTPError(500, reason="Internal server error", log_message="Internal server error")
         except ValidationError as e:
-            raise HTTPError(400, "Invalid request body") from e
+            logging.error("ValidationError:", e)
+            raise HTTPError(
+                400,
+                reason="Invalid request body",
+                log_message=f"POST payload failed request model Pydantic validation. Error: {e}",
+            ) from e
