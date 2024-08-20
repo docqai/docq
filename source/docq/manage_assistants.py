@@ -196,7 +196,7 @@ def get_assistant_fixed(
     return result
 
 
-def get_assistant_or_default(assistant_scoped_id: Optional[int] = None, org_id: Optional[int] = None) -> Assistant:
+def get_assistant_or_default(assistant_scoped_id: Optional[str] = None, org_id: Optional[int] = None) -> Assistant:
     """Get the persona.
 
     Args:
@@ -206,7 +206,7 @@ def get_assistant_or_default(assistant_scoped_id: Optional[int] = None, org_id: 
 
     """
     if assistant_scoped_id:
-        assistant_data = get_assistant(assistant_scoped_id=str(assistant_scoped_id), org_id=org_id)
+        assistant_data = get_assistant(assistant_scoped_id=assistant_scoped_id, org_id=org_id)
         return Assistant(
             key=str(assistant_data[0]),
             name=assistant_data[1],
@@ -279,10 +279,10 @@ def get_assistant(assistant_scoped_id: str, org_id: Optional[int]) -> ASSISTANT:
         if row is None:
             if org_id and scope == "org":
                 raise ValueError(
-                    f"No Persona with: id = '{assistant_scoped_id}' that belongs to org org_id= '{org_id}', scope= '{scope}'"
+                    f"No Assistant with: id = '{id_}' that belongs to org org_id= '{org_id}', scope= '{scope}'"
                 )
             else:
-                raise ValueError(f"No Persona with: id = '{assistant_scoped_id}' in global scope. scope= '{scope}'")
+                raise ValueError(f"No Assistant with: id = '{id_}' in global scope. scope= '{scope}'")
         return (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], assistant_scoped_id)
 
 
