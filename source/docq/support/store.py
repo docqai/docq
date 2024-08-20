@@ -10,11 +10,10 @@ from threading import Timer
 from typing import Optional
 
 import docq
+from docq.config import ENV_VAR_DOCQ_DATA, OrganisationFeatureType, SpaceType
+from docq.domain import SpaceKey
 from llama_index.core.storage import StorageContext
 from opentelemetry import trace
-
-from ..config import ENV_VAR_DOCQ_DATA, OrganisationFeatureType, SpaceType
-from ..domain import SpaceKey
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
@@ -128,7 +127,7 @@ def get_upload_file(space: SpaceKey, filename: str) -> str:
 def _map_space_type_to_datascope(space_type: SpaceType) -> _DataScope:
     """Map space type to data scope."""
     data_scope = None
-    if space_type == SpaceType.PERSONAL:
+    if space_type == SpaceType.PERSONAL:  # DEPRECATED. Personal spaces are now shared spaces in the users personal org.
         data_scope = _DataScope.PERSONAL
     elif space_type == SpaceType.SHARED:
         data_scope = _DataScope.SHARED  # TODO: switch to DataScope.ORG. this requires data migration scripts.
