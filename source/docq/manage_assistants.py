@@ -8,8 +8,8 @@ from typing import List, Optional
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.prompts import ChatPromptTemplate
 
-from .domain import Assistant, AssistantType
-from .support.store import (
+from docq.domain import Assistant, AssistantType
+from docq.support.store import (
     get_sqlite_global_system_file,
     get_sqlite_org_system_file,
 )
@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS assistants (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """
-
+# id, name, type, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, created_at, updated_at, scoped_id
 ASSISTANT = tuple[int, str, str, bool, str, str, str, datetime, datetime, str]
 
 
@@ -197,7 +197,14 @@ def get_assistant_fixed(
 
 
 def get_assistant_or_default(assistant_scoped_id: Optional[int] = None, org_id: Optional[int] = None) -> Assistant:
-    """Get the persona."""
+    """Get the persona.
+
+    Args:
+        assistant_scoped_id (Optional[int]): The assistant scoped ID. A composite ID <scope>_<id>.
+            scope is either 'org' or 'global'. id from the respective table.
+        org_id (Optional[int]): The org ID.
+
+    """
     if assistant_scoped_id:
         assistant_data = get_assistant(assistant_scoped_id=str(assistant_scoped_id), org_id=org_id)
         return Assistant(
@@ -258,6 +265,7 @@ def get_assistant(assistant_scoped_id: str, org_id: Optional[int]) -> ASSISTANT:
     if scope == "org" and org_id:
         path = __get_assistants_sqlite_file(org_id=org_id)
     else:
+        # global scope
         path = __get_assistants_sqlite_file(org_id=None)
 
     with closing(sqlite3.connect(path, detect_types=sqlite3.PARSE_DECLTYPES)) as connection, closing(
