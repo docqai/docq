@@ -6,6 +6,19 @@ from typing import List, Optional
 from uu import Error
 
 import docq
+from docq.domain import SpaceKey
+from docq.manage_assistants import Assistant, llama_index_chat_prompt_template_from_assistant
+from docq.manage_indices import _load_index_from_storage, load_indices_from_storage
+from docq.model_selection.main import (
+    LLM_MODEL_COLLECTIONS,
+    LlmUsageSettingsCollection,
+    ModelCapability,
+    ModelProvider,
+    _get_service_context,
+)
+from docq.support.llama_index.node_post_processors import reciprocal_rank_fusion
+from docq.support.llama_index.query_pipeline_components import HyDEQueryTransform, ResponseWithChatHistory
+from docq.support.store import get_models_dir
 from llama_index.core.base.response.schema import RESPONSE_TYPE, Response
 from llama_index.core.chat_engine import SimpleChatEngine
 from llama_index.core.chat_engine.types import AGENT_CHAT_RESPONSE_TYPE, AgentChatResponse
@@ -27,21 +40,6 @@ from llama_index.embeddings.huggingface_optimum import OptimumEmbedding
 from llama_index.retrievers.bm25 import BM25Retriever
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
-
-from ..domain import SpaceKey
-from ..manage_assistants import Assistant, llama_index_chat_prompt_template_from_assistant
-from ..manage_indices import _load_index_from_storage, load_indices_from_storage
-from ..model_selection.main import (
-    LLM_MODEL_COLLECTIONS,
-    LlmUsageSettingsCollection,
-    ModelCapability,
-    ModelProvider,
-    _get_service_context,
-)
-from .ansi_colours import AnsiColours
-from .llama_index.node_post_processors import reciprocal_rank_fusion
-from .llama_index.query_pipeline_components import HyDEQueryTransform, ResponseWithChatHistory
-from .store import get_models_dir
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
@@ -252,9 +250,13 @@ def run_ask2(
         indices = []
         if spaces is not None and len(spaces) > 0:
             indices = load_indices_from_storage(spaces, model_settings_collection)
+            if indices is None or len(indices) == 0:
+                raise Error("Failed to load indices from storage for any Spaces.")
         # text_qa_template = llama_index_chat_prompt_template_from_assistant(assistant, history)
         span.add_event(name="prompt_created")
         similarity_top_k = 6
+
+        # TODO: adjust ask2 to work with multiple spaces.
         vector_retriever = indices[0].as_retriever(similarity_top_k=similarity_top_k)
         # retriever = get_hybrid_fusion_retriever_query(indices, model_settings_collection)
 

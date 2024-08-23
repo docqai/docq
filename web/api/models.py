@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from .utils.pydantic_utils import CamelModel
 
-SPACE_TYPE = Literal["personal", "shared", "public", "thread"]
+SPACE_TYPE = Literal["PERSONAL", "SHARED", "PUBLIC", "THREAD"]
 FEATURE = Literal["rag", "chat"]
 
 class UserModel(BaseModel):
@@ -43,11 +43,16 @@ class ThreadHistoryModel(CamelModel):
 
 
 class SpaceModel(CamelModel):
-    """Pydantic model for the response body."""
+    """Model for a Space."""
 
     id_: int = Field(..., alias="id", serialization_alias="id")
+    org_id: int
+    name: str
+    summary: str
+    datasource_type: str
     space_type: SPACE_TYPE
     created_at: str
+    updated_at: str
 
 
 class BaseResponseModel(CamelModel, ABC):
@@ -78,6 +83,18 @@ class ThreadHistoryResponseModel(BaseResponseModel):
     """HTTP response model for a single Thread with history messages."""
 
     response: ThreadHistoryModel
+
+
+class SpaceResponseModel(BaseResponseModel):
+    """HTTP response model for a single Space."""
+
+    response: SpaceModel
+
+
+class SpacesResponseModel(BaseResponseModel):
+    """HTTP response model for a **list** of Space."""
+
+    response: list[SpaceModel]
 
 
 class ThreadPostRequestModel(CamelModel):

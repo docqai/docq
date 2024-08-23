@@ -21,6 +21,9 @@ from docq.support.store import (
     get_sqlite_usage_file,
 )
 
+# TODO: add thread_space_id to hold the space that's hard attached to a thread for adhoc uploads
+# add space_ids dict / array to loosely persist space ids that are selected by a user.
+# add assistant_scoped_id to hold the assistant that's attached to the thread.
 SQL_CREATE_THREAD_TABLE = """
 CREATE TABLE IF NOT EXISTS {table} (
     id INTEGER PRIMARY KEY,
@@ -28,6 +31,7 @@ CREATE TABLE IF NOT EXISTS {table} (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """
+
 
 SQL_CREATE_MESSAGE_TABLE = """
 CREATE TABLE IF NOT EXISTS {table} (
