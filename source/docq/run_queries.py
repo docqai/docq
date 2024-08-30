@@ -126,7 +126,7 @@ def _retrieve_messages(
 
 
 def list_thread_history(feature: FeatureKey, id_: Optional[int] = None) -> list[tuple[int, str, int]]:
-    """List the history messages for the thread."""
+    """List threads or a thread if id_ is provided."""
     tablename = get_history_thread_table_name(feature.type_)
     rows = None
     with closing(
@@ -140,7 +140,6 @@ def list_thread_history(feature: FeatureKey, id_: Optional[int] = None) -> list[
         if id_:
             rows = cursor.execute(f"SELECT id, topic, created_at FROM {tablename} WHERE id = ?", (id_,)).fetchall()  # noqa: S608
         else:
-            # FIXME: this returns all the messages across all threads which doesn't make sense. This method should be refactored to get_thread_history with thread_id param being required.
             rows = cursor.execute(f"SELECT id, topic, created_at FROM {tablename} ORDER BY created_at DESC").fetchall()  # noqa: S608
 
     return rows
