@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "docq"
-version = "0.13.0"
+version = "0.13.1"
 description = "Docq.AI - Your private ChatGPT alternative. Securely unlock knowledge from confidential documents."
 authors = ["Docq.AI Team <support@docqai.com>"]
 maintainers = ["Docq.AI Team <support@docqai.com>"]
@@ -13,7 +13,7 @@ packages = [{ include = "docq", from = "source" }]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.12"
-streamlit = "^1.37.0"
+streamlit = "^1.38.0"
 st-pages = "^1.0.0"
 pypdf = "^4.1.0"
 docx2txt = "^0.8"
