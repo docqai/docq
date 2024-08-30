@@ -1002,7 +1002,7 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
         content: "File limit 200MB";
         font-size: 0.8rem;
       }
-      section[data-testid="stFileUploaderDropzone"] button[data-testid="baseButton-secondary"] {
+      section[data-testid="stFileUploaderDropzone"] button {
         min-height: unset;
         height: 1.8rem;
         font-size: 0.8rem;
@@ -1058,21 +1058,21 @@ def chat_ui(feature: FeatureKey) -> None:
                 border-radius: 0;
             }
 
-            div[data-testid="stHorizontalBlock"]:has(div > div > div > [docq-data-label="New chat"]) {
+            div[data-testid="stHorizontalBlock"]:has(div > div > div > div) {
                 position: fixed;
-                bottom: 1.8rem;
+                bottom: 0.8rem;
                 z-index: 1000;
-                max-height: 2rem;
+                max-height: 3rem;
             }
 
-            div[data-testid="column"] > div > div > div > [docq-data-label="New chat"] > .stButton {
+            div[data-testid="column"] > div > div > div > div > .stButton {
                 display: flex;
                 align-items: center;
                 justify-content: flex-end;
                 margin-top: 1rem;
             }
 
-            [docq-data-label="New chat"] div button {
+            div[data-testid="column"] > div > div > div > div > .stButton > button {
                 min-height: unset;
                 height: 2rem;
                 font-size: 0.8rem;
@@ -1167,7 +1167,7 @@ def chat_ui(feature: FeatureKey) -> None:
     )
 
     uploader, new_chat = st.columns([3, 1])
-    if new_chat.button("New chat"):
+    if new_chat.button(label="New chat", key="new_chat_button"):
         handle_create_new_chat(feature)
         st.rerun()
 
