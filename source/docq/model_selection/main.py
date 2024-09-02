@@ -13,6 +13,19 @@ from enum import Enum
 from typing import Any, Dict, Mapping, Optional
 
 import docq
+from docq.config import (
+    ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE1,
+    ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE2,
+    ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY1,
+    ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY2,
+    ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION,
+    ENV_VAR_DOCQ_GROQ_API_KEY,
+    EXPERIMENTS,
+    OrganisationSettingsKey,
+)
+from docq.manage_settings import get_organisation_settings
+from docq.support.llama_index.callbackhandlers import OtelCallbackHandler
+from docq.support.store import get_models_dir
 from llama_index.core.callbacks.base import CallbackManager
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.core.llms import LLM
@@ -24,20 +37,6 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.litellm import LiteLLM
 from opentelemetry import trace
 from vertexai.preview.generative_models import HarmBlockThreshold, HarmCategory
-
-from ..config import (
-    ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE1,
-    ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE2,
-    ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY1,
-    ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY2,
-    ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION,
-    ENV_VAR_DOCQ_GROQ_API_KEY,
-    EXPERIMENTS,
-    OrganisationSettingsKey,
-)
-from ..manage_settings import get_organisation_settings
-from ..support.llama_index.callbackhandlers import OtelCallbackHandler
-from ..support.store import get_models_dir
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
@@ -167,7 +166,8 @@ LLM_SERVICE_INSTANCES = {
         model_deployment_name="gpt-4o-2024-05-13",
         api_base=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE2) or "",
         api_key=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY2) or "",
-        api_version=os.environ.get(ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION, "2023-05-15"),
+        # api_version=os.environ.get(ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION, "2023-05-15"),
+        api_version=os.environ.get(ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION, "2024-07-01-preview"),
         license_="Commercial",
     ),
     "azure-openai-ada-002": LlmServiceInstanceConfig(
