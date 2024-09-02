@@ -246,30 +246,64 @@ def run_ask2(
     """Implements logic of run_ask() using LlamaIndex query pipelines."""
     span = trace.get_current_span()
 
+    service_context = _get_service_context(model_settings_collection)
+    span.add_event(name="service_context_loaded")
+
     try:
         indices = []
         if spaces is not None and len(spaces) > 0:
             indices = load_indices_from_storage(spaces, model_settings_collection)
             if indices is None or len(indices) == 0:
+                span.add_event(name="indices_loading_failed")
+                span.set_status(status=Status(StatusCode.ERROR))
                 raise Error("Failed to load indices from storage for any Spaces.")
-        # text_qa_template = llama_index_chat_prompt_template_from_assistant(assistant, history)
-        span.add_event(name="prompt_created")
-        similarity_top_k = 6
 
+            else:
+                span.add_event(
+                    name="indices_loaded",
+                    attributes={"num_indices_loaded": len(indices), "num_spaces_given": len(spaces)},
+                )
+        # text_qa_template = llama_index_chat_prompt_template_from_assistant(assistant, history)
+        # span.add_event(name="prompt_created")
+
+        similarity_top_k = 6
+        span.set_attributes(
+            attributes={
+                "model_settings_collection": str(model_settings_collection),
+                "assistant": str(assistant),
+                "similarity_top_k": similarity_top_k,
+            }
+        )
         # TODO: adjust ask2 to work with multiple spaces.
         vector_retriever = indices[0].as_retriever(similarity_top_k=similarity_top_k)
+        span.add_event(
+            name="vector_retriever_object_created",
+            attributes={
+                "retriever": vector_retriever.__class__.__name__,
+                "index_id": indices[0].index_id,
+                "index_struct_cls": indices[0].index_struct_cls.__name__,
+                "similarity_top_k": similarity_top_k,
+            },
+        )
         # retriever = get_hybrid_fusion_retriever_query(indices, model_settings_collection)
 
         bm25_retriever = BM25Retriever.from_defaults(docstore=indices[0].docstore, similarity_top_k=similarity_top_k)
-
-        span.add_event(name="retriever_object_created", attributes={"retriever": vector_retriever.__class__.__name__})
+        span.add_event(
+            name="bm25_retriever_object_created",
+            attributes={
+                "retriever": bm25_retriever.__class__.__name__,
+                "index_id": indices[0].index_id,
+                "index_struct_cls": indices[0].index_struct_cls.__name__,
+                "similarity_top_k": similarity_top_k,
+            },
+        )
 
         # query_engine = RetrieverQueryEngine.from_args(
         #     retriever=retriever,
         #     service_context=_get_service_context(model_settings_collection),
         #     text_qa_template=text_qa_template,
         # )
-        span.add_event(name="query_engine__object_created")
+        # span.add_event(name="query_engine__object_created")
 
         # output = query_engine.query(input_)
         # span.add_event(name="query_executed")
@@ -278,13 +312,12 @@ def run_ask2(
         span.record_exception(e)
         raise Error(f"Error: {e}") from e
 
-
-
-    service_context = _get_service_context(model_settings_collection)
     llm = service_context.llm
 
     # First, we create an input component to capture the user query
     input_component = InputComponent()
+    span.add_event(name="query_pipeline_declaration_start")
+    span.add_event(name="input_component_created")
 
     # Next, we use the LLM to rewrite a user query
     HYDE_TMPL = (
@@ -304,20 +337,26 @@ def run_ask2(
     )
     history_str = "\n".join([str(x) for x in history])
     hyde_template = PromptTemplate(template=HYDE_TMPL, prompt_type=PromptType.SUMMARY)
+    span.add_event(name="hyde_prompt_template_created", attributes={"template": str(hyde_template)})
     hyde_query_transform_component = HyDEQueryTransform(
         llm=llm, hyde_prompt=hyde_template, prompt_args={"chat_history_str": history_str}
     ).as_query_component()
 
+    span.add_event(name="hyde_query_transform_component_created")
+
     # we will retrieve two times, so we need to pack the retrieved nodes into a single list
     # argpack_component = ArgPackComponent()
     kwargpack_component = KwargPackComponent()
+    span.add_event(name="kwargpack_component_created")
 
     rerank_component = FnComponent(fn=reciprocal_rank_fusion)
+    span.add_event(name="rerank_component_created")
 
     response_component = ResponseWithChatHistory(
         llm=llm,
         system_prompt=assistant.system_message_content,
     )
+    span.add_event(name="response_component_created")
 
     # define query pipeline
     pipeline = QueryPipeline(
@@ -334,6 +373,7 @@ def run_ask2(
         },
         verbose=False,
     )
+    span.add_event(name="query_pipeline_definition_created")
 
     # transform the user query using the HyDE technique
     pipeline.add_link("input", "hyde_query_transform", src_key="query_str", dest_key="query_str")
@@ -364,7 +404,8 @@ def run_ask2(
         src_key="chat_history",
         dest_key="chat_history",
     )
-
+    span.add_event(name="query_pipeline_all_links_created")
+    span.add_event(name="query_pipeline_declaration_end")
     # from pyvis.network import Network # -- poetry add pyvis
 
     # net = Network(notebook=True, cdn_resources="in_line", directed=True)
@@ -373,12 +414,14 @@ def run_ask2(
 
     # output, intermediates = pipeline.run_with_intermediates(input_)
 
+    span.add_event(name="query_pipeline_execution_started")
     output, intermediates = pipeline.run_with_intermediates(
         query_str=input_,
         chat_history=history,
         chat_history_str=history_str,
         callback_manager=service_context.callback_manager,
     )
+    span.add_event(name="query_pipeline_execution_finished")
 
     # # debug code
     # for k, v in intermediates.items():
