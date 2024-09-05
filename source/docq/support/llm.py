@@ -17,7 +17,11 @@ from docq.model_selection.main import (
     _get_service_context,
 )
 from docq.support.llama_index.node_post_processors import reciprocal_rank_fusion
-from docq.support.llama_index.query_pipeline_components import HyDEQueryTransform, ResponseWithChatHistory
+from docq.support.llama_index.query_pipeline_components import (
+    HyDEQueryTransform,
+    KwargPackComponent,
+    ResponseWithChatHistory,
+)
 from docq.support.store import get_models_dir
 from llama_index.core.base.response.schema import RESPONSE_TYPE, Response
 from llama_index.core.chat_engine import SimpleChatEngine
@@ -31,7 +35,8 @@ from llama_index.core.query_pipeline import (
     QueryPipeline,
 )
 from llama_index.core.query_pipeline.components import FnComponent
-from llama_index.core.query_pipeline.components.argpacks import KwargPackComponent
+
+# from llama_index.core.query_pipeline.components.argpacks import KwargPackComponent
 from llama_index.core.retrievers import BaseRetriever, QueryFusionRetriever
 from llama_index.core.retrievers.fusion_retriever import FUSION_MODES
 
@@ -274,6 +279,7 @@ def run_ask2(
                 "similarity_top_k": similarity_top_k,
             }
         )
+        # print("indices:", len(indices))
         # TODO: adjust ask2 to work with multiple spaces.
         vector_retriever = indices[0].as_retriever(similarity_top_k=similarity_top_k)
         span.add_event(
@@ -393,7 +399,7 @@ def run_ask2(
 
     # RRF reranker needs the packed dict of node list from each retrieval
     # TODO: add top k
-    pipeline.add_link("join", "RRF_reranker", dest_key="results")
+    pipeline.add_link("join", "RRF_reranker", src_key="output", dest_key="results")
 
     # synthesizer needs the reranked nodes,  query str, and chat history
     pipeline.add_link("RRF_reranker", "response_component", dest_key="nodes")
@@ -427,9 +433,18 @@ def run_ask2(
     # for k, v in intermediates.items():
     #     print(f"{AnsiColours.BLUE.value}>>{k}{AnsiColours.RESET.value}:")
     #     for ki, vi in v.inputs.items():
-    #         print(f"{AnsiColours.GREEN.value}>>>>in: {ki} ({type(vi).__name__}) {AnsiColours.RESET.value}")
+    #         print(
+    #             f"{AnsiColours.GREEN.value}>>>>in: {ki} ({type(vi).__name__}) value: {len(vi)} {AnsiColours.RESET.value}"
+    #         )
+
     #     for ko, vo in v.outputs.items():
-    #         print(f"{AnsiColours.GREEN.value}>>>>out: {ko} ({type(vo).__name__}) {AnsiColours.RESET.value}")
+    #         if not isinstance(vo, ChatResponse):
+    #             print(
+    #                 f"{AnsiColours.GREEN.value}>>>>out: {ko} ({type(vo).__name__}) value:   {len(vo)} {AnsiColours.RESET.value}"
+    #             )
+    #         else:
+    #             print(f"{AnsiColours.GREEN.value}>>>>out: {ko} ({type(vo).__name__})  {AnsiColours.RESET.value}")
+    #         # if k == "join":
 
     # print("ANSWER:", output.get("response", "blah!").message)
 

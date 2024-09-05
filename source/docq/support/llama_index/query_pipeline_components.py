@@ -1,7 +1,7 @@
 """Custom Llama Index query pipeline components."""
 
 from abc import abstractmethod
-from typing import Any, Dict, List, Optional, Self
+from typing import Any, Callable, Dict, List, Optional, Self
 
 from llama_index.core.base.query_pipeline.query import (
     ChainableMixin,
@@ -275,7 +275,6 @@ class HyDEQueryTransform(BaseQueryTransform):
         # TODO: support generating multiple hypothetical docs
         query_str = query_bundle.query_str
         hypothetical_doc = self._llm.predict(self._hyde_prompt, query_str=query_str, **self._promp_args)
-        print("hypothetical_doc: ", hypothetical_doc)
         embedding_strs = [hypothetical_doc]
         if self._include_original:
             embedding_strs.extend(query_bundle.embedding_strs)
@@ -283,3 +282,52 @@ class HyDEQueryTransform(BaseQueryTransform):
             query_str=query_str,
             custom_embedding_strs=embedding_strs,
         )
+
+class KwargPackComponent(QueryComponent):
+    """Kwarg pack component.
+
+    Packs arbitrary number of kwargs into a dict.
+
+    """
+
+    convert_fn: Optional[Callable] = Field(default=None, description="Function to convert output.")
+
+    def _validate_component_inputs(self, input: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate component inputs during run_component."""
+        raise NotImplementedError
+
+    def validate_component_inputs(self, input: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate component inputs."""
+        return input
+
+    def _validate_component_outputs(self, output: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate component outputs."""
+        # make sure output value is a list
+        if not isinstance(output["output"], dict):
+            raise ValueError(f"Output is not a dict.")
+        return output
+
+    def set_callback_manager(self, callback_manager: Any) -> None:
+        """Set callback manager."""
+
+    def _run_component(self, **kwargs: Any) -> Any:
+        """Run component."""
+        if self.convert_fn is not None:
+            for k, v in kwargs.items():
+                kwargs[k] = self.convert_fn(v)
+        return {"output": kwargs}
+
+    async def _arun_component(self, **kwargs: Any) -> Any:
+        """Run component (async)."""
+        return self._run_component(**kwargs)
+
+    @property
+    def input_keys(self) -> InputKeys:
+        """Input keys."""
+        # NOTE: this shouldn't be used
+        return InputKeys.from_keys(set(), optional_keys=set())
+
+    @property
+    def output_keys(self) -> OutputKeys:
+        """Output keys."""
+        return OutputKeys.from_keys({"output"})

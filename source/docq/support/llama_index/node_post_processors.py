@@ -3,7 +3,7 @@
 These aren't always implementations of LlamaIndex's `BaseNodePostProcessor` interface, but they are used in a similar way.
 """
 
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from llama_index.core.schema import NodeWithScore
 
@@ -40,5 +40,5 @@ def reciprocal_rank_fusion(results: Dict[str, List[NodeWithScore]]) -> List[Node
     for text, score in reranked_results.items():
         reranked_nodes.append(text_to_node[text])
         reranked_nodes[-1].score = score
-
+    print("reranked_nodes: ", len(reranked_nodes))
     return reranked_nodes
