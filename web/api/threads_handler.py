@@ -85,6 +85,7 @@ class ThreadsHandler(BaseRequestHandler):
             request = ThreadPostRequestModel.model_validate_json(self.request.body)
             thread_id = rq.create_history_thread(request.topic, feature)
             thread = rq.list_thread_history(feature, thread_id)
+            self.set_status(201)  # 201 Created
             self.write(
                 ThreadResponseModel(response=ThreadModel(**_get_thread_object(thread[0]))).model_dump(by_alias=True)
             )
@@ -130,7 +131,7 @@ class ThreadHandler(BaseRequestHandler):
             is_deleted = rq.delete_thread(int(thread_id), feature)
 
         if is_deleted:
-            self.set_status(200)
+            self.set_status(204)  # 204 No Content
         elif not thread_exists:
             raise HTTPError(status_code=404, reason="Thread not found.")
         else:
@@ -139,7 +140,6 @@ class ThreadHandler(BaseRequestHandler):
     @authenticated
     def update(self: Self, feature_: FEATURE, thread_id: str) -> None:
         """Handle POST request."""
-
         raise HTTPError(status_code=501, reason="Update thread - Not implemented")
 
 

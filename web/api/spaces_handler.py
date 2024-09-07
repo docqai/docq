@@ -69,6 +69,7 @@ class SpacesHandler(BaseRequestHandler):
                         request.summary,
                         SpaceDataSources.MANUAL_UPLOAD.name,
                     )
+                    self.set_status(201)  # 201 Created
                     self.write(PostResponseModel(thread_id=thread_id, space_value=space.value()).model_dump_json())
                 except Exception as e:
                     raise HTTPError(500, reason="Error creating space") from e
@@ -139,4 +140,5 @@ class SpaceFileUploadHandler(BaseRequestHandler):
             raise HTTPError(400, reason="File too large", log_message="File size exceeds the limit")
 
         upload(fname[: self.__FILE_NAME_LIMIT], fileinfo["body"], space)
+        self.set_status(201)  # 201 Created
         self.write(f"File {fname} is uploaded successfully.")
