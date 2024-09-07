@@ -1,9 +1,15 @@
 """Integration tests."""
+import os
 
-import logging
 from dotenv import load_dotenv
 
-load_dotenv("pytest.env")
+dotenv_file = "pytest.env"
+if not os.path.isfile(dotenv_file):
+    raise FileNotFoundError(f"Tests: File '{dotenv_file}' not found.")
 
+load_dotenv(dotenv_file)
+print("Loaded pytest.env")
+
+import logging
 
 logging.disable(logging.CRITICAL)

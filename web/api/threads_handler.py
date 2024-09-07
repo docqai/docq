@@ -1,6 +1,6 @@
 """Handle chat and rag threads."""
 from datetime import datetime
-from typing import Literal, Self
+from typing import Self
 
 import docq.run_queries as rq
 from docq.domain import SpaceKey
@@ -13,13 +13,22 @@ from pydantic import ValidationError
 from tornado.web import HTTPError
 
 from web.api.base_handlers import BaseRequestHandler
-from web.api.models import FEATURE, ChatHistoryModel, ThreadModel, ThreadPostRequestModel, ThreadResponseModel
+from web.api.models import (
+    FEATURE,
+    ThreadHistoryModel,
+    ThreadHistoryResponseModel,
+    ThreadModel,
+    ThreadPostRequestModel,
+    ThreadResponseModel,
+    ThreadsResponseModel,
+)
 from web.api.utils.auth_utils import authenticated
 from web.api.utils.docq_utils import get_feature_key, get_message_object, get_thread_space
 from web.utils.streamlit_application import st_app
 
 
 def _get_thread_object(result: tuple) -> dict:
+    # TODO: when we refactor the data layer to return data model classes instead of tuples, we can remove this function
     return {"id": result[0], "topic": result[1], "created_at": str(result[2])}
 
 
@@ -41,7 +50,7 @@ class ThreadsHandler(BaseRequestHandler):
             order: Literal["asc", "desc"] - The order of the items.
 
         Response:
-            ThreadResponseModel - Response object model.
+            ThreadsResponseModel - Response object model.
         """
         feature = get_feature_key(self.current_user.uid, feature_)
 
@@ -51,7 +60,7 @@ class ThreadsHandler(BaseRequestHandler):
                 [ThreadModel(**_get_thread_object(threads[i])) for i in range(len(threads))] if len(threads) > 0 else []
             )
             response = (
-                ThreadResponseModel(response=thread_response).model_dump()
+                ThreadsResponseModel(response=thread_response).model_dump(by_alias=True)
                 if len(thread_response) > 0
                 else {"response": []}
             )
@@ -62,7 +71,7 @@ class ThreadsHandler(BaseRequestHandler):
 
     @authenticated
     def post(self: Self, feature_: FEATURE) -> None:
-        """Handle POST request.
+        """POST: Handle creating a new Thread.
 
         Request Body:
             topic: str - Thread topic, A brief description of what the thread is about.
@@ -76,7 +85,9 @@ class ThreadsHandler(BaseRequestHandler):
             request = ThreadPostRequestModel.model_validate_json(self.request.body)
             thread_id = rq.create_history_thread(request.topic, feature)
             thread = rq.list_thread_history(feature, thread_id)
-            self.write(ThreadResponseModel(response=[ThreadModel(**_get_thread_object(thread[0]))]).model_dump())
+            self.write(
+                ThreadResponseModel(response=ThreadModel(**_get_thread_object(thread[0]))).model_dump(by_alias=True)
+            )
 
         except ValidationError as e:
             raise HTTPError(status_code=400, reason="Invalid request body", log_message=str(e)) from e
@@ -98,31 +109,38 @@ class ThreadHandler(BaseRequestHandler):
 
         try:
             thread = rq.list_thread_history(feature, thread_id)
-            thread_response = [ThreadModel(**_get_thread_object(thread[0]))] if len(thread) > 0 else []
+            thread_response = ThreadModel(**_get_thread_object(thread[0])) if len(thread) > 0 else None
 
-            response = (
-                ThreadResponseModel(response=thread_response).model_dump()
-                if len(thread_response) > 0
-                else {"response": []}
-            )
+            if not thread_response:
+                raise HTTPError(404, reason="Thread not found.")
+
+            response = ThreadResponseModel(response=thread_response).model_dump(by_alias=True)
             self.write(response)
 
         except ValidationError as e:
             raise HTTPError(status_code=400, reason="Bad request", log_message=str(e)) from e
 
     @authenticated
-    def delete(self: Self, feature: Literal["rag", "chat"], thread_id: str) -> None:
-        """Handle POST request."""
-        self.feature = feature
+    def delete(self: Self, feature_: FEATURE, thread_id: str) -> None:
+        """Handle DELETE request."""
+        feature = get_feature_key(self.current_user.uid, feature_)
+        thread_exists = rq.thread_exists(int(thread_id), self.current_user.uid, feature.type_)
+        is_deleted = False
+        if thread_exists:
+            is_deleted = rq.delete_thread(int(thread_id), feature)
 
-        raise HTTPError(status_code=501, reason="Not implemented")
+        if is_deleted:
+            self.set_status(200)
+        elif not thread_exists:
+            raise HTTPError(status_code=404, reason="Thread not found.")
+        else:
+            raise HTTPError(status_code=500, reason="Internal server error")
 
     @authenticated
-    def update(self: Self, feature: Literal["rag", "chat"], thread_id: str) -> None:
+    def update(self: Self, feature_: FEATURE, thread_id: str) -> None:
         """Handle POST request."""
-        self.feature = feature
 
-        raise HTTPError(status_code=501, reason="Not implemented")
+        raise HTTPError(status_code=501, reason="Update thread - Not implemented")
 
 
 @st_app.api_route("/api/v1/{feature}/threads/{thread_id}/history")
@@ -136,20 +154,32 @@ class ThreadHistoryHandler(BaseRequestHandler):
 
     @authenticated
     def get(self: Self, feature_: FEATURE, thread_id: str) -> None:
-        """Handle GET request."""
+        """GET: history messages for a thread."""
         feature = get_feature_key(self.current_user.uid, feature_)
         page = self.get_argument("page", "1")  # noqa: F841
         page_size = self.get_argument("page_size", "10")
         order = self.get_argument("order", "desc")
 
         try:
-            chat_history = rq._retrieve_messages(
+            thread = rq.list_thread_history(feature, int(thread_id))
+            if not len(thread) > 0:
+                raise HTTPError(status_code=404, reason="Thread not found")
+
+            thread_history = rq._retrieve_messages(
                 datetime.now(), int(page_size), feature, int(thread_id), "ASC" if order == "asc" else "DESC"
             )
-            messages = list(map(get_message_object, chat_history))
-            self.write(ChatHistoryModel(response=messages).model_dump())
+
+            messages = list(map(get_message_object, thread_history))
+            thread_history_model = ThreadHistoryModel(**_get_thread_object(thread[0]), messages=messages)
+
+            thread_history_response = ThreadHistoryResponseModel(response=thread_history_model)
+
+            self.write(thread_history_response.model_dump(by_alias=True))
         except ValidationError as e:
+            print("ValidationError: ", e)
             raise HTTPError(status_code=400, reason="Invalid page or limit") from e
+        except Exception as e:
+            raise HTTPError(status_code=500, reason="Internal server error") from e
 
 
 @st_app.api_route("/api/v1/rag/threads/{thread_id}/top-questions")
@@ -161,7 +191,7 @@ class TopQuestionsHandler(BaseRequestHandler):
         storage_context = _get_storage_context(space)  # FIXME: _get_storage_context should not be called directly here.
         service_context = _get_service_context(
             model_settings_collection
-        )  # FIXME: _get_storage_context should not be called directly here.
+        )  # FIXME: _get_service_context should not be called directly here.
         return load_index_from_storage(storage_context=storage_context, service_context=service_context)
 
     def get_summary_questions(self: Self, thread_space: SpaceKey) -> dict:

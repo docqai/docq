@@ -11,14 +11,13 @@ from typing import Any, List, Optional
 from opentelemetry import trace
 
 import docq
-
-from .access_control.main import SpaceAccessor, SpaceAccessType
-from .config import SpaceType
-from .data_source.list import SpaceDataSources
-from .domain import DocumentListItem, SpaceKey
-from .manage_indices import _create_vector_index, _persist_index
-from .model_selection.main import get_saved_model_settings_collection
-from .support.store import get_sqlite_shared_system_file
+from docq.access_control.main import SpaceAccessor, SpaceAccessType
+from docq.config import SpaceType
+from docq.data_source.list import SpaceDataSources
+from docq.domain import DocumentListItem, SpaceKey
+from docq.manage_indices import _create_vector_index, _persist_index
+from docq.model_selection.main import get_saved_model_settings_collection
+from docq.support.store import get_sqlite_shared_system_file
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
@@ -151,6 +150,7 @@ def list_space(org_id: int, space_type: Optional[str] = None) -> list[SPACE]:
         )
 
         rows = cursor.fetchall()
+        print("spaces:", rows)
         return [_format_space(row) for row in rows]
 
 
@@ -354,8 +354,7 @@ def get_thread_space(org_id: int, thread_id: int) -> SpaceKey | None:
     with closing(
         sqlite3.connect(get_sqlite_shared_system_file(), detect_types=sqlite3.PARSE_DECLTYPES)
     ) as connection, closing(connection.cursor()) as cursor:
-
-        name = f"Thread-{thread_id} %"
+        name = f"Thread-{thread_id} %"  # FIXME: urg this is nasty.
         cursor.execute(
             "SELECT id FROM spaces WHERE org_id = ? AND name LIKE ? AND space_type = ?",
             (org_id, name, SpaceType.THREAD.name),

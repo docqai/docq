@@ -5,11 +5,12 @@ import docq.manage_spaces as m_spaces
 import docq.run_queries as rq
 from docq.data_source.list import SpaceDataSources
 from docq.manage_documents import upload
+from py import log
 from pydantic import BaseModel, ValidationError
 from tornado.web import HTTPError
 
 from web.api.base_handlers import BaseRequestHandler
-from web.api.models import SPACE_TYPE
+from web.api.models import SPACE_TYPE, SpaceModel, SpacesResponseModel
 from web.api.utils.auth_utils import authenticated
 from web.api.utils.docq_utils import get_feature_key, get_space
 from web.utils.streamlit_application import st_app
@@ -27,13 +28,27 @@ class PostRequestModel(BaseModel):
 class PostResponseModel(BaseModel):
     """Post response model."""
 
+    # TODO: replace the use of this with SpaceResponseModel where needed.
     thread_id: Optional[int] = None
     space_value: str
+
+def _map_to_space_model(space: tuple) -> SpaceModel:
+    # [0 id , 1 org_id, 2 name, 3 summary, 4 archived, 5 datasource_type, 6 datasource_configs, 7 space_type, 8 created_at, 9 updated_at]
+    return SpaceModel(
+        id=space[0],
+        org_id=space[1],
+        name=space[2],
+        summary=space[3],
+        datasource_type=space[5],
+        space_type=space[7],
+        created_at=space[8].strftime("%Y-%m-%d %H:%M:%S"),
+        updated_at=space[9].strftime("%Y-%m-%d %H:%M:%S"),
+    )
 
 
 @st_app.api_route("/api/v1/spaces")
 class SpacesHandler(BaseRequestHandler):
-    """Handle /api/spaces requests."""
+    """Handle /api/v1/spaces action requests."""
 
     @authenticated
     def post(self: Self) -> None:
@@ -62,6 +77,27 @@ class SpacesHandler(BaseRequestHandler):
                 raise HTTPError(501, reason="Not implemented")
         except ValidationError as e:
             raise HTTPError(400, reason="Bad request") from e
+
+    @authenticated
+    def get(self: Self) -> None:
+        """Handle GET request: get list of Spaces.
+
+        query params:
+            space_type: str shared, thread, public
+        """
+        try:
+            space_type = self.get_query_argument("space_type", None)
+
+            print("space_type", space_type)
+            spaces = m_spaces.list_space(self.selected_org_id, space_type)
+            print("spaces", spaces)
+            space_model_list: list[SpaceModel] = [_map_to_space_model(space) for space in spaces]
+
+            spaces_response_model = SpacesResponseModel(response=space_model_list)
+            self.write(spaces_response_model.model_dump(by_alias=True))
+        except Exception as e:
+            log.error("Error: ", e)
+            raise HTTPError(500, reason="Internal server error", log_message=f"Error: {str(e)}") from e
 
 
 @st_app.api_route("/api/v1/spaces/{space_id}")

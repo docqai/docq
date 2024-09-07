@@ -15,14 +15,16 @@ def format_datetime(dt: datetime) -> str:
 
 def format_duration(dt: datetime) -> str:
     """Format time duration to human-friendly value."""
-    now = datetime.now().day
-    if now == dt.date().day:
+    today = datetime.date(datetime.now())
+    delta = today - dt.date()
+
+    if delta.days == 0:
         return "Today"
-    elif now - dt.date().day == 1:
+    elif delta.days == 1:
         return "Yesterday"
-    elif now - dt.date().day < 7:
+    elif delta.days < 7:
         return "Previous 7 days"
-    elif now - dt.date().day < 30:
+    elif delta.days < 30:
         return "Previous 30 days"
     else:
         return dt.strftime("%B %Y")

@@ -2,28 +2,28 @@
 
 import logging as log
 import sqlite3
-from concurrent.futures import thread
 from contextlib import closing
 from datetime import datetime
 from typing import Literal, Optional
 
 from llama_index.core.llms import ChatMessage, MessageRole
-from numpy import int32
 
+from docq.config import OrganisationFeatureType
+from docq.domain import FeatureKey, SpaceKey
+from docq.manage_assistants import Assistant
+from docq.manage_documents import format_document_sources
 from docq.model_selection.main import LlmUsageSettingsCollection
-
-from .config import OrganisationFeatureType
-from .domain import FeatureKey, SpaceKey
-from .manage_assistants import Assistant
-from .manage_documents import format_document_sources
-from .support.llm import query_error, run_ask, run_chat
-from .support.store import (
+from docq.support.llm import query_error, run_ask, run_chat
+from docq.support.store import (
     get_history_table_name,
     get_history_thread_table_name,
     get_public_sqlite_usage_file,
     get_sqlite_usage_file,
 )
 
+# TODO: add thread_space_id to hold the space that's hard attached to a thread for adhoc uploads
+# add space_ids dict / array to loosely persist space ids that are selected by a user.
+# add assistant_scoped_id to hold the assistant that's attached to the thread.
 SQL_CREATE_THREAD_TABLE = """
 CREATE TABLE IF NOT EXISTS {table} (
     id INTEGER PRIMARY KEY,
@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS {table} (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """
+
 
 SQL_CREATE_MESSAGE_TABLE = """
 CREATE TABLE IF NOT EXISTS {table} (
@@ -52,6 +53,7 @@ NUMBER_OF_MESSAGES_IN_HISTORY = 10
 
 
 def _save_messages(data: list[tuple[str, bool, datetime, int]], feature: FeatureKey) -> list:
+    """feature.id_ needs to be the user_id."""
     rows = []
     tablename = get_history_table_name(feature.type_)
     thread_tablename = get_history_thread_table_name(feature.type_)
@@ -124,7 +126,7 @@ def _retrieve_messages(
 
 
 def list_thread_history(feature: FeatureKey, id_: Optional[int] = None) -> list[tuple[int, str, int]]:
-    """List the history of threads."""
+    """List threads or a thread if id_ is provided."""
     tablename = get_history_thread_table_name(feature.type_)
     rows = None
     with closing(
@@ -206,7 +208,7 @@ def get_history_as_chat_messages(
     return history_chat_message
 
 
-def create_history_thread(topic: str, feature: FeatureKey) -> int:
+def create_history_thread(topic: str, feature: FeatureKey) -> int | None:
     """Create a new thread for the history i.e a new chat session."""
     tablename = get_history_thread_table_name(feature.type_)
     with closing(
@@ -224,6 +226,34 @@ def create_history_thread(topic: str, feature: FeatureKey) -> int:
         connection.commit()
 
     return id_
+
+def delete_thread(thread_id: int, feature: FeatureKey) -> bool:
+    """Delete a thread and its associated messages.
+
+    feature.id_ needs to be the user_id.
+    """
+    thread_tablename = get_history_thread_table_name(feature.type_)
+    message_tablename = get_history_table_name(feature.type_)
+    usage_file = (
+        get_sqlite_usage_file(feature.id_)
+        if feature.type_ != OrganisationFeatureType.ASK_PUBLIC
+        else get_public_sqlite_usage_file(str(feature.id_))
+    )
+    is_deleted = False
+    with closing(sqlite3.connect(usage_file, detect_types=sqlite3.PARSE_DECLTYPES)) as connection, closing(
+        connection.cursor()
+    ) as cursor:
+        cursor.execute("PRAGMA foreign_keys = ON;")
+        try:
+            cursor.execute(f"DELETE FROM {message_tablename} WHERE thread_id = ?", (thread_id,))  # noqa: S608
+            cursor.execute(f"DELETE FROM {thread_tablename} WHERE id = ?", (thread_id,))  # noqa: S608
+            connection.commit()
+            is_deleted = True
+        except sqlite3.Error as e:
+            connection.rollback()
+            # raise e
+            is_deleted = False
+    return is_deleted
 
 
 def get_latest_thread(feature: FeatureKey) -> tuple[int, str, int] | None:

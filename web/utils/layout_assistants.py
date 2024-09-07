@@ -99,7 +99,7 @@ def render_assistants_selector_ui(
                 selected_index = i
                 break
     selected_assistant = st.selectbox(
-        "Assistant",
+        label="Assistant",
         options=[assistant for assistant in assistants_data],
         format_func=lambda x: x[1],
         label_visibility="visible",
@@ -113,6 +113,7 @@ def render_assistants_listing_ui(assistants_data: list[ASSISTANT], org_id: Optio
     for assistant in assistants_data:
         with st.expander(f"{assistant[1]} ({assistant[0]})", expanded=False):
             st.write(f"ID: {assistant[0]}")
+            st.write(f"Scoped ID: {assistant[9]}")
             st.write(f"Created At: {assistant[7]} | Updated At: {assistant[8]}")
             edit = st.button(label="Edit Assistant", key=f"edit_assistant_{assistant[0]}")
             if edit:

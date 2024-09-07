@@ -12,7 +12,7 @@ from urllib.parse import quote_plus, unquote_plus
 
 import docq
 import streamlit as st
-from docq import manage_spaces, setup
+from docq import setup
 from docq.access_control.main import SpaceAccessType
 from docq.config import (
     LogType,
@@ -306,8 +306,10 @@ def __no_staff_menu() -> None:
 
 @tracer.start_as_current_span("__no_admin_menu")
 def __no_admin_menu() -> None:
-    hide_pages(["Admin_Section"])
-    hide_pages(["ML Engineering"])
+    # hide_pages(["Admin_Section"])
+    # hide_pages(["ML Engineering"])
+    # FIXME: new to reimplement this the new the ST 1.37 way
+    pass
 
 
 def __embed_page_config() -> None:
@@ -353,7 +355,8 @@ def __hide_all_empty_divs() -> None:
 
 def __always_hidden_pages() -> None:
     """These pages are always hidden whether the user is an admin or not."""
-    hide_pages(["widget", "signup", "verify", "Admin_Spaces"])
+    # hide_pages(["widget", "signup", "verify", "Admin_Spaces"])
+    # FIXME: new to reimplement this the new the ST 1.37 way
 
 
 def render_page_title_and_favicon(
@@ -379,16 +382,21 @@ def render_page_title_and_favicon(
     if ctx is None:
         return
 
+    pages = ctx.pages_manager.get_pages()
+
+    current_page_hash = ctx.pages_manager.current_page_hash
     try:
-        current_page = pages[ctx.page_script_hash]
+        current_page = pages[current_page_hash]
+
     except KeyError:
         try:
-            current_page = [p for p in pages.values() if p["relative_page_hash"] == ctx.page_script_hash][0]
+            # not sure we need this anymore given the new pages_manager and st.navigation
+            current_page = [p for p in pages.values() if p["page_script_hash"] == current_page_hash][0]
         except IndexError:
             return
 
-    page_slug = current_page["page_name"]  # this is the URL slug defined in show_pages()
-    page_icon = current_page["icon"]  # the optional icon defined in show_pages()
+    page_slug = current_page.get("page_name", "")  # this is the URL slug defined in show_pages()
+    page_icon = current_page.get("icon")  # the optional icon defined in show_pages()
     _page_display_title = page_display_title or page_slug.replace("_", " ")
 
     try:
@@ -409,12 +417,9 @@ def render_page_title_and_favicon(
     _posthog_tracking_script()
 
 
-def render_docq_logo() -> None:
+def render_docq_logo(width: int = 100) -> None:
     """Render the Docq logo."""
-    st.markdown(
-        "<img src='https://raw.githubusercontent.com/docqai/docq/main/docs/assets/logo.jpg'  width='100' alt='Docq.AI Logo'/>",
-        unsafe_allow_html=True,
-    )
+    st.image(image="web/static/docq-v2_1-word-mark.jpg", width=100)
 
 
 def __resend_verification_ui(
@@ -528,8 +533,8 @@ def auth_required(
                 selected_org_admin=auth[SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name],
             )
 
-        if show_logout_button:
-            __logout_button()
+        # if show_logout_button:
+        #     __logout_button()
 
         if not auth.get(SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name, False):
             __no_admin_menu()
@@ -547,13 +552,20 @@ def auth_required(
         return False
 
 
-def is_super_admin() -> bool:
-    """Check if the current user is a super admin. auth_required() must be called before this."""
+# def is_super_admin() -> bool:
+#     """Check if the current user is a super admin. auth_required() must be called before this."""
+#     auth = get_auth_session()
+#     is_super_admin = auth.get(SessionKeyNameForAuth.SUPER_ADMIN.name, False)
+#     if not is_super_admin:
+#         __not_authorised()
+#     return is_super_admin
+
+
+def is_authenticated() -> bool:
+    """Check if the current user is authenticated. auth_required() must be called before this."""
     auth = get_auth_session()
-    is_super_admin = auth.get(SessionKeyNameForAuth.SUPER_ADMIN.name, False)
-    if not is_super_admin:
-        __not_authorised()
-    return is_super_admin
+    is_authenticated = bool(auth)
+    return is_authenticated
 
 
 def public_session_setup() -> None:
@@ -794,6 +806,13 @@ def _personal_ask_style() -> None:
         unsafe_allow_html=True,
     )
 
+def sidebar_dynamic_section_container() -> DeltaGenerator:
+    """Get a reference to the  dynamic sidebar section container.
+
+    This is how you insert UI elements inbetween the menu options and the logout button. Ensures the logout button is always at the bottom.
+    """
+    return st.session_state.get("sidebar_dynamic_section", st.sidebar.container())
+
 
 def _show_chat_histories(feature: FeatureKey) -> None:
     st.markdown(
@@ -826,7 +845,11 @@ def _show_chat_histories(feature: FeatureKey) -> None:
     """,
         unsafe_allow_html=True,
     )
-    with st.sidebar.expander("Chat History"):
+    # with st.sidebar.expander("Chat History"):
+    sidebar_dynamic_section = sidebar_dynamic_section_container()
+
+    # sidebar_dynamic_section = st.sidebar.container()
+    with sidebar_dynamic_section.expander("Chat History"):
         chat_threads = handle_get_chat_history_threads(feature)
         day = None
         for x in chat_threads:
@@ -911,18 +934,22 @@ def _render_show_thread_space_files(feature: FeatureKey) -> None:
             space = handle_get_thread_space(feature)
             if space:
                 expander_label = "Knowledge"
-                with st.expander(expander_label):
+                sidebar_dynamic_section = sidebar_dynamic_section_container()
+                with sidebar_dynamic_section.expander(expander_label):
                     _render_documents_list_ui(space, False, "sm", expander_label)
 
 
 def _render_assistant_selection(feature: FeatureKey) -> None:
-    with st.sidebar.container():
+    sidebar_dynamic_section = sidebar_dynamic_section_container()
+    with sidebar_dynamic_section:
         selected_org_id = get_selected_org_id()
 
         if feature.type_ == OrganisationFeatureType.CHAT_PRIVATE:
             assistant_type = AssistantType.SIMPLE_CHAT
         elif feature.type_ == OrganisationFeatureType.ASK_SHARED:
             assistant_type = AssistantType.ASK
+        else:
+            raise ValueError(f"Unsupported feature type: {feature.type_}")
 
         assistants_data_org = list_assistants(org_id=selected_org_id, assistant_type=assistant_type)
         assistants_data_global = list_assistants(assistant_type=assistant_type)
@@ -947,36 +974,40 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
     st.markdown(
         """
     <style>
-      div[data-testid="stFileUploader"] label {
+      div[data-testid="stFileUploader"] {
+        margin-top: 1rem;
+        display: block;
+      }
+     div[data-testid="stFileUploader"] label {
         display: none;
       }
-      section[data-testid="stFileUploadDropzone"] {
+      section[data-testid="stFileUploaderDropzone"] {
         height: 2.1rem;
         margin-left: 0.2rem;
       }
-      section[data-testid="stFileUploadDropzone"] div {
+      section[data-testid="stFileUploaderDropzone"] div {
         flex-direction: row;
         gap: 1rem;
       }
-      section[data-testid="stFileUploadDropzone"] :is(small, span) {
+      section[data-testid="stFileUploaderDropzone"] :is(small, span) {
         justify-content: center;
         align-items: center;
         display: flex;
         margin: 0;
       }
-      section[data-testid="stFileUploadDropzone"] small {
+      section[data-testid="stFileUploaderDropzone"] small {
         font-size: 0;
       }
-      section[data-testid="stFileUploadDropzone"] small:after {
+      section[data-testid="stFileUploaderDropzone"] small:after {
         content: "File limit 200MB";
         font-size: 0.8rem;
       }
-      section[data-testid="stFileUploadDropzone"] button[data-testid="baseButton-secondary"] {
+      section[data-testid="stFileUploaderDropzone"] button {
         min-height: unset;
         height: 1.8rem;
         font-size: 0.8rem;
       }
-      div[data-testid="stFileUploader"]:has(.uploadedFile) section[data-testid="stFileUploadDropzone"] {
+      div[data-testid="stFileUploader"]:has(.uploadedFile) section[data-testid="stFileUploaderDropzone"] {
         display: none;
       }
       div[data-testid="stHorizontalBlock"]:has([data-testid="stSpinner"]) div:has(> ul > li > .uploadedFile) {
@@ -1002,7 +1033,7 @@ def _render_chat_file_uploader(feature: FeatureKey, key_suffix: int) -> None:
 def chat_ui(feature: FeatureKey) -> None:
     """Chat UI layout."""
     prepare_for_chat(feature)
-    st.markdown(
+    st.html(
         """<style>
             [data-testid="stMarkdownContainer"] h6 {
                 padding: 0px !important;
@@ -1027,20 +1058,21 @@ def chat_ui(feature: FeatureKey) -> None:
                 border-radius: 0;
             }
 
-            div[data-testid="stHorizontalBlock"]:has(div > div > div > [docq-data-label="New chat"]) {
+            div[data-testid="stHorizontalBlock"]:has(div > div > div > div) {
                 position: fixed;
-                bottom: 1.8rem;
+                bottom: 0.8rem;
                 z-index: 1000;
-                max-height: 2rem;
+                max-height: 3rem;
             }
 
-            div[data-testid="column"] > div > div > [docq-data-label="New chat"] > .stButton {
+            div[data-testid="column"] > div > div > div > div > .stButton {
                 display: flex;
                 align-items: center;
                 justify-content: flex-end;
+                margin-top: 1rem;
             }
 
-            [docq-data-label="New chat"] button {
+            div[data-testid="column"] > div > div > div > div > .stButton > button {
                 min-height: unset;
                 height: 2rem;
                 font-size: 0.8rem;
@@ -1051,8 +1083,7 @@ def chat_ui(feature: FeatureKey) -> None:
                 justify-content: center;
             }
         </style>
-    """,
-        unsafe_allow_html=True,
+    """
     )
     from docq.agents.datamodels import Message
 
@@ -1136,7 +1167,7 @@ def chat_ui(feature: FeatureKey) -> None:
     )
 
     uploader, new_chat = st.columns([3, 1])
-    if new_chat.button("New chat"):
+    if new_chat.button(label="New chat", key="new_chat_button"):
         handle_create_new_chat(feature)
         st.rerun()
 
@@ -1145,9 +1176,11 @@ def chat_ui(feature: FeatureKey) -> None:
     with uploader:
         _render_chat_file_uploader(feature, thread_id)
 
+    # these are rendered in this order in the sidebar.
     _render_show_thread_space_files(feature)
-    _render_assistant_selection(feature)
     _show_chat_histories(feature)
+    _render_assistant_selection(feature)
+
     _chat_ui_script()
 
 
@@ -1283,16 +1316,11 @@ def organisation_settings_ui() -> None:
 
         selected_model = model_settings_container.selectbox(
             label="Default Model",
-            options=available_models.items(),
+            options=list(available_models.items()),
             format_func=lambda x: x[1],
             index=saved_model_index,
             key=f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}",
         )
-        # log.debug(
-        #     "selected model in session state: %s",
-        #     st.session_state[f"org_settings_default_{OrganisationSettingsKey.MODEL_COLLECTION.name}"][0],
-        # )
-        # log.debug("selected model: %s", selected_model[0])
 
         span.set_attributes(
             {

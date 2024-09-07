@@ -18,7 +18,6 @@ tracer = trace.get_tracer(__name__)
 def _get_user_dict(result: tuple) -> dict:
     return {"uid": result[0], "fullname": result[1], "super_admin": result[2], "username": result[3]}
 
-
 class TokenRequestModel(BaseModel):
     """Token request model."""
 
@@ -67,7 +66,7 @@ class TokenHandler(BaseRequestHandler):
             result = m_users.authenticate(request.username, request.password)
             if not result:
                 raise HTTPError(401, reason="Unauthorized", log_message="Invalid username or password")
-
+            print("token user: ", result)
             user = UserModel(**_get_user_dict(result))
             token = encode_jwt(user)
             if not token:
@@ -101,14 +100,14 @@ class TokenValidationHandler(BaseRequestHandler):
     """Token validation handler endpoint for the API. /api/token/validate handler. Check if the token sent is valid + unexpired."""
 
     def post(self: Self) -> None:
-        """Handle GET requests."""
+        """Handle POST request to validate an access token."""
         try:
             request = TokenValidationRequestModel.model_validate_json(self.request.body)
             user = decode_jwt(request.token, check_expired=True)
             if not user:
                 raise HTTPError(401, reason="Unauthorized", log_message="Invalid token")
 
-            self.write("OK")
+            self.set_status(200)
         except ValidationError as e:
             raise HTTPError(400, reason="Bad request") from e
 
@@ -132,7 +131,9 @@ class TokenRefreshHandler(BaseRequestHandler):
             if not token:
                 raise HTTPError(500, reason="Internal server error", log_message="Failed to generate token")
 
-            response = TokenResponseModel(access_token=token, expires_in=3600, refresh_token=token).model_dump_json()
+            response = TokenResponseModel(access_token=token, expires_in=3600, refresh_token=token).model_dump_json(
+                by_alias=True
+            )
             self.write(response)
         except ValidationError as e:
             raise HTTPError(400, reason="Bad request") from e

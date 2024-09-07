@@ -13,6 +13,19 @@ from enum import Enum
 from typing import Any, Dict, Mapping, Optional
 
 import docq
+from docq.config import (
+    ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE1,
+    ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE2,
+    ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY1,
+    ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY2,
+    ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION,
+    ENV_VAR_DOCQ_GROQ_API_KEY,
+    EXPERIMENTS,
+    OrganisationSettingsKey,
+)
+from docq.manage_settings import get_organisation_settings
+from docq.support.llama_index.callbackhandlers import OtelCallbackHandler
+from docq.support.store import get_models_dir
 from llama_index.core.callbacks.base import CallbackManager
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.core.llms import LLM
@@ -24,20 +37,6 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.litellm import LiteLLM
 from opentelemetry import trace
 from vertexai.preview.generative_models import HarmBlockThreshold, HarmCategory
-
-from ..config import (
-    ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE1,
-    ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE2,
-    ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY1,
-    ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY2,
-    ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION,
-    ENV_VAR_DOCQ_GROQ_API_KEY,
-    EXPERIMENTS,
-    OrganisationSettingsKey,
-)
-from ..manage_settings import get_organisation_settings
-from ..support.llama_index.callbackhandlers import OtelCallbackHandler
-from ..support.store import get_models_dir
 
 tracer = trace.get_tracer(__name__, docq.__version_str__)
 
@@ -165,9 +164,10 @@ LLM_SERVICE_INSTANCES = {
         provider=ModelProvider.AZURE_OPENAI,
         model_name="gpt-4o",
         model_deployment_name="gpt-4o-2024-05-13",
-        api_base=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE2) or "",
-        api_key=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY2) or "",
-        api_version=os.environ.get(ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION, "2023-05-15"),
+        api_base=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE2) or "base url missing",
+        api_key=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY2) or "api key missing",
+        # api_version=os.environ.get(ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION, "2023-05-15"),
+        api_version=os.environ.get(ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION, "2024-07-01-preview"),
         license_="Commercial",
     ),
     "azure-openai-ada-002": LlmServiceInstanceConfig(
@@ -282,7 +282,7 @@ LLM_MODEL_COLLECTIONS = {
             ModelCapability.CHAT: LlmUsageSettings(
                 model_capability=ModelCapability.CHAT,
                 temperature=0.7,
-                service_instance_config=LLM_SERVICE_INSTANCES["azure-openai-gpt35turbo"],
+                service_instance_config=LLM_SERVICE_INSTANCES["azure-openai-gpt4o-2024-05-13"],
             ),
             ModelCapability.EMBEDDING: LlmUsageSettings(
                 model_capability=ModelCapability.EMBEDDING,
@@ -412,6 +412,9 @@ LLM_MODEL_COLLECTIONS = {
 def get_model_settings_collection(model_settings_collection_key: str) -> LlmUsageSettingsCollection:
     """Get the settings for the model."""
     try:
+        x = os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE2)
+        if not x:
+            raise ValueError("Azure OpenAI API base 2 is missing")
         return LLM_MODEL_COLLECTIONS[model_settings_collection_key]
     except KeyError as e:
         log.error(

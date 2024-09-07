@@ -9,11 +9,11 @@ from secrets import token_hex
 from typing import Dict, Optional
 
 import docq
+import streamlit as st
 from cachetools import TTLCache
 from cryptography.fernet import Fernet
 from opentelemetry import trace
 from streamlit.components.v1 import html
-from streamlit.web.server.websocket_headers import _get_websocket_headers
 
 from ..config import ENV_VAR_DOCQ_COOKIE_HMAC_SECRET_KEY, SESSION_COOKIE_NAME
 
@@ -80,7 +80,7 @@ def _clear_cookie(cookie_name: str) -> None:
 def _get_cookies() -> Optional[Dict[str, str]]:
     """Return client cookies."""
     try:
-        headers = _get_websocket_headers()
+        headers = st.context.headers  # _get_websocket_headers()
         if headers is None:
             return None
         cookie_str = str(headers.get("Cookie"))

@@ -27,4 +27,4 @@ class ChatCompletionHandler(RequestHandler):
     def get(self: Self) -> None:
         """Handle GET request."""
         response = ResponseModel(response="Hello World!")
-        self.write(response.model_dump())
+        self.write(response.model_dump(by_alias=True))

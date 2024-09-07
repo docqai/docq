@@ -8,8 +8,8 @@ from typing import List, Optional
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.prompts import ChatPromptTemplate
 
-from .domain import Assistant, AssistantType
-from .support.store import (
+from docq.domain import Assistant, AssistantType
+from docq.support.store import (
     get_sqlite_global_system_file,
     get_sqlite_org_system_file,
 )
@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS assistants (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """
-
+# id, name, type, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, created_at, updated_at, scoped_id
 ASSISTANT = tuple[int, str, str, bool, str, str, str, datetime, datetime, str]
 
 
@@ -196,10 +196,17 @@ def get_assistant_fixed(
     return result
 
 
-def get_assistant_or_default(assistant_scoped_id: Optional[int] = None, org_id: Optional[int] = None) -> Assistant:
-    """Get the persona."""
+def get_assistant_or_default(assistant_scoped_id: Optional[str] = None, org_id: Optional[int] = None) -> Assistant:
+    """Get the persona.
+
+    Args:
+        assistant_scoped_id (Optional[int]): The assistant scoped ID. A composite ID <scope>_<id>.
+            scope is either 'org' or 'global'. id from the respective table.
+        org_id (Optional[int]): The org ID.
+
+    """
     if assistant_scoped_id:
-        assistant_data = get_assistant(assistant_scoped_id=str(assistant_scoped_id), org_id=org_id)
+        assistant_data = get_assistant(assistant_scoped_id=assistant_scoped_id, org_id=org_id)
         return Assistant(
             key=str(assistant_data[0]),
             name=assistant_data[1],
@@ -209,7 +216,11 @@ def get_assistant_or_default(assistant_scoped_id: Optional[int] = None, org_id: 
         )
     else:
         key = "default"
-        return Assistant(key=key, **SIMPLE_CHAT_PERSONAS[key])
+        return Assistant(
+            key=key,
+            llm_settings_collection_key="azure_openai_with_local_embedding",
+            **SIMPLE_CHAT_PERSONAS[key],
+        )
 
 
 def list_assistants(org_id: Optional[int] = None, assistant_type: Optional[AssistantType] = None) -> list[ASSISTANT]:
@@ -258,6 +269,7 @@ def get_assistant(assistant_scoped_id: str, org_id: Optional[int]) -> ASSISTANT:
     if scope == "org" and org_id:
         path = __get_assistants_sqlite_file(org_id=org_id)
     else:
+        # global scope
         path = __get_assistants_sqlite_file(org_id=None)
 
     with closing(sqlite3.connect(path, detect_types=sqlite3.PARSE_DECLTYPES)) as connection, closing(
@@ -271,10 +283,10 @@ def get_assistant(assistant_scoped_id: str, org_id: Optional[int]) -> ASSISTANT:
         if row is None:
             if org_id and scope == "org":
                 raise ValueError(
-                    f"No Persona with: id = '{assistant_scoped_id}' that belongs to org org_id= '{org_id}', scope= '{scope}'"
+                    f"No Assistant with: id = '{id_}' that belongs to org org_id= '{org_id}', scope= '{scope}'"
                 )
             else:
-                raise ValueError(f"No Persona with: id = '{assistant_scoped_id}' in global scope. scope= '{scope}'")
+                raise ValueError(f"No Assistant with: id = '{id_}' in global scope. scope= '{scope}'")
         return (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], assistant_scoped_id)
 
 

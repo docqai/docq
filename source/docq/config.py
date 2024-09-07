@@ -28,10 +28,10 @@ ENV_VAR_DOCQ_SLACK_SIGNING_SECRET = "DOCQ_SLACK_SIGNING_SECRET"  # noqa: S105
 class SpaceType(Enum):
     """Space types. These reflect scope of data access."""
 
-    PERSONAL = "personal"
+    PERSONAL = "personal"  # DEPRECATED. Personal spaces are now shared spaces in the users personal org.
     SHARED = "shared"
-    PUBLIC = "public"
-    THREAD = "thread"
+    PUBLIC = "public"  # public spaces are accessible to all users and anonymous users such as via widgets for chat bots
+    THREAD = "thread"  # a space that belongs to a thread used for adhoc uploads.
 
 
 class SystemFeatureType(Enum):

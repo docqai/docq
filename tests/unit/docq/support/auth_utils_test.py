@@ -2,7 +2,7 @@
 import unittest
 from secrets import token_hex
 from typing import Self
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 from docq.support import auth_utils
 from docq.support.auth_utils import (
@@ -44,10 +44,11 @@ class TestAuthUtils(unittest.TestCase):
         _clear_cookie(SESSION_COOKIE_NAME)
         mock_html.assert_called_once()
 
-    @patch("docq.support.auth_utils._get_websocket_headers")
+    @patch("docq.support.auth_utils.st.context", new_callable=Mock)
     def test_get_cookies(self: Self, mock_headers: Mock) -> None:
         """Test get cookies."""
-        mock_headers.return_value = {"Cookie": "key=value"}
+        # mock_headers.return_value = {"Cookie": "key=value"}
+        mock_headers.headers = {"Cookie": "key=value"}
         result = _get_cookies()
         assert result == {"key": "value"}
 
