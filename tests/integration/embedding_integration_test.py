@@ -3,20 +3,14 @@
 import logging
 import unittest
 from typing import Self
-from unittest.mock import MagicMock, Mock, patch
 
 from docq.config import SpaceType
 from docq.domain import SpaceKey
-from docq.manage_spaces import _create_vector_index, _persist_index, reindex
+from docq.manage_spaces import _create_vector_index, _persist_index
 from docq.model_selection.main import (
-    LLM_SERVICE_INSTANCES,
-    LlmUsageSettings,
-    LlmUsageSettingsCollection,
-    ModelCapability,
     get_model_settings_collection,
 )
 from docq.support import llm
-from llama_index.core.indices import VectorStoreIndex
 from llama_index.core.schema import Document
 
 

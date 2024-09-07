@@ -2,6 +2,7 @@
 
 import logging as log
 import os
+import traceback
 from typing import List, Optional
 from uu import Error
 
@@ -292,6 +293,8 @@ def run_ask2(
             },
         )
         # retriever = get_hybrid_fusion_retriever_query(indices, model_settings_collection)
+        if not indices[0].docstore:
+            raise ValueError("The docstore is empty, cannot create BM25Retriever")
 
         bm25_retriever = BM25Retriever.from_defaults(docstore=indices[0].docstore, similarity_top_k=similarity_top_k)
         span.add_event(
@@ -316,6 +319,8 @@ def run_ask2(
     except Exception as e:
         span.set_status(status=Status(StatusCode.ERROR))
         span.record_exception(e)
+        traceback.print_exc()
+
         raise Error(f"Error: {e}") from e
 
     llm = service_context.llm

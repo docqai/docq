@@ -216,7 +216,11 @@ def get_assistant_or_default(assistant_scoped_id: Optional[str] = None, org_id: 
         )
     else:
         key = "default"
-        return Assistant(key=key, **SIMPLE_CHAT_PERSONAS[key])
+        return Assistant(
+            key=key,
+            llm_settings_collection_key="azure_openai_with_local_embedding",
+            **SIMPLE_CHAT_PERSONAS[key],
+        )
 
 
 def list_assistants(org_id: Optional[int] = None, assistant_type: Optional[AssistantType] = None) -> list[ASSISTANT]:

@@ -164,8 +164,8 @@ LLM_SERVICE_INSTANCES = {
         provider=ModelProvider.AZURE_OPENAI,
         model_name="gpt-4o",
         model_deployment_name="gpt-4o-2024-05-13",
-        api_base=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE2) or "",
-        api_key=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY2) or "",
+        api_base=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE2) or "base url missing",
+        api_key=os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_KEY2) or "api key missing",
         # api_version=os.environ.get(ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION, "2023-05-15"),
         api_version=os.environ.get(ENV_VAR_DOCQ_AZURE_OPENAI_API_VERSION, "2024-07-01-preview"),
         license_="Commercial",
@@ -282,7 +282,7 @@ LLM_MODEL_COLLECTIONS = {
             ModelCapability.CHAT: LlmUsageSettings(
                 model_capability=ModelCapability.CHAT,
                 temperature=0.7,
-                service_instance_config=LLM_SERVICE_INSTANCES["azure-openai-gpt35turbo"],
+                service_instance_config=LLM_SERVICE_INSTANCES["azure-openai-gpt4o-2024-05-13"],
             ),
             ModelCapability.EMBEDDING: LlmUsageSettings(
                 model_capability=ModelCapability.EMBEDDING,
@@ -412,6 +412,9 @@ LLM_MODEL_COLLECTIONS = {
 def get_model_settings_collection(model_settings_collection_key: str) -> LlmUsageSettingsCollection:
     """Get the settings for the model."""
     try:
+        x = os.getenv(ENV_VAR_DOCQ_AZURE_OPENAI_API_BASE2)
+        if not x:
+            raise ValueError("Azure OpenAI API base 2 is missing")
         return LLM_MODEL_COLLECTIONS[model_settings_collection_key]
     except KeyError as e:
         log.error(
