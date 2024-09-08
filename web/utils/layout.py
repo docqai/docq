@@ -1874,7 +1874,6 @@ def signup_ui() -> None:
 
         _disable_sidebar()
         handle_logout()
-        st.title("Docq Signup")
         st.markdown('Already have an account? Login <a href="/" target="_self">here</a>.', unsafe_allow_html=True)
 
         if not handle_check_mailer_ready():

@@ -14,7 +14,6 @@ from utils.sessions import is_current_user_authenticated, is_current_user_select
 from utils.streamlit_application import st_app
 from utils.streamlit_page_extension import StreamlitPageExtension as StPage
 
-import web.api.index_handler  # noqa: F401 don't remove this line, it registers API routes
 
 st_app.print_registered_routes()
 
@@ -28,8 +27,8 @@ with tracer().start_as_current_span("index", attributes=baggage_as_attributes())
 
     public_access = [
         StPage(page="page_handlers/home.py", title="Home", default=True),
-        StPage(page="page_handlers/signup.py", title="signup", url_path="signup", hidden=True),
-        StPage(page="page_handlers/verify.py", title="verify", url_path="verify", hidden=True),
+        StPage(page="page_handlers/signup.py", title="Docq Signup", url_path="signup", hidden=True),
+        StPage(page="page_handlers/verify.py", title="Verify", url_path="verify", hidden=True),
         StPage(page="page_handlers/embed.py", title="widget", hidden=True),
     ]
 
