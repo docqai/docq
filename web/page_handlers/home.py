@@ -1,6 +1,6 @@
 """Page: Home (no auth required)."""
 
-import socket
+import os
 
 import streamlit as st
 from utils.handlers import (
@@ -43,7 +43,7 @@ with tracer().start_as_current_span("home_page", attributes=baggage_as_attribute
     """
     )
 
-    hostname = socket.gethostname()
+    hostname = os.environ.get("DOCQ_SERVER_ADDRESS", "http://localhost")
     st.subheader("Use Cases")
     st.markdown(
         f"""
