@@ -31,9 +31,6 @@ Docq offers
 - a general chat interface with secure access to a LLM.
   ![General chat in Docq](../assets/Docq_general_chat.png)
 
-- a chat interface to do Q&A against individuals' own documents.
-  ![Ask private in Docq](../assets/Docq_ask_private.png)
-
 - A chat interface to gain insight by combing one's own documents with those shared within an organisation.
   ![Ask shared in Docq](../assets/Docq_ask_shared.png)
 

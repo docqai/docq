@@ -1,6 +1,6 @@
 # Acknowledgements
 
-The project would not have been possible without the following libraries:
+The project would not have been possible without the following projects:
 
 - [@jerryjliu](https://github.com/jerryjliu)'s [Llama Index](https://github.com/jerryjliu/llama_index)
 - [LiteLLM](https://github.com/BerriAI/litellm)
@@ -18,4 +18,9 @@ Which includes a set of beautiful Python build toolings such as:
 - [Ruff](https://github.com/astral-sh/ruff)
 - [OpenTelemetry](https://github.com/open-telemetry)
 
-This docs site is created using [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/).
+Amazing tools used in deployments:
+
+- [Infisical](https://infisical.com/) - to manage secrets and environment variables easily.
+- [honeycomb.io](https://honeycomb.io) - backend for Open Telemetry trace data.
+
+This docs site is created using the wonderful [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/).

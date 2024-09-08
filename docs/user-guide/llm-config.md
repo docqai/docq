@@ -9,7 +9,7 @@ Find a little bit more information on how to get these credentials from each res
 ???+ warning
       In production, set secrets values in the shell. e.g. `set SOME_API_KEY=<your secret api key value>`.
 
-      A tool like Infisical helps manage this process while keeping your secret values safe.
+      A tool like [Infisical](https://infisical.com/) helps manage this process easily while keeping your secret values safe.
 
 ## OpenAI
 

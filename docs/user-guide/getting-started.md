@@ -14,16 +14,15 @@ To get you started, we show you one example for each scenario below.
 - For Secure Deployment, create a [Microsoft Cloud / Azure](https://azure.microsoft.com/) account with a secure foundation.
 - [Forking](https://github.com/docqai/docq/fork) the Docq repo at GitHub is highly recommended to have your own copy of code for your own deployment.
 
-
 ## Deployment Options
 
 - [Streamlit: 5 Minutes and flexible](./deploy-to-streamlit.md)
 
-- [Azure: 15 Minutes and decure](./deploy-to-azure.md)
+- [Azure: 15 Minutes and secure](./deploy-to-azure.md)
 
-- AWS: 15 Mintutes and Secure - on the roadmap
+- AWS: 15 Minutes and Secure - on the roadmap
 
-- GCP: 15 Mintutes and Secure - on the roadmap
+- GCP: 15 Minutes and Secure - on the roadmap
 
 ## After Deployment
 
