@@ -14,6 +14,11 @@ from utils.sessions import is_current_user_authenticated, is_current_user_select
 from utils.streamlit_application import st_app
 from utils.streamlit_page_extension import StreamlitPageExtension as StPage
 
+#### DO NOT REMOVE THIS IMPORT ####
+import web.api.index_handler as h  # noqa: F401
+
+h.setup()
+####
 
 st_app.print_registered_routes()
 

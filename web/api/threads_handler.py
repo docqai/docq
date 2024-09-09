@@ -2,7 +2,9 @@
 from datetime import datetime
 from typing import Self
 
+import docq.manage_spaces as ms
 import docq.run_queries as rq
+from docq.data_source.list import SpaceDataSources
 from docq.domain import SpaceKey
 from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
 from docq.support.llm import _get_service_context
@@ -85,6 +87,13 @@ class ThreadsHandler(BaseRequestHandler):
             request = ThreadPostRequestModel.model_validate_json(self.request.body)
             thread_id = rq.create_history_thread(request.topic, feature)
             thread = rq.list_thread_history(feature, thread_id)
+            if not thread_id:
+                raise HTTPError(status_code=500, reason="Internal server error", log_message="Thread creation failed.")
+
+            space_thread = ms.create_thread_space(
+                self.selected_org_id, thread_id, request.topic, SpaceDataSources.MANUAL_UPLOAD.name
+            )
+            print("space_thread: ", space_thread)
             self.set_status(201)  # 201 Created
             self.write(
                 ThreadResponseModel(response=ThreadModel(**_get_thread_object(thread[0]))).model_dump(by_alias=True)

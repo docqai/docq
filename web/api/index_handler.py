@@ -24,3 +24,18 @@ from . import (
     token_handler,  # noqa: F401 DO NOT REMOVE
 )
 from .integration.slack import index_handler  # noqa: F401 DO NOT REMOVE
+
+__all__ = [
+    "chat_completion_handler",
+    "hello_handler",
+    "rag_completion_handler",
+    "spaces_handler",
+    "threads_handler",
+    "token_handler",
+    "index_handler",
+]
+
+
+def setup() -> None:
+    """Fake method to keep the linter happy."""
+    pass
