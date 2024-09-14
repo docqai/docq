@@ -1,11 +1,11 @@
 """Spaces handler endpoint for the API. /api/spaces handler."""
+import logging
 from typing import Optional, Self
 
 import docq.manage_spaces as m_spaces
 import docq.run_queries as rq
 from docq.data_source.list import SpaceDataSources
 from docq.manage_documents import upload
-from py import log
 from pydantic import BaseModel, ValidationError
 from tornado.web import HTTPError
 
@@ -97,7 +97,7 @@ class SpacesHandler(BaseRequestHandler):
             spaces_response_model = SpacesResponseModel(response=space_model_list)
             self.write(spaces_response_model.model_dump(by_alias=True))
         except Exception as e:
-            log.error("Error: ", e)
+            logging.error("Error: ", e)
             raise HTTPError(500, reason="Internal server error", log_message=f"Error: {str(e)}") from e
 
 
