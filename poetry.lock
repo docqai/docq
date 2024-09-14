@@ -2554,25 +2554,6 @@ httpx = ">=0.20.0"
 pydantic = ">=1.10"
 
 [[package]]
-name = "mako"
-version = "1.3.5"
-description = "A super-fast templating language that borrows the best ideas from the existing templating languages."
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "Mako-1.3.5-py3-none-any.whl", hash = "sha256:260f1dbc3a519453a9c856dedfe4beb4e50bd5a26d96386cb6c80856556bb91a"},
-    {file = "Mako-1.3.5.tar.gz", hash = "sha256:48dbc20568c1d276a2698b36d968fa76161bf127194907ea6fc594fa81f943bc"},
-]
-
-[package.dependencies]
-MarkupSafe = ">=0.9.2"
-
-[package.extras]
-babel = ["Babel"]
-lingua = ["lingua"]
-testing = ["pytest"]
-
-[[package]]
 name = "markdown"
 version = "3.6"
 description = "Python implementation of John Gruber's Markdown."
@@ -4231,26 +4212,6 @@ files = [
 ]
 
 [[package]]
-name = "parse-type"
-version = "0.6.2"
-description = "Simplifies to build parse types based on the parse module"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*"
-files = [
-    {file = "parse_type-0.6.2-py2.py3-none-any.whl", hash = "sha256:06d39a8b70fde873eb2a131141a0e79bb34a432941fb3d66fad247abafc9766c"},
-    {file = "parse_type-0.6.2.tar.gz", hash = "sha256:79b1f2497060d0928bc46016793f1fca1057c4aacdf15ef876aa48d75a73a355"},
-]
-
-[package.dependencies]
-parse = {version = ">=1.18.0", markers = "python_version >= \"3.0\""}
-six = ">=1.15"
-
-[package.extras]
-develop = ["build (>=0.5.1)", "coverage (>=4.4)", "pylint", "pytest (<5.0)", "pytest (>=5.0)", "pytest-cov", "pytest-html (>=1.19.0)", "ruff", "tox (>=2.8,<4.0)", "twine (>=1.13.0)", "virtualenv (<20.22.0)", "virtualenv (>=20.0.0)"]
-docs = ["Sphinx (>=1.6)", "sphinx-bootstrap-theme (>=0.6.0)"]
-testing = ["pytest (<5.0)", "pytest (>=5.0)", "pytest-html (>=1.19.0)"]
-
-[[package]]
 name = "pastel"
 version = "0.2.1"
 description = "Bring colors to your terminal."
@@ -5015,13 +4976,13 @@ files = [
 
 [[package]]
 name = "pytest"
-version = "7.3.1"
+version = "8.3.3"
 description = "pytest: simple powerful testing with Python"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "pytest-7.3.1-py3-none-any.whl", hash = "sha256:3799fa815351fea3a5e96ac7e503a96fa51cc9942c3753cda7651b93c1cfa362"},
-    {file = "pytest-7.3.1.tar.gz", hash = "sha256:434afafd78b1d78ed0addf160ad2b77a30d35d4bdf8af234fe621919d9ed15e3"},
+    {file = "pytest-8.3.3-py3-none-any.whl", hash = "sha256:a6853c7375b2663155079443d2e45de913a911a11d669df02a50814944db57b2"},
+    {file = "pytest-8.3.3.tar.gz", hash = "sha256:70b98107bd648308a7952b06e6ca9a50bc660be218d53c257cc1fc94fda10181"},
 ]
 
 [package.dependencies]
@@ -5029,29 +4990,11 @@ colorama = {version = "*", markers = "sys_platform == \"win32\""}
 exceptiongroup = {version = ">=1.0.0rc8", markers = "python_version < \"3.11\""}
 iniconfig = "*"
 packaging = "*"
-pluggy = ">=0.12,<2.0"
-tomli = {version = ">=1.0.0", markers = "python_version < \"3.11\""}
+pluggy = ">=1.5,<2"
+tomli = {version = ">=1", markers = "python_version < \"3.11\""}
 
 [package.extras]
-testing = ["argcomplete", "attrs (>=19.2.0)", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "xmlschema"]
-
-[[package]]
-name = "pytest-bdd"
-version = "6.1.1"
-description = "BDD for pytest"
-optional = false
-python-versions = ">=3.7,<4.0"
-files = [
-    {file = "pytest_bdd-6.1.1-py3-none-any.whl", hash = "sha256:57eba5878d77036f356a85fb1d108cb061d8af4fb4d032b1a424fa9abe9e498b"},
-    {file = "pytest_bdd-6.1.1.tar.gz", hash = "sha256:138af3592bcce5d4684b0d690777cf199b39ce45d423ca28086047ffe6111010"},
-]
-
-[package.dependencies]
-Mako = "*"
-parse = "*"
-parse-type = "*"
-pytest = ">=6.2.0"
-typing-extensions = "*"
+dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "pygments (>=2.7.2)", "requests", "setuptools", "xmlschema"]
 
 [[package]]
 name = "pytest-cov"
@@ -7395,4 +7338,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.12"
-content-hash = "2b65bacc753d25d215ff2a6e21523edd65fbb7ae1128b5bbd557af7c7941e3ab"
+content-hash = "c0a48fa6172af9955fe000c68959306bc644552898fff7aaebe70085208b9df7"
