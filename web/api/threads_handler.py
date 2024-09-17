@@ -129,6 +129,10 @@ class ThreadHandler(BaseRequestHandler):
 
         except ValidationError as e:
             raise HTTPError(status_code=400, reason="Bad request", log_message=str(e)) from e
+        except HTTPError as e:
+            raise e
+        except Exception as e:
+            raise HTTPError(status_code=500, reason="Internal server error", log_message=str(e)) from e
 
     @authenticated
     def delete(self: Self, feature_: FEATURE, thread_id: str) -> None:
@@ -171,6 +175,7 @@ class ThreadHistoryHandler(BaseRequestHandler):
 
         try:
             thread = rq.list_thread_history(feature, int(thread_id))
+
             if not len(thread) > 0:
                 raise HTTPError(status_code=404, reason="Thread not found")
 
@@ -187,6 +192,8 @@ class ThreadHistoryHandler(BaseRequestHandler):
         except ValidationError as e:
             print("ValidationError: ", e)
             raise HTTPError(status_code=400, reason="Invalid page or limit") from e
+        except HTTPError as e:
+            raise e
         except Exception as e:
             raise HTTPError(status_code=500, reason="Internal server error") from e
 

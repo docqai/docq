@@ -96,6 +96,10 @@ class SpacesHandler(BaseRequestHandler):
 
             spaces_response_model = SpacesResponseModel(response=space_model_list)
             self.write(spaces_response_model.model_dump(by_alias=True))
+        except ValidationError as e:
+            raise HTTPError(400, reason="Bad request") from e
+        except HTTPError as e:
+            raise e
         except Exception as e:
             logging.error("Error: ", e)
             raise HTTPError(500, reason="Internal server error", log_message=f"Error: {str(e)}") from e

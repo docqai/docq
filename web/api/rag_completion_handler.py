@@ -104,6 +104,8 @@ class RagCompletionHandler(BaseRequestHandler):
         except ValueError as e:
             logging.error("ValueError:", e)
             raise HTTPError(400, reason=f"Bad request. {e}", log_message=str(e)) from e
+        except HTTPError as e:
+            raise e
         except Exception as e:
             logging.error("Exception:", e)
             raise HTTPError(500, reason="Internal server error", log_message=str(e)) from e
