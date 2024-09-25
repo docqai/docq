@@ -1,6 +1,5 @@
 """ML Eng - Visualise index."""
 import json
-import token
 from typing import Optional, cast
 
 import streamlit as st
@@ -8,14 +7,12 @@ from docq.config import SpaceType
 from docq.domain import SpaceKey
 from docq.manage_spaces import list_space
 from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
-from docq.support.llm import _get_service_context, _get_storage_context
-from docq.support.store import get_models_dir
-from llama_index.core import Settings
+from docq.support.llm import _get_service_context
+from docq.support.store import _get_storage_context
 from llama_index.core.indices import DocumentSummaryIndex, VectorStoreIndex, load_index_from_storage
 from llama_index.core.indices.base import BaseIndex
 from llama_index.core.schema import TextNode
 from llama_index.embeddings.huggingface_optimum import OptimumEmbedding
-from transformers import AutoTokenizer
 from utils.layout import auth_required, render_page_title_and_favicon
 from utils.sessions import get_selected_org_id
 

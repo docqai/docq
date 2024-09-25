@@ -38,6 +38,7 @@ from docq.support.auth_utils import (
 )
 from opentelemetry import trace
 from st_pages import hide_pages, translate_icon
+from streamlit.commands.page_config import Layout
 from streamlit.components.v1 import html
 from streamlit.delta_generator import DeltaGenerator
 from streamlit.elements.image import AtomicImage
@@ -360,7 +361,9 @@ def __always_hidden_pages() -> None:
 
 
 def render_page_title_and_favicon(
-    page_display_title: Optional[str] = None, browser_title: Optional[str] = None
+    page_display_title: Optional[str] = None,
+    browser_title: Optional[str] = None,
+    layout: Optional[Layout] = "centered",
 ) -> None:
     """Handle setting browser page title and favicon. Separately render in app page title with icon defined in show_pages().
 
@@ -405,6 +408,7 @@ def render_page_title_and_favicon(
             page_icon=favicon_path,
             page_title=browser_title if browser_title else f"{browser_title_prefix} - {_page_display_title}",
             menu_items={"About": about_menu_content},
+            layout=layout,
         )
     except StreamlitAPIException:
         pass
