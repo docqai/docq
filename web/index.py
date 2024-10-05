@@ -49,18 +49,18 @@ with tracer().start_as_current_span("index", attributes=baggage_as_attributes())
         ),  # Do not remove: This is used as the G Drive data source integration auth redirect page
         StPage(page="page_handlers/admin/index.py", title="Admin Section", url_path="Admin_Section", icon="💂"),
         "🤖&nbsp;&nbsp;Tools",
-        StPage(page="page_handlers/ml_eng_tools/assistants.py", title="Assistants", url_path="Assistants"),
-        StPage(
-            page="page_handlers/ml_eng_tools/visualise_index.py",
-            title="Visualise Index",
-            url_path="Visualise_Index",
-        ),
+        # StPage(page="page_handlers/ml_eng_tools/assistants.py", title="Assistants", url_path="Assistants"),
+        # StPage(
+        #     page="page_handlers/ml_eng_tools/visualise_index.py",
+        #     title="Visualise Index",
+        #     url_path="Visualise_Index",
+        # ),
         StPage(page="page_handlers/ml_eng_tools/rag.py", title="RAG", url_path="RAG"),
-        StPage(
-            page="page_handlers/ml_eng_tools/visualise_agent_messages.py",
-            title="Visualise Agent Messages",
-            url_path="Visualise_Agent_Messages",
-        ),
+        # StPage(
+        #     page="page_handlers/ml_eng_tools/visualise_agent_messages.py",
+        #     title="Visualise Agent Messages",
+        #     url_path="Visualise_Agent_Messages",
+        # ),
     ]
 
     pages = []
