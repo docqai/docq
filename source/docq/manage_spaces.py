@@ -150,7 +150,7 @@ def list_space(org_id: int, space_type: Optional[str] = None) -> list[SPACE]:
         )
 
         rows = cursor.fetchall()
-        print("spaces:", rows)
+
         return [_format_space(row) for row in rows]
 
 

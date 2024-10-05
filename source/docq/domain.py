@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Optional, Self
 
-from .config import OrganisationFeatureType, SpaceType
+from docq.config import OrganisationFeatureType, SpaceType
 
 _SEPARATOR_FOR_STR = ":"
 _SEPARATOR_FOR_VALUE = "_"
@@ -120,21 +120,6 @@ class DocumentListItem:
             )
             raise e
 
-@dataclass
-class Assistant:
-    """A assistant at it's core is a system prompt and user prompt template that tunes the LLM to take on a certain persona and behave/respond a particular way."""
-
-    key: str
-    """Unique ID for a Persona instance"""
-    name: str
-    """Friendly name for the persona"""
-    system_message_content: str
-    """Content of the system message. This is where the persona is defined."""
-    user_prompt_template_content: str
-    """Template for the user prompt aka query. This template is used to generate the content for the user prompt/query that will be sent to the LLM (as a user message)."""
-    llm_settings_collection_key: str
-    """The key of the LLM settings collection to use for LLM calls by this assistant. """
-
 
 class AssistantType(Enum):
     """Persona type."""
@@ -142,3 +127,29 @@ class AssistantType(Enum):
     SIMPLE_CHAT = "Simple Chat"
     AGENT = "Agent"
     ASK = "Ask"
+
+
+@dataclass
+class Assistant:
+    """A assistant at it's core is a system prompt and user prompt template that tunes the LLM to take on a certain persona and behave/respond a particular way."""
+
+    key: str
+    """Unique ID for a Persona instance"""
+    scoped_id: str
+    """Scoped ID for a Persona instance."""
+    name: str
+    """Friendly name for the persona"""
+    type: AssistantType
+    """Type of the persona"""
+    archived: bool
+    """Whether the persona is soft deleted or not"""
+    system_message_content: str
+    """Content of the system message. This is where the persona is defined."""
+    user_prompt_template_content: str
+    """Template for the user prompt aka query. This template is used to generate the content for the user prompt/query that will be sent to the LLM (as a user message)."""
+    llm_settings_collection_key: str
+    """The key of the LLM settings collection to use for LLM calls by this assistant. """
+    created_at: datetime
+    """The timestamp when the assistant record was created."""
+    updated_at: datetime
+    """The timestamp when the assistant record was last updated."""
