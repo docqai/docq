@@ -304,15 +304,6 @@ def __no_staff_menu() -> None:
         ]
     )
 
-
-@tracer.start_as_current_span("__no_admin_menu")
-def __no_admin_menu() -> None:
-    # hide_pages(["Admin_Section"])
-    # hide_pages(["ML Engineering"])
-    # FIXME: new to reimplement this the new the ST 1.37 way
-    pass
-
-
 def __embed_page_config() -> None:
     st.markdown(
         """
@@ -353,17 +344,10 @@ def __hide_all_empty_divs() -> None:
         unsafe_allow_html=True,
     )
 
-
-def __always_hidden_pages() -> None:
-    """These pages are always hidden whether the user is an admin or not."""
-    # hide_pages(["widget", "signup", "verify", "Admin_Spaces"])
-    # FIXME: new to reimplement this the new the ST 1.37 way
-
-
 def render_page_title_and_favicon(
     page_display_title: Optional[str] = None,
     browser_title: Optional[str] = None,
-    layout: Optional[Layout] = "centered",
+    layout: Optional[Layout] = None,
 ) -> None:
     """Handle setting browser page title and favicon. Separately render in app page title with icon defined in show_pages().
 
@@ -408,7 +392,7 @@ def render_page_title_and_favicon(
             page_icon=favicon_path,
             page_title=browser_title if browser_title else f"{browser_title_prefix} - {_page_display_title}",
             menu_items={"About": about_menu_content},
-            layout=layout,
+            layout=layout or "centered",
         )
     except StreamlitAPIException:
         pass
@@ -443,7 +427,7 @@ def __resend_verification_ui(
 
 @tracer.start_as_current_span("render __login_form")
 def __login_form() -> None:
-    __no_admin_menu()
+    # __no_admin_menu()
 
     if system_feature_enabled(SystemFeatureType.FREE_USER_SIGNUP, show_message=False):
         st.markdown("Don't have an account? Signup <a href='/signup' target='_self'>here</a>", unsafe_allow_html=True)
@@ -494,8 +478,7 @@ def __not_authorised() -> None:
 def public_access() -> None:
     """Menu options for public access."""
     # __no_staff_menu()
-    __no_admin_menu()
-    __always_hidden_pages()
+    # __no_admin_menu()
     __hide_all_empty_divs()
 
 
@@ -508,7 +491,6 @@ def auth_required(
     span = trace.get_current_span()
     span.add_event("Checking authorisation")
     auth = None
-    __always_hidden_pages()
     __hide_all_empty_divs()
 
     session_state_existed = session_state_exists()
@@ -540,8 +522,8 @@ def auth_required(
         # if show_logout_button:
         #     __logout_button()
 
-        if not auth.get(SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name, False):
-            __no_admin_menu()
+        if not auth.get(SessionKeyNameForAuth.SELECTED_ORG_ADMIN.name, False):  # noqa: SIM102
+            # __no_admin_menu()
             if requiring_selected_org_admin:
                 __not_authorised()
                 return False
@@ -966,7 +948,7 @@ def _render_assistant_selection(feature: FeatureKey) -> None:
         )
 
         if selected:
-            selected_assistant_scoped_id = selected[9]
+            selected_assistant_scoped_id = selected.scoped_id
             set_selected_assistant(selected_assistant_scoped_id)
 
 
@@ -1576,9 +1558,8 @@ def _render_view_space_details_with_container(
 ) -> DeltaGenerator:
     id_, org_id, name, summary, archived, ds_type, ds_configs, _, created_at, updated_at = space_data
     has_view_perm = org_id == get_selected_org_id()
-
+    container = st.expander(format_archived(name, archived)) if use_expander else st.container()
     if has_view_perm:
-        container = st.expander(format_archived(name, archived)) if use_expander else st.container()
         with container:
             if not use_expander:
                 st.write(format_archived(name, archived))
@@ -1587,7 +1568,7 @@ def _render_view_space_details_with_container(
             st.write(f"Summary: _{summary}_")
             st.write(f"Type: **{data_source[1]}**")
             st.write(f"Created At: {format_datetime(created_at)} | Updated At: {format_datetime(updated_at)}")
-        return container
+    return container
 
 
 def _render_edit_space_details_form(space_data: Tuple, data_source: Tuple) -> None:
@@ -1684,8 +1665,9 @@ def list_spaces_ui(admin_access: bool = False) -> None:
 def show_space_details_ui(space: SpaceKey) -> None:
     """Show details of a space."""
     s = get_shared_space(space.id_)
-    ds = get_space_data_source_choice_by_type(s[5])
-    _render_view_space_details_with_container(s, ds)
+    if s:
+        ds = get_space_data_source_choice_by_type(s[5])
+        _render_view_space_details_with_container(s, ds)
 
 
 def list_logs_ui(type_: LogType) -> None:
