@@ -14,7 +14,7 @@ from docq.manage_spaces import get_space_data_source, list_space
 from docq.model_selection.main import LlmUsageSettingsCollection, ModelCapability, get_saved_model_settings_collection
 from docq.support.llama_index.node_post_processors import reciprocal_rank_fusion
 from docq.support.llm import _get_service_context
-from docq.support.rag_pipeline import generation_stage, search_stage
+from docq.support.rag_pipeline import generation_stage, hyde_query_preprocessor, search_stage
 from docq.support.store import (
     _DataScope,
     _get_path,
@@ -27,7 +27,6 @@ from llama_index.core.indices.base import BaseIndex
 from llama_index.core.llms import ChatMessage, ChatResponse, MessageRole
 from llama_index.core.schema import BaseNode, Document, NodeWithScore
 from llama_index.core.storage import StorageContext
-from page_handlers.ml_eng_tools.visualise_index import visualise_vector_store_index
 from utils.layout import auth_required, render_page_title_and_favicon
 from utils.layout_assistants import (
     render_assistant_create_edit_ui,
@@ -35,6 +34,8 @@ from utils.layout_assistants import (
     render_datascope_selector_ui,
 )
 from utils.sessions import get_selected_org_id
+
+from web.page_handlers.ml_eng_tools.visualise_vector_store_index import visualise_vector_store_index
 
 render_page_title_and_favicon(layout="wide")
 auth_required(requiring_selected_org_admin=True)
@@ -226,7 +227,7 @@ def prepare_chat():
     ch = st.session_state.get(f"rag_test_chat_history_content_{selected_space_key.id_}", [])
     if not ch:
         st.session_state[f"rag_test_chat_history_content_{selected_space_key.id_}"] = [
-            (ChatMessage(role=MessageRole.ASSISTANT, content="Hello, ask me a question."), None)
+            (ChatMessage(role=MessageRole.ASSISTANT, content="Hello, ask me a question."), None, None)
         ]
 
 
@@ -274,8 +275,17 @@ def handle_chat_input():
         # ret_results = query_engine.retrieve(query_bundle)
         # resp = query_engine.query(query)
 
+        llm = _get_service_context(saved_model_settings).llm
+
         search_results, search_debug = search_stage(
-            user_query=query, indices=space_indices, reranker=reciprocal_rank_fusion, top_k=6
+            user_query=query,
+            indices=space_indices,
+            reranker=reciprocal_rank_fusion,
+            llm=llm,
+            message_history=chat_history,
+            top_k=6,
+            query_preprocessor=hyde_query_preprocessor,
+            enable_debug=True,
         )
 
         resp, gen_debug = generation_stage(
@@ -283,7 +293,7 @@ def handle_chat_input():
             assistant=persona,
             search_results=search_results,
             message_history=chat_history,
-            llm=_get_service_context(saved_model_settings).llm,
+            llm=llm,
             enable_debug=True,
         )
 
@@ -305,14 +315,14 @@ def handle_chat_input():
             # st.session_state[f"rag_test_chat_history_content_{selected_space_key.id_}"].extend([query, resp.response])
             st.session_state[f"rag_test_chat_history_content_{selected_space_key.id_}"].extend(
                 [
-                    (ChatMessage(role=MessageRole.USER, content=query), None),
-                    (ChatMessage(role=MessageRole.ASSISTANT, content=resp.message.content), gen_debug),
+                    (ChatMessage(role=MessageRole.USER, content=query), None, None),
+                    (ChatMessage(role=MessageRole.ASSISTANT, content=resp.message.content), gen_debug, search_debug),
                 ]
             )
 
 
-def render_stuff_click_handler(debug) -> None:
-    for key, value in debug.items():
+def render_stuff_click_handler(gen_debug, search_debug) -> None:
+    for key, value in gen_debug.items():
         if key == "search_results":
             with search_results_tab:
                 render_retrieval_results(value)
@@ -321,24 +331,30 @@ def render_stuff_click_handler(debug) -> None:
                 st.write()
                 st.write(value)
 
+    with stuff_tab.expander("Processed Queries"):
+        st.write(search_debug["processed_queries"])
+
 
 def render_chat():
-    chat_history: List[Tuple[ChatMessage, Any]] = st.session_state.get(
+    chat_history: List[Tuple[ChatMessage, Any, Any]] = st.session_state.get(
         f"rag_test_chat_history_content_{selected_space_key.id_}", []
     )
 
-    for i, (cm, debug) in enumerate(chat_history):
+    for i, (cm, gen_debug, search_debug) in enumerate(chat_history):
         col1, col2 = st.columns(spec=[0.9, 0.1], gap="small")  # Adjust the column width ratios as needed
 
         with col1:
             st.write(f"{cm.role.name}: {cm.content}")
 
         with col2:
-            if debug:
+            print(gen_debug == None, search_debug == None)
+            if gen_debug != None and search_debug != None:
                 st.button(
                     ":bug:",
                     key=f"debug_bt_{i}",
-                    on_click=lambda debug=debug: render_stuff_click_handler(debug),
+                    on_click=lambda gen_debug=gen_debug, search_debug=search_debug: render_stuff_click_handler(
+                        gen_debug, search_debug
+                    ),
                 )
 
     st.chat_input(

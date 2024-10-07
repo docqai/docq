@@ -15,7 +15,9 @@ def search_stage(
     indices: List[BaseIndex],
     reranker: Callable[[Dict[str, List[NodeWithScore]], Optional[List[str]]], List[NodeWithScore]]
     | Callable[[Dict[str, List[NodeWithScore]]], List[NodeWithScore]],
-    query_preprocessor: Optional[Callable[[str], List[str]]] = None,
+    llm: LLM,
+    message_history: List[ChatMessage],
+    query_preprocessor: Optional[Callable[[LLM, str, List[ChatMessage]], List[str]]] = None,
     top_k: int = 10,
     enable_debug: Optional[bool] = False,
 ) -> Tuple[List[NodeWithScore], Dict[str, Any]]:
@@ -25,7 +27,7 @@ def search_stage(
         user_query (str): The user query.
         indices (List[BaseIndex]): The list of indices to search.
         reranker (Callable[[Dict[str, List[NodeWithScore]], Optional[List[str]]], List[NodeWithScore]]): The reranker to use. `func(search_results: List[List[NodeWithScore]], user_query: Optional[List[str]] = None) -> List[NodeWithScore]`. If not provided, a default reranker that uses X is used.
-        query_preprocessor (Optional[Callable[[str], List[str]]]): The preprocessor to use. `func(user_query: str) -> List[str]`. Defaults to no preprocessing.
+        query_preprocessor (Optional[Callable[[LLM, str, List[ChatMessage]], List[str]]]): The preprocessor to use. `func(user_query: str) -> List[str]`. Defaults to no preprocessing.
         top_k (int): The number of results to return per search.
 
     Returns:
@@ -46,7 +48,7 @@ def search_stage(
         )
 
     # 2. Preprocess user query if preprocessor is provided
-    processed_queries = query_preprocessor(user_query) if query_preprocessor else [user_query]
+    processed_queries = query_preprocessor(llm, user_query, message_history) if query_preprocessor else [user_query]
 
     # 3. Run the list of queries through each retriever
     vector_results = {}
@@ -141,7 +143,7 @@ def rag_pipeline(
     llm: LLM,
     reranker: Callable[[Dict[str, List[NodeWithScore]], Optional[List[str]]], List[NodeWithScore]]
     | Callable[[Dict[str, List[NodeWithScore]]], List[NodeWithScore]],
-    query_preprocessor: Optional[Callable[[str], List[str]]] = None,
+    query_preprocessor: Optional[Callable[[LLM, str, List[ChatMessage]], List[str]]] = None,
     top_k: int = 10,
 ) -> ChatResponse:
     """Orchestrates the RAG pipeline.
@@ -153,7 +155,7 @@ def rag_pipeline(
         message_history (List[ChatMessage]): The message history.
         llm (LLM): The LLM.
         reranker (Callable[[Dict[str, List[NodeWithScore]], Optional[List[str]]], List[NodeWithScore]]): The reranker to use. `func(search_results: List[List[NodeWithScore]], user_query: Optional[str] = None) -> List[NodeWithScore]`. If not provided, a default reranker that uses X is used.
-        query_preprocessor (Optional[Callable[[str], List[str]]]): The preprocessor to use. `func(user_query: str) -> List[str]`. Defaults to no preprocessing.
+        query_preprocessor (Optional[Callable[[LLM, str, List[ChatMessage]], List[str]]]): The preprocessor to use. `func(user_query: str) -> List[str]`. Defaults to no preprocessing.
         top_k (int): The number of results to return per search.
 
     Returns:
@@ -161,7 +163,13 @@ def rag_pipeline(
     """
     # Search stage
     search_results, debug = search_stage(
-        user_query=user_query, indices=indices, reranker=reranker, query_preprocessor=query_preprocessor, top_k=top_k
+        user_query=user_query,
+        indices=indices,
+        reranker=reranker,
+        llm=llm,
+        message_history=message_history,
+        query_preprocessor=query_preprocessor,
+        top_k=top_k,
     )
 
     # Generation stage
@@ -174,3 +182,40 @@ def rag_pipeline(
     )
 
     return response
+
+
+def hyde_query_preprocessor(llm: LLM, user_query: str, history: List[ChatMessage]) -> List[str]:
+    """Hyde query preprocessor.
+
+    Args:
+        user_query (str): The user query.
+
+    Returns:
+        List[str]: The list of processed queries.
+    """
+    HYDE_TMPL = (
+        "Please write a passage to answer the <question>\n"
+        "Use the current conversation available in <chat_history>\n"
+        "Try to include as many key details as possible.\n"
+        "\n"
+        "<chat_history_str>\n"
+        "{chat_history_str}\n"
+        "</chat_history_str>\n"
+        "<question>\n"
+        "{query_str}\n"
+        "</question>\n"
+        "\n"
+        "\n"
+        'Passage:"""\n'
+    )
+    history_str = "\n".join([str(x) for x in history])
+    prompt = HYDE_TMPL.format(chat_history_str=history_str, query_str=user_query)
+
+    response = llm.complete(prompt=prompt, formatted=True)
+    # hyde_template = PromptTemplate(template=HYDE_TMPL, prompt_type=PromptType.SUMMARY)
+    # span.add_event(name="hyde_prompt_template_created", attributes={"template": str(hyde_template)})
+    # hyde_query_transform_component = HyDEQueryTransform(
+    #     llm=llm, hyde_prompt=hyde_template, prompt_args={"chat_history_str": history_str}
+    # ).as_query_component()
+
+    return [response.text]
