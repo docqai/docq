@@ -347,7 +347,6 @@ def render_chat():
             st.write(f"{cm.role.name}: {cm.content}")
 
         with col2:
-            print(gen_debug == None, search_debug == None)
             if gen_debug != None and search_debug != None:
                 st.button(
                     ":bug:",
