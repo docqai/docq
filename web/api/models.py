@@ -100,3 +100,9 @@ class SpacesResponseModel(BaseResponseModel):
 class ThreadPostRequestModel(CamelModel):
     """Pydantic model for the request body."""
     topic: str
+
+class FileUploadRequestModel(CamelModel):
+    """Request model for file upload."""
+
+    space_id: int
+    space_type: SPACE_TYPE
