@@ -1,6 +1,5 @@
 """ML Eng - Visualise index."""
-import json
-import token
+
 from typing import Optional, cast
 
 import streamlit as st
@@ -8,16 +7,16 @@ from docq.config import SpaceType
 from docq.domain import SpaceKey
 from docq.manage_spaces import list_space
 from docq.model_selection.main import LlmUsageSettingsCollection, get_saved_model_settings_collection
-from docq.support.llm import _get_service_context, _get_storage_context
-from docq.support.store import get_models_dir
-from llama_index.core import Settings
+from docq.support.llm import _get_service_context
+from docq.support.store import _get_storage_context
 from llama_index.core.indices import DocumentSummaryIndex, VectorStoreIndex, load_index_from_storage
 from llama_index.core.indices.base import BaseIndex
 from llama_index.core.schema import TextNode
 from llama_index.embeddings.huggingface_optimum import OptimumEmbedding
-from transformers import AutoTokenizer
 from utils.layout import auth_required, render_page_title_and_favicon
 from utils.sessions import get_selected_org_id
+
+from ..ml_eng_tools.visualise_vector_store_index import visualise_vector_store_index
 
 render_page_title_and_favicon()
 auth_required(requiring_selected_org_admin=True)
@@ -107,28 +106,6 @@ def visualise_document_summary_index(_index: DocumentSummaryIndex) -> None:
             #         st.write(f"Metadata Entity '{entity_label}' count: {x_count}")
 
         st.divider()
-
-
-def visualise_vector_store_index(_index: VectorStoreIndex) -> None:
-    """Visualise document summary index."""
-    docs = _index.docstore.docs
-    st.write("Index class: ", _index.index_struct_cls.__name__)
-    for doc_id in docs:
-        doc_json = json.loads(docs[doc_id].to_json())
-        # st.write(docs[doc_id].get_content(metadata_mode=MetadataMode.ALL))
-        metadata_keys = doc_json["metadata"].keys()
-
-        with st.expander(label=doc_id):
-            st.write(doc_json)
-
-        if "excerpt_keywords" in metadata_keys:
-            keyword_count = len(doc_json["metadata"]["excerpt_keywords"].split(", "))
-            st.write(f"Metadata Keyword Count: {keyword_count}")
-
-        # for key, entity_label in DEFAULT_ENTITY_MAP.items():
-        #     if entity_label in metadata_keys:
-        #         x_count = len(doc_json["metadata"][entity_label])
-        #         st.write(f"Metadata Entity '{entity_label}' count: {x_count}")
 
 
 if selected_space and selected_org_id:

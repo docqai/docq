@@ -5,6 +5,7 @@ from utils.layout import auth_required, render_page_title_and_favicon
 from utils.observability import baggage_as_attributes, tracer
 from utils.sessions import is_current_user_selected_org_admin, is_current_user_super_admin
 
+from web.page_handlers.admin.admin_assistants import admin_assistants_page
 from web.page_handlers.admin.admin_integrations import admin_integrations_page
 from web.page_handlers.admin.admin_logs import admin_logs_page
 from web.page_handlers.admin.admin_orgs import admin_orgs_page
@@ -18,6 +19,7 @@ from web.page_handlers.admin.admin_users import admin_users_page
 def super_and_org_admin_pages() -> None:
     """Sections if both super admin and current selected org admin."""
     (
+        admin_assistants,
         admin_orgs,
         admin_users,
         admin_user_groups,
@@ -26,10 +28,22 @@ def super_and_org_admin_pages() -> None:
         admin_settings,
         admin_chat_integrations,
         admin_logs,
-    ) = st.tabs(["Orgs", "Users", "User Groups", "Spaces", "Space Groups", "Settings", "Chat Integrations", "Logs"])
+    ) = st.tabs(
+        [
+            "Assistants",
+            "Orgs",
+            "Users",
+            "User Groups",
+            "Spaces",
+            "Space Groups",
+            "Settings",
+            "Chat Integrations",
+            "Logs",
+        ]
+    )
 
-
-
+    with admin_assistants:
+        admin_assistants_page()
 
     with admin_orgs:
         admin_orgs_page()
@@ -59,6 +73,7 @@ def super_and_org_admin_pages() -> None:
 def org_admin_pages() -> None:
     """Sections if only org admin."""
     (
+        admin_assistants,
         admin_orgs,
         admin_users,
         admin_user_groups,
@@ -67,7 +82,12 @@ def org_admin_pages() -> None:
         admin_settings,
         admin_chat_integrations,
         admin_logs,
-    ) = st.tabs(["Org", "Users", "User Groups", "Spaces", "Space Groups", "Settings", "Chat Integrations", "Logs"])
+    ) = st.tabs(
+        ["Assistants", "Org", "Users", "User Groups", "Spaces", "Space Groups", "Settings", "Chat Integrations", "Logs"]
+    )
+
+    with admin_assistants:
+        admin_assistants_page()
 
     with admin_orgs:
         admin_orgs_page()

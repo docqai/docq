@@ -9,8 +9,7 @@ from typing import Literal, Optional
 from llama_index.core.llms import ChatMessage, MessageRole
 
 from docq.config import OrganisationFeatureType
-from docq.domain import FeatureKey, SpaceKey
-from docq.manage_assistants import Assistant
+from docq.domain import Assistant, FeatureKey, SpaceKey
 from docq.manage_documents import format_document_sources
 from docq.model_selection.main import LlmUsageSettingsCollection
 from docq.support.llm import query_error, run_ask, run_chat
@@ -18,6 +17,7 @@ from docq.support.store import (
     get_history_table_name,
     get_history_thread_table_name,
     get_public_sqlite_usage_file,
+    get_sqlite_shared_system_file,
     get_sqlite_usage_file,
 )
 
@@ -125,7 +125,7 @@ def _retrieve_messages(
     return rows
 
 
-def list_thread_history(feature: FeatureKey, id_: Optional[int] = None) -> list[tuple[int, str, int]]:
+def list_thread_history(feature: FeatureKey, id_: Optional[int] = None) -> list[tuple[int, str, int, int]]:
     """List threads or a thread if id_ is provided."""
     tablename = get_history_thread_table_name(feature.type_)
     rows = None
@@ -137,10 +137,17 @@ def list_thread_history(feature: FeatureKey, id_: Optional[int] = None) -> list[
                 table=tablename,
             )
         )
+
+        connection.execute(f"ATTACH DATABASE '{get_sqlite_shared_system_file()}' AS db2")
         if id_:
-            rows = cursor.execute(f"SELECT id, topic, created_at FROM {tablename} WHERE id = ?", (id_,)).fetchall()  # noqa: S608
+            rows = cursor.execute(
+                f"SELECT t.id, t.topic, t.created_at, s.id as space_id FROM {tablename} as t LEFT JOIN db2.spaces AS s ON s.name LIKE 'Thread-' || t.id || ' %' WHERE t.id = ?",
+                (id_,),
+            ).fetchall()  # noqa: S608
         else:
-            rows = cursor.execute(f"SELECT id, topic, created_at FROM {tablename} ORDER BY created_at DESC").fetchall()  # noqa: S608
+            rows = cursor.execute(
+                f"SELECT t.id, t.topic, t.created_at, s.id as space_id FROM {tablename} as t LEFT JOIN db2.spaces as s ON s.name LIKE 'Thread-' || t.id || ' %' ORDER BY t.created_at DESC",
+            ).fetchall()  # noqa: S608
 
     return rows
 

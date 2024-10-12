@@ -32,6 +32,11 @@ class StreamlitApplication:
 
     def get_singleton_instance(self: Self) -> Application:
         """Return the singleton instance of the Streamlit Tornado Application object."""
+        # logging.getLogger("tornado.access").setLevel(logging.DEBUG)
+        # logging.getLogger("tornado.access").setLevel(logging.DEBUG)
+        # logging.getLogger("tornado.application").setLevel(logging.DEBUG)
+        # logging.getLogger("tornado.general").setLevel(logging.DEBUG)
+        # enable_pretty_logging()
         if not self.__singleton_instance:
             self.__singleton_instance = next(o for o in gc.get_referrers(Application) if o.__class__ is Application)
         return self.__singleton_instance

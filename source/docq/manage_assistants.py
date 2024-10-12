@@ -2,7 +2,7 @@
 import logging as log
 import sqlite3
 from contextlib import closing
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import List, Optional
 
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
@@ -126,8 +126,8 @@ CREATE TABLE IF NOT EXISTS assistants (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """
-# id, name, type, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, created_at, updated_at, scoped_id
-ASSISTANT = tuple[int, str, str, bool, str, str, str, datetime, datetime, str]
+# # id, name, type, archived, system_prompt_template, user_prompt_template, llm_settings_collection_key, created_at, updated_at, scoped_id
+# ASSISTANT = tuple[int, str, str, bool, str, str, str, datetime, datetime, str]
 
 
 def _init(org_id: Optional[int] = None) -> None:
@@ -182,16 +182,71 @@ def get_assistant_fixed(
     """Get the personas."""
     result = {}
     if assistant_type == AssistantType.SIMPLE_CHAT:
-        result = {key: Assistant(key=key, **persona, llm_settings_collection_key=llm_settings_collection_key) for key, persona in SIMPLE_CHAT_PERSONAS.items()}
+        result = {
+            key: Assistant(
+                key=key,
+                type=AssistantType.SIMPLE_CHAT,
+                archived=False,
+                **persona,
+                llm_settings_collection_key=llm_settings_collection_key,
+                created_at=datetime.now(tz=UTC),
+                updated_at=datetime.now(tz=UTC),
+            )
+            for key, persona in SIMPLE_CHAT_PERSONAS.items()
+        }
     elif assistant_type == AssistantType.AGENT:
         result = {key: Assistant(key=key, **persona, llm_settings_collection_key=llm_settings_collection_key) for key, persona in AGENT_PERSONAS.items()}
     elif assistant_type == AssistantType.ASK:
-        result = {key: Assistant(key=key, **persona, llm_settings_collection_key=llm_settings_collection_key) for key, persona in ASK_PERSONAS.items()}
+        result = {
+            key: Assistant(
+                key=key,
+                type=AssistantType.ASK,
+                archived=False,
+                **persona,
+                llm_settings_collection_key=llm_settings_collection_key,
+                created_at=datetime.now(tz=UTC),
+                updated_at=datetime.now(tz=UTC),
+            )
+            for key, persona in ASK_PERSONAS.items()
+        }
     else:
         result = {
-            **{key: Assistant(key=key, **persona, llm_settings_collection_key=llm_settings_collection_key) for key, persona in SIMPLE_CHAT_PERSONAS.items()},
-            **{key: Assistant(key=key, **persona, llm_settings_collection_key=llm_settings_collection_key) for key, persona in AGENT_PERSONAS.items()},
-            **{key: Assistant(key=key, **persona, llm_settings_collection_key=llm_settings_collection_key) for key, persona in ASK_PERSONAS.items()},
+            **{
+                key: Assistant(
+                    key=key,
+                    type=AssistantType.SIMPLE_CHAT,
+                    archived=False,
+                    **persona,
+                    llm_settings_collection_key=llm_settings_collection_key,
+                    created_at=datetime.now(tz=UTC),
+                    updated_at=datetime.now(tz=UTC),
+                )
+                for key, persona in SIMPLE_CHAT_PERSONAS.items()
+            },
+            **{
+                key: Assistant(
+                    key=key,
+                    type=AssistantType.AGENT,
+                    archived=False,
+                    **persona,
+                    llm_settings_collection_key=llm_settings_collection_key,
+                    created_at=datetime.now(tz=UTC),
+                    updated_at=datetime.now(tz=UTC),
+                )
+                for key, persona in AGENT_PERSONAS.items()
+            },
+            **{
+                key: Assistant(
+                    key=key,
+                    type=AssistantType.ASK,
+                    archived=False,
+                    **persona,
+                    llm_settings_collection_key=llm_settings_collection_key,
+                    created_at=datetime.now(tz=UTC),
+                    updated_at=datetime.now(tz=UTC),
+                )
+                for key, persona in ASK_PERSONAS.items()
+            },
         }
     return result
 
@@ -207,23 +262,29 @@ def get_assistant_or_default(assistant_scoped_id: Optional[str] = None, org_id: 
     """
     if assistant_scoped_id:
         assistant_data = get_assistant(assistant_scoped_id=assistant_scoped_id, org_id=org_id)
-        return Assistant(
-            key=str(assistant_data[0]),
-            name=assistant_data[1],
-            system_message_content=assistant_data[4],
-            user_prompt_template_content=assistant_data[5],
-            llm_settings_collection_key=assistant_data[6],
-        )
+        return assistant_data
+        # return Assistant(
+        #     key=str(assistant_data[0]),
+        #     name=assistant_data[1],
+        #     system_message_content=assistant_data[4],
+        #     user_prompt_template_content=assistant_data[5],
+        #     llm_settings_collection_key=assistant_data[6],
+        # )
     else:
         key = "default"
         return Assistant(
             key=key,
-            llm_settings_collection_key="azure_openai_with_local_embedding",
+            scoped_id=f"global_{key}",
+            type=AssistantType.SIMPLE_CHAT,
+            archived=False,
             **SIMPLE_CHAT_PERSONAS[key],
+            llm_settings_collection_key="azure_openai_with_local_embedding",
+            created_at=datetime.now(tz=UTC),
+            updated_at=datetime.now(tz=UTC),
         )
 
 
-def list_assistants(org_id: Optional[int] = None, assistant_type: Optional[AssistantType] = None) -> list[ASSISTANT]:
+def list_assistants(org_id: Optional[int] = None, assistant_type: Optional[AssistantType] = None) -> list[Assistant]:
     """List the assistants.
 
     Args:
@@ -231,7 +292,7 @@ def list_assistants(org_id: Optional[int] = None, assistant_type: Optional[Assis
         assistant_type (Optional[AssistantType]): The assistant type.
 
     Returns:
-        list[ASSISTANT]: The list of assistants. This includes a compound ID that of ID + scope. This is to avoid ID clashes between global and org scope tables on gets.
+        list[Assistant]: The list of assistants. This includes a compound ID that of ID + scope. This is to avoid ID clashes between global and org scope tables on gets.
     """
     scope = "global"
     if org_id:
@@ -250,13 +311,28 @@ def list_assistants(org_id: Optional[int] = None, assistant_type: Optional[Assis
     ) as connection, closing(connection.cursor()) as cursor:
         cursor.execute(sql, params)
         rows = cursor.fetchall()
+        # return [
+        #     (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], f"{scope}_{row[0]}")
+        #     for row in rows
+        # ]
         return [
-            (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], f"{scope}_{row[0]}")
+            Assistant(
+                key=str(row[0]),
+                name=row[1],
+                type=row[2],
+                archived=row[3],
+                system_message_content=row[4],
+                user_prompt_template_content=row[5],
+                llm_settings_collection_key=row[6],
+                created_at=row[7],
+                updated_at=row[8],
+                scoped_id=f"{scope}_{row[0]}",
+            )
             for row in rows
         ]
 
 
-def get_assistant(assistant_scoped_id: str, org_id: Optional[int]) -> ASSISTANT:
+def get_assistant(assistant_scoped_id: str, org_id: Optional[int]) -> Assistant:
     """Get the assistant.
 
     If just assistant_id then will try to get from global scope table.
@@ -287,7 +363,19 @@ def get_assistant(assistant_scoped_id: str, org_id: Optional[int]) -> ASSISTANT:
                 )
             else:
                 raise ValueError(f"No Assistant with: id = '{id_}' in global scope. scope= '{scope}'")
-        return (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], assistant_scoped_id)
+        # return (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], assistant_scoped_id)
+        return Assistant(
+            key=str(row[0]),
+            name=row[1],
+            type=AssistantType(row[2].capitalize()),
+            archived=row[3],
+            system_message_content=row[4],
+            user_prompt_template_content=row[5],
+            llm_settings_collection_key=row[6],
+            created_at=row[7],
+            updated_at=row[8],
+            scoped_id=f"{scope}_{row[0]}",
+        )
 
 
 def create_or_update_assistant(

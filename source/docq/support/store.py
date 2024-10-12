@@ -221,6 +221,7 @@ def _clean_public_chat_history() -> None:
 
 @tracer.start_as_current_span(name="_get_storage_context")
 def _get_storage_context(space: SpaceKey) -> StorageContext:
+    """Get the storage context for a Space. This loads all stores from the Space directory aka `persist_dir`."""
     return StorageContext.from_defaults(persist_dir=get_index_dir(space))
 
 

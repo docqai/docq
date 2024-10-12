@@ -19,6 +19,7 @@ from . import (
     chat_completion_handler,  # noqa: F401 DO NOT REMOVE
     hello_handler,  # noqa: F401 DO NOT REMOVE
     rag_completion_handler,  # noqa: F401 DO NOT REMOVE
+    spaces_files_handler,  # noqa: F401 DO NOT REMOVE
     spaces_handler,  # noqa: F401 DO NOT REMOVE
     threads_handler,  # noqa: F401 DO NOT REMOVE
     token_handler,  # noqa: F401 DO NOT REMOVE
@@ -30,6 +31,7 @@ __all__ = [
     "hello_handler",
     "rag_completion_handler",
     "spaces_handler",
+    "spaces_files_handler",
     "threads_handler",
     "token_handler",
     "index_handler",

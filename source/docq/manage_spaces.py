@@ -72,7 +72,7 @@ def _format_space(row: Any) -> SPACE:
         row: (id, org_id, name, summary, archived, datasource_type, datasource_configs, space_type, created_at, updated_at)
 
     Returns:
-        tuple[int, int, str, str, bool, str, dict, datetime, datetime] - [id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at]
+        tuple[int, int, str, str, bool, str, dict, datetime, datetime] - [id, org_id, name, summary, archived, datasource_type, datasource_configs, space_type, created_at, updated_at]
     """
     return (row[0], row[1], row[2], row[3], bool(row[4]), row[5], json.loads(row[6]), row[7], row[8], row[9])
 
@@ -150,7 +150,7 @@ def list_space(org_id: int, space_type: Optional[str] = None) -> list[SPACE]:
         )
 
         rows = cursor.fetchall()
-        print("spaces:", rows)
+
         return [_format_space(row) for row in rows]
 
 
@@ -255,7 +255,7 @@ def get_shared_spaces(space_ids: List[int]) -> list[SPACE]:
     """Get a shared spaces by ids.
 
     Returns:
-        list[tuple[int, int, str, str, bool, str, dict, datetime, datetime]] - [id, org_id, name, summary, archived, datasource_type, datasource_configs, created_at, updated_at]
+        list[tuple[int, int, str, str, bool, str, dict, datetime, datetime]] - [id, org_id, name, summary, archived, datasource_type, datasource_configs, space_type, created_at, updated_at]
     """
     log.debug("get_shared_spaces(): Getting space with ids=%s", space_ids)
     with closing(

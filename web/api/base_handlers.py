@@ -26,6 +26,7 @@ class BaseRequestHandler(RequestHandler):
         """Override the XSRF cookie check."""
         # If `True`, POST, PUT, and DELETE are block unless the `_xsrf` cookie is set.
         # Safe with token based authN
+        # print("check_xsrf_cookie() called")
         return False
 
     @property
@@ -56,7 +57,9 @@ class BaseRequestHandler(RequestHandler):
                 error_response["reason"] = exc_value.reason
                 error_response["statusCode"] = status_code
 
-        self.finish(json.dumps(error_response))
+        resp_json = json.dumps(error_response)
+        print("write_error() called: ", resp_json)
+        self.finish(resp_json)
 
         # auth_header = self.request.headers.get("Authorization")
         # if not auth_header:

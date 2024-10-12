@@ -2,6 +2,7 @@
 
 import os
 from contextlib import suppress
+from datetime import datetime
 from shutil import rmtree
 from typing import Generator
 
@@ -146,10 +147,15 @@ def test_chat_private_feature(features: dict[str, domain.FeatureKey], saved_mode
 
     persona = domain.Assistant(
         key="test-persona",
+        scoped_id="global_test-persona",
         name="Test Persona",
+        type=domain.AssistantType.SIMPLE_CHAT,
         system_message_content=system_prompt,
         user_prompt_template_content=user_prompt_template_content,
         llm_settings_collection_key=saved_model_settings.key,
+        archived=False,
+        created_at=datetime(2021, 1, 1),
+        updated_at=datetime(2021, 1, 1),
     )
 
     thread_id = 0

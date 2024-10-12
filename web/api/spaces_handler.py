@@ -5,7 +5,6 @@ from typing import Optional, Self
 import docq.manage_spaces as m_spaces
 import docq.run_queries as rq
 from docq.data_source.list import SpaceDataSources
-from docq.manage_documents import upload
 from pydantic import BaseModel, ValidationError
 from tornado.web import HTTPError
 
@@ -89,9 +88,8 @@ class SpacesHandler(BaseRequestHandler):
         try:
             space_type = self.get_query_argument("space_type", None)
 
-            print("space_type", space_type)
             spaces = m_spaces.list_space(self.selected_org_id, space_type)
-            print("spaces", spaces)
+
             space_model_list: list[SpaceModel] = [_map_to_space_model(space) for space in spaces]
 
             spaces_response_model = SpacesResponseModel(response=space_model_list)
@@ -126,23 +124,23 @@ class SpaceHandler(BaseRequestHandler):
         raise HTTPError(501, reason="Not implemented")
 
 
-@st_app.api_route("/api/v1/spaces/{space_id}/files/upload")
-class SpaceFileUploadHandler(BaseRequestHandler):
-    """Handle /api/spaces/{space_id}/files/upload requests."""
+# @st_app.api_route("/api/v1/spaces/{space_id}/files/upload")
+# class SpaceFileUploadHandler(BaseRequestHandler):
+#     """Handle /api/spaces/{space_id}/files/upload requests."""
 
-    __FILE_SIZE_LIMIT = 200 * 1024 * 1024
-    __FILE_NAME_LIMIT = 100
+#     __FILE_SIZE_LIMIT = 200 * 1024 * 1024
+#     __FILE_NAME_LIMIT = 100
 
-    @authenticated
-    def post(self: Self, space_id: int) -> None:
-        """Handle POST request."""
-        space = get_space(self.selected_org_id, space_id)
-        fileinfo = self.request.files["filearg"][0]
-        fname = fileinfo["filename"]
+#     @authenticated
+#     def post(self: Self, space_id: int) -> None:
+#         """Handle POST request."""
+#         space = get_space(self.selected_org_id, space_id)
+#         fileinfo = self.request.files["filearg"][0]
+#         fname = fileinfo["filename"]
 
-        if len(fileinfo["body"]) > self.__FILE_SIZE_LIMIT:
-            raise HTTPError(400, reason="File too large", log_message="File size exceeds the limit")
+#         if len(fileinfo["body"]) > self.__FILE_SIZE_LIMIT:
+#             raise HTTPError(400, reason="File too large", log_message="File size exceeds the limit")
 
-        upload(fname[: self.__FILE_NAME_LIMIT], fileinfo["body"], space)
-        self.set_status(201)  # 201 Created
-        self.write(f"File {fname} is uploaded successfully.")
+#         upload(fname[: self.__FILE_NAME_LIMIT], fileinfo["body"], space)
+#         self.set_status(201)  # 201 Created
+#         self.write(f"File {fname} is uploaded successfully.")
