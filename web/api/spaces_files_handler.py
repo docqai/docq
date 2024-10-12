@@ -77,7 +77,6 @@ class UploadFileHandler(BaseRequestHandler):
                 if not space:
                     raise HTTPError(404, reason=f"Space id {space_id} not found")
 
-                print("Space_type:", space[7])
                 space_type = SpaceType(str(space[7]).lower())
 
                 if not space_type:
@@ -89,9 +88,11 @@ class UploadFileHandler(BaseRequestHandler):
                     type_=space_type,
                 )
 
+                # save the file in the correct folder related to the space.
                 upload(filename=filename, content=file_info["body"], space=space_key)
 
             self.set_status(201)  # 201 Created
+            # TODO: add a response model. ideally should have success/fail status for each file.
             self.write({"message": f"{len(files)} File(s) successfully uploaded"})
         except ValidationError as e:
             raise HTTPError(400, reason="Bad request") from e

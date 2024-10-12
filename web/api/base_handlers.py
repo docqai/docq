@@ -26,7 +26,7 @@ class BaseRequestHandler(RequestHandler):
         """Override the XSRF cookie check."""
         # If `True`, POST, PUT, and DELETE are block unless the `_xsrf` cookie is set.
         # Safe with token based authN
-        print("check_xsrf_cookie() called")
+        # print("check_xsrf_cookie() called")
         return False
 
     @property

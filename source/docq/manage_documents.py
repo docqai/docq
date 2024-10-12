@@ -10,10 +10,10 @@ from typing import Optional
 from llama_index.core.schema import NodeWithScore
 from streamlit import runtime
 
-from .data_source.main import DocumentMetadata
-from .domain import SpaceKey
-from .manage_spaces import reindex
-from .support.store import get_upload_dir, get_upload_file
+from docq.data_source.main import DocumentMetadata
+from docq.domain import SpaceKey
+from docq.manage_spaces import reindex
+from docq.support.store import get_upload_dir, get_upload_file
 
 
 def upload(filename: str, content: bytes, space: SpaceKey) -> None:
@@ -21,6 +21,9 @@ def upload(filename: str, content: bytes, space: SpaceKey) -> None:
     with open(get_upload_file(space, filename), "wb") as f:
         f.write(content)
 
+    # TODO: refactor to only kick off re-indexing the saved file not the whole space.
+    # TODO: add error handling and return success/failure status.
+    # TODO: to handle large files and resumable uploads, switch content to BinaryIO and then write chunks in a loop.
     reindex(space)
 
 
