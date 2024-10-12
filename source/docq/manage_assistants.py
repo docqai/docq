@@ -367,7 +367,7 @@ def get_assistant(assistant_scoped_id: str, org_id: Optional[int]) -> Assistant:
         return Assistant(
             key=str(row[0]),
             name=row[1],
-            type=AssistantType(row[2]),
+            type=AssistantType(row[2].capitalize()),
             archived=row[3],
             system_message_content=row[4],
             user_prompt_template_content=row[5],
