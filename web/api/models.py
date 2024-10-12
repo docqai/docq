@@ -33,6 +33,7 @@ class ThreadModel(CamelModel):
 
     id_: int = Field(..., alias="id")
     topic: str
+    space_id: Optional[int] = None
     created_at: str
 
 
@@ -53,6 +54,13 @@ class SpaceModel(CamelModel):
     space_type: SPACE_TYPE
     created_at: str
     updated_at: str
+
+class FileModel(CamelModel):
+    """Model for a File."""
+
+    link: str
+    indexed_on: int
+    size: int
 
 
 class BaseResponseModel(CamelModel, ABC):
@@ -97,12 +105,12 @@ class SpacesResponseModel(BaseResponseModel):
     response: list[SpaceModel]
 
 
+class SpaceFilesResponseModel(BaseResponseModel):
+    """HTTP response model for a list of files in a Space."""
+
+    response: list[FileModel]
+
+
 class ThreadPostRequestModel(CamelModel):
     """Pydantic model for the request body."""
     topic: str
-
-class FileUploadRequestModel(CamelModel):
-    """Request model for file upload."""
-
-    space_id: int
-    space_type: SPACE_TYPE

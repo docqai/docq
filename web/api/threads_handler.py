@@ -1,4 +1,5 @@
 """Handle chat and rag threads."""
+import logging
 from datetime import datetime
 from typing import Self
 
@@ -31,7 +32,12 @@ from web.utils.streamlit_application import st_app
 
 def _get_thread_object(result: tuple) -> dict:
     # TODO: when we refactor the data layer to return data model classes instead of tuples, we can remove this function
-    return {"id": result[0], "topic": result[1], "created_at": str(result[2])}
+    return {
+        "id": result[0],
+        "topic": result[1],
+        "space_id": result[3],
+        "created_at": str(result[2]),
+    }
 
 
 @st_app.api_route("/api/v1/{feature}/threads")
@@ -58,6 +64,9 @@ class ThreadsHandler(BaseRequestHandler):
 
         try:
             threads = rq.list_thread_history(feature)
+            # print("threads:")
+            # for thread in threads:
+            #     print(thread[0], thread[1], thread[2], thread[3])
             thread_response = (
                 [ThreadModel(**_get_thread_object(threads[i])) for i in range(len(threads))] if len(threads) > 0 else []
             )
@@ -69,6 +78,7 @@ class ThreadsHandler(BaseRequestHandler):
             self.write(response)
 
         except ValidationError as e:
+            logging.error("ValidationError: ", e)
             raise HTTPError(status_code=400, reason="Bad request", log_message=str(e)) from e
 
     @authenticated
@@ -119,7 +129,10 @@ class ThreadHandler(BaseRequestHandler):
 
         try:
             thread = rq.list_thread_history(feature, thread_id)
-            thread_response = ThreadModel(**_get_thread_object(thread[0])) if len(thread) > 0 else None
+            thread_space_id = get_thread_space(self.selected_org_id, thread_id).id_
+            thread_response = (
+                ThreadModel(**_get_thread_object(thread[0]), space_id=thread_space_id) if len(thread) > 0 else None
+            )
 
             if not thread_response:
                 raise HTTPError(404, reason="Thread not found.")
